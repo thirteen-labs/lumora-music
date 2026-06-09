@@ -6,7 +6,6 @@ workflows:
     environment:
       node: 20
       java: 17
-      EXPO_TOKEN: $EXPO_TOKEN
     triggering:
       events:
         - push
