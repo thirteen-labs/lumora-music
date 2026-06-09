@@ -1,11 +1,8 @@
 workflows:
   lumora-android:
-    name: Lumora Android APK (EAS)
+    name: Lumora Android APK
     max_build_duration: 60
-    instance_type: linux
-    environment:
-      node: 20
-      java: 17
+    instance_type: linux_x2
     triggering:
       events:
         - push
@@ -13,36 +10,12 @@ workflows:
       branch_patterns:
         - pattern: main
           include: true
-    scripts:
-      - name: Install dependencies
-        script: npm ci
-      - name: Install EAS CLI
-        script: npm install -g eas-cli
-      - name: Build APK
-        script: eas build --platform android --profile preview --non-interactive
-    artifacts:
-      - build/outputs/**/*.apk
-      - "*.apk"
-
-  lumora-android-local:
-    name: Lumora Android (Gradle)
-    max_build_duration: 60
-    instance_type: linux_x2
-    triggering:
-      events:
-        - push
-        - tag
-      branch_patterns:
-        - pattern: main
-          include: true
     environment:
       node: 20
       java: 17
     scripts:
       - name: Install dependencies
         script: npm ci
-      - name: Install Expo CLI
-        script: npm install -g expo-cli
       - name: Generate native Android project
         script: npx expo prebuild --platform android --clean
       - name: Make gradlew executable
