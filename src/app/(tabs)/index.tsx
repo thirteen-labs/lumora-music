@@ -1,0 +1,156 @@
+import { View, Text, ScrollView, Pressable } from 'react-native';
+import { useTheme } from '@/hooks/use-theme';
+import { usePlayerStore } from '@/store/player-store';
+import { useMusicStore } from '@/store/music-store';
+import { useFavoritesStore } from '@/store/favorites-store';
+import { TopBar } from '@/components/top-bar';
+import { MiniPlayer } from '@/components/mini-player';
+import { Music, Clock, Heart } from 'lucide-react-native';
+import { formatDuration } from '@/utils/cn';
+import { useEffect } from 'react';
+import { useRouter } from 'expo-router';
+
+export default function HomeScreen() {
+  const { colors } = useTheme();
+  const { songs, scan } = useMusicStore();
+  const { favoriteSongIds } = useFavoritesStore();
+  const { currentTrack } = usePlayerStore();
+  const router = useRouter();
+
+  useEffect(() => {
+    scan();
+  }, []);
+
+  const recentSongs = [...songs].sort((a, b) => b.dateAdded - a.dateAdded).slice(0, 10);
+  const favSongs = songs.filter((s) => favoriteSongIds.includes(s.id)).slice(0, 10);
+
+  return (
+    <View className="flex-1" style={{ backgroundColor: colors.background }}>
+      <TopBar />
+      <ScrollView className="flex-1" contentContainerStyle={{ paddingBottom: 120 }}>
+        <View className="px-4 py-6">
+          <Text className="text-2xl font-bold" style={{ color: colors.text }}>
+            Welcome to Lumora
+          </Text>
+          <Text className="text-sm mt-1" style={{ color: colors.textMuted }}>
+            {songs.length} songs • {favoriteSongIds.length} favorites
+          </Text>
+        </View>
+
+        {currentTrack && (
+          <View className="px-4 mb-6">
+            <Text className="text-lg font-semibold mb-3" style={{ color: colors.text }}>
+              Now Playing
+            </Text>
+            <Pressable
+              onPress={() => router.push('/player')}
+              className="flex-row items-center gap-3 p-4 rounded-2xl"
+              style={{ backgroundColor: colors.surface }}
+            >
+              <View className="w-14 h-14 rounded-xl items-center justify-center" style={{ backgroundColor: colors.card }}>
+                <Music size={24} color={colors.accent} />
+              </View>
+              <View className="flex-1">
+                <Text className="font-semibold" style={{ color: colors.text }} numberOfLines={1}>
+                  {currentTrack.title}
+                </Text>
+                <Text className="text-sm" style={{ color: colors.textMuted }} numberOfLines={1}>
+                  {currentTrack.artist}
+                </Text>
+              </View>
+            </Pressable>
+          </View>
+        )}
+
+        {recentSongs.length > 0 && (
+          <View className="px-4 mb-6">
+            <View className="flex-row items-center gap-2 mb-3">
+              <Clock size={18} color={colors.accent} />
+              <Text className="text-lg font-semibold" style={{ color: colors.text }}>
+                Recently Added
+              </Text>
+            </View>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              {recentSongs.map((song) => (
+                <Pressable
+                  key={song.id}
+                  onPress={() => {
+                    usePlayerStore.getState().play(song, recentSongs);
+                  }}
+                  className="mr-3"
+                  style={{ width: 140 }}
+                >
+                  <View className="w-[140px] h-[140px] rounded-2xl items-center justify-center mb-2" style={{ backgroundColor: colors.surface }}>
+                    <Music size={32} color={colors.accent} />
+                  </View>
+                  <Text className="text-sm font-medium" style={{ color: colors.text }} numberOfLines={1}>
+                    {song.title}
+                  </Text>
+                  <Text className="text-xs" style={{ color: colors.textMuted }} numberOfLines={1}>
+                    {song.artist} • {formatDuration(song.duration)}
+                  </Text>
+                </Pressable>
+              ))}
+            </ScrollView>
+          </View>
+        )}
+
+        {favSongs.length > 0 && (
+          <View className="px-4 mb-6">
+            <View className="flex-row items-center gap-2 mb-3">
+              <Heart size={18} color={colors.accent} />
+              <Text className="text-lg font-semibold" style={{ color: colors.text }}>
+                Favorites
+              </Text>
+            </View>
+            {favSongs.map((song) => (
+              <Pressable
+                key={song.id}
+                onPress={() => {
+                  usePlayerStore.getState().play(song, favSongs);
+                }}
+                className="flex-row items-center gap-3 py-3"
+                style={{ borderBottomWidth: 1, borderBottomColor: colors.border }}
+              >
+                <View className="w-12 h-12 rounded-xl items-center justify-center" style={{ backgroundColor: colors.surface }}>
+                  <Music size={20} color={colors.accent} />
+                </View>
+                <View className="flex-1">
+                  <Text className="text-sm font-medium" style={{ color: colors.text }} numberOfLines={1}>
+                    {song.title}
+                  </Text>
+                  <Text className="text-xs" style={{ color: colors.textMuted }}>
+                    {song.artist}
+                  </Text>
+                </View>
+                <Text className="text-xs" style={{ color: colors.textMuted }}>
+                  {formatDuration(song.duration)}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+        )}
+
+        {songs.length === 0 && (
+          <View className="items-center py-20">
+            <Music size={48} color={colors.textMuted} />
+            <Text className="text-lg mt-4" style={{ color: colors.textMuted }}>
+              No songs found
+            </Text>
+            <Text className="text-sm mt-1" style={{ color: colors.textMuted }}>
+              Grant media access to scan your library
+            </Text>
+            <Pressable
+              onPress={() => scan()}
+              className="mt-4 px-6 py-3 rounded-xl"
+              style={{ backgroundColor: colors.accent }}
+            >
+              <Text className="font-semibold" style={{ color: colors.background }}>Scan Library</Text>
+            </Pressable>
+          </View>
+        )}
+      </ScrollView>
+      <MiniPlayer />
+    </View>
+  );
+}

@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "lumora_app",
-    "slug": "lumora_app",
+    "slug": "lumora",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -22,7 +22,7 @@
     "web": {
       "output": "static",
       "favicon": "./assets/images/favicon.png",
-       "bundler": "metro"
+      "bundler": "metro"
     },
     "plugins": [
       "expo-router",
@@ -35,11 +35,34 @@
             "imageWidth": 76
           }
         }
+      ],
+      "expo-video",
+      "expo-image",
+      [
+        "expo-media-library",
+        {
+          "photosPermission": "Allow $(PRODUCT_NAME) to access your photos for album artwork.",
+          "savePhotosPermission": "Allow $(PRODUCT_NAME) to save photos.",
+          "isAccessMediaLocationEnabled": true
+        }
+      ],
+      [
+        "expo-background-fetch",
+        {
+          "backgroundFetchTasks": ["background-audio-task"]
+        }
       ]
     ],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "2845963d-2d37-48db-8d59-89262e0387ff"
+      }
+    },
+    "owner": "cadmuslabss-organization"
   }
 }
