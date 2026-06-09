@@ -4,6 +4,7 @@ import { useFavoritesStore } from '@/store/favorites-store';
 import { usePlayerStore } from '@/store/player-store';
 import { TopBar } from '@/components/top-bar';
 import { MiniPlayer } from '@/components/mini-player';
+import { SongContextMenu, useSongContextMenu } from '@/components/song-context-menu';
 import { Heart, Music, Video as VideoIcon } from 'lucide-react-native';
 import { formatDuration } from '@/utils/cn';
 import { useState } from 'react';
@@ -12,6 +13,7 @@ export default function FavoritesScreen() {
   const { colors } = useTheme();
   const { songs, videos } = useFavoritesStore();
   const [tab, setTab] = useState<'songs' | 'videos'>('songs');
+  const { bottomSheetRef, present, song } = useSongContextMenu();
 
   const data = tab === 'songs' ? songs : videos;
 
@@ -44,6 +46,7 @@ export default function FavoritesScreen() {
           renderItem={({ item }) => (
             <Pressable
               onPress={() => usePlayerStore.getState().play(item, songs)}
+              onLongPress={() => present(item)}
               className="flex-row items-center gap-3 px-4 py-3"
               style={{ borderBottomWidth: 1, borderBottomColor: colors.border }}
             >
@@ -90,6 +93,7 @@ export default function FavoritesScreen() {
           }
         />
       )}
+      <SongContextMenu bottomSheetRef={bottomSheetRef} song={song} />
       <MiniPlayer />
     </View>
   );

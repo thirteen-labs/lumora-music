@@ -6,39 +6,32 @@ import { useLayoutStore } from '@/store/layout-store';
 import { TopBar } from '@/components/top-bar';
 import { MiniPlayer } from '@/components/mini-player';
 import { SortMenu } from '@/components/sort-menu';
+import { SongContextMenu, useSongContextMenu } from '@/components/song-context-menu';
 import { Music } from 'lucide-react-native';
 import { formatDuration, formatFileSize } from '@/utils/cn';
 import { SORT_OPTIONS } from '@/types/media';
-import { useState } from 'react';
 
 export default function SongsScreen() {
   const { colors } = useTheme();
   const { getSortedSongs, sortField, sortOrder, setSort } = useMusicStore();
   const { fileSizeTheme } = useLayoutStore();
   const songs = getSortedSongs();
+  const { bottomSheetRef, present, song } = useSongContextMenu();
 
   const heightMap = { small: 56, medium: 68, big: 84 };
   const rowHeight = heightMap[fileSizeTheme];
   const artSizeMap = { small: 36, medium: 44, big: 56 };
   const artSize = artSizeMap[fileSizeTheme];
   const activeSort = SORT_OPTIONS.find((o) => o.field === sortField && o.order === sortOrder) ?? SORT_OPTIONS[0];
-  const [showSort, setShowSort] = useState(false);
 
   return (
     <View className="flex-1" style={{ backgroundColor: colors.background }}>
       <TopBar title="Songs" showMenu />
-      {showSort && (
-        <SortMenu
-          options={SORT_OPTIONS}
-          active={activeSort}
-          onSelect={(opt) => { setSort(opt.field, opt.order); setShowSort(false); }}
-        />
-      )}
-      <Pressable onPress={() => setShowSort(!showSort)} className="px-4 py-2">
-        <Text className="text-xs" style={{ color: colors.accent }}>
-          {activeSort.label} ▼
-        </Text>
-      </Pressable>
+      <SortMenu
+        options={SORT_OPTIONS}
+        active={activeSort}
+        onSelect={(opt) => setSort(opt.field, opt.order)}
+      />
       <FlatList
         data={songs}
         keyExtractor={(item) => item.id}
@@ -46,6 +39,7 @@ export default function SongsScreen() {
         renderItem={({ item }) => (
           <Pressable
             onPress={() => usePlayerStore.getState().play(item, songs)}
+            onLongPress={() => present(item)}
             className="flex-row items-center gap-3 px-4"
             style={{ height: rowHeight, borderBottomWidth: 1, borderBottomColor: colors.border }}
           >
@@ -55,7 +49,7 @@ export default function SongsScreen() {
             <View className="flex-1">
               <Text className="text-sm font-medium" style={{ color: colors.text }} numberOfLines={1}>{item.title}</Text>
               <Text className="text-xs" style={{ color: colors.textMuted }} numberOfLines={1}>
-                {item.artist} {fileSizeTheme === 'big' ? `• ${formatFileSize(item.fileSize)}` : ''}
+                {item.artist} {fileSizeTheme === 'big' ? `· ${formatFileSize(item.fileSize)}` : ''}
               </Text>
             </View>
             <Text className="text-xs" style={{ color: colors.textMuted }}>{formatDuration(item.duration)}</Text>
@@ -68,6 +62,7 @@ export default function SongsScreen() {
           </View>
         }
       />
+      <SongContextMenu bottomSheetRef={bottomSheetRef} song={song} />
       <MiniPlayer />
     </View>
   );

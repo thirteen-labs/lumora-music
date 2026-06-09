@@ -5,6 +5,7 @@ import { useMusicStore } from '@/store/music-store';
 import { useFavoritesStore } from '@/store/favorites-store';
 import { TopBar } from '@/components/top-bar';
 import { MiniPlayer } from '@/components/mini-player';
+import { SongContextMenu, useSongContextMenu } from '@/components/song-context-menu';
 import { Music, Clock, Heart } from 'lucide-react-native';
 import { formatDuration } from '@/utils/cn';
 import { useEffect } from 'react';
@@ -16,6 +17,7 @@ export default function HomeScreen() {
   const { favoriteSongIds } = useFavoritesStore();
   const { currentTrack } = usePlayerStore();
   const router = useRouter();
+  const { bottomSheetRef, present, song } = useSongContextMenu();
 
   useEffect(() => {
     scan();
@@ -33,7 +35,7 @@ export default function HomeScreen() {
             Welcome to Lumora
           </Text>
           <Text className="text-sm mt-1" style={{ color: colors.textMuted }}>
-            {songs.length} songs • {favoriteSongIds.length} favorites
+            {songs.length} songs · {favoriteSongIds.length} favorites
           </Text>
         </View>
 
@@ -74,9 +76,8 @@ export default function HomeScreen() {
               {recentSongs.map((song) => (
                 <Pressable
                   key={song.id}
-                  onPress={() => {
-                    usePlayerStore.getState().play(song, recentSongs);
-                  }}
+                  onPress={() => usePlayerStore.getState().play(song, recentSongs)}
+                  onLongPress={() => present(song)}
                   className="mr-3"
                   style={{ width: 140 }}
                 >
@@ -87,7 +88,7 @@ export default function HomeScreen() {
                     {song.title}
                   </Text>
                   <Text className="text-xs" style={{ color: colors.textMuted }} numberOfLines={1}>
-                    {song.artist} • {formatDuration(song.duration)}
+                    {song.artist} · {formatDuration(song.duration)}
                   </Text>
                 </Pressable>
               ))}
@@ -106,9 +107,8 @@ export default function HomeScreen() {
             {favSongs.map((song) => (
               <Pressable
                 key={song.id}
-                onPress={() => {
-                  usePlayerStore.getState().play(song, favSongs);
-                }}
+                onPress={() => usePlayerStore.getState().play(song, favSongs)}
+                onLongPress={() => present(song)}
                 className="flex-row items-center gap-3 py-3"
                 style={{ borderBottomWidth: 1, borderBottomColor: colors.border }}
               >
@@ -150,6 +150,7 @@ export default function HomeScreen() {
           </View>
         )}
       </ScrollView>
+      <SongContextMenu bottomSheetRef={bottomSheetRef} song={song} />
       <MiniPlayer />
     </View>
   );

@@ -4,12 +4,11 @@ import { useVideoStore } from '@/store/video-store';
 import { useMusicStore } from '@/store/music-store';
 import { TopBar } from '@/components/top-bar';
 import { MiniPlayer } from '@/components/mini-player';
+import { SortMenu } from '@/components/sort-menu';
 import { Video as VideoIcon } from 'lucide-react-native';
 import { formatDuration, formatFileSize } from '@/utils/cn';
 import { useEffect } from 'react';
 import { SORT_OPTIONS } from '@/types/media';
-import { useState } from 'react';
-import { SortMenu } from '@/components/sort-menu';
 import { usePlayerStore } from '@/store/player-store';
 import { useRouter } from 'expo-router';
 
@@ -19,7 +18,6 @@ export default function VideosScreen() {
   const { scan } = useMusicStore();
   const videos = getSortedVideos();
   const activeSort = SORT_OPTIONS.find((o) => o.field === sortField && o.order === sortOrder) ?? SORT_OPTIONS[0];
-  const [showSort, setShowSort] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -29,16 +27,11 @@ export default function VideosScreen() {
   return (
     <View className="flex-1" style={{ backgroundColor: colors.background }}>
       <TopBar title="Videos" />
-      {showSort && (
-        <SortMenu
-          options={SORT_OPTIONS.filter((o) => o.field !== 'artist')}
-          active={activeSort}
-          onSelect={(opt) => { setSort(opt.field, opt.order); setShowSort(false); }}
-        />
-      )}
-      <Pressable onPress={() => setShowSort(!showSort)} className="px-4 py-2">
-        <Text className="text-xs" style={{ color: colors.accent }}>{activeSort.label} ▼</Text>
-      </Pressable>
+      <SortMenu
+        options={SORT_OPTIONS.filter((o) => o.field !== 'artist')}
+        active={activeSort}
+        onSelect={(opt) => setSort(opt.field, opt.order)}
+      />
       <FlatList
         data={videos}
         keyExtractor={(item) => item.id}
@@ -55,7 +48,7 @@ export default function VideosScreen() {
             <View className="flex-1">
               <Text className="text-sm font-medium" style={{ color: colors.text }} numberOfLines={2}>{item.title}</Text>
               <Text className="text-xs mt-1" style={{ color: colors.textMuted }}>
-                {formatDuration(item.duration)} • {formatFileSize(item.fileSize)}
+                {formatDuration(item.duration)} · {formatFileSize(item.fileSize)}
               </Text>
               <Text className="text-xs" style={{ color: colors.textMuted }}>
                 {item.width}x{item.height}
