@@ -38,8 +38,6 @@
           "backgroundColor": "#03000d",
           "image": "./assets/splash.png",
           "resizeMode": "cover",
-           "imageWidth": 1440,
-           
           "android": {
             "image": "./assets/splash.png",
             "resizeMode": "cover"
