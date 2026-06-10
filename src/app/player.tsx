@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef } from 'react';
+import { useCallback, useRef } from 'react';
 import { View, Text, Pressable, Dimensions } from 'react-native';
 import { useTheme } from '@/hooks/use-theme';
 import { usePlayerStore } from '@/store/player-store';
@@ -27,7 +27,6 @@ import {
   BottomSheetModal,
   BottomSheetFlatList,
   BottomSheetScrollView,
-  BottomSheetView,
   BottomSheetBackdrop,
 } from '@gorhom/bottom-sheet';
 

@@ -15,8 +15,6 @@ export default function FavoritesScreen() {
   const [tab, setTab] = useState<'songs' | 'videos'>('songs');
   const { bottomSheetRef, present, song } = useSongContextMenu();
 
-  const data = tab === 'songs' ? songs : videos;
-
   return (
     <View className="flex-1" style={{ backgroundColor: colors.background }}>
       <TopBar title="Favorites" />

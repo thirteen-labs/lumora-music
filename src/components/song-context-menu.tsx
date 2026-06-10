@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import { View, Text, Pressable } from 'react-native';
 import {
   BottomSheetModal,
@@ -49,41 +49,9 @@ export function SongContextMenu({ bottomSheetRef, song, onDismiss }: SongContext
 
   const isFav = song ? favoriteSongIds.includes(song.id) : false;
 
-  const menuItems = song
-    ? [
-        {
-          icon: Play,
-          label: 'Play Now',
-          onPress: () => {
-            play(song);
-            bottomSheetRef.current?.dismiss();
-          },
-        },
-        {
-          icon: ListPlus,
-          label: 'Add to Queue',
-          onPress: () => {
-            addToQueue(song);
-            bottomSheetRef.current?.dismiss();
-          },
-        },
-        {
-          icon: Heart,
-          label: isFav ? 'Remove from Favorites' : 'Add to Favorites',
-          onPress: () => {
-            toggleSongFavorite(song);
-            bottomSheetRef.current?.dismiss();
-          },
-        },
-        {
-          icon: Share2,
-          label: 'Share',
-          onPress: () => {
-            bottomSheetRef.current?.dismiss();
-          },
-        },
-      ]
-    : [];
+  const dismiss = useCallback(() => {
+    bottomSheetRef.current?.dismiss();
+  }, [bottomSheetRef]);
 
   return (
     <BottomSheetModal
@@ -131,22 +99,58 @@ export function SongContextMenu({ bottomSheetRef, song, onDismiss }: SongContext
                 </Text>
               </View>
             </View>
-            {menuItems.map((item) => (
-              <Pressable
-                key={item.label}
-                onPress={item.onPress}
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  gap: 16,
-                  paddingHorizontal: 20,
-                  paddingVertical: 14,
-                }}
-              >
-                <item.icon size={20} color={colors.text} />
-                <Text style={{ fontSize: 15, color: colors.text }}>{item.label}</Text>
-              </Pressable>
-            ))}
+            <Pressable
+              onPress={() => { play(song); dismiss(); }}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 16,
+                paddingHorizontal: 20,
+                paddingVertical: 14,
+              }}
+            >
+              <Play size={20} color={colors.text} />
+              <Text style={{ fontSize: 15, color: colors.text }}>Play Now</Text>
+            </Pressable>
+            <Pressable
+              onPress={() => { addToQueue(song); dismiss(); }}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 16,
+                paddingHorizontal: 20,
+                paddingVertical: 14,
+              }}
+            >
+              <ListPlus size={20} color={colors.text} />
+              <Text style={{ fontSize: 15, color: colors.text }}>Add to Queue</Text>
+            </Pressable>
+            <Pressable
+              onPress={() => { toggleSongFavorite(song); dismiss(); }}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 16,
+                paddingHorizontal: 20,
+                paddingVertical: 14,
+              }}
+            >
+              <Heart size={20} color={colors.text} />
+              <Text style={{ fontSize: 15, color: colors.text }}>{isFav ? 'Remove from Favorites' : 'Add to Favorites'}</Text>
+            </Pressable>
+            <Pressable
+              onPress={dismiss}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 16,
+                paddingHorizontal: 20,
+                paddingVertical: 14,
+              }}
+            >
+              <Share2 size={20} color={colors.text} />
+              <Text style={{ fontSize: 15, color: colors.text }}>Share</Text>
+            </Pressable>
           </>
         )}
       </BottomSheetView>

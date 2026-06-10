@@ -21,6 +21,7 @@ export default function HomeScreen() {
 
   useEffect(() => {
     scan();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const recentSongs = [...songs].sort((a, b) => b.dateAdded - a.dateAdded).slice(0, 10);

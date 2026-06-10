@@ -9,7 +9,6 @@ import { Video as VideoIcon } from 'lucide-react-native';
 import { formatDuration, formatFileSize } from '@/utils/cn';
 import { useEffect } from 'react';
 import { SORT_OPTIONS } from '@/types/media';
-import { usePlayerStore } from '@/store/player-store';
 import { useRouter } from 'expo-router';
 
 export default function VideosScreen() {
@@ -22,6 +21,7 @@ export default function VideosScreen() {
 
   useEffect(() => {
     scan().then(() => loadVideos());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (

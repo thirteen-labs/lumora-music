@@ -1,7 +1,14 @@
 import { useRef, useCallback } from 'react';
 import { View, Text, Pressable } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Search, Settings, Menu } from 'lucide-react-native';
+import {
+  Search,
+  Settings,
+  Menu,
+  RefreshCw,
+  Shuffle,
+  Info,
+} from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { useTheme } from '@/hooks/use-theme';
 import {
@@ -11,11 +18,6 @@ import {
 } from '@gorhom/bottom-sheet';
 import { useMusicStore } from '@/store/music-store';
 import { usePlayerStore } from '@/store/player-store';
-import {
-  RefreshCw,
-  Shuffle,
-  Info,
-} from 'lucide-react-native';
 
 interface TopBarProps {
   showMenu?: boolean;
@@ -39,34 +41,26 @@ export function TopBar({ showMenu = false, showSearch = true, showSettings = tru
     [],
   );
 
-  const menuItems = [
-    {
-      icon: Shuffle,
-      label: 'Shuffle All',
-      onPress: () => {
-        if (songs.length > 0) {
-          const shuffled = [...songs].sort(() => Math.random() - 0.5);
-          play(shuffled[0], shuffled);
-        }
-        menuRef.current?.dismiss();
-      },
-    },
-    {
-      icon: RefreshCw,
-      label: 'Rescan Library',
-      onPress: () => {
-        scan();
-        menuRef.current?.dismiss();
-      },
-    },
-    {
-      icon: Info,
-      label: 'About',
-      onPress: () => {
-        menuRef.current?.dismiss();
-      },
-    },
-  ];
+  const dismiss = useCallback(() => {
+    menuRef.current?.dismiss();
+  }, []);
+
+  const handleShuffle = useCallback(() => {
+    if (songs.length > 0) {
+      const shuffled = [...songs].sort(() => Math.random() - 0.5);
+      play(shuffled[0], shuffled);
+    }
+    dismiss();
+  }, [songs, play, dismiss]);
+
+  const handleRescan = useCallback(() => {
+    scan();
+    dismiss();
+  }, [scan, dismiss]);
+
+  const handleAbout = useCallback(() => {
+    dismiss();
+  }, [dismiss]);
 
   return (
     <View style={{ paddingTop: insets.top }} className="w-full">
@@ -133,22 +127,45 @@ export function TopBar({ showMenu = false, showSearch = true, showSettings = tru
         handleIndicatorStyle={{ backgroundColor: colors.textMuted }}
       >
         <BottomSheetView style={{ flex: 1 }}>
-          {menuItems.map((item) => (
-            <Pressable
-              key={item.label}
-              onPress={item.onPress}
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: 16,
-                paddingHorizontal: 20,
-                paddingVertical: 14,
-              }}
-            >
-              <item.icon size={20} color={colors.text} />
-              <Text style={{ fontSize: 15, color: colors.text }}>{item.label}</Text>
-            </Pressable>
-          ))}
+          <Pressable
+            onPress={handleShuffle}
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 16,
+              paddingHorizontal: 20,
+              paddingVertical: 14,
+            }}
+          >
+            <Shuffle size={20} color={colors.text} />
+            <Text style={{ fontSize: 15, color: colors.text }}>Shuffle All</Text>
+          </Pressable>
+          <Pressable
+            onPress={handleRescan}
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 16,
+              paddingHorizontal: 20,
+              paddingVertical: 14,
+            }}
+          >
+            <RefreshCw size={20} color={colors.text} />
+            <Text style={{ fontSize: 15, color: colors.text }}>Rescan Library</Text>
+          </Pressable>
+          <Pressable
+            onPress={handleAbout}
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 16,
+              paddingHorizontal: 20,
+              paddingVertical: 14,
+            }}
+          >
+            <Info size={20} color={colors.text} />
+            <Text style={{ fontSize: 15, color: colors.text }}>About</Text>
+          </Pressable>
         </BottomSheetView>
       </BottomSheetModal>
     </View>

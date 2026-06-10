@@ -1,4 +1,4 @@
-import { View, Text } from 'react-native';
+import { Text } from 'react-native';
 import { useTheme } from '@/hooks/use-theme';
 
 interface SectionHeaderProps {

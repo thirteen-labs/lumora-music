@@ -1,3 +1,4 @@
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import {
   requestPermissionsAsync,
   Asset,
@@ -5,6 +6,7 @@ import {
   MediaType,
   AssetField,
 } from 'expo-media-library';
+import { fetchFromUrl, type IAudioMetadata } from 'music-metadata-browser';
 import type { Song, Album as LumoraAlbum, Artist, Genre, Video, MediaScanStatus } from '@/types/media';
 
 let cachedSongs: Song[] = [];
@@ -24,9 +26,93 @@ export async function requestPermissions(): Promise<boolean> {
   return status === 'granted';
 }
 
-async function fetchAssetsByType(mediaType: MediaType): Promise<Song[] | Video[]> {
+async function parseAudioMetadata(uri: string): Promise<{
+  title: string | null;
+  artist: string | null;
+  album: string | null;
+  genre: string | null;
+  artwork: string | null;
+  bitrate: number | null;
+  sampleRate: number | null;
+}> {
+  try {
+    const metadata: IAudioMetadata = await fetchFromUrl(uri);
+    const { common, format } = metadata;
+
+    let artwork: string | null = null;
+    if (common.picture && common.picture.length > 0) {
+      const pic = common.picture[0];
+      const bytes = new Uint8Array(pic.data);
+      let binary = '';
+      for (let i = 0; i < bytes.byteLength; i++) {
+        binary += String.fromCharCode(bytes[i]);
+      }
+      artwork = `data:${pic.format};base64,${btoa(binary)}`;
+    }
+
+    return {
+      title: common.title ?? null,
+      artist: common.artist ?? null,
+      album: common.album ?? null,
+      genre: common.genre && common.genre.length > 0 ? common.genre[0] : null,
+      artwork,
+      bitrate: format.bitrate ?? null,
+      sampleRate: format.sampleRate ?? null,
+    };
+  } catch {
+    return { title: null, artist: null, album: null, genre: null, artwork: null, bitrate: null, sampleRate: null };
+  }
+}
+
+async function fetchSongs(mediaType: MediaType.AUDIO): Promise<Song[]> {
   const batch = 500;
-  const allAssets: Song[] | Video[] = [];
+  const allSongs: Song[] = [];
+  let offset = 0;
+  let hasMore = true;
+
+  while (hasMore) {
+    const query = new Query()
+      .eq(AssetField.MEDIA_TYPE, mediaType)
+      .limit(batch)
+      .offset(offset);
+
+    const assets = await query.exe();
+    if (assets.length === 0) break;
+
+    const resolved = await Promise.all(
+      assets.map(async (asset) => {
+        const info = await asset.getInfo();
+        const meta = await parseAudioMetadata(info.uri);
+
+        return {
+          id: info.id,
+          uri: info.uri,
+          title: meta.title ?? info.filename.replace(/\.[^/.]+$/, ''),
+          artist: meta.artist ?? 'Unknown Artist',
+          album: meta.album ?? 'Unknown Album',
+          albumId: info.id,
+          duration: info.duration ?? 0,
+          fileSize: 0,
+          dateAdded: info.creationTime ?? 0,
+          artwork: meta.artwork ?? info.uri,
+          genre: meta.genre,
+          bitrate: meta.bitrate,
+          sampleRate: meta.sampleRate,
+        };
+      }),
+    );
+
+    allSongs.push(...resolved);
+    offset += assets.length;
+    hasMore = assets.length === batch;
+  }
+
+  return allSongs;
+}
+
+async function fetchVideos(mediaType: MediaType.VIDEO): Promise<Video[]> {
+  const batch = 500;
+  const allVideos: Video[] = [];
   let offset = 0;
   let hasMore = true;
 
@@ -49,39 +135,19 @@ async function fetchAssetsByType(mediaType: MediaType): Promise<Song[] | Video[]
           duration: info.duration ?? 0,
           fileSize: 0,
           dateAdded: info.creationTime ?? 0,
+          thumbnail: info.uri,
           width: info.width,
           height: info.height,
         };
       }),
     );
 
-    if (mediaType === MediaType.AUDIO) {
-      for (const r of resolved) {
-        (allAssets as Song[]).push({
-          ...r,
-          artist: 'Unknown Artist',
-          album: 'Unknown Album',
-          albumId: r.id,
-          artwork: r.uri,
-          genre: null,
-          bitrate: null,
-          sampleRate: null,
-        });
-      }
-    } else {
-      for (const r of resolved) {
-        (allAssets as Video[]).push({
-          ...r,
-          thumbnail: r.uri,
-        });
-      }
-    }
-
+    allVideos.push(...resolved);
     offset += assets.length;
     hasMore = assets.length === batch;
   }
 
-  return allAssets;
+  return allVideos;
 }
 
 export async function scanMediaLibrary(
@@ -96,13 +162,10 @@ export async function scanMediaLibrary(
       return { songs: [], albums: [], artists: [], genres: [], videos: [] };
     }
 
-    const [audioResults, videoResults] = await Promise.all([
-      fetchAssetsByType(MediaType.AUDIO),
-      fetchAssetsByType(MediaType.VIDEO),
+    const [songs, videos] = await Promise.all([
+      fetchSongs(MediaType.AUDIO),
+      fetchVideos(MediaType.VIDEO),
     ]);
-
-    const songs = audioResults as Song[];
-    const videos = videoResults as Video[];
 
     const albumMap = new Map<string, LumoraAlbum>();
     for (const song of songs) {

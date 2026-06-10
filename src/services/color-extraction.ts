@@ -63,8 +63,6 @@ export async function extractColorsFromImage(uri: string): Promise<ExtractedColo
     const darkest = sorted[0] ?? '#0A0A0F';
     const midDark = sorted[Math.floor(sorted.length * 0.3)] ?? sorted[0] ?? '#141420';
     const vibrant = unique[0] ?? '#8B5CF6';
-    const lightest = sorted[sorted.length - 1] ?? '#FFFFFF';
-
     return {
       primary: vibrant,
       secondary: midDark,

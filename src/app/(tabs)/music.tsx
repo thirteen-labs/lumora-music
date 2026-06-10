@@ -15,6 +15,7 @@ export default function MusicScreen() {
 
   useEffect(() => {
     if (songs.length === 0) scan();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const categories = [

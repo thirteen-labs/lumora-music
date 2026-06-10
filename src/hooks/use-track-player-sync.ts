@@ -11,6 +11,42 @@ export function useTrackPlayerSync() {
   const trackEndedRef = useRef(false);
   const lastTimeRef = useRef(0);
 
+  function handleTrackEnd() {
+    const state = usePlayerStore.getState();
+    const player = getPlayer();
+    if (!player) return;
+
+    switch (state.repeat) {
+      case 'one':
+        player.seekTo(0);
+        player.play();
+        break;
+      case 'all':
+        state.next();
+        break;
+      case 'off':
+      default: {
+        const { queue, shuffle, shuffledOrder, queueIndex } = state;
+        let hasNext = false;
+
+        if (shuffle) {
+          const currentShuffledIdx = shuffledOrder.indexOf(queueIndex);
+          hasNext = currentShuffledIdx + 1 < shuffledOrder.length;
+        } else {
+          hasNext = queueIndex + 1 < queue.length;
+        }
+
+        if (hasNext) {
+          state.next();
+        } else {
+          player.pause();
+          usePlayerStore.setState({ isPlaying: false });
+        }
+        break;
+      }
+    }
+  }
+
   useEffect(() => {
     const interval = setInterval(() => {
       const player = getPlayer();
@@ -49,40 +85,4 @@ export function useTrackPlayerSync() {
 
     return () => clearInterval(interval);
   }, [syncFromPlayer, repeat, queue.length, shuffle]);
-
-  function handleTrackEnd() {
-    const state = usePlayerStore.getState();
-    const player = getPlayer();
-    if (!player) return;
-
-    switch (state.repeat) {
-      case 'one':
-        player.seekTo(0);
-        player.play();
-        break;
-      case 'all':
-        state.next();
-        break;
-      case 'off':
-      default: {
-        const { queue, shuffle, shuffledOrder, queueIndex } = state;
-        let hasNext = false;
-
-        if (shuffle) {
-          const currentShuffledIdx = shuffledOrder.indexOf(queueIndex);
-          hasNext = currentShuffledIdx + 1 < shuffledOrder.length;
-        } else {
-          hasNext = queueIndex + 1 < queue.length;
-        }
-
-        if (hasNext) {
-          state.next();
-        } else {
-          player.pause();
-          usePlayerStore.setState({ isPlaying: false });
-        }
-        break;
-      }
-    }
-  }
 }
