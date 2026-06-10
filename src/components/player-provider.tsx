@@ -1,7 +1,8 @@
 import { useEffect, useState, ReactNode } from 'react';
 import { View, ActivityIndicator, Platform } from 'react-native';
-import { setupPlayer } from '@/services/track-player';
+import { setupPlayer, setCrossfadeEnabled } from '@/services/track-player';
 import { useTrackPlayerSync } from '@/hooks/use-track-player-sync';
+import { useSettingsStore } from '@/store/settings-store';
 import { requestNotificationPermissionsAsync } from 'expo-audio';
 
 function PlayerSync() {
@@ -11,6 +12,7 @@ function PlayerSync() {
 
 export function PlayerProvider({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(false);
+  const crossfade = useSettingsStore((s) => s.crossfade);
 
   useEffect(() => {
     setupPlayer().then(async () => {
@@ -22,6 +24,10 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       setReady(true);
     });
   }, []);
+
+  useEffect(() => {
+    setCrossfadeEnabled(crossfade);
+  }, [crossfade]);
 
   if (!ready) {
     return (

@@ -2,11 +2,14 @@ import { View, Text, FlatList, Pressable } from 'react-native';
 import { useTheme } from '@/hooks/use-theme';
 import { useMusicStore } from '@/store/music-store';
 import { TopBar } from '@/components/top-bar';
+import { MiniPlayer } from '@/components/mini-player';
 import { User } from 'lucide-react-native';
+import { useRouter } from 'expo-router';
 
 export default function ArtistsScreen() {
   const { colors } = useTheme();
   const { artists } = useMusicStore();
+  const router = useRouter();
 
   return (
     <View className="flex-1" style={{ backgroundColor: colors.background }}>
@@ -17,6 +20,7 @@ export default function ArtistsScreen() {
         contentContainerStyle={{ padding: 12, paddingBottom: 120 }}
         renderItem={({ item }) => (
           <Pressable
+            onPress={() => router.push({ pathname: '/music/artist/[id]', params: { id: item.id } })}
             className="flex-row items-center gap-4 p-3 rounded-2xl mb-2"
             style={{ backgroundColor: colors.surface }}
           >
@@ -36,6 +40,7 @@ export default function ArtistsScreen() {
           </View>
         }
       />
+      <MiniPlayer />
     </View>
   );
 }

@@ -1,6 +1,6 @@
 import { Tabs } from 'expo-router';
 import { useTheme } from '@/hooks/use-theme';
-import { Music, Video, Heart, Settings, Home } from 'lucide-react-native';
+import { Music, Video, Heart, Settings, Home, Folder } from 'lucide-react-native';
 
 export default function TabLayout() {
   const { colors } = useTheme();
@@ -44,6 +44,13 @@ export default function TabLayout() {
         options={{
           title: 'Videos',
           tabBarIcon: ({ color, size }) => <Video size={size} color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="files"
+        options={{
+          title: 'Files',
+          tabBarIcon: ({ color, size }) => <Folder size={size} color={color} />,
         }}
       />
       <Tabs.Screen

@@ -39,6 +39,22 @@ export default function RootLayout() {
                 options={{ animation: 'slide_from_right' }}
               />
               <Stack.Screen
+                name="music/album/[id]"
+                options={{ animation: 'slide_from_right' }}
+              />
+              <Stack.Screen
+                name="music/artist/[id]"
+                options={{ animation: 'slide_from_right' }}
+              />
+              <Stack.Screen
+                name="music/genre/[id]"
+                options={{ animation: 'slide_from_right' }}
+              />
+              <Stack.Screen
+                name="files"
+                options={{ animation: 'slide_from_right' }}
+              />
+              <Stack.Screen
                 name="search"
                 options={{ animation: 'slide_from_right' }}
               />

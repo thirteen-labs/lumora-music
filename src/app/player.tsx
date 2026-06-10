@@ -1,5 +1,5 @@
-import { useCallback, useRef } from 'react';
-import { View, Text, Pressable, Dimensions } from 'react-native';
+import { useCallback, useRef, useState, useEffect } from 'react';
+import { View, Text, Pressable, Dimensions, ActivityIndicator } from 'react-native';
 import { useTheme } from '@/hooks/use-theme';
 import { usePlayerStore } from '@/store/player-store';
 import {
@@ -23,6 +23,7 @@ import Slider from '@react-native-community/slider';
 import { useRouter } from 'expo-router';
 import { useFavoritesStore } from '@/store/favorites-store';
 import { Image } from 'expo-image';
+import { fetchLyrics, type LyricsResult } from '@/services/lyrics';
 import {
   BottomSheetModal,
   BottomSheetFlatList,
@@ -58,6 +59,40 @@ export default function PlayerScreen() {
 
   const queueSheetRef = useRef<BottomSheetModal>(null);
   const lyricsSheetRef = useRef<BottomSheetModal>(null);
+  const [lyrics, setLyrics] = useState<LyricsResult | null>(null);
+  const [lyricsStatus, setLyricsStatus] = useState<'idle' | 'loading' | 'done'>('idle');
+  const [lyricsError, setLyricsError] = useState(false);
+  const trackIdRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!currentTrack) return;
+    const trackId = currentTrack.id;
+    trackIdRef.current = trackId;
+
+    fetchLyrics(currentTrack.artist, currentTrack.title)
+      .then((result) => {
+        if (trackIdRef.current !== trackId) return;
+        setLyrics(result);
+        setLyricsStatus('done');
+        if (!result) setLyricsError(true);
+      })
+      .catch(() => {
+        if (trackIdRef.current !== trackId) return;
+        setLyricsStatus('done');
+        setLyricsError(true);
+      });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentTrack?.id, currentTrack?.artist, currentTrack?.title]);
+
+  const prevTrackId = useRef<string | null>(null);
+  if (currentTrack?.id !== prevTrackId.current) {
+    prevTrackId.current = currentTrack?.id ?? null;
+    if (lyricsStatus !== 'loading') {
+      setLyrics(null);
+      setLyricsError(false);
+      setLyricsStatus('loading');
+    }
+  }
 
   const renderBackdrop = useCallback(
     (props: any) => (
@@ -305,15 +340,28 @@ export default function PlayerScreen() {
           <Text style={{ fontSize: 17, fontWeight: '600', color: colors.text, marginBottom: 16 }}>
             Lyrics
           </Text>
-          <View style={{ alignItems: 'center', paddingVertical: 40 }}>
-            <Music size={40} color={colors.textMuted} />
-            <Text style={{ fontSize: 15, color: colors.textMuted, marginTop: 12 }}>
-              No lyrics available
+          {lyricsStatus === 'loading' ? (
+            <View style={{ alignItems: 'center', paddingVertical: 40 }}>
+              <ActivityIndicator size="large" color={colors.accent} />
+              <Text style={{ fontSize: 14, color: colors.textMuted, marginTop: 12 }}>
+                Searching for lyrics...
+              </Text>
+            </View>
+          ) : lyrics?.lyrics ? (
+            <Text style={{ fontSize: 15, color: colors.text, lineHeight: 26 }}>
+              {lyrics.lyrics}
             </Text>
-            <Text style={{ fontSize: 13, color: colors.textMuted, marginTop: 4 }}>
-              Lyrics will appear here when available
-            </Text>
-          </View>
+          ) : (
+            <View style={{ alignItems: 'center', paddingVertical: 40 }}>
+              <Music size={40} color={colors.textMuted} />
+              <Text style={{ fontSize: 15, color: colors.textMuted, marginTop: 12 }}>
+                No lyrics available
+              </Text>
+              <Text style={{ fontSize: 13, color: colors.textMuted, marginTop: 4 }}>
+                {lyricsError ? 'Could not find lyrics for this track' : 'Lyrics will appear here when available'}
+              </Text>
+            </View>
+          )}
         </BottomSheetScrollView>
       </BottomSheetModal>
     </View>

@@ -2,11 +2,14 @@ import { View, Text, FlatList, Pressable } from 'react-native';
 import { useTheme } from '@/hooks/use-theme';
 import { useMusicStore } from '@/store/music-store';
 import { TopBar } from '@/components/top-bar';
+import { MiniPlayer } from '@/components/mini-player';
 import { Disc3 } from 'lucide-react-native';
+import { useRouter } from 'expo-router';
 
 export default function AlbumsScreen() {
   const { colors } = useTheme();
   const { albums } = useMusicStore();
+  const router = useRouter();
 
   return (
     <View className="flex-1" style={{ backgroundColor: colors.background }}>
@@ -18,7 +21,11 @@ export default function AlbumsScreen() {
         contentContainerStyle={{ padding: 12, paddingBottom: 120 }}
         columnWrapperStyle={{ gap: 12, marginBottom: 12 }}
         renderItem={({ item }) => (
-          <Pressable className="flex-1 rounded-2xl overflow-hidden" style={{ backgroundColor: colors.surface }}>
+          <Pressable
+            onPress={() => router.push({ pathname: '/music/album/[id]', params: { id: item.id } })}
+            className="flex-1 rounded-2xl overflow-hidden"
+            style={{ backgroundColor: colors.surface }}
+          >
             <View className="aspect-square items-center justify-center" style={{ backgroundColor: colors.card }}>
               <Disc3 size={40} color={colors.accent} />
             </View>
@@ -35,6 +42,7 @@ export default function AlbumsScreen() {
           </View>
         }
       />
+      <MiniPlayer />
     </View>
   );
 }

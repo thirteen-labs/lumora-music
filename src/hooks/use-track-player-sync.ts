@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { usePlayerStore } from '@/store/player-store';
-import { getPlayer } from '@/services/track-player';
+import { getPlayer, isCrossfadeEnabled, getCrossfadeDuration } from '@/services/track-player';
 
 export function useTrackPlayerSync() {
   const syncFromPlayer = usePlayerStore((s) => s.syncFromPlayer);
@@ -10,6 +10,7 @@ export function useTrackPlayerSync() {
   const wasPlayingRef = useRef(false);
   const trackEndedRef = useRef(false);
   const lastTimeRef = useRef(0);
+  const crossfadeTriggeredRef = useRef(false);
 
   function handleTrackEnd() {
     const state = usePlayerStore.getState();
@@ -47,6 +48,24 @@ export function useTrackPlayerSync() {
     }
   }
 
+  function handleCrossfade() {
+    const state = usePlayerStore.getState();
+    if (!state.isPlaying || crossfadeTriggeredRef.current) return;
+
+    const player = getPlayer();
+    if (!player) return;
+
+    const duration = player.duration;
+    const currentTime = player.currentTime;
+    const crossfadeDur = getCrossfadeDuration();
+    const remaining = duration - currentTime;
+
+    if (remaining <= crossfadeDur && remaining > 0 && duration > 0) {
+      crossfadeTriggeredRef.current = true;
+      state.next();
+    }
+  }
+
   useEffect(() => {
     const interval = setInterval(() => {
       const player = getPlayer();
@@ -57,6 +76,10 @@ export function useTrackPlayerSync() {
       const isNowPlaying = player.playing;
       const currentTime = player.currentTime;
       const duration = player.duration;
+
+      if (isCrossfadeEnabled() && isNowPlaying) {
+        handleCrossfade();
+      }
 
       if (
         wasPlayingRef.current &&
@@ -73,11 +96,15 @@ export function useTrackPlayerSync() {
       if (isNowPlaying) {
         wasPlayingRef.current = true;
         trackEndedRef.current = false;
+        if (currentTime < 1) {
+          crossfadeTriggeredRef.current = false;
+        }
       }
 
       if (!isNowPlaying && currentTime < 1 && lastTimeRef.current > 1) {
         wasPlayingRef.current = false;
         trackEndedRef.current = false;
+        crossfadeTriggeredRef.current = false;
       }
 
       lastTimeRef.current = currentTime;

@@ -1,6 +1,6 @@
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import {
   requestPermissionsAsync,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- Asset is required as a base class for Query
   Asset,
   Query,
   MediaType,
