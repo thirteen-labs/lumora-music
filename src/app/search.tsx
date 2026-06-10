@@ -30,7 +30,7 @@ export default function SearchScreen() {
       <TopBar title="Search" showSearch={false} />
       <View className="px-4 py-3">
         <View
-          className="flex-row items-center gap-3 px-4 py-3 rounded-2xl"
+          className="flex-row items-center gap-3 px-4 py-3 rounded-3xl"
           style={{ backgroundColor: colors.surface }}
         >
           <Search size={20} color={colors.textMuted} />
@@ -69,7 +69,7 @@ export default function SearchScreen() {
               className="flex-row items-center gap-3 px-4 py-3"
               style={{ borderBottomWidth: 1, borderBottomColor: colors.border }}
             >
-              <View className="w-10 h-10 rounded-xl items-center justify-center" style={{ backgroundColor: colors.surface }}>
+              <View className="w-10 h-10 rounded-2xl items-center justify-center" style={{ backgroundColor: colors.surface }}>
                 {item.type === 'song' ? (
                   <Music size={18} color={colors.accent} />
                 ) : (

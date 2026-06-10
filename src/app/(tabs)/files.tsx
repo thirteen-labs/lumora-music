@@ -87,7 +87,7 @@ export default function FilesScreen() {
               style={{ borderBottomWidth: 1, borderBottomColor: colors.border }}
             >
               <View
-                className="w-11 h-11 rounded-xl items-center justify-center"
+                className="w-11 h-11 rounded-2xl items-center justify-center"
                 style={{ backgroundColor: colors.surface }}
               >
                 {item.isDirectory ? (

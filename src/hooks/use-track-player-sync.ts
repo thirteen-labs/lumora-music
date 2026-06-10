@@ -4,9 +4,6 @@ import { getPlayer, isCrossfadeEnabled, getCrossfadeDuration } from '@/services/
 
 export function useTrackPlayerSync() {
   const syncFromPlayer = usePlayerStore((s) => s.syncFromPlayer);
-  const repeat = usePlayerStore((s) => s.repeat);
-  const queue = usePlayerStore((s) => s.queue);
-  const shuffle = usePlayerStore((s) => s.shuffle);
   const wasPlayingRef = useRef(false);
   const trackEndedRef = useRef(false);
   const lastTimeRef = useRef(0);
@@ -111,5 +108,5 @@ export function useTrackPlayerSync() {
     }, 250);
 
     return () => clearInterval(interval);
-  }, [syncFromPlayer, repeat, queue.length, shuffle]);
+  }, [syncFromPlayer]);
 }

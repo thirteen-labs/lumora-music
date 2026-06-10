@@ -13,15 +13,20 @@ import { Image } from 'expo-image';
 
 export default function SettingsScreen() {
   const { colors } = useTheme();
-  const {
-    defaultShuffle, setDefaultShuffle,
-    defaultRepeat, setDefaultRepeat,
-    crossfade, setCrossfade,
-    colorAware, setColorAware,
-    backgroundImage, setBackgroundImage,
-  } = useSettingsStore();
-  const { songs, albums, artists } = useMusicStore();
-  const { videos } = useVideoStore();
+  const defaultShuffle = useSettingsStore((s) => s.defaultShuffle);
+  const setDefaultShuffle = useSettingsStore((s) => s.setDefaultShuffle);
+  const defaultRepeat = useSettingsStore((s) => s.defaultRepeat);
+  const setDefaultRepeat = useSettingsStore((s) => s.setDefaultRepeat);
+  const crossfade = useSettingsStore((s) => s.crossfade);
+  const setCrossfade = useSettingsStore((s) => s.setCrossfade);
+  const colorAware = useSettingsStore((s) => s.colorAware);
+  const setColorAware = useSettingsStore((s) => s.setColorAware);
+  const backgroundImage = useSettingsStore((s) => s.backgroundImage);
+  const setBackgroundImage = useSettingsStore((s) => s.setBackgroundImage);
+  const songs = useMusicStore((s) => s.songs);
+  const albums = useMusicStore((s) => s.albums);
+  const artists = useMusicStore((s) => s.artists);
+  const videos = useVideoStore((s) => s.videos);
 
   const pickBackgroundImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -55,7 +60,7 @@ export default function SettingsScreen() {
           <View>
             <SectionHeader title="Image Background" />
             <View
-              className="rounded-2xl overflow-hidden"
+              className="rounded-3xl overflow-hidden"
               style={{ backgroundColor: colors.surface }}
             >
               <View className="h-40 items-center justify-center overflow-hidden" style={{ backgroundColor: colors.card }}>
@@ -75,7 +80,7 @@ export default function SettingsScreen() {
               <View className="flex-row p-3 gap-2">
                 <Pressable
                   onPress={pickBackgroundImage}
-                  className="flex-1 py-3 rounded-xl items-center"
+                  className="flex-1 py-3 rounded-2xl items-center"
                   style={{ backgroundColor: colors.accent }}
                 >
                   <Text className="text-sm font-semibold" style={{ color: colors.background }}>
@@ -85,7 +90,7 @@ export default function SettingsScreen() {
                 {backgroundImage && (
                   <Pressable
                     onPress={removeBackground}
-                    className="py-3 px-5 rounded-xl items-center"
+                    className="py-3 px-5 rounded-2xl items-center"
                     style={{ backgroundColor: colors.card }}
                   >
                     <Text className="text-sm" style={{ color: colors.text }}>Remove</Text>
@@ -97,14 +102,14 @@ export default function SettingsScreen() {
 
           <View>
             <SectionHeader title="Themes" />
-            <View className="rounded-2xl overflow-hidden" style={{ backgroundColor: colors.surface }}>
+            <View className="rounded-3xl overflow-hidden" style={{ backgroundColor: colors.surface }}>
               <ThemeSelector />
             </View>
           </View>
 
           <View>
             <SectionHeader title="Color Aware" />
-            <View className="flex-row items-center justify-between p-4 rounded-2xl" style={{ backgroundColor: colors.surface }}>
+            <View className="flex-row items-center justify-between p-4 rounded-3xl" style={{ backgroundColor: colors.surface }}>
               <View className="flex-1">
                 <Text className="text-sm font-medium" style={{ color: colors.text }}>
                   Extract colors from artwork
@@ -131,7 +136,7 @@ export default function SettingsScreen() {
 
           <View>
             <SectionHeader title="Playback" />
-            <View className="rounded-2xl overflow-hidden" style={{ backgroundColor: colors.surface }}>
+            <View className="rounded-3xl overflow-hidden" style={{ backgroundColor: colors.surface }}>
               <SettingToggle
                 icon={Shuffle}
                 label="Default Shuffle"
@@ -162,7 +167,7 @@ export default function SettingsScreen() {
 
           <View>
             <SectionHeader title="Storage" />
-            <View className="p-4 rounded-2xl" style={{ backgroundColor: colors.surface }}>
+            <View className="p-4 rounded-3xl" style={{ backgroundColor: colors.surface }}>
               <Text className="text-sm" style={{ color: colors.text }}>
                 {songs.length} songs • {albums.length} albums • {artists.length} artists • {videos.length} videos
               </Text>
@@ -171,7 +176,7 @@ export default function SettingsScreen() {
 
           <View>
             <SectionHeader title="About" />
-            <View className="p-4 rounded-2xl" style={{ backgroundColor: colors.surface }}>
+            <View className="p-4 rounded-3xl" style={{ backgroundColor: colors.surface }}>
               <View className="flex-row items-center gap-2 mb-2">
                 <Info size={16} color={colors.accent} />
                 <Text className="text-sm font-semibold" style={{ color: colors.text }}>Lumora</Text>

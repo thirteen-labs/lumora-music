@@ -23,7 +23,7 @@ export default function AlbumsScreen() {
         renderItem={({ item }) => (
           <Pressable
             onPress={() => router.push({ pathname: '/music/album/[id]', params: { id: item.id } })}
-            className="flex-1 rounded-2xl overflow-hidden"
+            className="flex-1 rounded-3xl overflow-hidden"
             style={{ backgroundColor: colors.surface }}
           >
             <View className="aspect-square items-center justify-center" style={{ backgroundColor: colors.card }}>

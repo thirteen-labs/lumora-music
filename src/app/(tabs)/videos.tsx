@@ -7,15 +7,35 @@ import { MiniPlayer } from '@/components/mini-player';
 import { SortMenu } from '@/components/sort-menu';
 import { Video as VideoIcon } from 'lucide-react-native';
 import { formatDuration, formatFileSize } from '@/utils/cn';
-import { useEffect } from 'react';
-import { SORT_OPTIONS } from '@/types/media';
+import { useEffect, useMemo } from 'react';
+import { SORT_OPTIONS, type SortField, type SortOrder } from '@/types/media';
 import { useRouter } from 'expo-router';
+
+function sortVideos(videos: any[], sortField: SortField, sortOrder: SortOrder) {
+  const sorted = [...videos];
+  sorted.sort((a, b) => {
+    let cmp = 0;
+    switch (sortField) {
+      case 'title': cmp = a.title.localeCompare(b.title); break;
+      case 'dateAdded': cmp = a.dateAdded - b.dateAdded; break;
+      case 'duration': cmp = a.duration - b.duration; break;
+      case 'fileSize': cmp = a.fileSize - b.fileSize; break;
+      default: cmp = a.dateAdded - b.dateAdded;
+    }
+    return sortOrder === 'desc' ? -cmp : cmp;
+  });
+  return sorted;
+}
 
 export default function VideosScreen() {
   const { colors } = useTheme();
-  const { getSortedVideos, sortField, sortOrder, setSort, loadVideos } = useVideoStore();
+  const videos = useVideoStore((s) => s.videos);
+  const sortField = useVideoStore((s) => s.sortField);
+  const sortOrder = useVideoStore((s) => s.sortOrder);
+  const setSort = useVideoStore((s) => s.setSort);
+  const loadVideos = useVideoStore((s) => s.loadVideos);
   const { scan } = useMusicStore();
-  const videos = getSortedVideos();
+  const sortedVideos = useMemo(() => sortVideos(videos, sortField, sortOrder), [videos, sortField, sortOrder]);
   const activeSort = SORT_OPTIONS.find((o) => o.field === sortField && o.order === sortOrder) ?? SORT_OPTIONS[0];
   const router = useRouter();
 
@@ -33,7 +53,7 @@ export default function VideosScreen() {
         onSelect={(opt) => setSort(opt.field, opt.order)}
       />
       <FlatList
-        data={videos}
+        data={sortedVideos}
         keyExtractor={(item) => item.id}
         contentContainerStyle={{ paddingBottom: 120 }}
         renderItem={({ item }) => (
@@ -42,7 +62,7 @@ export default function VideosScreen() {
             className="flex-row items-center gap-3 px-4 py-3"
             style={{ borderBottomWidth: 1, borderBottomColor: colors.border }}
           >
-            <View className="w-24 h-16 rounded-xl items-center justify-center" style={{ backgroundColor: colors.surface }}>
+            <View className="w-24 h-16 rounded-2xl items-center justify-center" style={{ backgroundColor: colors.surface }}>
               <VideoIcon size={24} color={colors.accent} />
             </View>
             <View className="flex-1">

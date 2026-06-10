@@ -23,7 +23,7 @@ export default function FavoritesScreen() {
           <Pressable
             key={t}
             onPress={() => setTab(t)}
-            className="flex-1 py-3 rounded-xl items-center"
+            className="flex-1 py-3 rounded-2xl items-center"
             style={{ backgroundColor: tab === t ? colors.accent : colors.surface }}
           >
             <Text
@@ -48,7 +48,7 @@ export default function FavoritesScreen() {
               className="flex-row items-center gap-3 px-4 py-3"
               style={{ borderBottomWidth: 1, borderBottomColor: colors.border }}
             >
-              <View className="w-11 h-11 rounded-xl items-center justify-center" style={{ backgroundColor: colors.surface }}>
+              <View className="w-11 h-11 rounded-2xl items-center justify-center" style={{ backgroundColor: colors.surface }}>
                 <Music size={18} color={colors.accent} />
               </View>
               <View className="flex-1">
@@ -74,7 +74,7 @@ export default function FavoritesScreen() {
               className="flex-row items-center gap-3 px-4 py-3"
               style={{ borderBottomWidth: 1, borderBottomColor: colors.border }}
             >
-              <View className="w-11 h-11 rounded-xl items-center justify-center" style={{ backgroundColor: colors.surface }}>
+              <View className="w-11 h-11 rounded-2xl items-center justify-center" style={{ backgroundColor: colors.surface }}>
                 <VideoIcon size={18} color={colors.accent} />
               </View>
               <View className="flex-1">

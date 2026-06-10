@@ -29,7 +29,7 @@ export default function AlbumDetailScreen() {
     <View className="flex-1" style={{ backgroundColor: colors.background }}>
       <TopBar title={album?.title ?? 'Album'} />
       <View className="px-4 py-4 flex-row items-center gap-4" style={{ backgroundColor: colors.surface }}>
-        <View className="w-20 h-20 rounded-2xl items-center justify-center" style={{ backgroundColor: colors.card }}>
+        <View className="w-20 h-20 rounded-3xl items-center justify-center" style={{ backgroundColor: colors.card }}>
           <Disc3 size={36} color={colors.accent} />
         </View>
         <View className="flex-1">

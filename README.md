@@ -1,56 +1,123 @@
-# Welcome to your Expo app 👋
+# Lumora
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+A premium offline media player built with React Native and Expo. Scan your device for songs and videos, organize by album/artist/genre, and play with features like shuffle, repeat, crossfade, lyrics, and adaptive color theming.
 
-## Get started
+## Features
 
-1. Install dependencies
+- **Music Playback** — Play local audio files with expo-audio, including shuffle, repeat (off/all/one), and crossfade between tracks
+- **Video Playback** — Play local video files with expo-video
+- **Media Scanning** — Automatically detect songs and videos from your device library
+- **Library Organization** — Browse by songs, albums, artists, and genres
+- **Favorites** — Mark songs and videos as favorites for quick access
+- **File Browser** — Navigate device folders and play media directly
+- **Search** — Find songs, artists, albums, and videos across your library
+- **Lyrics** — Fetch and display lyrics for the current track
+- **Color-Aware Theming** — Extract dominant colors from album artwork and apply them as the UI theme
+- **Multiple Themes** — Choose from a set of built-in color themes
+- **Glassmorphism UI** — Blur effects on the tab bar and mini-player using expo-blur
+- **Queue Management** — View, reorder, and remove tracks from the playback queue
+- **Mini Player** — Persistent bottom bar showing current track with play/pause and skip controls
+- **Background Playback** — Audio continues playing when the app is backgrounded
+- **Customizable Layout** — Adjust file size display (small/medium/big) in settings
+- **Background Image** — Set a custom background image from your photo library
 
-   ```bash
-   npm install
-   ```
+## Tech Stack
 
-2. Start the app
+| Layer | Technology |
+|---|---|
+| Framework | React Native 0.85 + Expo SDK 56 |
+| Routing | expo-router (file-based) |
+| Styling | NativeWind v4 (Tailwind CSS for React Native) |
+| State | Zustand v5 with immer middleware |
+| Audio | expo-audio |
+| Video | expo-video |
+| Storage | react-native-mmkv |
+| Animations | react-native-reanimated + moti |
+| Icons | lucide-react-native |
+| Blur | expo-blur |
+| Lists | @shopify/flash-list |
+| Bottom Sheets | @gorhom/bottom-sheet |
 
-   ```bash
-   npx expo start
-   ```
+## Project Structure
 
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
-
-```bash
-npm run reset-project
+```
+src/
+  app/                    # Expo Router pages (file-based routing)
+    (tabs)/               # Tab navigator
+      _layout.tsx         # Tab bar configuration
+      index.tsx           # Home screen
+      music.tsx           # Music categories
+      videos.tsx          # Video library
+      files.tsx           # File browser
+      favorites.tsx       # Favorites
+      settings.tsx        # App settings
+    music/                # Music sub-screens
+      songs.tsx           # All songs list
+      albums.tsx          # Album grid
+      artists.tsx         # Artist list
+      genres.tsx          # Genre list
+      album/[id].tsx      # Album detail
+      artist/[id].tsx     # Artist detail
+      genre/[id].tsx      # Genre detail
+    player.tsx            # Full-screen music player
+    video-player.tsx      # Full-screen video player
+    search.tsx            # Search screen
+  components/             # Shared UI components
+  hooks/                  # Custom React hooks
+  services/               # Business logic (scanner, playback, lyrics)
+  store/                  # Zustand state stores
+  theme/                  # Theme system (context, provider, registry)
+  types/                  # TypeScript type definitions
+  utils/                  # Utility functions
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+## Getting Started
 
-### Other setup steps
+### Prerequisites
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
+- Node.js 18+
+- Android Studio (for Android builds)
+- Expo CLI: `npm install -g expo-cli`
 
-## Learn more
+### Installation
 
-To learn more about developing your project with Expo, look at the following resources:
+```bash
+# Install dependencies
+npm install
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+# Start the development server
+npx expo start
+```
 
-## Join the community
+### Running
 
-Join our community of developers creating universal apps.
+```bash
+# Android (device or emulator)
+npx expo run:android
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+# Web
+npx expo start --web
+```
+
+## Scripts
+
+| Command | Description |
+|---|---|
+| `npm start` | Start the Expo development server |
+| `npm run android` | Run on Android |
+| `npm run ios` | Run on iOS |
+| `npm run web` | Run on web |
+| `npm run lint` | Run ESLint |
+| `npm run typecheck` | Run TypeScript type checking |
+
+## Configuration
+
+The app requires the following Android permissions (configured in `app.json`):
+
+- `FOREGROUND_SERVICE` / `FOREGROUND_SERVICE_MEDIA_PLAYBACK` — Background audio playback
+- `WAKE_LOCK` — Keep device awake during playback
+- Media library access — Scan for songs and videos
+
+## License
+
+See [LICENSE](./LICENSE) for details.

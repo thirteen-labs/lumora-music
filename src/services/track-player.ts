@@ -6,6 +6,7 @@ let crossfadePlayer: AudioPlayer | null = null;
 let crossfadeEnabled = false;
 let crossfadeDuration = 5;
 let currentVolume = 1;
+let crossfadeCancelled = false;
 
 export function getPlayer(): AudioPlayer | null {
   return player;
@@ -67,6 +68,8 @@ export async function loadTrack(track: Song): Promise<void> {
 async function crossfadeToTrack(track: Song): Promise<void> {
   if (!player) return;
 
+  crossfadeCancelled = false;
+
   if (!crossfadePlayer) {
     crossfadePlayer = createAudioPlayer(null, { updateInterval: 250 });
   }
@@ -80,6 +83,8 @@ async function crossfadeToTrack(track: Song): Promise<void> {
   const stepDuration = (crossfadeDuration * 1000) / fadeSteps;
 
   for (let i = 1; i <= fadeSteps; i++) {
+    if (crossfadeCancelled) return;
+
     const progress = i / fadeSteps;
     const fadeOut = 1 - progress;
     const fadeIn = progress;
@@ -92,6 +97,8 @@ async function crossfadeToTrack(track: Song): Promise<void> {
     currentVolume = fadeIn;
     await new Promise((resolve) => setTimeout(resolve, stepDuration));
   }
+
+  if (crossfadeCancelled) return;
 
   player.pause();
   player.seekTo(0);
@@ -159,6 +166,7 @@ export function getPlayerState() {
 }
 
 export function destroyPlayer(): void {
+  crossfadeCancelled = true;
   if (player) {
     player.clearLockScreenControls();
     player.remove();

@@ -21,7 +21,7 @@ export default function ArtistsScreen() {
         renderItem={({ item }) => (
           <Pressable
             onPress={() => router.push({ pathname: '/music/artist/[id]', params: { id: item.id } })}
-            className="flex-row items-center gap-4 p-3 rounded-2xl mb-2"
+            className="flex-row items-center gap-4 p-3 rounded-3xl mb-2"
             style={{ backgroundColor: colors.surface }}
           >
             <View className="w-14 h-14 rounded-full items-center justify-center" style={{ backgroundColor: colors.card }}>

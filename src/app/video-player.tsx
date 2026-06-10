@@ -91,7 +91,7 @@ const styles = StyleSheet.create({
   video: {
     width: SCREEN_WIDTH - 32,
     height: (SCREEN_WIDTH - 32) * 0.5625,
-    borderRadius: 12,
+    borderRadius: 16,
     overflow: 'hidden',
   },
   fullscreenContainer: {

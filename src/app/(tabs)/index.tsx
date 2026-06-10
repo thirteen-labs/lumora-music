@@ -47,7 +47,7 @@ export default function HomeScreen() {
             </Text>
             <Pressable
               onPress={() => router.push('/player')}
-              className="flex-row items-center gap-3 p-4 rounded-2xl"
+              className="flex-row items-center gap-3 p-4 rounded-3xl"
               style={{ backgroundColor: colors.surface }}
             >
               <View className="w-14 h-14 rounded-xl items-center justify-center" style={{ backgroundColor: colors.card }}>
@@ -82,7 +82,7 @@ export default function HomeScreen() {
                   className="mr-3"
                   style={{ width: 140 }}
                 >
-                  <View className="w-[140px] h-[140px] rounded-2xl items-center justify-center mb-2" style={{ backgroundColor: colors.surface }}>
+                  <View className="w-[140px] h-[140px] rounded-3xl items-center justify-center mb-2" style={{ backgroundColor: colors.surface }}>
                     <Music size={32} color={colors.accent} />
                   </View>
                   <Text className="text-sm font-medium" style={{ color: colors.text }} numberOfLines={1}>
@@ -143,7 +143,7 @@ export default function HomeScreen() {
             </Text>
             <Pressable
               onPress={() => scan()}
-              className="mt-4 px-6 py-3 rounded-xl"
+              className="mt-4 px-6 py-3 rounded-2xl"
               style={{ backgroundColor: colors.accent }}
             >
               <Text className="font-semibold" style={{ color: colors.background }}>Scan Library</Text>

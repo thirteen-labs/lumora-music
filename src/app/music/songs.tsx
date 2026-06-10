@@ -1,4 +1,5 @@
 import { View, Text, FlatList, Pressable } from 'react-native';
+import { useMemo } from 'react';
 import { useTheme } from '@/hooks/use-theme';
 import { useMusicStore } from '@/store/music-store';
 import { usePlayerStore } from '@/store/player-store';
@@ -9,13 +10,32 @@ import { SortMenu } from '@/components/sort-menu';
 import { SongContextMenu, useSongContextMenu } from '@/components/song-context-menu';
 import { Music } from 'lucide-react-native';
 import { formatDuration, formatFileSize } from '@/utils/cn';
-import { SORT_OPTIONS } from '@/types/media';
+import { SORT_OPTIONS, type SortField, type SortOrder } from '@/types/media';
+
+function sortSongs(songs: any[], sortField: SortField, sortOrder: SortOrder) {
+  const sorted = [...songs];
+  sorted.sort((a, b) => {
+    let cmp = 0;
+    switch (sortField) {
+      case 'title': cmp = a.title.localeCompare(b.title); break;
+      case 'artist': cmp = a.artist.localeCompare(b.artist); break;
+      case 'dateAdded': cmp = a.dateAdded - b.dateAdded; break;
+      case 'duration': cmp = a.duration - b.duration; break;
+      case 'fileSize': cmp = a.fileSize - b.fileSize; break;
+    }
+    return sortOrder === 'desc' ? -cmp : cmp;
+  });
+  return sorted;
+}
 
 export default function SongsScreen() {
   const { colors } = useTheme();
-  const { getSortedSongs, sortField, sortOrder, setSort } = useMusicStore();
+  const songs = useMusicStore((s) => s.songs);
+  const sortField = useMusicStore((s) => s.sortField);
+  const sortOrder = useMusicStore((s) => s.sortOrder);
+  const setSort = useMusicStore((s) => s.setSort);
   const { fileSizeTheme } = useLayoutStore();
-  const songs = getSortedSongs();
+  const sortedSongs = useMemo(() => sortSongs(songs, sortField, sortOrder), [songs, sortField, sortOrder]);
   const { bottomSheetRef, present, song } = useSongContextMenu();
 
   const heightMap = { small: 56, medium: 68, big: 84 };
@@ -33,17 +53,17 @@ export default function SongsScreen() {
         onSelect={(opt) => setSort(opt.field, opt.order)}
       />
       <FlatList
-        data={songs}
+        data={sortedSongs}
         keyExtractor={(item) => item.id}
         contentContainerStyle={{ paddingBottom: 120 }}
         renderItem={({ item }) => (
           <Pressable
-            onPress={() => usePlayerStore.getState().play(item, songs)}
+            onPress={() => usePlayerStore.getState().play(item, sortedSongs)}
             onLongPress={() => present(item)}
             className="flex-row items-center gap-3 px-4"
             style={{ height: rowHeight, borderBottomWidth: 1, borderBottomColor: colors.border }}
           >
-            <View className="rounded-xl items-center justify-center" style={{ width: artSize, height: artSize, backgroundColor: colors.surface }}>
+            <View className="rounded-2xl items-center justify-center" style={{ width: artSize, height: artSize, backgroundColor: colors.surface }}>
               <Music size={artSize * 0.4} color={colors.accent} />
             </View>
             <View className="flex-1">

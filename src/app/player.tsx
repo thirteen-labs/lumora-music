@@ -36,63 +36,59 @@ const ARTWORK_SIZE = SCREEN_WIDTH * 0.72;
 
 export default function PlayerScreen() {
   const { colors } = useTheme();
-  const {
-    currentTrack,
-    isPlaying,
-    position,
-    duration,
-    togglePlay,
-    next,
-    previous,
-    seekTo,
-    shuffle,
-    setShuffle,
-    repeat,
-    setRepeat,
-    queue,
-    queueIndex,
-    removeFromQueue,
-    hideFullPlayer,
-  } = usePlayerStore();
-  const { favoriteSongIds, toggleSongFavorite } = useFavoritesStore();
+  const currentTrack = usePlayerStore((s) => s.currentTrack);
+  const isPlaying = usePlayerStore((s) => s.isPlaying);
+  const position = usePlayerStore((s) => s.position);
+  const duration = usePlayerStore((s) => s.duration);
+  const togglePlay = usePlayerStore((s) => s.togglePlay);
+  const next = usePlayerStore((s) => s.next);
+  const previous = usePlayerStore((s) => s.previous);
+  const seekTo = usePlayerStore((s) => s.seekTo);
+  const shuffle = usePlayerStore((s) => s.shuffle);
+  const setShuffle = usePlayerStore((s) => s.setShuffle);
+  const repeat = usePlayerStore((s) => s.repeat);
+  const setRepeat = usePlayerStore((s) => s.setRepeat);
+  const queue = usePlayerStore((s) => s.queue);
+  const queueIndex = usePlayerStore((s) => s.queueIndex);
+  const removeFromQueue = usePlayerStore((s) => s.removeFromQueue);
+  const hideFullPlayer = usePlayerStore((s) => s.hideFullPlayer);
+  const favoriteSongIds = useFavoritesStore((s) => s.favoriteSongIds);
+  const toggleSongFavorite = useFavoritesStore((s) => s.toggleSongFavorite);
   const router = useRouter();
 
   const queueSheetRef = useRef<BottomSheetModal>(null);
   const lyricsSheetRef = useRef<BottomSheetModal>(null);
-  const [lyrics, setLyrics] = useState<LyricsResult | null>(null);
-  const [lyricsStatus, setLyricsStatus] = useState<'idle' | 'loading' | 'done'>('idle');
-  const [lyricsError, setLyricsError] = useState(false);
-  const trackIdRef = useRef<string | null>(null);
+  const [lyricsData, setLyricsData] = useState<{
+    trackId: string | null;
+    lyrics: LyricsResult | null;
+    error: boolean;
+  }>({ trackId: null, lyrics: null, error: false });
+
+  const isLyricsLoading = currentTrack != null && lyricsData.trackId !== currentTrack.id;
+  const lyrics = lyricsData.trackId === currentTrack?.id ? lyricsData.lyrics : null;
+  const lyricsError = lyricsData.trackId === currentTrack?.id ? lyricsData.error : false;
 
   useEffect(() => {
     if (!currentTrack) return;
     const trackId = currentTrack.id;
-    trackIdRef.current = trackId;
+
+    let cancelled = false;
 
     fetchLyrics(currentTrack.artist, currentTrack.title)
       .then((result) => {
-        if (trackIdRef.current !== trackId) return;
-        setLyrics(result);
-        setLyricsStatus('done');
-        if (!result) setLyricsError(true);
+        if (cancelled) return;
+        setLyricsData({ trackId, lyrics: result, error: !result });
       })
       .catch(() => {
-        if (trackIdRef.current !== trackId) return;
-        setLyricsStatus('done');
-        setLyricsError(true);
+        if (cancelled) return;
+        setLyricsData({ trackId, lyrics: null, error: true });
       });
+
+    return () => {
+      cancelled = true;
+    };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentTrack?.id, currentTrack?.artist, currentTrack?.title]);
-
-  const prevTrackId = useRef<string | null>(null);
-  if (currentTrack?.id !== prevTrackId.current) {
-    prevTrackId.current = currentTrack?.id ?? null;
-    if (lyricsStatus !== 'loading') {
-      setLyrics(null);
-      setLyricsError(false);
-      setLyricsStatus('loading');
-    }
-  }
 
   const renderBackdrop = useCallback(
     (props: any) => (
@@ -120,7 +116,7 @@ export default function PlayerScreen() {
             style={{
               width: 40,
               height: 40,
-              borderRadius: 10,
+              borderRadius: 12,
               alignItems: 'center',
               justifyContent: 'center',
               backgroundColor: colors.card,
@@ -340,7 +336,7 @@ export default function PlayerScreen() {
           <Text style={{ fontSize: 17, fontWeight: '600', color: colors.text, marginBottom: 16 }}>
             Lyrics
           </Text>
-          {lyricsStatus === 'loading' ? (
+          {isLyricsLoading ? (
             <View style={{ alignItems: 'center', paddingVertical: 40 }}>
               <ActivityIndicator size="large" color={colors.accent} />
               <Text style={{ fontSize: 14, color: colors.textMuted, marginTop: 12 }}>

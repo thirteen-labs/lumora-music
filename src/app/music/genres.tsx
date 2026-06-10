@@ -21,7 +21,7 @@ export default function GenresScreen() {
         renderItem={({ item }) => (
           <Pressable
             onPress={() => router.push({ pathname: '/music/genre/[id]', params: { id: item.id } })}
-            className="flex-row items-center gap-4 p-4 rounded-2xl mb-2"
+            className="flex-row items-center gap-4 p-4 rounded-3xl mb-2"
             style={{ backgroundColor: colors.surface }}
           >
             <View className="w-12 h-12 rounded-xl items-center justify-center" style={{ backgroundColor: colors.card }}>

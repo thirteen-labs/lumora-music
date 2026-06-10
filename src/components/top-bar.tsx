@@ -1,5 +1,5 @@
 import { useRef, useCallback } from 'react';
-import { View, Text, Pressable } from 'react-native';
+import { View, Text, Pressable, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   Search,
@@ -18,6 +18,7 @@ import {
 } from '@gorhom/bottom-sheet';
 import { useMusicStore } from '@/store/music-store';
 import { usePlayerStore } from '@/store/player-store';
+import { BlurView } from 'expo-blur';
 
 interface TopBarProps {
   showMenu?: boolean;
@@ -31,8 +32,9 @@ export function TopBar({ showMenu = false, showSearch = true, showSettings = tru
   const router = useRouter();
   const { colors } = useTheme();
   const menuRef = useRef<BottomSheetModal>(null);
-  const { songs, scan } = useMusicStore();
-  const { play } = usePlayerStore();
+  const scan = useMusicStore((s) => s.scan);
+  const songs = useMusicStore((s) => s.songs);
+  const play = usePlayerStore((s) => s.play);
 
   const renderBackdrop = useCallback(
     (props: any) => (
@@ -64,60 +66,66 @@ export function TopBar({ showMenu = false, showSearch = true, showSettings = tru
 
   return (
     <View style={{ paddingTop: insets.top }} className="w-full">
-      <View
-        className="flex-row items-center justify-between px-4 py-3"
-        style={{ backgroundColor: colors.background }}
+      <BlurView
+        intensity={80}
+        tint="dark"
+        blurMethod={Platform.OS === 'android' ? 'dimezisBlurViewSdk31Plus' : undefined}
+        style={{ overflow: 'hidden' }}
       >
-        <View className="flex-row items-center gap-3">
-          {showMenu && (
-            <Pressable
-              onPress={() => menuRef.current?.present()}
-              className="w-10 h-10 rounded-full items-center justify-center"
-              style={{ backgroundColor: colors.surface }}
-            >
-              <Menu size={20} color={colors.text} />
-            </Pressable>
-          )}
-          {title ? (
-            <Text className="text-lg font-bold" style={{ color: colors.text }}>{title}</Text>
-          ) : (
-            <View className="flex-row items-center">
-              <Text className="text-xl font-bold tracking-widest" style={{ color: colors.text }}>
-                LUM
-              </Text>
-              <View
-                className="w-6 h-6 rounded-full items-center justify-center mx-0.5"
-                style={{ backgroundColor: colors.accent }}
+        <View
+          className="flex-row items-center justify-between px-4 py-3"
+        >
+          <View className="flex-row items-center gap-3">
+            {showMenu && (
+              <Pressable
+                onPress={() => menuRef.current?.present()}
+                className="w-10 h-10 rounded-full items-center justify-center"
+                style={{ backgroundColor: colors.surface + '80' }}
               >
-                <Text className="text-[10px] font-bold" style={{ color: colors.background }}>O</Text>
+                <Menu size={20} color={colors.text} />
+              </Pressable>
+            )}
+            {title ? (
+              <Text className="text-lg font-bold" style={{ color: colors.text }}>{title}</Text>
+            ) : (
+              <View className="flex-row items-center">
+                <Text className="text-xl font-bold tracking-widest" style={{ color: colors.text }}>
+                  LUM
+                </Text>
+                <View
+                  className="w-6 h-6 rounded-full items-center justify-center mx-0.5"
+                  style={{ backgroundColor: colors.accent }}
+                >
+                  <Text className="text-[10px] font-bold" style={{ color: colors.background }}>O</Text>
+                </View>
+                <Text className="text-xl font-bold tracking-widest" style={{ color: colors.text }}>
+                  RA
+                </Text>
               </View>
-              <Text className="text-xl font-bold tracking-widest" style={{ color: colors.text }}>
-                RA
-              </Text>
-            </View>
-          )}
+            )}
+          </View>
+          <View className="flex-row items-center gap-2">
+            {showSearch && (
+              <Pressable
+                onPress={() => router.push('/search')}
+                className="w-10 h-10 rounded-full items-center justify-center"
+                style={{ backgroundColor: colors.surface + '80' }}
+              >
+                <Search size={20} color={colors.text} />
+              </Pressable>
+            )}
+            {showSettings && (
+              <Pressable
+                onPress={() => router.push('/settings')}
+                className="w-10 h-10 rounded-full items-center justify-center"
+                style={{ backgroundColor: colors.surface + '80' }}
+              >
+                <Settings size={20} color={colors.text} />
+              </Pressable>
+            )}
+          </View>
         </View>
-        <View className="flex-row items-center gap-2">
-          {showSearch && (
-            <Pressable
-              onPress={() => router.push('/search')}
-              className="w-10 h-10 rounded-full items-center justify-center"
-              style={{ backgroundColor: colors.surface }}
-            >
-              <Search size={20} color={colors.text} />
-            </Pressable>
-          )}
-          {showSettings && (
-            <Pressable
-              onPress={() => router.push('/settings')}
-              className="w-10 h-10 rounded-full items-center justify-center"
-              style={{ backgroundColor: colors.surface }}
-            >
-              <Settings size={20} color={colors.text} />
-            </Pressable>
-          )}
-        </View>
-      </View>
+      </BlurView>
 
       <BottomSheetModal
         ref={menuRef}

@@ -38,10 +38,10 @@ export default function MusicScreen() {
               <Pressable
                 key={label}
                 onPress={() => router.push(route as any)}
-                className="flex-row items-center gap-4 p-4 rounded-2xl"
+                className="flex-row items-center gap-4 p-4 rounded-3xl"
                 style={{ backgroundColor: colors.surface }}
               >
-                <View className="w-14 h-14 rounded-2xl items-center justify-center" style={{ backgroundColor: colors.card }}>
+                <View className="w-14 h-14 rounded-3xl items-center justify-center" style={{ backgroundColor: colors.card }}>
                   <Icon size={24} color={colors.accent} />
                 </View>
                 <View className="flex-1">
@@ -65,7 +65,7 @@ export default function MusicScreen() {
               className="flex-row items-center gap-3 py-3"
               style={{ borderBottomWidth: 1, borderBottomColor: colors.border }}
             >
-              <View className="w-11 h-11 rounded-xl items-center justify-center" style={{ backgroundColor: colors.surface }}>
+              <View className="w-11 h-11 rounded-2xl items-center justify-center" style={{ backgroundColor: colors.surface }}>
                 <Music size={18} color={colors.accent} />
               </View>
               <View className="flex-1">

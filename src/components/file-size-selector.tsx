@@ -21,7 +21,7 @@ export function FileSizeSelector() {
           <Pressable
             key={key}
             onPress={() => setFileSizeTheme(key)}
-            className={cn('flex-1 py-3 rounded-xl items-center')}
+            className={cn('flex-1 py-3 rounded-2xl items-center')}
             style={{
               backgroundColor: isActive ? colors.accent : colors.surface,
             }}

@@ -29,7 +29,7 @@ export default function GenreDetailScreen() {
     <View className="flex-1" style={{ backgroundColor: colors.background }}>
       <TopBar title={genre?.name ?? 'Genre'} />
       <View className="px-4 py-4 flex-row items-center gap-4" style={{ backgroundColor: colors.surface }}>
-        <View className="w-14 h-14 rounded-2xl items-center justify-center" style={{ backgroundColor: colors.card }}>
+        <View className="w-14 h-14 rounded-3xl items-center justify-center" style={{ backgroundColor: colors.card }}>
           <Tag size={28} color={colors.accent} />
         </View>
         <View className="flex-1">
