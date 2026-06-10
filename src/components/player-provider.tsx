@@ -15,14 +15,31 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const crossfade = useSettingsStore((s) => s.crossfade);
 
   useEffect(() => {
-    setupPlayer().then(async () => {
+    let cancelled = false;
+
+    async function init() {
+      try {
+        await setupPlayer();
+      } catch (e) {
+        console.warn('Player setup failed, continuing without audio:', e);
+      }
+
       if (Platform.OS === 'android') {
         try {
           await requestNotificationPermissionsAsync();
-        } catch {}
+        } catch (e) {
+          console.warn('Notification permissions request failed:', e);
+        }
       }
-      setReady(true);
-    });
+
+      if (!cancelled) {
+        setReady(true);
+      }
+    }
+
+    init();
+
+    return () => { cancelled = true; };
   }, []);
 
   useEffect(() => {

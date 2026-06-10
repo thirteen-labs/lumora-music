@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "lumora_app",
+    "name": "Lumora Player",
     "slug": "lumora",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -38,6 +38,8 @@
           "backgroundColor": "#03000d",
           "image": "./assets/splash.png",
           "resizeMode": "cover",
+           "imageWidth": 1440,
+           
           "android": {
             "image": "./assets/splash.png",
             "resizeMode": "cover"
@@ -56,14 +58,6 @@
           "photosPermission": "Allow $(PRODUCT_NAME) to access your photos for album artwork.",
           "savePhotosPermission": "Allow $(PRODUCT_NAME) to save photos.",
           "isAccessMediaLocationEnabled": true
-        }
-      ],
-      [
-        "expo-background-fetch",
-        {
-          "backgroundFetchTasks": [
-            "background-audio-task"
-          ]
         }
       ],
       [

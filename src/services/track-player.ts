@@ -138,6 +138,9 @@ export function setLockScreenMetadata(track: Song): void {
     artist: track.artist,
     albumTitle: track.album,
     artworkUrl: track.artwork ?? undefined,
+  }, {
+    showSeekForward: true,
+    showSeekBackward: true,
   });
 }
 

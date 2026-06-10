@@ -26,6 +26,28 @@ export async function requestPermissions(): Promise<boolean> {
   return status === 'granted';
 }
 
+function bytesToBase64(bytes: Uint8Array): string {
+  let binary = '';
+  for (let i = 0; i < bytes.byteLength; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  if (typeof btoa === 'function') {
+    return btoa(binary);
+  }
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+  let result = '';
+  for (let i = 0; i < binary.length; i += 3) {
+    const a = binary.charCodeAt(i);
+    const b = i + 1 < binary.length ? binary.charCodeAt(i + 1) : 0;
+    const c = i + 2 < binary.length ? binary.charCodeAt(i + 2) : 0;
+    result += chars[(a >> 2) & 0x3f];
+    result += chars[((a << 4) | (b >> 4)) & 0x3f];
+    result += i + 1 < binary.length ? chars[((b << 2) | (c >> 6)) & 0x3f] : '=';
+    result += i + 2 < binary.length ? chars[c & 0x3f] : '=';
+  }
+  return result;
+}
+
 async function parseAudioMetadata(uri: string): Promise<{
   title: string | null;
   artist: string | null;
@@ -43,11 +65,7 @@ async function parseAudioMetadata(uri: string): Promise<{
     if (common.picture && common.picture.length > 0) {
       const pic = common.picture[0];
       const bytes = new Uint8Array(pic.data);
-      let binary = '';
-      for (let i = 0; i < bytes.byteLength; i++) {
-        binary += String.fromCharCode(bytes[i]);
-      }
-      artwork = `data:${pic.format};base64,${btoa(binary)}`;
+      artwork = `data:${pic.format};base64,${bytesToBase64(bytes)}`;
     }
 
     return {
