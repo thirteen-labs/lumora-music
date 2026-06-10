@@ -1,42 +1,88 @@
 import { useEffect, useRef } from 'react';
-import TrackPlayer, {
-  Event,
-  State,
-  usePlaybackState,
-  useProgress,
-  useActiveTrack,
-  RepeatMode as RntpRepeatMode,
-} from 'react-native-track-player';
 import { usePlayerStore } from '@/store/player-store';
+import { getPlayer } from '@/services/track-player';
 
 export function useTrackPlayerSync() {
-  const playbackState = usePlaybackState();
-  const { position, duration } = useProgress(250);
-  const activeTrack = useActiveTrack();
   const syncFromPlayer = usePlayerStore((s) => s.syncFromPlayer);
-  const setPosition = usePlayerStore((s) => s.setPosition);
-  const setDuration = usePlayerStore((s) => s.setDuration);
-  const prevTrackId = useRef<string | null>(null);
+  const repeat = usePlayerStore((s) => s.repeat);
+  const queue = usePlayerStore((s) => s.queue);
+  const shuffle = usePlayerStore((s) => s.shuffle);
+  const wasPlayingRef = useRef(false);
+  const trackEndedRef = useRef(false);
+  const lastTimeRef = useRef(0);
 
   useEffect(() => {
-    if (playbackState.state === State.Playing) {
-      usePlayerStore.setState({ isPlaying: true });
-    } else {
-      usePlayerStore.setState({ isPlaying: false });
-    }
-  }, [playbackState.state]);
+    const interval = setInterval(() => {
+      const player = getPlayer();
+      if (!player) return;
 
-  useEffect(() => {
-    setPosition(position);
-    setDuration(duration);
-  }, [position, duration, setPosition, setDuration]);
+      syncFromPlayer();
 
-  useEffect(() => {
-    if (activeTrack) {
-      if (prevTrackId.current !== activeTrack.id) {
-        prevTrackId.current = activeTrack.id;
-        syncFromPlayer();
+      const isNowPlaying = player.playing;
+      const currentTime = player.currentTime;
+      const duration = player.duration;
+
+      if (
+        wasPlayingRef.current &&
+        !isNowPlaying &&
+        duration > 0 &&
+        currentTime >= duration - 0.5
+      ) {
+        if (!trackEndedRef.current) {
+          trackEndedRef.current = true;
+          handleTrackEnd();
+        }
+      }
+
+      if (isNowPlaying) {
+        wasPlayingRef.current = true;
+        trackEndedRef.current = false;
+      }
+
+      if (!isNowPlaying && currentTime < 1 && lastTimeRef.current > 1) {
+        wasPlayingRef.current = false;
+        trackEndedRef.current = false;
+      }
+
+      lastTimeRef.current = currentTime;
+    }, 250);
+
+    return () => clearInterval(interval);
+  }, [syncFromPlayer, repeat, queue.length, shuffle]);
+
+  function handleTrackEnd() {
+    const state = usePlayerStore.getState();
+    const player = getPlayer();
+    if (!player) return;
+
+    switch (state.repeat) {
+      case 'one':
+        player.seekTo(0);
+        player.play();
+        break;
+      case 'all':
+        state.next();
+        break;
+      case 'off':
+      default: {
+        const { queue, shuffle, shuffledOrder, queueIndex } = state;
+        let hasNext = false;
+
+        if (shuffle) {
+          const currentShuffledIdx = shuffledOrder.indexOf(queueIndex);
+          hasNext = currentShuffledIdx + 1 < shuffledOrder.length;
+        } else {
+          hasNext = queueIndex + 1 < queue.length;
+        }
+
+        if (hasNext) {
+          state.next();
+        } else {
+          player.pause();
+          usePlayerStore.setState({ isPlaying: false });
+        }
+        break;
       }
     }
-  }, [activeTrack, syncFromPlayer]);
+  }
 }

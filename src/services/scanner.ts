@@ -1,26 +1,92 @@
-import * as MediaLibrary from 'expo-media-library';
-import type { Song, Album, Artist, Genre, Video, MediaScanStatus } from '@/types/media';
+import {
+  requestPermissionsAsync,
+  Asset,
+  Query,
+  MediaType,
+  AssetField,
+} from 'expo-media-library';
+import type { Song, Album as LumoraAlbum, Artist, Genre, Video, MediaScanStatus } from '@/types/media';
 
 let cachedSongs: Song[] = [];
-let cachedAlbums: Album[] = [];
+let cachedAlbums: LumoraAlbum[] = [];
 let cachedArtists: Artist[] = [];
 let cachedGenres: Genre[] = [];
 let cachedVideos: Video[] = [];
 
 export function getCachedSongs(): Song[] { return cachedSongs; }
-export function getCachedAlbums(): Album[] { return cachedAlbums; }
+export function getCachedAlbums(): LumoraAlbum[] { return cachedAlbums; }
 export function getCachedArtists(): Artist[] { return cachedArtists; }
 export function getCachedGenres(): Genre[] { return cachedGenres; }
 export function getCachedVideos(): Video[] { return cachedVideos; }
 
 export async function requestPermissions(): Promise<boolean> {
-  const { status } = await MediaLibrary.requestPermissionsAsync();
+  const { status } = await requestPermissionsAsync();
   return status === 'granted';
+}
+
+async function fetchAssetsByType(mediaType: MediaType): Promise<Song[] | Video[]> {
+  const batch = 500;
+  const allAssets: Song[] | Video[] = [];
+  let offset = 0;
+  let hasMore = true;
+
+  while (hasMore) {
+    const query = new Query()
+      .eq(AssetField.MEDIA_TYPE, mediaType)
+      .limit(batch)
+      .offset(offset);
+
+    const assets = await query.exe();
+    if (assets.length === 0) break;
+
+    const resolved = await Promise.all(
+      assets.map(async (asset) => {
+        const info = await asset.getInfo();
+        return {
+          id: info.id,
+          uri: info.uri,
+          title: info.filename.replace(/\.[^/.]+$/, ''),
+          duration: info.duration ?? 0,
+          fileSize: 0,
+          dateAdded: info.creationTime ?? 0,
+          width: info.width,
+          height: info.height,
+        };
+      }),
+    );
+
+    if (mediaType === MediaType.AUDIO) {
+      for (const r of resolved) {
+        (allAssets as Song[]).push({
+          ...r,
+          artist: 'Unknown Artist',
+          album: 'Unknown Album',
+          albumId: r.id,
+          artwork: r.uri,
+          genre: null,
+          bitrate: null,
+          sampleRate: null,
+        });
+      }
+    } else {
+      for (const r of resolved) {
+        (allAssets as Video[]).push({
+          ...r,
+          thumbnail: r.uri,
+        });
+      }
+    }
+
+    offset += assets.length;
+    hasMore = assets.length === batch;
+  }
+
+  return allAssets;
 }
 
 export async function scanMediaLibrary(
   onStatusChange?: (status: MediaScanStatus) => void,
-): Promise<{ songs: Song[]; albums: Album[]; artists: Artist[]; genres: Genre[]; videos: Video[] }> {
+): Promise<{ songs: Song[]; albums: LumoraAlbum[]; artists: Artist[]; genres: Genre[]; videos: Video[] }> {
   onStatusChange?.('scanning');
 
   try {
@@ -30,45 +96,15 @@ export async function scanMediaLibrary(
       return { songs: [], albums: [], artists: [], genres: [], videos: [] };
     }
 
-    const audioAssets = await MediaLibrary.getAssetsAsync({
-      mediaType: 'audio',
-      first: 100000,
-    });
+    const [audioResults, videoResults] = await Promise.all([
+      fetchAssetsByType(MediaType.AUDIO),
+      fetchAssetsByType(MediaType.VIDEO),
+    ]);
 
-    const videoAssets = await MediaLibrary.getAssetsAsync({
-      mediaType: 'video',
-      first: 100000,
-    });
+    const songs = audioResults as Song[];
+    const videos = videoResults as Video[];
 
-    const songs: Song[] = audioAssets.assets.map((asset) => ({
-      id: asset.id,
-      uri: asset.uri,
-      title: asset.filename.replace(/\.[^/.]+$/, ''),
-      artist: (asset as any).artist ?? 'Unknown Artist',
-      album: (asset as any).albumTitle ?? 'Unknown Album',
-      albumId: (asset as any).albumId ?? asset.id,
-      duration: asset.duration ?? 0,
-      fileSize: (asset as any).fileSize ?? 0,
-      dateAdded: asset.creationTime ?? 0,
-      artwork: asset.uri,
-      genre: (asset as any).genre ?? null,
-      bitrate: null,
-      sampleRate: null,
-    }));
-
-    const videos: Video[] = videoAssets.assets.map((asset) => ({
-      id: asset.id,
-      uri: asset.uri,
-      title: asset.filename.replace(/\.[^/.]+$/, ''),
-      duration: asset.duration ?? 0,
-      fileSize: (asset as any).fileSize ?? 0,
-      dateAdded: asset.creationTime ?? 0,
-      thumbnail: asset.uri,
-      width: asset.width ?? 0,
-      height: asset.height ?? 0,
-    }));
-
-    const albumMap = new Map<string, Album>();
+    const albumMap = new Map<string, LumoraAlbum>();
     for (const song of songs) {
       const existing = albumMap.get(song.albumId);
       if (existing) {
