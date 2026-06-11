@@ -3,10 +3,12 @@ import { useTheme } from '@/hooks/use-theme';
 import { usePlayerStore } from '@/store/player-store';
 import { useMusicStore } from '@/store/music-store';
 import { useFavoritesStore } from '@/store/favorites-store';
+import { useVideoStore } from '@/store/video-store';
 import { TopBar } from '@/components/top-bar';
 import { MiniPlayer } from '@/components/mini-player';
 import { SongContextMenu, useSongContextMenu } from '@/components/song-context-menu';
 import { Music, Clock, Heart } from 'lucide-react-native';
+import { Artwork } from '@/components/artwork';
 import { formatDuration } from '@/utils/cn';
 import { useEffect } from 'react';
 import { useRouter } from 'expo-router';
@@ -14,13 +16,18 @@ import { useRouter } from 'expo-router';
 export default function HomeScreen() {
   const { colors } = useTheme();
   const { songs, scan } = useMusicStore();
-  const { favoriteSongIds } = useFavoritesStore();
+  const { favoriteSongIds, hydrateFavorites } = useFavoritesStore();
   const { currentTrack } = usePlayerStore();
   const router = useRouter();
   const { bottomSheetRef, present, song } = useSongContextMenu();
+  const { videos } = useVideoStore();
 
   useEffect(() => {
-    scan();
+    scan().then(() => {
+      const { songs: allSongs } = useMusicStore.getState();
+      const { videos: allVideos } = useVideoStore.getState();
+      hydrateFavorites(allSongs, allVideos);
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -50,8 +57,8 @@ export default function HomeScreen() {
               className="flex-row items-center gap-3 p-4 rounded-3xl"
               style={{ backgroundColor: colors.surface }}
             >
-              <View className="w-14 h-14 rounded-xl items-center justify-center" style={{ backgroundColor: colors.card }}>
-                <Music size={24} color={colors.accent} />
+              <View className="w-14 h-14 rounded-xl overflow-hidden" style={{ backgroundColor: colors.card }}>
+                <Artwork uri={currentTrack.artwork} size={56} borderRadius={12} iconSize={24} iconColor={colors.accent} backgroundColor="transparent" />
               </View>
               <View className="flex-1">
                 <Text className="font-semibold" style={{ color: colors.text }} numberOfLines={1}>
@@ -82,8 +89,8 @@ export default function HomeScreen() {
                   className="mr-3"
                   style={{ width: 140 }}
                 >
-                  <View className="w-[140px] h-[140px] rounded-3xl items-center justify-center mb-2" style={{ backgroundColor: colors.surface }}>
-                    <Music size={32} color={colors.accent} />
+                  <View className="w-[140px] h-[140px] rounded-3xl items-center justify-center mb-2 overflow-hidden" style={{ backgroundColor: colors.surface }}>
+                    <Artwork uri={song.artwork} size={140} borderRadius={24} iconSize={32} iconColor={colors.accent} backgroundColor="transparent" />
                   </View>
                   <Text className="text-sm font-medium" style={{ color: colors.text }} numberOfLines={1}>
                     {song.title}
@@ -113,8 +120,8 @@ export default function HomeScreen() {
                 className="flex-row items-center gap-3 py-3"
                 style={{ borderBottomWidth: 1, borderBottomColor: colors.border }}
               >
-                <View className="w-12 h-12 rounded-xl items-center justify-center" style={{ backgroundColor: colors.surface }}>
-                  <Music size={20} color={colors.accent} />
+                <View className="w-12 h-12 rounded-xl overflow-hidden" style={{ backgroundColor: colors.surface }}>
+                  <Artwork uri={song.artwork} size={48} borderRadius={12} iconSize={20} iconColor={colors.accent} backgroundColor="transparent" />
                 </View>
                 <View className="flex-1">
                   <Text className="text-sm font-medium" style={{ color: colors.text }} numberOfLines={1}>

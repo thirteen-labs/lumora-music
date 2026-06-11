@@ -6,6 +6,7 @@ import { TopBar } from '@/components/top-bar';
 import { MiniPlayer } from '@/components/mini-player';
 import { SongContextMenu, useSongContextMenu } from '@/components/song-context-menu';
 import { Heart, Music, Video as VideoIcon } from 'lucide-react-native';
+import { Artwork } from '@/components/artwork';
 import { formatDuration } from '@/utils/cn';
 import { useState } from 'react';
 
@@ -48,9 +49,7 @@ export default function FavoritesScreen() {
               className="flex-row items-center gap-3 px-4 py-3"
               style={{ borderBottomWidth: 1, borderBottomColor: colors.border }}
             >
-              <View className="w-11 h-11 rounded-2xl items-center justify-center" style={{ backgroundColor: colors.surface }}>
-                <Music size={18} color={colors.accent} />
-              </View>
+              <Artwork uri={item.artwork} size={44} borderRadius={16} iconSize={18} iconColor={colors.accent} backgroundColor={colors.surface} />
               <View className="flex-1">
                 <Text className="text-sm font-medium" style={{ color: colors.text }} numberOfLines={1}>{item.title}</Text>
                 <Text className="text-xs" style={{ color: colors.textMuted }}>{item.artist}</Text>
@@ -74,9 +73,7 @@ export default function FavoritesScreen() {
               className="flex-row items-center gap-3 px-4 py-3"
               style={{ borderBottomWidth: 1, borderBottomColor: colors.border }}
             >
-              <View className="w-11 h-11 rounded-2xl items-center justify-center" style={{ backgroundColor: colors.surface }}>
-                <VideoIcon size={18} color={colors.accent} />
-              </View>
+              <Artwork uri={item.thumbnail} size={44} borderRadius={16} iconSize={18} iconColor={colors.accent} backgroundColor={colors.surface} />
               <View className="flex-1">
                 <Text className="text-sm font-medium" style={{ color: colors.text }} numberOfLines={1}>{item.title}</Text>
                 <Text className="text-xs" style={{ color: colors.textMuted }}>{formatDuration(item.duration)}</Text>

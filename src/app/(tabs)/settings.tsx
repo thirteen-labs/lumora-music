@@ -7,7 +7,7 @@ import { TopBar } from '@/components/top-bar';
 import { FileSizeSelector } from '@/components/file-size-selector';
 import { ThemeSelector } from '@/components/theme-selector';
 import { SectionHeader } from '@/components/section-header';
-import { Shuffle, Repeat, Zap, Info, Image as ImageIcon } from 'lucide-react-native';
+import { Shuffle, Repeat, Zap, Info, Image as ImageIcon, LayoutGrid } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { Image } from 'expo-image';
 
@@ -23,6 +23,8 @@ export default function SettingsScreen() {
   const setColorAware = useSettingsStore((s) => s.setColorAware);
   const backgroundImage = useSettingsStore((s) => s.backgroundImage);
   const setBackgroundImage = useSettingsStore((s) => s.setBackgroundImage);
+  const nowPlayingLayout = useSettingsStore((s) => s.nowPlayingLayout);
+  const setNowPlayingLayout = useSettingsStore((s) => s.setNowPlayingLayout);
   const songs = useMusicStore((s) => s.songs);
   const albums = useMusicStore((s) => s.albums);
   const artists = useMusicStore((s) => s.artists);
@@ -131,6 +133,30 @@ export default function SettingsScreen() {
                   }}
                 />
               </Pressable>
+            </View>
+          </View>
+
+          <View>
+            <SectionHeader title="Now Playing Layout" />
+            <View className="rounded-3xl overflow-hidden" style={{ backgroundColor: colors.surface }}>
+              <View className="flex-row p-2 gap-2">
+                {(['classic', 'modern', 'minimal'] as const).map((layout) => (
+                  <Pressable
+                    key={layout}
+                    onPress={() => setNowPlayingLayout(layout)}
+                    className="flex-1 py-3 rounded-2xl items-center"
+                    style={{ backgroundColor: nowPlayingLayout === layout ? colors.accent : colors.card }}
+                  >
+                    <LayoutGrid size={16} color={nowPlayingLayout === layout ? colors.background : colors.textMuted} />
+                    <Text
+                      className="text-xs font-semibold mt-1 capitalize"
+                      style={{ color: nowPlayingLayout === layout ? colors.background : colors.textMuted }}
+                    >
+                      {layout}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
             </View>
           </View>
 

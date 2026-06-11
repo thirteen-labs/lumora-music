@@ -2,6 +2,7 @@ import { useCallback, useRef, useState, useEffect } from 'react';
 import { View, Text, Pressable, Dimensions, ActivityIndicator } from 'react-native';
 import { useTheme } from '@/hooks/use-theme';
 import { usePlayerStore } from '@/store/player-store';
+import { useSettingsStore, type NowPlayingLayout } from '@/store/settings-store';
 import {
   Play,
   Pause,
@@ -17,6 +18,7 @@ import {
   Music,
   GripVertical,
   Trash2,
+  LayoutGrid,
 } from 'lucide-react-native';
 import { formatDuration } from '@/utils/cn';
 import Slider from '@react-native-community/slider';
@@ -54,10 +56,13 @@ export default function PlayerScreen() {
   const hideFullPlayer = usePlayerStore((s) => s.hideFullPlayer);
   const favoriteSongIds = useFavoritesStore((s) => s.favoriteSongIds);
   const toggleSongFavorite = useFavoritesStore((s) => s.toggleSongFavorite);
+  const nowPlayingLayout = useSettingsStore((s) => s.nowPlayingLayout);
+  const setNowPlayingLayout = useSettingsStore((s) => s.setNowPlayingLayout);
   const router = useRouter();
 
   const queueSheetRef = useRef<BottomSheetModal>(null);
   const lyricsSheetRef = useRef<BottomSheetModal>(null);
+  const layoutSheetRef = useRef<BottomSheetModal>(null);
   const [lyricsData, setLyricsData] = useState<{
     trackId: string | null;
     lyrics: LyricsResult | null;
@@ -117,12 +122,17 @@ export default function PlayerScreen() {
               width: 40,
               height: 40,
               borderRadius: 12,
+              overflow: 'hidden',
               alignItems: 'center',
               justifyContent: 'center',
               backgroundColor: colors.card,
             }}
           >
-            <Music size={16} color={colors.accent} />
+            {item.artwork ? (
+              <Image source={{ uri: item.artwork }} style={{ width: 40, height: 40 }} contentFit="cover" />
+            ) : (
+              <Music size={16} color={colors.accent} />
+            )}
           </View>
           <View style={{ flex: 1 }}>
             <Text
@@ -168,134 +178,83 @@ export default function PlayerScreen() {
   const isFav = favoriteSongIds.includes(currentTrack.id);
   const progress = duration > 0 ? position / duration : 0;
 
+  const cycleLayout = () => {
+    const layouts: NowPlayingLayout[] = ['classic', 'modern', 'minimal'];
+    const idx = layouts.indexOf(nowPlayingLayout);
+    setNowPlayingLayout(layouts[(idx + 1) % layouts.length]);
+  };
+
   return (
     <View className="flex-1" style={{ backgroundColor: colors.background }}>
-      <View className="flex-row items-center justify-between px-4 pt-12 pb-4">
-        <Pressable
-          onPress={() => {
-            hideFullPlayer();
-            router.back();
-          }}
-          className="w-10 h-10 items-center justify-center"
-        >
-          <ChevronDown size={28} color={colors.text} />
-        </Pressable>
-        <Text className="text-sm font-semibold" style={{ color: colors.textMuted }}>
-          Now Playing
-        </Text>
-        <View className="w-10" />
-      </View>
-
-      <View className="flex-1 items-center justify-center px-8">
-        <View
-          className="rounded-3xl items-center justify-center mb-8 overflow-hidden"
-          style={{
-            width: ARTWORK_SIZE,
-            height: ARTWORK_SIZE,
-            backgroundColor: colors.surface,
-          }}
-        >
-          {currentTrack.artwork ? (
-            <Image
-              source={{ uri: currentTrack.artwork }}
-              style={{ width: ARTWORK_SIZE, height: ARTWORK_SIZE }}
-              contentFit="cover"
-              transition={300}
-            />
-          ) : (
-            <Music size={64} color={colors.accent} />
-          )}
-        </View>
-
-        <View className="w-full items-center mb-4">
-          <Text className="text-xl font-bold" style={{ color: colors.text }} numberOfLines={1}>
-            {currentTrack.title}
-          </Text>
-          <Text className="text-base mt-1" style={{ color: colors.textMuted }} numberOfLines={1}>
-            {currentTrack.artist}
-          </Text>
-        </View>
-
-        <View className="w-full mb-6">
-          <Slider
-            value={progress}
-            onValueChange={(val) => seekTo(val * duration)}
-            minimumValue={0}
-            maximumValue={1}
-            minimumTrackTintColor={colors.accent}
-            maximumTrackTintColor={colors.border}
-            thumbTintColor={colors.text}
-            style={{ width: '100%', height: 40 }}
-          />
-          <View className="flex-row justify-between px-1">
-            <Text className="text-xs" style={{ color: colors.textMuted }}>
-              {formatDuration(position)}
-            </Text>
-            <Text className="text-xs" style={{ color: colors.textMuted }}>
-              {formatDuration(duration)}
-            </Text>
-          </View>
-        </View>
-
-        <View className="flex-row items-center justify-center gap-6 mb-8">
-          <Pressable onPress={() => setShuffle(!shuffle)}>
-            <Shuffle size={22} color={shuffle ? colors.accent : colors.textMuted} />
-          </Pressable>
-          <Pressable onPress={previous} className="w-14 h-14 rounded-full items-center justify-center">
-            <SkipBack size={28} color={colors.text} fill={colors.text} />
-          </Pressable>
-          <Pressable
-            onPress={togglePlay}
-            className="rounded-full items-center justify-center"
-            style={{ width: 72, height: 72, backgroundColor: colors.accent }}
-          >
-            {isPlaying ? (
-              <Pause size={32} color={colors.background} fill={colors.background} />
-            ) : (
-              <Play size={32} color={colors.background} fill={colors.background} />
-            )}
-          </Pressable>
-          <Pressable onPress={next} className="w-14 h-14 rounded-full items-center justify-center">
-            <SkipForward size={28} color={colors.text} fill={colors.text} />
-          </Pressable>
-          <Pressable
-            onPress={() => {
-              const modes = ['off', 'all', 'one'] as const;
-              const idx = modes.indexOf(repeat);
-              setRepeat(modes[(idx + 1) % modes.length]);
-            }}
-          >
-            {repeat === 'one' ? (
-              <Repeat1 size={22} color={colors.accent} />
-            ) : (
-              <Repeat size={22} color={repeat !== 'off' ? colors.accent : colors.textMuted} />
-            )}
-          </Pressable>
-        </View>
-
-        <View className="flex-row items-center gap-8">
-          <Pressable onPress={() => toggleSongFavorite(currentTrack)}>
-            <Heart
-              size={22}
-              color={isFav ? colors.accent : colors.textMuted}
-              fill={isFav ? colors.accent : 'none'}
-            />
-          </Pressable>
-          <Pressable onPress={() => queueSheetRef.current?.present()}>
-            <ListMusic size={22} color={colors.textMuted} />
-          </Pressable>
-          <Pressable onPress={() => lyricsSheetRef.current?.present()}>
-            <AlignLeft size={22} color={colors.textMuted} />
-          </Pressable>
-        </View>
-      </View>
-
-      {queue.length > 1 && (
-        <View className="px-4 pb-8">
-          <Text className="text-sm font-semibold mb-2" style={{ color: colors.textMuted }}>
-            Up Next ({queue.length} tracks)
-          </Text>
-        </View>
+      {nowPlayingLayout === 'modern' ? (
+        <ModernLayout
+          currentTrack={currentTrack}
+          isPlaying={isPlaying}
+          position={position}
+          duration={duration}
+          progress={progress}
+          isFav={isFav}
+          shuffle={shuffle}
+          repeat={repeat}
+          colors={colors}
+          togglePlay={togglePlay}
+          next={next}
+          previous={previous}
+          seekTo={seekTo}
+          setShuffle={setShuffle}
+          setRepeat={setRepeat}
+          toggleSongFavorite={toggleSongFavorite}
+          cycleLayout={cycleLayout}
+          hideFullPlayer={() => { hideFullPlayer(); router.back(); }}
+          onQueuePress={() => queueSheetRef.current?.present()}
+          onLyricsPress={() => lyricsSheetRef.current?.present()}
+        />
+      ) : nowPlayingLayout === 'minimal' ? (
+        <MinimalLayout
+          currentTrack={currentTrack}
+          isPlaying={isPlaying}
+          position={position}
+          duration={duration}
+          progress={progress}
+          isFav={isFav}
+          shuffle={shuffle}
+          repeat={repeat}
+          colors={colors}
+          togglePlay={togglePlay}
+          next={next}
+          previous={previous}
+          seekTo={seekTo}
+          setShuffle={setShuffle}
+          setRepeat={setRepeat}
+          toggleSongFavorite={toggleSongFavorite}
+          cycleLayout={cycleLayout}
+          hideFullPlayer={() => { hideFullPlayer(); router.back(); }}
+          onQueuePress={() => queueSheetRef.current?.present()}
+          onLyricsPress={() => lyricsSheetRef.current?.present()}
+        />
+      ) : (
+        <ClassicLayout
+          currentTrack={currentTrack}
+          isPlaying={isPlaying}
+          position={position}
+          duration={duration}
+          progress={progress}
+          isFav={isFav}
+          shuffle={shuffle}
+          repeat={repeat}
+          colors={colors}
+          togglePlay={togglePlay}
+          next={next}
+          previous={previous}
+          seekTo={seekTo}
+          setShuffle={setShuffle}
+          setRepeat={setRepeat}
+          toggleSongFavorite={toggleSongFavorite}
+          cycleLayout={cycleLayout}
+          hideFullPlayer={() => { hideFullPlayer(); router.back(); }}
+          onQueuePress={() => queueSheetRef.current?.present()}
+          onLyricsPress={() => lyricsSheetRef.current?.present()}
+        />
       )}
 
       {/* Queue Bottom Sheet */}
@@ -360,6 +319,331 @@ export default function PlayerScreen() {
           )}
         </BottomSheetScrollView>
       </BottomSheetModal>
+
+      {/* Layout Picker Bottom Sheet */}
+      <BottomSheetModal
+        ref={layoutSheetRef}
+        snapPoints={['30%']}
+        backdropComponent={renderBackdrop}
+        backgroundStyle={{ backgroundColor: colors.surface }}
+        handleIndicatorStyle={{ backgroundColor: colors.textMuted }}
+      >
+        <View style={{ padding: 20 }}>
+          <Text style={{ fontSize: 17, fontWeight: '600', color: colors.text, marginBottom: 16 }}>
+            Player Layout
+          </Text>
+          {(['classic', 'modern', 'minimal'] as const).map((layout) => (
+            <Pressable
+              key={layout}
+              onPress={() => { setNowPlayingLayout(layout); layoutSheetRef.current?.dismiss(); }}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                paddingVertical: 14,
+                paddingHorizontal: 16,
+                borderRadius: 16,
+                marginBottom: 8,
+                backgroundColor: nowPlayingLayout === layout ? colors.accent + '20' : colors.card,
+              }}
+            >
+              <Text style={{ fontSize: 15, fontWeight: '500', color: nowPlayingLayout === layout ? colors.accent : colors.text }}>
+                {layout.charAt(0).toUpperCase() + layout.slice(1)}
+              </Text>
+              {nowPlayingLayout === layout && (
+                <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: colors.accent }} />
+              )}
+            </Pressable>
+          ))}
+        </View>
+      </BottomSheetModal>
+    </View>
+  );
+}
+
+interface LayoutProps {
+  currentTrack: any;
+  isPlaying: boolean;
+  position: number;
+  duration: number;
+  progress: number;
+  isFav: boolean;
+  shuffle: boolean;
+  repeat: string;
+  colors: any;
+  togglePlay: () => void;
+  next: () => void;
+  previous: () => void;
+  seekTo: (pos: number) => void;
+  setShuffle: (v: boolean) => void;
+  setRepeat: (m: any) => void;
+  toggleSongFavorite: (song: any) => void;
+  cycleLayout: () => void;
+  hideFullPlayer: () => void;
+  onQueuePress: () => void;
+  onLyricsPress: () => void;
+}
+
+function RepeatButton({ repeat, setRepeat, colors }: { repeat: string; setRepeat: (m: any) => void; colors: any }) {
+  return (
+    <Pressable
+      onPress={() => {
+        const modes = ['off', 'all', 'one'] as const;
+        const idx = modes.indexOf(repeat as any);
+        setRepeat(modes[(idx + 1) % modes.length]);
+      }}
+    >
+      {repeat === 'one' ? (
+        <Repeat1 size={22} color={colors.accent} />
+      ) : (
+        <Repeat size={22} color={repeat !== 'off' ? colors.accent : colors.textMuted} />
+      )}
+    </Pressable>
+  );
+}
+
+function ClassicLayout(props: LayoutProps) {
+  const { colors, currentTrack, isPlaying, progress, isFav, shuffle, repeat, duration, position } = props;
+
+  return (
+    <View className="flex-1">
+      <View className="flex-row items-center justify-between px-4 pt-12 pb-4">
+        <Pressable onPress={props.hideFullPlayer} className="w-10 h-10 items-center justify-center">
+          <ChevronDown size={28} color={colors.text} />
+        </Pressable>
+        <Text className="text-sm font-semibold" style={{ color: colors.textMuted }}>
+          Now Playing
+        </Text>
+        <Pressable onPress={props.cycleLayout} className="w-10 h-10 items-center justify-center">
+          <LayoutGrid size={20} color={colors.textMuted} />
+        </Pressable>
+      </View>
+
+      <View className="flex-1 items-center justify-center px-8">
+        <View
+          className="rounded-3xl items-center justify-center mb-8 overflow-hidden"
+          style={{ width: ARTWORK_SIZE, height: ARTWORK_SIZE, backgroundColor: colors.surface }}
+        >
+          {currentTrack.artwork ? (
+            <Image source={{ uri: currentTrack.artwork }} style={{ width: ARTWORK_SIZE, height: ARTWORK_SIZE }} contentFit="cover" transition={300} />
+          ) : (
+            <Music size={64} color={colors.accent} />
+          )}
+        </View>
+
+        <View className="w-full items-center mb-4">
+          <Text className="text-xl font-bold" style={{ color: colors.text }} numberOfLines={1}>{currentTrack.title}</Text>
+          <Text className="text-base mt-1" style={{ color: colors.textMuted }} numberOfLines={1}>{currentTrack.artist}</Text>
+        </View>
+
+        <Slider value={progress} onValueChange={(val) => props.seekTo(val * duration)} minimumValue={0} maximumValue={1}
+          minimumTrackTintColor={colors.accent} maximumTrackTintColor={colors.border} thumbTintColor={colors.text}
+          style={{ width: '100%', height: 40 }} />
+        <View className="flex-row justify-between px-1 w-full">
+          <Text className="text-xs" style={{ color: colors.textMuted }}>{formatDuration(props.position)}</Text>
+          <Text className="text-xs" style={{ color: colors.textMuted }}>{formatDuration(duration)}</Text>
+        </View>
+
+        <View className="flex-row items-center justify-center gap-6 mb-8 mt-2">
+          <Pressable onPress={() => props.setShuffle(!shuffle)}>
+            <Shuffle size={22} color={shuffle ? colors.accent : colors.textMuted} />
+          </Pressable>
+          <Pressable onPress={props.previous} className="w-14 h-14 rounded-full items-center justify-center">
+            <SkipBack size={28} color={colors.text} fill={colors.text} />
+          </Pressable>
+          <Pressable onPress={props.togglePlay} className="rounded-full items-center justify-center" style={{ width: 72, height: 72, backgroundColor: colors.accent }}>
+            {isPlaying ? (
+              <Pause size={32} color={colors.background} fill={colors.background} />
+            ) : (
+              <Play size={32} color={colors.background} fill={colors.background} />
+            )}
+          </Pressable>
+          <Pressable onPress={props.next} className="w-14 h-14 rounded-full items-center justify-center">
+            <SkipForward size={28} color={colors.text} fill={colors.text} />
+          </Pressable>
+          <RepeatButton repeat={repeat} setRepeat={props.setRepeat} colors={colors} />
+        </View>
+
+        <View className="flex-row items-center gap-8">
+          <Pressable onPress={() => props.toggleSongFavorite(currentTrack)}>
+            <Heart size={22} color={isFav ? colors.accent : colors.textMuted} fill={isFav ? colors.accent : 'none'} />
+          </Pressable>
+          <Pressable onPress={props.onQueuePress}>
+            <ListMusic size={22} color={colors.textMuted} />
+          </Pressable>
+          <Pressable onPress={props.onLyricsPress}>
+            <AlignLeft size={22} color={colors.textMuted} />
+          </Pressable>
+        </View>
+      </View>
+    </View>
+  );
+}
+
+function ModernLayout(props: LayoutProps) {
+  const { colors, currentTrack, isPlaying, progress, isFav, shuffle, repeat, duration, position } = props;
+  const { height: SCREEN_HEIGHT } = Dimensions.get('window');
+
+  return (
+    <View className="flex-1">
+      {currentTrack.artwork ? (
+        <Image
+          source={{ uri: currentTrack.artwork }}
+          style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
+          contentFit="cover"
+          blurRadius={40}
+        />
+      ) : null}
+      <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.55)' }} />
+
+      <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>
+        <View className="flex-row items-center justify-between px-4 pt-12 pb-4">
+          <Pressable onPress={props.hideFullPlayer} className="w-10 h-10 items-center justify-center">
+            <ChevronDown size={28} color="#fff" />
+          </Pressable>
+          <Text className="text-sm font-semibold" style={{ color: 'rgba(255,255,255,0.7)' }}>
+            Now Playing
+          </Text>
+          <Pressable onPress={props.cycleLayout} className="w-10 h-10 items-center justify-center">
+            <LayoutGrid size={20} color="rgba(255,255,255,0.7)" />
+          </Pressable>
+        </View>
+
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32 }}>
+          <View className="rounded-3xl overflow-hidden mb-8" style={{ width: SCREEN_WIDTH * 0.65, height: SCREEN_WIDTH * 0.65, backgroundColor: 'rgba(255,255,255,0.1)' }}>
+            {currentTrack.artwork ? (
+              <Image source={{ uri: currentTrack.artwork }} style={{ width: SCREEN_WIDTH * 0.65, height: SCREEN_WIDTH * 0.65 }} contentFit="cover" transition={300} />
+            ) : (
+              <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+                <Music size={64} color="rgba(255,255,255,0.5)" />
+              </View>
+            )}
+          </View>
+
+          <Text className="text-2xl font-bold" style={{ color: '#fff' }} numberOfLines={1}>{currentTrack.title}</Text>
+          <Text className="text-base mt-1" style={{ color: 'rgba(255,255,255,0.6)' }} numberOfLines={1}>{currentTrack.artist}</Text>
+
+          <View className="w-full mt-8">
+            <Slider value={progress} onValueChange={(val) => props.seekTo(val * duration)} minimumValue={0} maximumValue={1}
+              minimumTrackTintColor="#fff" maximumTrackTintColor="rgba(255,255,255,0.3)" thumbTintColor="#fff"
+              style={{ width: '100%', height: 40 }} />
+            <View className="flex-row justify-between px-1">
+              <Text className="text-xs" style={{ color: 'rgba(255,255,255,0.5)' }}>{formatDuration(props.position)}</Text>
+              <Text className="text-xs" style={{ color: 'rgba(255,255,255,0.5)' }}>{formatDuration(duration)}</Text>
+            </View>
+          </View>
+
+          <View className="flex-row items-center justify-center gap-6 mt-4">
+            <Pressable onPress={() => props.setShuffle(!shuffle)}>
+              <Shuffle size={22} color={shuffle ? '#fff' : 'rgba(255,255,255,0.4)'} />
+            </Pressable>
+            <Pressable onPress={props.previous} className="w-14 h-14 rounded-full items-center justify-center">
+              <SkipBack size={28} color="#fff" fill="#fff" />
+            </Pressable>
+            <Pressable onPress={props.togglePlay} className="rounded-full items-center justify-center" style={{ width: 72, height: 72, backgroundColor: 'rgba(255,255,255,0.2)' }}>
+              {isPlaying ? (
+                <Pause size={32} color="#fff" fill="#fff" />
+              ) : (
+                <Play size={32} color="#fff" fill="#fff" />
+              )}
+            </Pressable>
+            <Pressable onPress={props.next} className="w-14 h-14 rounded-full items-center justify-center">
+              <SkipForward size={28} color="#fff" fill="#fff" />
+            </Pressable>
+            <RepeatButton repeat={repeat} setRepeat={props.setRepeat} colors={{ ...colors, accent: '#fff', textMuted: 'rgba(255,255,255,0.4)' }} />
+          </View>
+
+          <View className="flex-row items-center gap-8 mt-6">
+            <Pressable onPress={() => props.toggleSongFavorite(currentTrack)}>
+              <Heart size={22} color={isFav ? '#fff' : 'rgba(255,255,255,0.4)'} fill={isFav ? '#fff' : 'none'} />
+            </Pressable>
+            <Pressable onPress={props.onQueuePress}>
+              <ListMusic size={22} color="rgba(255,255,255,0.4)" />
+            </Pressable>
+            <Pressable onPress={props.onLyricsPress}>
+              <AlignLeft size={22} color="rgba(255,255,255,0.4)" />
+            </Pressable>
+          </View>
+        </View>
+      </View>
+    </View>
+  );
+}
+
+function MinimalLayout(props: LayoutProps) {
+  const { colors, currentTrack, isPlaying, progress, isFav, shuffle, repeat, duration, position } = props;
+
+  return (
+    <View className="flex-1">
+      <View className="flex-row items-center justify-between px-4 pt-12 pb-4">
+        <Pressable onPress={props.hideFullPlayer} className="w-10 h-10 items-center justify-center">
+          <ChevronDown size={28} color={colors.text} />
+        </Pressable>
+        <Text className="text-sm font-semibold" style={{ color: colors.textMuted }}>
+          Now Playing
+        </Text>
+        <Pressable onPress={props.cycleLayout} className="w-10 h-10 items-center justify-center">
+          <LayoutGrid size={20} color={colors.textMuted} />
+        </Pressable>
+      </View>
+
+      <View style={{ flex: 1, paddingHorizontal: 24, justifyContent: 'center' }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16, marginBottom: 32 }}>
+          <View className="rounded-2xl overflow-hidden" style={{ width: 72, height: 72, backgroundColor: colors.surface }}>
+            {currentTrack.artwork ? (
+              <Image source={{ uri: currentTrack.artwork }} style={{ width: 72, height: 72 }} contentFit="cover" transition={200} />
+            ) : (
+              <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+                <Music size={28} color={colors.accent} />
+              </View>
+            )}
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text className="text-lg font-bold" style={{ color: colors.text }} numberOfLines={1}>{currentTrack.title}</Text>
+            <Text className="text-sm mt-0.5" style={{ color: colors.textMuted }} numberOfLines={1}>{currentTrack.artist}</Text>
+          </View>
+          <Pressable onPress={() => props.toggleSongFavorite(currentTrack)}>
+            <Heart size={22} color={isFav ? colors.accent : colors.textMuted} fill={isFav ? colors.accent : 'none'} />
+          </Pressable>
+        </View>
+
+        <Slider value={progress} onValueChange={(val) => props.seekTo(val * duration)} minimumValue={0} maximumValue={1}
+          minimumTrackTintColor={colors.accent} maximumTrackTintColor={colors.border} thumbTintColor={colors.text}
+          style={{ width: '100%', height: 32 }} />
+        <View className="flex-row justify-between px-1">
+          <Text className="text-xs" style={{ color: colors.textMuted }}>{formatDuration(props.position)}</Text>
+          <Text className="text-xs" style={{ color: colors.textMuted }}>{formatDuration(duration)}</Text>
+        </View>
+
+        <View className="flex-row items-center justify-center gap-5 mt-4">
+          <Pressable onPress={() => props.setShuffle(!shuffle)}>
+            <Shuffle size={20} color={shuffle ? colors.accent : colors.textMuted} />
+          </Pressable>
+          <Pressable onPress={props.previous} className="w-12 h-12 rounded-full items-center justify-center">
+            <SkipBack size={24} color={colors.text} fill={colors.text} />
+          </Pressable>
+          <Pressable onPress={props.togglePlay} className="rounded-full items-center justify-center" style={{ width: 60, height: 60, backgroundColor: colors.accent }}>
+            {isPlaying ? (
+              <Pause size={26} color={colors.background} fill={colors.background} />
+            ) : (
+              <Play size={26} color={colors.background} fill={colors.background} />
+            )}
+          </Pressable>
+          <Pressable onPress={props.next} className="w-12 h-12 rounded-full items-center justify-center">
+            <SkipForward size={24} color={colors.text} fill={colors.text} />
+          </Pressable>
+          <RepeatButton repeat={repeat} setRepeat={props.setRepeat} colors={colors} />
+        </View>
+
+        <View className="flex-row items-center justify-center gap-8 mt-6">
+          <Pressable onPress={props.onQueuePress}>
+            <ListMusic size={20} color={colors.textMuted} />
+          </Pressable>
+          <Pressable onPress={props.onLyricsPress}>
+            <AlignLeft size={20} color={colors.textMuted} />
+          </Pressable>
+        </View>
+      </View>
     </View>
   );
 }

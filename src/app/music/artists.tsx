@@ -4,6 +4,7 @@ import { useMusicStore } from '@/store/music-store';
 import { TopBar } from '@/components/top-bar';
 import { MiniPlayer } from '@/components/mini-player';
 import { User } from 'lucide-react-native';
+import { Artwork } from '@/components/artwork';
 import { useRouter } from 'expo-router';
 
 export default function ArtistsScreen() {
@@ -24,9 +25,7 @@ export default function ArtistsScreen() {
             className="flex-row items-center gap-4 p-3 rounded-3xl mb-2"
             style={{ backgroundColor: colors.surface }}
           >
-            <View className="w-14 h-14 rounded-full items-center justify-center" style={{ backgroundColor: colors.card }}>
-              <User size={24} color={colors.accent} />
-            </View>
+            <Artwork uri={item.artwork} size={56} borderRadius={28} iconSize={24} iconColor={colors.accent} backgroundColor={colors.card} />
             <View className="flex-1">
               <Text className="text-base font-semibold" style={{ color: colors.text }} numberOfLines={1}>{item.name}</Text>
               <Text className="text-sm" style={{ color: colors.textMuted }}>{item.songCount} songs</Text>

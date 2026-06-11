@@ -3,17 +3,7 @@ import { View, ActivityIndicator, Platform } from 'react-native';
 import { setupPlayer, setCrossfadeEnabled } from '@/services/track-player';
 import { useTrackPlayerSync } from '@/hooks/use-track-player-sync';
 import { useSettingsStore } from '@/store/settings-store';
-import * as Notifications from 'expo-notifications';
-
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: false,
-    shouldPlaySound: false,
-    shouldSetBadge: false,
-    shouldShowBanner: false,
-    shouldShowList: false,
-  }),
-});
+import { initializeNotifications } from '@/services/notifications';
 
 function PlayerSync() {
   useTrackPlayerSync();
@@ -43,15 +33,10 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         }
       }
 
-      if (Platform.OS === 'android') {
-        try {
-          const { status: existingStatus } = await Notifications.getPermissionsAsync();
-          if (existingStatus !== 'granted') {
-            await Notifications.requestPermissionsAsync();
-          }
-        } catch (e) {
-          console.warn('Notification permissions request failed:', e);
-        }
+      try {
+        await initializeNotifications();
+      } catch (e) {
+        console.warn('Notification setup failed:', e);
       }
 
       if (!cancelled) {

@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { usePlayerStore } from '@/store/player-store';
 import { getPlayer, isCrossfadeEnabled, getCrossfadeDuration } from '@/services/track-player';
+import { showNowPlayingNotification, updateNotificationPlaybackState, dismissNowPlayingNotification } from '@/services/notifications';
 
 export function useTrackPlayerSync() {
   const syncFromPlayer = usePlayerStore((s) => s.syncFromPlayer);
@@ -8,6 +9,7 @@ export function useTrackPlayerSync() {
   const trackEndedRef = useRef(false);
   const lastTimeRef = useRef(0);
   const crossfadeTriggeredRef = useRef(false);
+  const lastTrackIdRef = useRef<string | null>(null);
 
   function handleTrackEnd() {
     const state = usePlayerStore.getState();
@@ -70,9 +72,22 @@ export function useTrackPlayerSync() {
 
       syncFromPlayer();
 
+      const state = usePlayerStore.getState();
       const isNowPlaying = player.playing;
       const currentTime = player.currentTime;
       const duration = player.duration;
+
+      if (state.currentTrack && state.currentTrack.id !== lastTrackIdRef.current) {
+        lastTrackIdRef.current = state.currentTrack.id;
+        showNowPlayingNotification(state.currentTrack, isNowPlaying);
+      } else if (state.currentTrack && isNowPlaying !== wasPlayingRef.current) {
+        updateNotificationPlaybackState(isNowPlaying, state.currentTrack);
+      }
+
+      if (!state.currentTrack && lastTrackIdRef.current) {
+        lastTrackIdRef.current = null;
+        dismissNowPlayingNotification();
+      }
 
       if (isCrossfadeEnabled() && isNowPlaying) {
         handleCrossfade();

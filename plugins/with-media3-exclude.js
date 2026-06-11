@@ -2,7 +2,7 @@ const { withDangerousMod } = require('expo/config-plugins');
 const fs = require('fs');
 const path = require('path');
 
-const EXCLUDE_MARKER = "exclude group: 'com.github.MissingCore.media', module: 'media3-extractor'";
+const SUBSTITUTION_MARKER = "substitute module('com.github.MissingCore.media:media3-extractor')";
 
 module.exports = function withMedia3Exclude(config) {
   return withDangerousMod(config, [
@@ -15,7 +15,7 @@ module.exports = function withMedia3Exclude(config) {
 
       let content = fs.readFileSync(buildGradlePath, 'utf-8');
 
-      if (content.includes(EXCLUDE_MARKER)) {
+      if (content.includes(SUBSTITUTION_MARKER)) {
         return config;
       }
 
@@ -37,15 +37,19 @@ module.exports = function withMedia3Exclude(config) {
 
       if (endIndex === -1) return config;
 
-      const excludeBlock = [
+      const block = [
         '',
         '  configurations.all {',
-        "    exclude group: 'com.github.MissingCore.media', module: 'media3-extractor'",
+        '    resolutionStrategy {',
+        "      dependencySubstitution {",
+        "        substitute module('com.github.MissingCore.media:media3-extractor') using module('androidx.media3:media3-extractor:1.9.3')",
+        "      }",
+        '    }',
         '  }',
       ].join('\n');
 
       content =
-        content.slice(0, endIndex) + excludeBlock + '\n' + content.slice(endIndex);
+        content.slice(0, endIndex) + block + '\n' + content.slice(endIndex);
 
       fs.writeFileSync(buildGradlePath, content, 'utf-8');
 

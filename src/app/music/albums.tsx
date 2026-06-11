@@ -4,6 +4,7 @@ import { useMusicStore } from '@/store/music-store';
 import { TopBar } from '@/components/top-bar';
 import { MiniPlayer } from '@/components/mini-player';
 import { Disc3 } from 'lucide-react-native';
+import { Artwork } from '@/components/artwork';
 import { useRouter } from 'expo-router';
 
 export default function AlbumsScreen() {
@@ -26,8 +27,8 @@ export default function AlbumsScreen() {
             className="flex-1 rounded-3xl overflow-hidden"
             style={{ backgroundColor: colors.surface }}
           >
-            <View className="aspect-square items-center justify-center" style={{ backgroundColor: colors.card }}>
-              <Disc3 size={40} color={colors.accent} />
+            <View className="aspect-square items-center justify-center overflow-hidden" style={{ backgroundColor: colors.card }}>
+              <Artwork uri={item.artwork} size={200} borderRadius={0} iconSize={40} iconColor={colors.accent} backgroundColor="transparent" />
             </View>
             <View className="p-3">
               <Text className="text-sm font-semibold" style={{ color: colors.text }} numberOfLines={1}>{item.title}</Text>

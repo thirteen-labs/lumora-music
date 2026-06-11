@@ -5,6 +5,7 @@ import { Play, Pause, SkipForward } from 'lucide-react-native';
 import { formatDuration } from '@/utils/cn';
 import { useRouter } from 'expo-router';
 import { BlurView } from 'expo-blur';
+import { Artwork } from '@/components/artwork';
 
 export function MiniPlayer() {
   const isMiniPlayerVisible = usePlayerStore((s) => s.isMiniPlayerVisible);
@@ -39,11 +40,8 @@ export function MiniPlayer() {
           />
         </View>
         <View className="flex-row items-center px-4 py-3 gap-3">
-          <View
-            className="w-11 h-11 rounded-xl items-center justify-center"
-            style={{ backgroundColor: colors.card + '90' }}
-          >
-            <Text className="text-lg" style={{ color: colors.accent }}>♪</Text>
+          <View className="rounded-xl overflow-hidden">
+            <Artwork uri={currentTrack.artwork} size={44} borderRadius={12} iconSize={18} iconColor={colors.accent} backgroundColor={colors.card + '90'} />
           </View>
           <View className="flex-1">
             <Text

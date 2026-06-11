@@ -9,6 +9,7 @@ import { MiniPlayer } from '@/components/mini-player';
 import { SortMenu } from '@/components/sort-menu';
 import { SongContextMenu, useSongContextMenu } from '@/components/song-context-menu';
 import { Music } from 'lucide-react-native';
+import { Artwork } from '@/components/artwork';
 import { formatDuration, formatFileSize } from '@/utils/cn';
 import { SORT_OPTIONS, type SortField, type SortOrder } from '@/types/media';
 
@@ -63,9 +64,7 @@ export default function SongsScreen() {
             className="flex-row items-center gap-3 px-4"
             style={{ height: rowHeight, borderBottomWidth: 1, borderBottomColor: colors.border }}
           >
-            <View className="rounded-2xl items-center justify-center" style={{ width: artSize, height: artSize, backgroundColor: colors.surface }}>
-              <Music size={artSize * 0.4} color={colors.accent} />
-            </View>
+            <Artwork uri={item.artwork} size={artSize} borderRadius={artSize * 0.25} iconColor={colors.accent} backgroundColor={colors.surface} />
             <View className="flex-1">
               <Text className="text-sm font-medium" style={{ color: colors.text }} numberOfLines={1}>{item.title}</Text>
               <Text className="text-xs" style={{ color: colors.textMuted }} numberOfLines={1}>

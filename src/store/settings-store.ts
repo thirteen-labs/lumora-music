@@ -3,12 +3,15 @@ import { immer } from 'zustand/middleware/immer';
 import { storage } from '@/services/mmkv';
 import type { RepeatMode } from '@/types/player';
 
+export type NowPlayingLayout = 'classic' | 'modern' | 'minimal';
+
 const SETTINGS_KEYS = {
   defaultShuffle: 'lumora-setting-shuffle',
   defaultRepeat: 'lumora-setting-repeat',
   crossfade: 'lumora-setting-crossfade',
   colorAware: 'lumora-setting-color-aware',
   backgroundImage: 'lumora-setting-bg-image',
+  nowPlayingLayout: 'lumora-setting-np-layout',
 } as const;
 
 function loadBool(key: string, fallback: boolean): boolean {
@@ -24,11 +27,13 @@ interface SettingsState {
   crossfade: boolean;
   colorAware: boolean;
   backgroundImage: string | null;
+  nowPlayingLayout: NowPlayingLayout;
   setDefaultShuffle: (v: boolean) => void;
   setDefaultRepeat: (v: RepeatMode) => void;
   setCrossfade: (v: boolean) => void;
   setColorAware: (v: boolean) => void;
   setBackgroundImage: (path: string | null) => void;
+  setNowPlayingLayout: (layout: NowPlayingLayout) => void;
 }
 
 export const useSettingsStore = create<SettingsState>()(
@@ -38,6 +43,7 @@ export const useSettingsStore = create<SettingsState>()(
     crossfade: loadBool(SETTINGS_KEYS.crossfade, false),
     colorAware: loadBool(SETTINGS_KEYS.colorAware, false),
     backgroundImage: loadString(SETTINGS_KEYS.backgroundImage, ''),
+    nowPlayingLayout: (loadString(SETTINGS_KEYS.nowPlayingLayout, 'classic') as NowPlayingLayout) || 'classic',
 
     setDefaultShuffle: (v) => {
       set((s) => { s.defaultShuffle = v; });
@@ -61,6 +67,10 @@ export const useSettingsStore = create<SettingsState>()(
         if (path) storage.set(SETTINGS_KEYS.backgroundImage, path);
         else storage.set(SETTINGS_KEYS.backgroundImage, '');
       } catch {}
+    },
+    setNowPlayingLayout: (layout) => {
+      set((s) => { s.nowPlayingLayout = layout; });
+      try { storage.set(SETTINGS_KEYS.nowPlayingLayout, layout); } catch {}
     },
   })),
 );

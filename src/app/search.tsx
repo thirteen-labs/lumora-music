@@ -5,6 +5,7 @@ import { useVideoStore } from '@/store/video-store';
 import { usePlayerStore } from '@/store/player-store';
 import { TopBar } from '@/components/top-bar';
 import { Search, Music, Video as VideoIcon } from 'lucide-react-native';
+import { Artwork } from '@/components/artwork';
 import { useState, useMemo } from 'react';
 import { formatDuration } from '@/utils/cn';
 
@@ -48,8 +49,8 @@ export default function SearchScreen() {
       {query.trim() && (
         <FlatList
           data={[
-            ...results.songs.map((s) => ({ type: 'song' as const, id: s.id, title: s.title, subtitle: s.artist })),
-            ...results.videos.map((v) => ({ type: 'video' as const, id: v.id, title: v.title, subtitle: formatDuration(v.duration) })),
+            ...results.songs.map((s) => ({ type: 'song' as const, id: s.id, title: s.title, subtitle: s.artist, artwork: s.artwork, thumbnail: null })),
+            ...results.videos.map((v) => ({ type: 'video' as const, id: v.id, title: v.title, subtitle: formatDuration(v.duration), artwork: null, thumbnail: v.thumbnail })),
           ]}
           keyExtractor={(item) => item.id}
           contentContainerStyle={{ paddingBottom: 120 }}
@@ -69,13 +70,7 @@ export default function SearchScreen() {
               className="flex-row items-center gap-3 px-4 py-3"
               style={{ borderBottomWidth: 1, borderBottomColor: colors.border }}
             >
-              <View className="w-10 h-10 rounded-2xl items-center justify-center" style={{ backgroundColor: colors.surface }}>
-                {item.type === 'song' ? (
-                  <Music size={18} color={colors.accent} />
-                ) : (
-                  <VideoIcon size={18} color={colors.accent} />
-                )}
-              </View>
+              <Artwork uri={item.artwork ?? item.thumbnail} size={40} borderRadius={16} iconSize={18} iconColor={colors.accent} backgroundColor={colors.surface} />
               <View className="flex-1">
                 <Text className="text-sm font-medium" style={{ color: colors.text }} numberOfLines={1}>{item.title}</Text>
                 <Text className="text-xs" style={{ color: colors.textMuted }}>{item.subtitle}</Text>
