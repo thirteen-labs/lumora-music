@@ -1,11 +1,9 @@
 import {
   requestPermissionsAsync,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- Asset is required as a base class for Query
-  Asset,
-  Query,
-  MediaType,
-  AssetField,
-} from 'expo-media-library';
+  getAssetsAsync,
+  getAssetInfoAsync,
+  MediaType as LegacyMediaType,
+} from 'expo-media-library/legacy';
 import {
   MetadataPresets,
   getArtwork,
@@ -67,37 +65,38 @@ async function parseAudioMetadata(uri: string): Promise<{
   }
 }
 
-async function fetchSongs(mediaType: MediaType.AUDIO): Promise<Song[]> {
+async function fetchSongs(): Promise<Song[]> {
   const batch = 500;
   const allSongs: Song[] = [];
-  let offset = 0;
+  let cursor: string | undefined;
   let hasMore = true;
 
   while (hasMore) {
-    const query = new Query()
-      .eq(AssetField.MEDIA_TYPE, mediaType)
-      .limit(batch)
-      .offset(offset);
+    const result = await getAssetsAsync({
+      first: batch,
+      after: cursor,
+      mediaType: LegacyMediaType.audio,
+      sortBy: 'default',
+    });
 
-    const assets = await query.exe();
-    if (assets.length === 0) break;
+    if (result.assets.length === 0) break;
 
     const resolved = await Promise.all(
-      assets.map(async (asset) => {
-        const info = await asset.getInfo();
-        const meta = await parseAudioMetadata(info.uri);
+      result.assets.map(async (asset) => {
+        const info = await getAssetInfoAsync(asset.id);
+        const meta = await parseAudioMetadata(info.uri ?? asset.uri);
 
         return {
           id: info.id,
-          uri: info.uri,
-          title: meta.title ?? info.filename.replace(/\.[^/.]+$/, ''),
+          uri: info.uri ?? asset.uri,
+          title: meta.title ?? asset.filename.replace(/\.[^/.]+$/, ''),
           artist: meta.artist ?? 'Unknown Artist',
           album: meta.album ?? 'Unknown Album',
           albumId: info.id,
           duration: info.duration ?? 0,
           fileSize: 0,
           dateAdded: info.creationTime ?? 0,
-          artwork: meta.artwork ?? info.uri,
+          artwork: meta.artwork ?? info.uri ?? asset.uri,
           genre: meta.genre,
           bitrate: meta.bitrate,
           sampleRate: meta.sampleRate,
@@ -106,48 +105,49 @@ async function fetchSongs(mediaType: MediaType.AUDIO): Promise<Song[]> {
     );
 
     allSongs.push(...resolved);
-    offset += assets.length;
-    hasMore = assets.length === batch;
+    hasMore = result.hasNextPage;
+    cursor = result.endCursor;
   }
 
   return allSongs;
 }
 
-async function fetchVideos(mediaType: MediaType.VIDEO): Promise<Video[]> {
+async function fetchVideos(): Promise<Video[]> {
   const batch = 500;
   const allVideos: Video[] = [];
-  let offset = 0;
+  let cursor: string | undefined;
   let hasMore = true;
 
   while (hasMore) {
-    const query = new Query()
-      .eq(AssetField.MEDIA_TYPE, mediaType)
-      .limit(batch)
-      .offset(offset);
+    const result = await getAssetsAsync({
+      first: batch,
+      after: cursor,
+      mediaType: LegacyMediaType.video,
+      sortBy: 'default',
+    });
 
-    const assets = await query.exe();
-    if (assets.length === 0) break;
+    if (result.assets.length === 0) break;
 
     const resolved = await Promise.all(
-      assets.map(async (asset) => {
-        const info = await asset.getInfo();
+      result.assets.map(async (asset) => {
+        const info = await getAssetInfoAsync(asset.id);
         return {
           id: info.id,
-          uri: info.uri,
-          title: info.filename.replace(/\.[^/.]+$/, ''),
-          duration: info.duration ?? 0,
+          uri: info.uri ?? asset.uri,
+          title: info.filename?.replace(/\.[^/.]+$/, '') ?? asset.filename.replace(/\.[^/.]+$/, ''),
+          duration: info.duration ?? asset.duration ?? 0,
           fileSize: 0,
-          dateAdded: info.creationTime ?? 0,
-          thumbnail: info.uri,
-          width: info.width,
-          height: info.height,
+          dateAdded: info.creationTime ?? asset.creationTime ?? 0,
+          thumbnail: info.uri ?? asset.uri,
+          width: info.width ?? asset.width,
+          height: info.height ?? asset.height,
         };
       }),
     );
 
     allVideos.push(...resolved);
-    offset += assets.length;
-    hasMore = assets.length === batch;
+    hasMore = result.hasNextPage;
+    cursor = result.endCursor;
   }
 
   return allVideos;
@@ -166,8 +166,8 @@ export async function scanMediaLibrary(
     }
 
     const [songs, videos] = await Promise.all([
-      fetchSongs(MediaType.AUDIO),
-      fetchVideos(MediaType.VIDEO),
+      fetchSongs(),
+      fetchVideos(),
     ]);
 
     const albumMap = new Map<string, LumoraAlbum>();
