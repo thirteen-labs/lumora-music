@@ -21,7 +21,8 @@ lumora.apk*
 *.p12
 *.key
 *.mobileprovision
-
+CLAUDE.md
+.claude
 # Metro
 .metro-health-check*
 

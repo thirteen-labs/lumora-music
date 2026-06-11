@@ -3,7 +3,18 @@ import { View, ActivityIndicator, Platform } from 'react-native';
 import { setupPlayer, setCrossfadeEnabled } from '@/services/track-player';
 import { useTrackPlayerSync } from '@/hooks/use-track-player-sync';
 import { useSettingsStore } from '@/store/settings-store';
-import { requestNotificationPermissionsAsync } from 'expo-audio';
+import { requestPermissionsAsync as requestMediaPermissions } from 'expo-media-library';
+import * as Notifications from 'expo-notifications';
+
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: false,
+    shouldPlaySound: false,
+    shouldSetBadge: false,
+    shouldShowBanner: false,
+    shouldShowList: false,
+  }),
+});
 
 function PlayerSync() {
   useTrackPlayerSync();
@@ -24,9 +35,18 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         console.warn('Player setup failed, continuing without audio:', e);
       }
 
+      try {
+        await requestMediaPermissions();
+      } catch (e) {
+        console.warn('Media permissions request failed:', e);
+      }
+
       if (Platform.OS === 'android') {
         try {
-          await requestNotificationPermissionsAsync();
+          const { status: existingStatus } = await Notifications.getPermissionsAsync();
+          if (existingStatus !== 'granted') {
+            await Notifications.requestPermissionsAsync();
+          }
         } catch (e) {
           console.warn('Notification permissions request failed:', e);
         }
