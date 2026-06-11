@@ -6,8 +6,20 @@ import {
   MediaType,
   AssetField,
 } from 'expo-media-library';
-import { fetchFromUrl, type IAudioMetadata } from 'music-metadata-browser';
+import {
+  MetadataPresets,
+  getArtwork,
+  getMetadata,
+} from '@missingcore/react-native-metadata-retriever';
 import type { Song, Album as LumoraAlbum, Artist, Genre, Video, MediaScanStatus } from '@/types/media';
+
+const METADATA_FIELDS = [
+  ...MetadataPresets.standard,
+  'genre',
+  'bitrate',
+  'sampleRate',
+  'artworkData',
+] as const;
 
 let cachedSongs: Song[] = [];
 let cachedAlbums: LumoraAlbum[] = [];
@@ -26,28 +38,6 @@ export async function requestPermissions(): Promise<boolean> {
   return status === 'granted';
 }
 
-function bytesToBase64(bytes: Uint8Array): string {
-  let binary = '';
-  for (let i = 0; i < bytes.byteLength; i++) {
-    binary += String.fromCharCode(bytes[i]);
-  }
-  if (typeof btoa === 'function') {
-    return btoa(binary);
-  }
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
-  let result = '';
-  for (let i = 0; i < binary.length; i += 3) {
-    const a = binary.charCodeAt(i);
-    const b = i + 1 < binary.length ? binary.charCodeAt(i + 1) : 0;
-    const c = i + 2 < binary.length ? binary.charCodeAt(i + 2) : 0;
-    result += chars[(a >> 2) & 0x3f];
-    result += chars[((a << 4) | (b >> 4)) & 0x3f];
-    result += i + 1 < binary.length ? chars[((b << 2) | (c >> 6)) & 0x3f] : '=';
-    result += i + 2 < binary.length ? chars[c & 0x3f] : '=';
-  }
-  return result;
-}
-
 async function parseAudioMetadata(uri: string): Promise<{
   title: string | null;
   artist: string | null;
@@ -58,24 +48,19 @@ async function parseAudioMetadata(uri: string): Promise<{
   sampleRate: number | null;
 }> {
   try {
-    const metadata: IAudioMetadata = await fetchFromUrl(uri);
-    const { common, format } = metadata;
-
-    let artwork: string | null = null;
-    if (common.picture && common.picture.length > 0) {
-      const pic = common.picture[0];
-      const bytes = new Uint8Array(pic.data);
-      artwork = `data:${pic.format};base64,${bytesToBase64(bytes)}`;
-    }
+    const [meta, artwork] = await Promise.all([
+      getMetadata(uri, METADATA_FIELDS),
+      getArtwork(uri),
+    ]);
 
     return {
-      title: common.title ?? null,
-      artist: common.artist ?? null,
-      album: common.album ?? null,
-      genre: common.genre && common.genre.length > 0 ? common.genre[0] : null,
-      artwork,
-      bitrate: format.bitrate ?? null,
-      sampleRate: format.sampleRate ?? null,
+      title: meta.title ?? null,
+      artist: meta.artist ?? null,
+      album: meta.albumTitle ?? null,
+      genre: meta.genre ?? null,
+      artwork: artwork ?? meta.artworkData ?? null,
+      bitrate: meta.bitrate ?? null,
+      sampleRate: meta.sampleRate ?? null,
     };
   } catch {
     return { title: null, artist: null, album: null, genre: null, artwork: null, bitrate: null, sampleRate: null };

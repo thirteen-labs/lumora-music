@@ -3,7 +3,6 @@ import { View, ActivityIndicator, Platform } from 'react-native';
 import { setupPlayer, setCrossfadeEnabled } from '@/services/track-player';
 import { useTrackPlayerSync } from '@/hooks/use-track-player-sync';
 import { useSettingsStore } from '@/store/settings-store';
-import { requestPermissionsAsync as requestMediaPermissions } from 'expo-media-library';
 import * as Notifications from 'expo-notifications';
 
 Notifications.setNotificationHandler({
@@ -35,10 +34,13 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         console.warn('Player setup failed, continuing without audio:', e);
       }
 
-      try {
-        await requestMediaPermissions();
-      } catch (e) {
-        console.warn('Media permissions request failed:', e);
+      if (Platform.OS !== 'web') {
+        try {
+          const { requestPermissionsAsync: requestMediaPermissions } = await import('expo-media-library');
+          await requestMediaPermissions();
+        } catch (e) {
+          console.warn('Media permissions request failed:', e);
+        }
       }
 
       if (Platform.OS === 'android') {
