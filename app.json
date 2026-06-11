@@ -32,6 +32,7 @@
       "bundler": "metro"
     },
     "plugins": [
+      "./plugins/with-media3-exclude",
       "expo-router",
       [
         "expo-splash-screen",
