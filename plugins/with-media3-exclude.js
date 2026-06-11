@@ -2,7 +2,7 @@ const { withDangerousMod } = require('expo/config-plugins');
 const fs = require('fs');
 const path = require('path');
 
-const EXCLUDE_MARKER = "exclude group: 'com.github.MissingCore.media'";
+const EXCLUDE_MARKER = "exclude group: 'com.github.MissingCore.media', module: 'media3-extractor'";
 
 module.exports = function withMedia3Exclude(config) {
   return withDangerousMod(config, [
@@ -40,7 +40,7 @@ module.exports = function withMedia3Exclude(config) {
       const excludeBlock = [
         '',
         '  configurations.all {',
-        "    exclude group: 'com.github.MissingCore.media'",
+        "    exclude group: 'com.github.MissingCore.media', module: 'media3-extractor'",
         '  }',
       ].join('\n');
 
