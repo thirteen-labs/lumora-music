@@ -49,6 +49,7 @@
     "react-native-gesture-handler": "~2.31.1",
     "react-native-image-colors": "^2.6.0",
     "react-native-mmkv": "^4.3.1",
+    "react-native-nitro-modules": "^0.35.9",
     "react-native-reanimated": "4.3.1",
     "react-native-safe-area-context": "~5.7.0",
     "react-native-screens": "4.25.2",
@@ -75,8 +76,6 @@
     "web": "expo start --web",
     "lint": "expo lint",
     "typecheck": "tsc --noEmit"
-
-
   },
   "private": true
 }
