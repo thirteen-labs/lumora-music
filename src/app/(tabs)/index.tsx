@@ -20,7 +20,6 @@ export default function HomeScreen() {
   const { currentTrack } = usePlayerStore();
   const router = useRouter();
   const { bottomSheetRef, present, song } = useSongContextMenu();
-  const { videos } = useVideoStore();
 
   useEffect(() => {
     scan().then(() => {

@@ -4,10 +4,11 @@ import { useMusicStore } from '@/store/music-store';
 import { useVideoStore } from '@/store/video-store';
 import { usePlayerStore } from '@/store/player-store';
 import { TopBar } from '@/components/top-bar';
-import { Search, Music, Video as VideoIcon } from 'lucide-react-native';
+import { Search } from 'lucide-react-native';
 import { Artwork } from '@/components/artwork';
 import { useState, useMemo } from 'react';
 import { formatDuration } from '@/utils/cn';
+import { fuzzySearch } from '@/utils/fuzzy';
 
 export default function SearchScreen() {
   const { colors } = useTheme();
@@ -17,12 +18,11 @@ export default function SearchScreen() {
 
   const results = useMemo(() => {
     if (!query.trim()) return { songs: [], videos: [] };
-    const q = query.toLowerCase();
+    const matchedSongs = fuzzySearch(songs, query, (s) => [s.title, s.artist, s.album]);
+    const matchedVideos = fuzzySearch(videos, query, (v) => [v.title]);
     return {
-      songs: songs.filter(
-        (s) => s.title.toLowerCase().includes(q) || s.artist.toLowerCase().includes(q) || s.album.toLowerCase().includes(q)
-      ),
-      videos: videos.filter((v) => v.title.toLowerCase().includes(q)),
+      songs: matchedSongs.map((r) => r.item),
+      videos: matchedVideos.map((r) => r.item),
     };
   }, [query, songs, videos]);
 

@@ -1,14 +1,13 @@
-import { View, Text, Pressable, Dimensions, StyleSheet, Alert } from 'react-native';
+import { View, Text, Pressable, Dimensions, StyleSheet } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useTheme } from '@/hooks/use-theme';
-import { ChevronLeft, Maximize2, Minimize2, Subtitles, Gauge, X } from 'lucide-react-native';
+import { ChevronLeft, Maximize2, Minimize2, Captions, Gauge, X } from 'lucide-react-native';
 import { useVideoPlayer, VideoView, type VideoPlayer } from 'expo-video';
 import { useState, useCallback, useRef } from 'react';
 import * as DocumentPicker from 'expo-document-picker';
 import {
   BottomSheetModal,
   BottomSheetBackdrop,
-  BottomSheetScrollView,
 } from '@gorhom/bottom-sheet';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -24,10 +23,12 @@ export default function VideoPlayerScreen() {
   const [subtitles, setSubtitles] = useState<any[]>([]);
   const [activeSubtitle, setActiveSubtitle] = useState<string | null>(null);
   const speedSheetRef = useRef<BottomSheetModal>(null);
-  const subtitleSheetRef = useRef<BottomSheetModal>(null);
+
+  const playerRef = useRef<VideoPlayer | null>(null);
 
   const player = useVideoPlayer(uri ?? '', (p: VideoPlayer) => {
     p.loop = true;
+    playerRef.current = p;
   });
 
   const toggleFullscreen = useCallback(() => {
@@ -36,11 +37,11 @@ export default function VideoPlayerScreen() {
 
   const changeSpeed = useCallback((speed: number) => {
     setPlaybackRate(speed);
-    if (player) {
-      player.playbackRate = speed;
+    if (playerRef.current) {
+      playerRef.current.playbackRate = speed;
     }
     speedSheetRef.current?.dismiss();
-  }, [player]);
+  }, []);
 
   const pickSubtitleFile = useCallback(async () => {
     try {
@@ -150,7 +151,7 @@ export default function VideoPlayerScreen() {
             className="flex-row items-center gap-2 py-2 px-4 rounded-2xl"
             style={{ backgroundColor: colors.surface }}
           >
-            <Subtitles size={16} color={colors.accent} />
+            <Captions size={16} color={colors.accent} />
             <Text className="text-sm font-medium" style={{ color: colors.text }}>
               {activeSubtitle ? 'Subtitles On' : 'Add Subtitles'}
             </Text>

@@ -5,7 +5,7 @@ import { usePlayerStore } from '@/store/player-store';
 import { TopBar } from '@/components/top-bar';
 import { MiniPlayer } from '@/components/mini-player';
 import { SongContextMenu, useSongContextMenu } from '@/components/song-context-menu';
-import { Heart, Music, Video as VideoIcon } from 'lucide-react-native';
+import { Heart } from 'lucide-react-native';
 import { Artwork } from '@/components/artwork';
 import { formatDuration } from '@/utils/cn';
 import { useState } from 'react';

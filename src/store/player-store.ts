@@ -9,6 +9,8 @@ import {
   seekTo as serviceSeekTo,
   getPlayer,
 } from '@/services/track-player';
+import { useStatsStore } from '@/store/stats-store';
+import { useQueuePersistStore } from '@/store/queue-persist-store';
 
 function shuffleArray(length: number): number[] {
   const arr = Array.from({ length }, (_, i) => i);
@@ -78,6 +80,10 @@ export const usePlayerStore = create<PlayerState>()(
         }
       });
 
+      useStatsStore.getState().recordPlay(track.id);
+      const state = get();
+      useQueuePersistStore.getState().saveQueue(track, state.queue, state.queueIndex, state.shuffle, state.repeat, 0);
+
       await loadTrack(track);
     },
 
@@ -103,6 +109,11 @@ export const usePlayerStore = create<PlayerState>()(
     next: async () => {
       const { queue, shuffle, shuffledOrder, repeat } = get();
       if (queue.length === 0) return;
+
+      const currentTrack = get().currentTrack;
+      if (currentTrack) {
+        useStatsStore.getState().recordSkip(currentTrack.id);
+      }
 
       let nextOriginalIndex: number;
 
@@ -139,6 +150,8 @@ export const usePlayerStore = create<PlayerState>()(
       if (nextTrack) {
         set((s) => { s.queueIndex = nextOriginalIndex; });
         await loadTrack(nextTrack);
+        const s = get();
+        useQueuePersistStore.getState().saveQueue(nextTrack, s.queue, nextOriginalIndex, s.shuffle, s.repeat, 0);
       }
     },
 
@@ -174,6 +187,8 @@ export const usePlayerStore = create<PlayerState>()(
       if (prevTrack) {
         set((s) => { s.queueIndex = prevOriginalIndex; });
         await loadTrack(prevTrack);
+        const s = get();
+        useQueuePersistStore.getState().saveQueue(prevTrack, s.queue, prevOriginalIndex, s.shuffle, s.repeat, 0);
       }
     },
 

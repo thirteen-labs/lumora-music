@@ -33,14 +33,17 @@ export async function initializeNotifications(): Promise<void> {
   Notifications.addNotificationResponseReceivedListener((response) => {
     const action = response.notification.request.content.data?.action;
     if (action === 'play-pause') {
-      const { usePlayerStore } = require('@/store/player-store');
-      usePlayerStore.getState().togglePlay();
+      import('@/store/player-store').then(({ usePlayerStore }) => {
+        usePlayerStore.getState().togglePlay();
+      });
     } else if (action === 'next') {
-      const { usePlayerStore } = require('@/store/player-store');
-      usePlayerStore.getState().next();
+      import('@/store/player-store').then(({ usePlayerStore }) => {
+        usePlayerStore.getState().next();
+      });
     } else if (action === 'previous') {
-      const { usePlayerStore } = require('@/store/player-store');
-      usePlayerStore.getState().previous();
+      import('@/store/player-store').then(({ usePlayerStore }) => {
+        usePlayerStore.getState().previous();
+      });
     }
   });
 

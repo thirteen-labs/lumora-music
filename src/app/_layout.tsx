@@ -64,6 +64,54 @@ function RootStack() {
           name="video-player"
           options={{ animation: 'slide_from_bottom' }}
         />
+        <Stack.Screen
+          name="audio-features"
+          options={{ animation: 'slide_from_right' }}
+        />
+        <Stack.Screen
+          name="sleep-timer"
+          options={{ animation: 'slide_from_right' }}
+        />
+        <Stack.Screen
+          name="statistics"
+          options={{ animation: 'slide_from_right' }}
+        />
+        <Stack.Screen
+          name="smart-playlists"
+          options={{ animation: 'slide_from_right' }}
+        />
+        <Stack.Screen
+          name="tag-edit"
+          options={{ animation: 'slide_from_right' }}
+        />
+        <Stack.Screen
+          name="storage"
+          options={{ animation: 'slide_from_right' }}
+        />
+        <Stack.Screen
+          name="batch-operations"
+          options={{ animation: 'slide_from_right' }}
+        />
+        <Stack.Screen
+          name="library-tools"
+          options={{ animation: 'slide_from_right' }}
+        />
+        <Stack.Screen
+          name="online-subtitles"
+          options={{ animation: 'slide_from_right' }}
+        />
+        <Stack.Screen
+          name="ai-features"
+          options={{ animation: 'slide_from_right' }}
+        />
+        <Stack.Screen
+          name="cloud-sync"
+          options={{ animation: 'slide_from_right' }}
+        />
+        <Stack.Screen
+          name="gesture-controls"
+          options={{ animation: 'slide_from_right' }}
+        />
       </Stack>
     </>
   );

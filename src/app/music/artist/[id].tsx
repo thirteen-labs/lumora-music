@@ -6,7 +6,7 @@ import { useLayoutStore } from '@/store/layout-store';
 import { TopBar } from '@/components/top-bar';
 import { MiniPlayer } from '@/components/mini-player';
 import { SongContextMenu, useSongContextMenu } from '@/components/song-context-menu';
-import { Music, User } from 'lucide-react-native';
+import { Music } from 'lucide-react-native';
 import { Artwork } from '@/components/artwork';
 import { formatDuration, formatFileSize } from '@/utils/cn';
 import { useLocalSearchParams } from 'expo-router';

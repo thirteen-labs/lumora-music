@@ -25,7 +25,7 @@ import Slider from '@react-native-community/slider';
 import { useRouter } from 'expo-router';
 import { useFavoritesStore } from '@/store/favorites-store';
 import { Image } from 'expo-image';
-import { fetchLyrics, type LyricsResult } from '@/services/lyrics';
+import { fetchLyrics, getSyncedLine, type LyricsResult, type SyncedLine } from '@/services/lyrics';
 import {
   BottomSheetModal,
   BottomSheetFlatList,
@@ -302,6 +302,8 @@ export default function PlayerScreen() {
                 Searching for lyrics...
               </Text>
             </View>
+          ) : lyrics && lyrics.synced.length > 0 ? (
+            <SyncedLyricsView synced={lyrics.synced} position={position} colors={colors} />
           ) : lyrics?.lyrics ? (
             <Text style={{ fontSize: 15, color: colors.text, lineHeight: 26 }}>
               {lyrics.lyrics}
@@ -403,7 +405,7 @@ function RepeatButton({ repeat, setRepeat, colors }: { repeat: string; setRepeat
 }
 
 function ClassicLayout(props: LayoutProps) {
-  const { colors, currentTrack, isPlaying, progress, isFav, shuffle, repeat, duration, position } = props;
+  const { colors, currentTrack, isPlaying, progress, isFav, shuffle, repeat, duration } = props;
 
   return (
     <View className="flex-1">
@@ -481,8 +483,7 @@ function ClassicLayout(props: LayoutProps) {
 }
 
 function ModernLayout(props: LayoutProps) {
-  const { colors, currentTrack, isPlaying, progress, isFav, shuffle, repeat, duration, position } = props;
-  const { height: SCREEN_HEIGHT } = Dimensions.get('window');
+  const { colors, currentTrack, isPlaying, progress, isFav, shuffle, repeat, duration } = props;
 
   return (
     <View className="flex-1">
@@ -571,7 +572,7 @@ function ModernLayout(props: LayoutProps) {
 }
 
 function MinimalLayout(props: LayoutProps) {
-  const { colors, currentTrack, isPlaying, progress, isFav, shuffle, repeat, duration, position } = props;
+  const { colors, currentTrack, isPlaying, progress, isFav, shuffle, repeat, duration } = props;
 
   return (
     <View className="flex-1">
@@ -644,6 +645,34 @@ function MinimalLayout(props: LayoutProps) {
           </Pressable>
         </View>
       </View>
+    </View>
+  );
+}
+
+function SyncedLyricsView({ synced, position, colors }: { synced: SyncedLine[]; position: number; colors: any }) {
+  const activeIdx = getSyncedLine(synced, position);
+
+  return (
+    <View style={{ paddingVertical: 8 }}>
+      {synced.map((line, i) => {
+        const isActive = i === activeIdx;
+        const isPast = activeIdx >= 0 && i < activeIdx;
+        return (
+          <Text
+            key={`${i}-${line.time}`}
+            style={{
+              fontSize: isActive ? 20 : 16,
+              fontWeight: isActive ? '700' : '400',
+              color: isActive ? colors.accent : isPast ? colors.textMuted + '80' : colors.text + '60',
+              lineHeight: isActive ? 32 : 28,
+              marginBottom: 4,
+              textAlign: 'center',
+            }}
+          >
+            {line.text}
+          </Text>
+        );
+      })}
     </View>
   );
 }

@@ -3,6 +3,10 @@ import { View, ActivityIndicator, Platform } from 'react-native';
 import { setupPlayer, setCrossfadeEnabled } from '@/services/track-player';
 import { useTrackPlayerSync } from '@/hooks/use-track-player-sync';
 import { useSettingsStore } from '@/store/settings-store';
+import { usePlayerStore } from '@/store/player-store';
+import { useMusicStore } from '@/store/music-store';
+import { useQueuePersistStore, reconstructQueue } from '@/store/queue-persist-store';
+import { usePlaybackSpeedStore } from '@/store/playback-speed-store';
 import { initializeNotifications } from '@/services/notifications';
 
 function PlayerSync() {
@@ -39,6 +43,30 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         console.warn('Notification setup failed:', e);
       }
 
+      // Restore queue from persistence
+      try {
+        const persisted = useQueuePersistStore.getState().loadQueue();
+        if (persisted && persisted.currentTrackId) {
+          const allSongs = useMusicStore.getState().songs;
+          if (allSongs.length > 0) {
+            const { track, queue, queueIndex } = reconstructQueue(persisted, allSongs);
+            if (track && queue.length > 0) {
+              usePlayerStore.setState({
+                currentTrack: track,
+                queue,
+                queueIndex,
+                shuffle: persisted.shuffle,
+                repeat: persisted.repeat as any,
+                isMiniPlayerVisible: true,
+                position: persisted.position,
+              });
+            }
+          }
+        }
+      } catch (e) {
+        console.warn('Queue restore failed:', e);
+      }
+
       if (!cancelled) {
         setReady(true);
       }
@@ -52,6 +80,17 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     setCrossfadeEnabled(crossfade);
   }, [crossfade]);
+
+  // Apply playback speed when it changes
+  const speed = usePlaybackSpeedStore((s) => s.speed);
+  useEffect(() => {
+    import('@/services/track-player').then(({ getPlayer }) => {
+      const player = getPlayer();
+      if (player) {
+        try { player.playbackRate = speed; } catch {}
+      }
+    });
+  }, [speed]);
 
   if (!ready) {
     return (

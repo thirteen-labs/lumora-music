@@ -1,5 +1,5 @@
 import React, { useCallback, useRef, useState } from 'react';
-import { View, Text, Pressable } from 'react-native';
+import { View, Text, Pressable, Alert } from 'react-native';
 import {
   BottomSheetModal,
   BottomSheetView,
@@ -16,6 +16,7 @@ import {
   Share2,
   Music,
 } from 'lucide-react-native';
+import * as Sharing from 'expo-sharing';
 
 export function useSongContextMenu() {
   const bottomSheetRef = useRef<BottomSheetModal>(null);
@@ -52,6 +53,24 @@ export function SongContextMenu({ bottomSheetRef, song, onDismiss }: SongContext
   const dismiss = useCallback(() => {
     bottomSheetRef.current?.dismiss();
   }, [bottomSheetRef]);
+
+  const handleShare = useCallback(async () => {
+    if (!song) return;
+    try {
+      const isAvailable = await Sharing.isAvailableAsync();
+      if (!isAvailable) {
+        Alert.alert('Sharing is not available on this device');
+        return;
+      }
+      await Sharing.shareAsync(song.uri, {
+        mimeType: 'audio/*',
+        dialogTitle: `Share ${song.title}`,
+      });
+    } catch {
+      Alert.alert('Error', 'Could not share this file');
+    }
+    dismiss();
+  }, [song, dismiss]);
 
   return (
     <BottomSheetModal
@@ -139,7 +158,7 @@ export function SongContextMenu({ bottomSheetRef, song, onDismiss }: SongContext
               <Text style={{ fontSize: 15, color: colors.text }}>{isFav ? 'Remove from Favorites' : 'Add to Favorites'}</Text>
             </Pressable>
             <Pressable
-              onPress={dismiss}
+              onPress={handleShare}
               style={{
                 flexDirection: 'row',
                 alignItems: 'center',

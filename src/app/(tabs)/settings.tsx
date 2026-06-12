@@ -7,12 +7,19 @@ import { TopBar } from '@/components/top-bar';
 import { FileSizeSelector } from '@/components/file-size-selector';
 import { ThemeSelector } from '@/components/theme-selector';
 import { SectionHeader } from '@/components/section-header';
-import { Shuffle, Repeat, Zap, Info, Image as ImageIcon, LayoutGrid } from 'lucide-react-native';
+import { useRouter } from 'expo-router';
+import {
+  Shuffle, Repeat, Zap, Info, Image as ImageIcon, LayoutGrid,
+  Equal, Moon, Activity, ListMusic, Music, Tag,
+  HardDrive, Hand, Captions, Brain, Cloud,
+  Disc, ChevronRight,
+} from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { Image } from 'expo-image';
 
 export default function SettingsScreen() {
   const { colors } = useTheme();
+  const router = useRouter();
   const defaultShuffle = useSettingsStore((s) => s.defaultShuffle);
   const setDefaultShuffle = useSettingsStore((s) => s.setDefaultShuffle);
   const defaultRepeat = useSettingsStore((s) => s.defaultRepeat);
@@ -191,6 +198,122 @@ export default function SettingsScreen() {
             </View>
           </View>
 
+          {/* Audio Features */}
+          <View>
+            <SectionHeader title="Audio" />
+            <View className="rounded-3xl overflow-hidden" style={{ backgroundColor: colors.surface }}>
+              <SettingRow
+                icon={Equal}
+                label="Equalizer & Audio Effects"
+                subtitle="EQ, bass boost, balance, speed"
+                onPress={() => router.push('/audio-features' as any)}
+                colors={colors}
+              />
+              <SettingRow
+                icon={Moon}
+                label="Sleep Timer"
+                subtitle="Auto-stop after duration"
+                onPress={() => router.push('/sleep-timer' as any)}
+                colors={colors}
+              />
+            </View>
+          </View>
+
+          {/* Library */}
+          <View>
+            <SectionHeader title="Library" />
+            <View className="rounded-3xl overflow-hidden" style={{ backgroundColor: colors.surface }}>
+              <SettingRow
+                icon={ListMusic}
+                label="Smart Playlists"
+                subtitle="Rules-based auto-playlists"
+                onPress={() => router.push('/smart-playlists' as any)}
+                colors={colors}
+              />
+              <SettingRow
+                icon={Activity}
+                label="Statistics"
+                subtitle="Play counts & listening stats"
+                onPress={() => router.push('/statistics' as any)}
+                colors={colors}
+              />
+              <SettingRow
+                icon={Tag}
+                label="Tag Editor"
+                subtitle="Edit song metadata"
+                onPress={() => router.push('/tag-edit' as any)}
+                colors={colors}
+              />
+              <SettingRow
+                icon={Disc}
+                label="Library Tools"
+                subtitle="Duplicates, missing files, scanning"
+                onPress={() => router.push('/library-tools' as any)}
+                colors={colors}
+              />
+            </View>
+          </View>
+
+          {/* Power User */}
+          <View>
+            <SectionHeader title="Power User" />
+            <View className="rounded-3xl overflow-hidden" style={{ backgroundColor: colors.surface }}>
+              <SettingRow
+                icon={Music}
+                label="Batch Operations"
+                subtitle="Multi-select actions"
+                onPress={() => router.push('/batch-operations' as any)}
+                colors={colors}
+              />
+              <SettingRow
+                icon={HardDrive}
+                label="Storage Analysis"
+                subtitle="File sizes & breakdown"
+                onPress={() => router.push('/storage' as any)}
+                colors={colors}
+              />
+            </View>
+          </View>
+
+          {/* Online Features */}
+          <View>
+            <SectionHeader title="Online Features" />
+            <View className="rounded-3xl overflow-hidden" style={{ backgroundColor: colors.surface }}>
+              <SettingRow
+                icon={Captions}
+                label="Subtitle Downloader"
+                subtitle="Download subtitles online"
+                onPress={() => router.push('/online-subtitles' as any)}
+                colors={colors}
+                comingSoon
+              />
+              <SettingRow
+                icon={Brain}
+                label="AI Features"
+                subtitle="Smart playlists, mood detection"
+                onPress={() => router.push('/ai-features' as any)}
+                colors={colors}
+                comingSoon
+              />
+              <SettingRow
+                icon={Cloud}
+                label="Cloud Backup & Sync"
+                subtitle="Backup & sync across devices"
+                onPress={() => router.push('/cloud-sync' as any)}
+                colors={colors}
+                comingSoon
+              />
+              <SettingRow
+                icon={Hand}
+                label="Gesture Controls"
+                subtitle="Video swipe gestures"
+                onPress={() => router.push('/gesture-controls' as any)}
+                colors={colors}
+                comingSoon
+              />
+            </View>
+          </View>
+
           <View>
             <SectionHeader title="Storage" />
             <View className="p-4 rounded-3xl" style={{ backgroundColor: colors.surface }}>
@@ -250,5 +373,43 @@ function SettingToggle({
         />
       </Pressable>
     </View>
+  );
+}
+
+function SettingRow({
+  icon: Icon,
+  label,
+  subtitle,
+  onPress,
+  colors,
+  comingSoon,
+}: {
+  icon: any;
+  label: string;
+  subtitle: string;
+  onPress: () => void;
+  colors: any;
+  comingSoon?: boolean;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      className="flex-row items-center gap-4 p-4"
+      style={{ borderBottomWidth: 1, borderBottomColor: colors.border }}
+    >
+      <Icon size={20} color={colors.accent} />
+      <View className="flex-1">
+        <View className="flex-row items-center gap-2">
+          <Text className="text-sm font-medium" style={{ color: colors.text }}>{label}</Text>
+          {comingSoon && (
+            <View className="px-2 py-0.5 rounded-full" style={{ backgroundColor: colors.accent + '20' }}>
+              <Text className="text-[10px] font-semibold" style={{ color: colors.accent }}>SOON</Text>
+            </View>
+          )}
+        </View>
+        <Text className="text-xs mt-0.5" style={{ color: colors.textMuted }}>{subtitle}</Text>
+      </View>
+      <ChevronRight size={16} color={colors.textMuted} />
+    </Pressable>
   );
 }
