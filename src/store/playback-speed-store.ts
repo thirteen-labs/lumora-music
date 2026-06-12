@@ -52,6 +52,10 @@ export const usePlaybackSpeedStore = create<SpeedState>()(
 
 export { SPEED_OPTIONS };
 
-usePlaybackSpeedStore.subscribe((state) => {
-  audioEngine.setSpeed(state.speed);
-});
+try {
+  usePlaybackSpeedStore.subscribe((state) => {
+    try {
+      audioEngine.setSpeed(state.speed);
+    } catch {}
+  });
+} catch {}

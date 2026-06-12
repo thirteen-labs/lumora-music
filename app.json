@@ -97,7 +97,9 @@
             "mediaPlayback"
           ]
         }
-      ]
+      ],
+      "expo-task-manager",
+      "expo-background-fetch"
     ],
     "experiments": {
       "typedRoutes": true,

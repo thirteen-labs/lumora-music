@@ -13,22 +13,26 @@ import { Artwork } from '@/components/artwork';
 import { formatDuration } from '@/utils/cn';
 import { useEffect, useMemo } from 'react';
 import { useRouter } from 'expo-router';
+import { useScanManager } from '@/hooks/use-scan-manager';
 
 export default function HomeScreen() {
   const { colors } = useTheme();
-  const { songs, scan } = useMusicStore();
+  const { songs } = useMusicStore();
   const { favoriteSongIds, hydrateFavorites } = useFavoritesStore();
   const { currentTrack } = usePlayerStore();
   const router = useRouter();
   const { bottomSheetRef, present, song } = useSongContextMenu();
   const trackStats = useStatsStore((s) => s.trackStats);
+  const { manualScan } = useScanManager();
 
   useEffect(() => {
-    scan().then(() => {
+    const init = async () => {
+      await manualScan();
       const { songs: allSongs } = useMusicStore.getState();
       const { videos: allVideos } = useVideoStore.getState();
       hydrateFavorites(allSongs, allVideos);
-    });
+    };
+    init();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -188,7 +192,7 @@ export default function HomeScreen() {
               Grant media access to scan your library
             </Text>
             <Pressable
-              onPress={() => scan()}
+              onPress={() => manualScan()}
               className="mt-4 px-6 py-3 rounded-2xl"
               style={{ backgroundColor: colors.accent }}
             >

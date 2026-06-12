@@ -65,6 +65,10 @@ export function syncReplayGainToEngine(): void {
   }
 }
 
-useReplayGainStore.subscribe(() => {
-  syncReplayGainToEngine();
-});
+try {
+  useReplayGainStore.subscribe(() => {
+    try {
+      syncReplayGainToEngine();
+    } catch {}
+  });
+} catch {}

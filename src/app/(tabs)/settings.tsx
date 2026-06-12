@@ -1,4 +1,4 @@
-import { View, Text, ScrollView, Pressable, Alert } from 'react-native';
+import { View, Text, ScrollView, Pressable, Alert, Switch } from 'react-native';
 import { useTheme } from '@/hooks/use-theme';
 import { useSettingsStore } from '@/store/settings-store';
 import { useMusicStore } from '@/store/music-store';
@@ -8,6 +8,12 @@ import { FileSizeSelector } from '@/components/file-size-selector';
 import { ThemeSelector } from '@/components/theme-selector';
 import { SectionHeader } from '@/components/section-header';
 import { useRouter } from 'expo-router';
+import { useScanManager } from '@/hooks/use-scan-manager';
+import {
+  getScanInterval as getStoredScanInterval,
+  setScanInterval as setStoredScanInterval,
+  getLastBackgroundScanTime,
+} from '@/services/background-scanner';
 import {
   Shuffle, Repeat, Zap, Info, Image as ImageIcon, LayoutGrid,
   Equal, Moon, Activity, ListMusic, Music, Tag,
@@ -18,6 +24,7 @@ import {
 import * as ImagePicker from 'expo-image-picker';
 import { Image } from 'expo-image';
 import Slider from '@react-native-community/slider';
+import { useState } from 'react';
 
 export default function SettingsScreen() {
   const { colors } = useTheme();
@@ -40,6 +47,11 @@ export default function SettingsScreen() {
   const albums = useMusicStore((s) => s.albums);
   const artists = useMusicStore((s) => s.artists);
   const videos = useVideoStore((s) => s.videos);
+  const bgScanEnabled = useMusicStore((s) => s.backgroundScanEnabled);
+  const setBgScanEnabled = useMusicStore((s) => s.setBackgroundScanEnabled);
+  const { manualScan } = useScanManager();
+  const [scanInterval, setScanIntervalState] = useState(getStoredScanInterval());
+  const [lastBgScan, setLastBgScan] = useState(getLastBackgroundScanTime());
 
   const pickBackgroundImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -143,6 +155,94 @@ export default function SettingsScreen() {
                     transform: [{ translateX: colorAware ? 0 : -22 }],
                   }}
                 />
+              </Pressable>
+            </View>
+          </View>
+
+          <View>
+            <SectionHeader title="Library Scanning" />
+            <View className="rounded-3xl overflow-hidden" style={{ backgroundColor: colors.surface }}>
+              <View
+                className="flex-row items-center gap-4 p-4"
+                style={{ borderBottomWidth: 1, borderBottomColor: colors.border }}
+              >
+                <RefreshCw size={20} color={colors.accent} />
+                <View className="flex-1">
+                  <Text className="text-sm font-medium" style={{ color: colors.text }}>
+                    Background Scanning
+                  </Text>
+                  <Text className="text-xs mt-0.5" style={{ color: colors.textMuted }}>
+                    Auto-scan for new music
+                  </Text>
+                </View>
+                <Switch
+                  value={bgScanEnabled}
+                  onValueChange={setBgScanEnabled}
+                  trackColor={{ false: colors.card, true: colors.accent }}
+                  thumbColor="#fff"
+                />
+              </View>
+
+              {bgScanEnabled && (
+                <View className="p-4" style={{ borderBottomWidth: 1, borderBottomColor: colors.border }}>
+                  <Text className="text-xs font-medium mb-2" style={{ color: colors.textMuted }}>
+                    Scan Interval
+                  </Text>
+                  <View className="flex-row gap-2">
+                    {[
+                      { label: '1h', value: 60 },
+                      { label: '6h', value: 360 },
+                      { label: '12h', value: 720 },
+                      { label: '24h', value: 1440 },
+                    ].map((option) => (
+                      <Pressable
+                        key={option.value}
+                        onPress={() => {
+                          setScanIntervalState(option.value);
+                          setStoredScanInterval(option.value);
+                          setLastBgScan(getLastBackgroundScanTime());
+                        }}
+                        className="flex-1 py-2 rounded-xl items-center"
+                        style={{
+                          backgroundColor: scanInterval === option.value ? colors.accent : colors.card,
+                        }}
+                      >
+                        <Text
+                          className="text-xs font-semibold"
+                          style={{
+                            color: scanInterval === option.value ? colors.background : colors.textMuted,
+                          }}
+                        >
+                          {option.label}
+                        </Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                </View>
+              )}
+
+              {lastBgScan > 0 && (
+                <View className="px-4 py-3">
+                  <Text className="text-xs" style={{ color: colors.textMuted }}>
+                    Last scan: {new Date(lastBgScan).toLocaleString()}
+                  </Text>
+                </View>
+              )}
+
+              <Pressable
+                onPress={manualScan}
+                className="flex-row items-center gap-4 p-4"
+              >
+                <RefreshCw size={20} color={colors.accent} />
+                <View className="flex-1">
+                  <Text className="text-sm font-medium" style={{ color: colors.text }}>
+                    Scan Now
+                  </Text>
+                  <Text className="text-xs mt-0.5" style={{ color: colors.textMuted }}>
+                    Manually scan your library
+                  </Text>
+                </View>
+                <ChevronRight size={16} color={colors.textMuted} />
               </Pressable>
             </View>
           </View>
@@ -417,12 +517,6 @@ export default function SettingsScreen() {
                 icon={Cloud}
                 title="Cloud Sync"
                 subtitle="Sync data across all your devices"
-                colors={colors}
-              />
-              <FutureFeatureRow
-                icon={RefreshCw}
-                title="Background Scanning"
-                subtitle="Scan for new media in the background"
                 colors={colors}
               />
               <FutureFeatureRow

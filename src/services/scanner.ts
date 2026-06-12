@@ -1,24 +1,37 @@
-import {
-  requestPermissionsAsync,
-  getAssetsAsync,
-  getAssetInfoAsync,
-  MediaType as LegacyMediaType,
-} from 'expo-media-library/legacy';
-import {
-  MetadataPresets,
-  getArtwork,
-  getMetadata,
-} from '@missingcore/react-native-metadata-retriever';
-import * as FileSystem from 'expo-file-system';
 import type { Song, Album as LumoraAlbum, Artist, Genre, Video, MediaScanStatus } from '@/types/media';
 
-const METADATA_FIELDS = [
-  ...MetadataPresets.standard,
-  'genre',
-  'bitrate',
-  'sampleRate',
-  'artworkData',
-] as const;
+let MediaLibrary: any = null;
+let MetadataRetriever: any = null;
+let FileSystem: any = null;
+
+async function loadModules(): Promise<boolean> {
+  try {
+    const [ml, mr, fs] = await Promise.all([
+      import('expo-media-library/legacy').catch(() => import('expo-media-library')),
+      import('@missingcore/react-native-metadata-retriever'),
+      import('expo-file-system'),
+    ]);
+    MediaLibrary = ml;
+    MetadataRetriever = mr;
+    FileSystem = fs;
+    return true;
+  } catch (e) {
+    console.warn('Failed to load media scanner modules:', e);
+    return false;
+  }
+}
+
+let modulesLoaded = false;
+let moduleLoadAttempted = false;
+
+async function ensureModulesLoaded(): Promise<boolean> {
+  if (modulesLoaded) return true;
+  if (!moduleLoadAttempted) {
+    moduleLoadAttempted = true;
+    modulesLoaded = await loadModules();
+  }
+  return modulesLoaded;
+}
 
 let cachedSongs: Song[] = [];
 let cachedAlbums: LumoraAlbum[] = [];
@@ -33,11 +46,17 @@ export function getCachedGenres(): Genre[] { return cachedGenres; }
 export function getCachedVideos(): Video[] { return cachedVideos; }
 
 export async function requestPermissions(): Promise<boolean> {
-  const { status } = await requestPermissionsAsync();
-  return status === 'granted';
+  if (!MediaLibrary) return false;
+  try {
+    const { status } = await MediaLibrary.requestPermissionsAsync();
+    return status === 'granted';
+  } catch {
+    return false;
+  }
 }
 
 async function getFileSize(uri: string): Promise<number> {
+  if (!FileSystem) return 0;
   try {
     const info = await FileSystem.getInfoAsync(uri);
     if (info.exists && 'size' in info) {
@@ -56,8 +75,8 @@ async function getAssetFileSize(
     if (preloadedInfo && typeof preloadedInfo.fileSize === 'number' && preloadedInfo.fileSize > 0) {
       return preloadedInfo.fileSize;
     }
-    if (assetId) {
-      const assetInfo = preloadedInfo ?? await getAssetInfoAsync(assetId);
+    if (assetId && MediaLibrary) {
+      const assetInfo = preloadedInfo ?? await MediaLibrary.getAssetInfoAsync(assetId);
       if (assetInfo && typeof assetInfo.fileSize === 'number' && assetInfo.fileSize > 0) {
         return assetInfo.fileSize;
       }
@@ -91,10 +110,20 @@ async function parseAudioMetadata(uri: string): Promise<{
   bitrate: number | null;
   sampleRate: number | null;
 }> {
+  if (!MetadataRetriever) {
+    return { title: null, artist: null, album: null, genre: null, artwork: null, bitrate: null, sampleRate: null };
+  }
   try {
+    const fields = [
+      ...MetadataRetriever.MetadataPresets.standard,
+      'genre',
+      'bitrate',
+      'sampleRate',
+      'artworkData',
+    ];
     const [meta, artwork] = await Promise.all([
-      getMetadata(uri, METADATA_FIELDS),
-      getArtwork(uri),
+      MetadataRetriever.getMetadata(uri, fields),
+      MetadataRetriever.getArtwork(uri),
     ]);
 
     return {
@@ -112,24 +141,27 @@ async function parseAudioMetadata(uri: string): Promise<{
 }
 
 async function fetchSongs(): Promise<Song[]> {
+  if (!MediaLibrary) return [];
   const batch = 500;
   const allSongs: Song[] = [];
   let cursor: string | undefined;
   let hasMore = true;
 
+  const MediaType = MediaLibrary.MediaType;
+
   while (hasMore) {
-    const result = await getAssetsAsync({
+    const result = await MediaLibrary.getAssetsAsync({
       first: batch,
       after: cursor,
-      mediaType: LegacyMediaType.audio,
+      mediaType: MediaType.audio,
       sortBy: 'default',
     });
 
     if (result.assets.length === 0) break;
 
     const resolved = await Promise.all(
-      result.assets.map(async (asset) => {
-        const info = await getAssetInfoAsync(asset.id);
+      result.assets.map(async (asset: any) => {
+        const info = await MediaLibrary.getAssetInfoAsync(asset.id);
         const uri = info.uri ?? asset.uri;
         const meta = await parseAudioMetadata(uri);
         let fileSize = await getAssetFileSize(uri, asset.id, info);
@@ -165,24 +197,27 @@ async function fetchSongs(): Promise<Song[]> {
 }
 
 async function fetchVideos(): Promise<Video[]> {
+  if (!MediaLibrary) return [];
   const batch = 500;
   const allVideos: Video[] = [];
   let cursor: string | undefined;
   let hasMore = true;
 
+  const MediaType = MediaLibrary.MediaType;
+
   while (hasMore) {
-    const result = await getAssetsAsync({
+    const result = await MediaLibrary.getAssetsAsync({
       first: batch,
       after: cursor,
-      mediaType: LegacyMediaType.video,
+      mediaType: MediaType.video,
       sortBy: 'default',
     });
 
     if (result.assets.length === 0) break;
 
     const resolved = await Promise.all(
-      result.assets.map(async (asset) => {
-        const info = await getAssetInfoAsync(asset.id);
+      result.assets.map(async (asset: any) => {
+        const info = await MediaLibrary.getAssetInfoAsync(asset.id);
         const uri = info.uri ?? asset.uri;
         let fileSize = await getAssetFileSize(uri, asset.id, info);
 
@@ -217,6 +252,13 @@ export async function scanMediaLibrary(
   onStatusChange?: (status: MediaScanStatus) => void,
 ): Promise<{ songs: Song[]; albums: LumoraAlbum[]; artists: Artist[]; genres: Genre[]; videos: Video[] }> {
   onStatusChange?.('scanning');
+
+  const loaded = await ensureModulesLoaded();
+  if (!loaded) {
+    console.warn('Media scanner modules failed to load');
+    onStatusChange?.('error');
+    return { songs: [], albums: [], artists: [], genres: [], videos: [] };
+  }
 
   try {
     const hasPermission = await requestPermissions();

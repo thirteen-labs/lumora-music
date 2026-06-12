@@ -82,16 +82,20 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    setCrossfadeEnabled(crossfade);
-    setCrossfadeDuration(crossfadeDuration);
+    try {
+      setCrossfadeEnabled(crossfade);
+      setCrossfadeDuration(crossfadeDuration);
+    } catch {}
   }, [crossfade, crossfadeDuration]);
 
   useEffect(() => {
-    syncEqualizerToEngine();
-    syncReplayGainToEngine();
-    const le = useLoudnessEnhancerStore.getState();
-    audioEngine.setLoudnessEnabled(le.enabled);
-    audioEngine.setLoudnessLevel(le.level);
+    try {
+      syncEqualizerToEngine();
+      syncReplayGainToEngine();
+      const le = useLoudnessEnhancerStore.getState();
+      audioEngine.setLoudnessEnabled(le.enabled);
+      audioEngine.setLoudnessLevel(le.level);
+    } catch {}
   }, []);
 
   if (!ready) {

@@ -176,6 +176,10 @@ export function syncEqualizerToEngine(): void {
   }
 }
 
-useEqualizerStore.subscribe(() => {
-  syncEqualizerToEngine();
-});
+try {
+  useEqualizerStore.subscribe(() => {
+    try {
+      syncEqualizerToEngine();
+    } catch {}
+  });
+} catch {}

@@ -1,5 +1,6 @@
 import { Stack } from 'expo-router';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ThemeProvider } from '@/theme/provider';
 import { ColorAwareProvider } from '@/components/color-aware-provider';
 import { PlayerProvider } from '@/components/player-provider';
@@ -144,15 +145,17 @@ function RootStack() {
 export default function RootLayout() {
   return (
     <ErrorBoundary>
-      <GestureHandlerRootView style={{ flex: 1 }}>
-        <ThemeProvider>
-          <ColorAwareProvider>
-            <PlayerProvider>
-              <RootStack />
-            </PlayerProvider>
-          </ColorAwareProvider>
-        </ThemeProvider>
-      </GestureHandlerRootView>
+      <SafeAreaProvider>
+        <GestureHandlerRootView style={{ flex: 1 }}>
+          <ThemeProvider>
+            <ColorAwareProvider>
+              <PlayerProvider>
+                <RootStack />
+              </PlayerProvider>
+            </ColorAwareProvider>
+          </ThemeProvider>
+        </GestureHandlerRootView>
+      </SafeAreaProvider>
     </ErrorBoundary>
   );
 }

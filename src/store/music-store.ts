@@ -3,6 +3,7 @@ import { immer } from 'zustand/middleware/immer';
 import type { Song, Album, Artist, Genre, MediaScanStatus, SortField, SortOrder } from '@/types/media';
 import { scanMediaLibrary, getCachedSongs, getCachedAlbums, getCachedArtists, getCachedGenres } from '@/services/scanner';
 import { useStatsStore } from '@/store/stats-store';
+import { isBackgroundScanEnabled, setBackgroundScanEnabled } from '@/services/background-scanner';
 
 interface MusicState {
   songs: Song[];
@@ -13,9 +14,11 @@ interface MusicState {
   lastScanTime: number;
   sortField: SortField;
   sortOrder: SortOrder;
+  backgroundScanEnabled: boolean;
   scan: () => Promise<void>;
   setSort: (field: SortField, order: SortOrder) => void;
   getSortedSongs: () => Song[];
+  setBackgroundScanEnabled: (enabled: boolean) => void;
 }
 
 export const useMusicStore = create<MusicState>()(
@@ -28,6 +31,7 @@ export const useMusicStore = create<MusicState>()(
     lastScanTime: 0,
     sortField: 'title',
     sortOrder: 'asc',
+    backgroundScanEnabled: isBackgroundScanEnabled(),
 
     scan: async () => {
       const cached = getCachedSongs();
@@ -80,6 +84,13 @@ export const useMusicStore = create<MusicState>()(
         return state.sortOrder === 'desc' ? -cmp : cmp;
       });
       return sorted;
+    },
+
+    setBackgroundScanEnabled: (enabled) => {
+      set((state) => {
+        state.backgroundScanEnabled = enabled;
+      });
+      setBackgroundScanEnabled(enabled);
     },
   })),
 );
