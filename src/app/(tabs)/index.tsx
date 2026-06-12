@@ -4,13 +4,14 @@ import { usePlayerStore } from '@/store/player-store';
 import { useMusicStore } from '@/store/music-store';
 import { useFavoritesStore } from '@/store/favorites-store';
 import { useVideoStore } from '@/store/video-store';
+import { useStatsStore } from '@/store/stats-store';
 import { TopBar } from '@/components/top-bar';
 import { MiniPlayer } from '@/components/mini-player';
 import { SongContextMenu, useSongContextMenu } from '@/components/song-context-menu';
-import { Music, Clock, Heart } from 'lucide-react-native';
+import { Music, Clock, Heart, PlayCircle } from 'lucide-react-native';
 import { Artwork } from '@/components/artwork';
 import { formatDuration } from '@/utils/cn';
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useRouter } from 'expo-router';
 
 export default function HomeScreen() {
@@ -32,6 +33,7 @@ export default function HomeScreen() {
 
   const recentSongs = [...songs].sort((a, b) => b.dateAdded - a.dateAdded).slice(0, 10);
   const favSongs = songs.filter((s) => favoriteSongIds.includes(s.id)).slice(0, 10);
+  const recentlyPlayed = useMemo(() => useStatsStore.getState().getRecentlyPlayed(songs, 10), [songs]);
 
   return (
     <View className="flex-1" style={{ backgroundColor: colors.background }}>
@@ -68,6 +70,38 @@ export default function HomeScreen() {
                 </Text>
               </View>
             </Pressable>
+          </View>
+        )}
+
+        {recentlyPlayed.length > 0 && (
+          <View className="px-4 mb-6">
+            <View className="flex-row items-center gap-2 mb-3">
+              <PlayCircle size={18} color={colors.accent} />
+              <Text className="text-lg font-semibold" style={{ color: colors.text }}>
+                Recently Played
+              </Text>
+            </View>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              {recentlyPlayed.map((song) => (
+                <Pressable
+                  key={song.id}
+                  onPress={() => usePlayerStore.getState().play(song, recentlyPlayed)}
+                  onLongPress={() => present(song)}
+                  className="mr-3"
+                  style={{ width: 140 }}
+                >
+                  <View className="w-[140px] h-[140px] rounded-3xl items-center justify-center mb-2 overflow-hidden" style={{ backgroundColor: colors.surface }}>
+                    <Artwork uri={song.artwork} size={140} borderRadius={24} iconSize={32} iconColor={colors.accent} backgroundColor="transparent" />
+                  </View>
+                  <Text className="text-sm font-medium" style={{ color: colors.text }} numberOfLines={1}>
+                    {song.title}
+                  </Text>
+                  <Text className="text-xs" style={{ color: colors.textMuted }} numberOfLines={1}>
+                    {song.artist} · {formatDuration(song.duration)}
+                  </Text>
+                </Pressable>
+              ))}
+            </ScrollView>
           </View>
         )}
 

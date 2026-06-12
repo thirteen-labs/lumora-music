@@ -3,9 +3,11 @@ name: Build Android APK
 on:
   push:
     branches: [main]
-  pull_request:
-    branches: [main]
   workflow_dispatch:
+
+concurrency:
+  group: build-apk-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build:
@@ -30,6 +32,9 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
+      - name: Accept Android SDK licenses
+        run: yes | sdkmanager --licenses || true
+
       - name: Install dependencies
         run: npm ci
 
@@ -45,8 +50,8 @@ jobs:
             -keyalg RSA \
             -keysize 2048 \
             -validity 10000 \
-            -storepass android123 \
-            -keypass android123 \
+            -storepass "${{ secrets.ANDROID_KEYSTORE_PASSWORD }}" \
+            -keypass "${{ secrets.ANDROID_KEY_PASSWORD }}" \
             -dname "CN=Lumora, OU=Dev, O=CadmusLabs, L=Earth, ST=Earth, C=US"
 
       - name: Patch build.gradle for release signing
@@ -59,9 +64,9 @@ jobs:
           const releaseSigning = \`
               release {
                   storeFile file('release.keystore')
-                  storePassword 'android123'
+                  storePassword '${{ secrets.ANDROID_KEYSTORE_PASSWORD }}'
                   keyAlias 'lumora'
-                  keyPassword 'android123'
+                  keyPassword '${{ secrets.ANDROID_KEY_PASSWORD }}'
               }
           \`;
 
@@ -74,13 +79,17 @@ jobs:
           console.log('Patched build.gradle with release signing config');
           "
 
+      - name: Cache Gradle dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('android/**/*.gradle*', 'android/gradle-wrapper.properties') }}
+          restore-keys: gradle-${{ runner.os }}-
+
       - name: Make gradlew executable
         run: chmod +x android/gradlew
-
-      - name: Bundle JS for Android (verify before Gradle)
-        run: npx expo export --platform android
-        env:
-          NODE_OPTIONS: --max_old_space_size=8192
 
       - name: Build APK
         run: cd android && ./gradlew assembleRelease --no-daemon --stacktrace
@@ -90,5 +99,6 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: lumora.apk
+          name: lumora-apk-${{ github.sha }}
           path: android/app/build/outputs/apk/**/*.apk
+          retention-days: 30

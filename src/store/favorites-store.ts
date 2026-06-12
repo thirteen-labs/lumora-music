@@ -29,6 +29,7 @@ interface FavoritesState {
   setSongs: (songs: Song[]) => void;
   setVideos: (videos: Video[]) => void;
   hydrateFavorites: (allSongs: Song[], allVideos: Video[]) => void;
+  refreshFavoriteVideos: (allVideos: Video[]) => void;
 }
 
 export const useFavoritesStore = create<FavoritesState>()(
@@ -75,6 +76,12 @@ export const useFavoritesStore = create<FavoritesState>()(
     hydrateFavorites: (allSongs, allVideos) => {
       set((s) => {
         s.songs = allSongs.filter((song) => s.favoriteSongIds.includes(song.id));
+        s.videos = allVideos.filter((video) => s.favoriteVideoIds.includes(video.id));
+      });
+    },
+
+    refreshFavoriteVideos: (allVideos) => {
+      set((s) => {
         s.videos = allVideos.filter((video) => s.favoriteVideoIds.includes(video.id));
       });
     },

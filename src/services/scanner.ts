@@ -47,6 +47,17 @@ async function getFileSize(uri: string): Promise<number> {
   return 0;
 }
 
+async function getAssetFileSize(assetUri: string): Promise<number> {
+  try {
+    const assetInfo = await getAssetInfoAsync(assetUri);
+    const localUri = (assetInfo as any).localUri as string | undefined;
+    if (localUri) {
+      return getFileSize(localUri);
+    }
+  } catch {}
+  return getFileSize(assetUri);
+}
+
 async function parseAudioMetadata(uri: string): Promise<{
   title: string | null;
   artist: string | null;
@@ -97,7 +108,7 @@ async function fetchSongs(): Promise<Song[]> {
         const info = await getAssetInfoAsync(asset.id);
         const uri = info.uri ?? asset.uri;
         const meta = await parseAudioMetadata(uri);
-        let fileSize = await getFileSize(uri);
+        let fileSize = await getAssetFileSize(uri);
 
         return {
           id: info.id,
@@ -145,7 +156,7 @@ async function fetchVideos(): Promise<Video[]> {
       result.assets.map(async (asset) => {
         const info = await getAssetInfoAsync(asset.id);
         const uri = info.uri ?? asset.uri;
-        let fileSize = await getFileSize(uri);
+        let fileSize = await getAssetFileSize(uri);
         return {
           id: info.id,
           uri,
