@@ -5,9 +5,11 @@ import { SectionHeader } from '@/components/section-header';
 import { useEqualizerStore, EQUALIZER_PRESETS } from '@/store/equalizer-store';
 import { useReplayGainStore } from '@/store/replay-gain-store';
 import { usePlaybackSpeedStore, SPEED_OPTIONS } from '@/store/playback-speed-store';
+import { useLoudnessEnhancerStore } from '@/store/loudness-enhancer-store';
+import { audioEngine } from '@/services/audio-engine';
 import Slider from '@react-native-community/slider';
 import {
-  Music, Gauge, Volume2, AudioLines, RotateCcw,
+  Music, Gauge, Volume2, AudioLines, RotateCcw, Volume,
 } from 'lucide-react-native';
 
 export default function AudioFeaturesScreen() {
@@ -15,6 +17,7 @@ export default function AudioFeaturesScreen() {
   const eq = useEqualizerStore();
   const rg = useReplayGainStore();
   const speed = usePlaybackSpeedStore();
+  const le = useLoudnessEnhancerStore();
 
   return (
     <View className="flex-1" style={{ backgroundColor: colors.background }}>
@@ -253,12 +256,61 @@ export default function AudioFeaturesScreen() {
             </View>
           </View>
 
+          {/* Loudness Enhancer */}
+          <View>
+            <SectionHeader title="Loudness Enhancer" />
+            <View className="rounded-3xl overflow-hidden p-4" style={{ backgroundColor: colors.surface }}>
+              <View className="flex-row items-center justify-between mb-4">
+                <View className="flex-row items-center gap-2">
+                  <Volume size={18} color={colors.accent} />
+                  <Text className="text-sm font-semibold" style={{ color: colors.text }}>Loudness Enhancer</Text>
+                </View>
+                <Pressable
+                  onPress={() => { le.setEnabled(!le.enabled); audioEngine.setLoudnessEnabled(!le.enabled); }}
+                  className="w-14 h-8 rounded-full items-center justify-end px-1"
+                  style={{ backgroundColor: le.enabled ? colors.accent : colors.card }}
+                >
+                  <View
+                    className="w-6 h-6 rounded-full"
+                    style={{ backgroundColor: '#fff', transform: [{ translateX: le.enabled ? 0 : -22 }] }}
+                  />
+                </Pressable>
+              </View>
+              {le.enabled && (
+                <>
+                  <View className="flex-row items-center justify-between mb-3">
+                    <Text className="text-sm font-medium" style={{ color: colors.text }}>
+                      Level: {le.level} dB
+                    </Text>
+                  </View>
+                  <Slider
+                    value={le.level / 12}
+                    onValueChange={(val) => { const v = Math.round(val * 12); le.setLevel(v); audioEngine.setLoudnessLevel(v); }}
+                    minimumValue={0}
+                    maximumValue={1}
+                    minimumTrackTintColor={colors.accent}
+                    maximumTrackTintColor={colors.border}
+                    thumbTintColor={colors.accent}
+                    style={{ width: '100%', height: 40 }}
+                  />
+                  <View className="flex-row justify-between px-1">
+                    <Text className="text-xs" style={{ color: colors.textMuted }}>Subtle</Text>
+                    <Text className="text-xs" style={{ color: colors.textMuted }}>Maximum</Text>
+                  </View>
+                  <Text className="text-xs mt-2" style={{ color: colors.textMuted }}>
+                    Boosts perceived loudness using bass and treble contour
+                  </Text>
+                </>
+              )}
+            </View>
+          </View>
+
           {/* Reset */}
           <Pressable
             onPress={() => {
               Alert.alert('Reset Audio', 'Reset all audio settings to defaults?', [
                 { text: 'Cancel', style: 'cancel' },
-                { text: 'Reset', style: 'destructive', onPress: () => { eq.reset(); rg.setEnabled(false); speed.setSpeed(1.0); } },
+                { text: 'Reset', style: 'destructive', onPress: () => { eq.reset(); rg.setEnabled(false); speed.setSpeed(1.0); le.setEnabled(false); le.setLevel(6); audioEngine.setLoudnessEnabled(false); audioEngine.setLoudnessLevel(6); } },
               ]);
             }}
             className="flex-row items-center justify-center gap-2 py-4 rounded-3xl"

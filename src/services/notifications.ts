@@ -54,25 +54,30 @@ export async function initializeNotifications(): Promise<void> {
 export async function showNowPlayingNotification(track: Song, isPlaying: boolean): Promise<void> {
   if (Platform.OS !== 'android') return;
 
+  const notificationContent: Notifications.NotificationContentInput = {
+    title: track.title,
+    subtitle: track.artist,
+    data: { action: '' },
+    autoDismiss: false,
+    sticky: true,
+    ...(Platform.OS === 'android' ? { channelId: NOTIFICATION_CHANNEL_ID } : {}),
+    ...(Platform.OS === 'android'
+      ? {
+          actions: [
+            { identifier: 'previous', title: 'Previous' },
+            { identifier: 'play-pause', title: isPlaying ? 'Pause' : 'Play' },
+            { identifier: 'next', title: 'Next' },
+          ],
+        }
+      : {}),
+  };
+
+  if (track.artwork) {
+    (notificationContent as any).image = track.artwork;
+  }
+
   await Notifications.scheduleNotificationAsync({
-    content: {
-      title: track.title,
-      subtitle: track.artist,
-      data: { action: '' },
-      autoDismiss: false,
-      sticky: true,
-      ...(track.artwork ? { sound: undefined } : {}),
-      ...(Platform.OS === 'android' ? { channelId: NOTIFICATION_CHANNEL_ID } : {}),
-      ...(Platform.OS === 'android'
-        ? {
-            actions: [
-              { identifier: 'previous', title: 'Previous' },
-              { identifier: 'play-pause', title: isPlaying ? 'Pause' : 'Play' },
-              { identifier: 'next', title: 'Next' },
-            ],
-          }
-        : {}),
-    } as any,
+    content: notificationContent,
     trigger: null,
     identifier: NOTIFICATION_ID,
   });
@@ -81,24 +86,30 @@ export async function showNowPlayingNotification(track: Song, isPlaying: boolean
 export async function updateNotificationPlaybackState(isPlaying: boolean, track: Song | null): Promise<void> {
   if (Platform.OS !== 'android' || !track) return;
 
+  const notificationContent: Notifications.NotificationContentInput = {
+    title: track.title,
+    subtitle: track.artist,
+    data: { action: '' },
+    autoDismiss: false,
+    sticky: true,
+    ...(Platform.OS === 'android' ? { channelId: NOTIFICATION_CHANNEL_ID } : {}),
+    ...(Platform.OS === 'android'
+      ? {
+          actions: [
+            { identifier: 'previous', title: 'Previous' },
+            { identifier: 'play-pause', title: isPlaying ? 'Pause' : 'Play' },
+            { identifier: 'next', title: 'Next' },
+          ],
+        }
+      : {}),
+  };
+
+  if (track.artwork) {
+    (notificationContent as any).image = track.artwork;
+  }
+
   await Notifications.scheduleNotificationAsync({
-    content: {
-      title: track.title,
-      subtitle: track.artist,
-      data: { action: '' },
-      autoDismiss: false,
-      sticky: true,
-      ...(Platform.OS === 'android' ? { channelId: NOTIFICATION_CHANNEL_ID } : {}),
-      ...(Platform.OS === 'android'
-        ? {
-            actions: [
-              { identifier: 'previous', title: 'Previous' },
-              { identifier: 'play-pause', title: isPlaying ? 'Pause' : 'Play' },
-              { identifier: 'next', title: 'Next' },
-            ],
-          }
-        : {}),
-    } as any,
+    content: notificationContent,
     trigger: null,
     identifier: NOTIFICATION_ID,
   });

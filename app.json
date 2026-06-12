@@ -52,7 +52,13 @@
           }
         }
       ],
-      "expo-video",
+      [
+        "expo-video",
+        {
+          "supportsPictureInPicture": true,
+          "supportsBackgroundPlayback": true
+        }
+      ],
       "expo-image",
       [
         "expo-media-library",
@@ -76,6 +82,8 @@
         }
       ],
       "expo-asset",
+      "expo-background-fetch",
+      "expo-task-manager",
       [
         "react-native-audio-api",
         {

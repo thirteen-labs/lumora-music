@@ -3,12 +3,12 @@ import { audioEngine } from '@/services/audio-engine';
 import { setAudioModeAsync } from 'expo-audio';
 import {
   showNowPlayingNotification,
+  dismissNowPlayingNotification,
 } from '@/services/notifications';
 
 let crossfadeEnabled = false;
 let crossfadeDuration = 5;
 let currentVolume = 1;
-let crossfadeCancelled = false;
 
 const playerAdapter = {
   get playing(): boolean {
@@ -48,10 +48,27 @@ const playerAdapter = {
   seekTo(position: number) {
     audioEngine.seekTo(position);
   },
-  replace(_uri: string) {},
-  remove() {},
-  setActiveForLockScreen(_active: boolean, _meta: unknown, _opts: unknown) {},
-  clearLockScreenControls() {},
+  replace(uri: string) {
+    audioEngine.loadTrack(uri);
+  },
+  remove() {
+    audioEngine.stop();
+  },
+  setActiveForLockScreen(active: boolean, meta: { title?: string; artist?: string; artwork?: string } | null) {
+    if (active && meta) {
+      const fakeTrack: Song = {
+        id: 'lockscreen', title: meta.title ?? '', artist: meta.artist ?? '',
+        artwork: meta.artwork ?? null, uri: '', duration: 0, album: '', albumId: '',
+        fileSize: 0, dateAdded: 0, genre: null, bitrate: null, sampleRate: null,
+      };
+      showNowPlayingNotification(fakeTrack, audioEngine.getState().playing);
+    } else {
+      dismissNowPlayingNotification();
+    }
+  },
+  clearLockScreenControls() {
+    dismissNowPlayingNotification();
+  },
 };
 
 export function getPlayer() {
@@ -115,25 +132,8 @@ export async function loadTrack(track: Song): Promise<void> {
 }
 
 async function crossfadeToTrack(track: Song): Promise<void> {
-  crossfadeCancelled = false;
-
-  const fadeSteps = 20;
-  const stepDuration = (crossfadeDuration * 1000) / fadeSteps;
-
-  for (let i = 1; i <= fadeSteps; i++) {
-    if (crossfadeCancelled) return;
-    const progress = i / fadeSteps;
-    audioEngine.setVolume(1 - progress);
-    currentVolume = progress;
-    await new Promise((resolve) => setTimeout(resolve, stepDuration));
-  }
-
-  if (crossfadeCancelled) return;
-
-  await audioEngine.loadTrack(track.uri);
-  audioEngine.setVolume(1);
-  currentVolume = 1;
-  audioEngine.play();
+  await audioEngine.startCrossfade(track.uri, crossfadeDuration);
+  setLockScreenMetadata(track);
 }
 
 export async function pausePlayback(): Promise<void> {
@@ -157,7 +157,9 @@ export function setLockScreenMetadata(track: Song): void {
   showNowPlayingNotification(track, audioEngine.getState().playing);
 }
 
-export function clearLockScreenControls(): void {}
+export function clearLockScreenControls(): void {
+  dismissNowPlayingNotification();
+}
 
 export function getPlayerState() {
   const state = audioEngine.getState();
@@ -171,6 +173,5 @@ export function getPlayerState() {
 }
 
 export function destroyPlayer(): void {
-  crossfadeCancelled = true;
   audioEngine.destroy();
 }

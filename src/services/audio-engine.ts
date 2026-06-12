@@ -48,6 +48,11 @@ class AudioEngine {
   private _seeking = false;
   private _eqEnabled = false;
   private _currentTrackUri: string | null = null;
+  private _crossfading = false;
+  private _crossfadeInterval: ReturnType<typeof setInterval> | null = null;
+  private loudnessFilters: BiquadFilterNode[] = [];
+  private _loudnessEnabled = false;
+  private _loudnessLevel = 6;
 
   private stateCallbacks: Set<StateChangeCallback> = new Set();
   private positionInterval: ReturnType<typeof setInterval> | null = null;
@@ -90,6 +95,19 @@ class AudioEngine {
     this.crossfadeGain = this.context.createGain();
     this.crossfadeGain.gain.value = 0;
 
+    this.loudnessFilters = [
+      { freq: 100, type: 'lowshelf' as const, q: 0.7 },
+      { freq: 3000, type: 'peaking' as const, q: 1.0 },
+      { freq: 10000, type: 'highshelf' as const, q: 0.7 },
+    ].map(({ freq, type, q }) => {
+      const filter = this.context!.createBiquadFilter();
+      filter.type = type;
+      filter.frequency.value = freq;
+      filter.Q.value = q;
+      filter.gain.value = 0;
+      return filter;
+    });
+
     for (let i = 0; i < this.eqFilters.length - 1; i++) {
       this.eqFilters[i].connect(this.eqFilters[i + 1]);
     }
@@ -97,7 +115,20 @@ class AudioEngine {
     lastEq.connect(this.bassBoostFilter);
     this.bassBoostFilter.connect(this.replayGainNode);
     this.replayGainNode.connect(this.volumeGain);
-    this.volumeGain.connect(this.balancePanner);
+
+    let lastLoudness: BiquadFilterNode | null = null;
+    for (const filter of this.loudnessFilters) {
+      if (lastLoudness) {
+        lastLoudness.connect(filter);
+      }
+      lastLoudness = filter;
+    }
+    if (lastLoudness) {
+      lastLoudness.connect(this.balancePanner);
+    } else {
+      this.volumeGain.connect(this.balancePanner);
+    }
+
     this.balancePanner.connect(this.mainGain);
     this.mainGain.connect(this.context.destination);
   }
@@ -346,6 +377,24 @@ class AudioEngine {
     }
   }
 
+  setLoudnessEnabled(enabled: boolean): void {
+    this._loudnessEnabled = enabled;
+    const gain = enabled ? this._loudnessLevel : 0;
+    this.loudnessFilters.forEach((filter, i) => {
+      if (filter) {
+        const boosts = [gain * 0.8, gain * 0.5, gain * 0.3];
+        filter.gain.setValueAtTime(boosts[i] ?? 0, this.context?.currentTime ?? 0);
+      }
+    });
+  }
+
+  setLoudnessLevel(level: number): void {
+    this._loudnessLevel = level;
+    if (this._loudnessEnabled) {
+      this.setLoudnessEnabled(true);
+    }
+  }
+
   getState(): AudioEngineState {
     return {
       playing: this._playing,
@@ -364,9 +413,106 @@ class AudioEngine {
     return this._duration;
   }
 
+  async startCrossfade(newUri: string, durationSec: number): Promise<void> {
+    if (!this.context || !this.currentBuffer || !this.currentSource) return;
+    if (this._crossfading) return;
+
+    this._crossfading = true;
+
+    try {
+      const newBuffer = await this.context.decodeAudioData(newUri);
+      if (!newBuffer || !this.context) {
+        this._crossfading = false;
+        return;
+      }
+
+      this.crossfadeBuffer = newBuffer;
+
+      const newGain = this.context.createGain();
+      newGain.gain.value = 0;
+      this.crossfadeGain = newGain;
+
+      const oldGain = this.context.createGain();
+      oldGain.gain.value = 1;
+
+      this.currentSource.disconnect();
+      this.currentSource.connect(oldGain);
+      oldGain.connect(this.eqFilters[0]);
+
+      const crossfadeSource = this.context.createBufferSource({ pitchCorrection: false });
+      crossfadeSource.buffer = newBuffer;
+      crossfadeSource.playbackRate.value = this._speed;
+      crossfadeSource.connect(newGain);
+      newGain.connect(this.eqFilters[0]);
+      crossfadeSource.start(0, 0);
+
+      this.crossfadeSource = crossfadeSource;
+
+      const steps = 20;
+      const stepMs = (durationSec * 1000) / steps;
+      let step = 0;
+
+      this._crossfadeInterval = setInterval(() => {
+        step++;
+        const progress = step / steps;
+
+        if (this.context) {
+          oldGain.gain.setValueAtTime(1 - progress, this.context.currentTime);
+          newGain.gain.setValueAtTime(progress, this.context.currentTime);
+        }
+
+        if (step >= steps) {
+          if (this._crossfadeInterval) {
+            clearInterval(this._crossfadeInterval);
+            this._crossfadeInterval = null;
+          }
+
+          try {
+            oldGain.disconnect();
+            this.currentSource?.onEnded && (this.currentSource.onEnded = null);
+            this.currentSource?.disconnect();
+            this.currentSource?.stop();
+          } catch {}
+
+          this.currentSource = this.crossfadeSource;
+          this.crossfadeSource = null;
+          this.currentBuffer = newBuffer;
+          this._duration = newBuffer.duration;
+          this._currentTime = 0;
+          this._startOffset = 0;
+          this._startContextTime = this.context?.currentTime ?? 0;
+          this._crossfading = false;
+
+          this.currentSource!.onEnded = () => {
+            if (this._playing && !this._seeking) {
+              this._playing = false;
+              this._currentTime = this._duration;
+              this.stopPositionTracking();
+              this.emitState();
+            }
+          };
+
+          this.emitState();
+        }
+      }, stepMs);
+    } catch (e) {
+      console.warn('Crossfade failed:', e);
+      this._crossfading = false;
+    }
+  }
+
+  isCrossfading(): boolean {
+    return this._crossfading;
+  }
+
   destroy(): void {
     this.stopCurrentSource();
     this.stopPositionTracking();
+    if (this._crossfadeInterval) {
+      clearInterval(this._crossfadeInterval);
+      this._crossfadeInterval = null;
+    }
+    this._crossfading = false;
     if (this.context) {
       this.context.close();
       this.context = null;
@@ -379,6 +525,8 @@ class AudioEngine {
     this.mainGain = null;
     this.crossfadeGain = null;
     this.currentBuffer = null;
+    this.crossfadeBuffer = null;
+    this.loudnessFilters = [];
     this.stateCallbacks.clear();
   }
 }

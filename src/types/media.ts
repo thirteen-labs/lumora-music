@@ -74,3 +74,13 @@ export const SORT_OPTIONS: SortOption[] = [
 ];
 
 export type MediaScanStatus = 'idle' | 'scanning' | 'complete' | 'error';
+
+export interface Playlist {
+  id: string;
+  name: string;
+  description: string;
+  songIds: string[];
+  createdAt: number;
+  updatedAt: number;
+  artwork: string | null;
+}

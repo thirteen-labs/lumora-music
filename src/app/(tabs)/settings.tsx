@@ -260,6 +260,13 @@ export default function SettingsScreen() {
                 colors={colors}
               />
               <SettingRow
+                icon={ListMusic}
+                label="My Playlists"
+                subtitle="Create and manage playlists"
+                onPress={() => router.push('/playlists' as any)}
+                colors={colors}
+              />
+              <SettingRow
                 icon={Activity}
                 label="Statistics"
                 subtitle="Play counts & listening stats"
@@ -338,7 +345,6 @@ export default function SettingsScreen() {
                 subtitle="Video swipe gestures"
                 onPress={() => router.push('/gesture-controls' as any)}
                 colors={colors}
-                comingSoon
               />
             </View>
           </View>

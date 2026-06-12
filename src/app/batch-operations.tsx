@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import { View, Text, ScrollView, Pressable, Alert } from 'react-native';
 import { useTheme } from '@/hooks/use-theme';
 import { TopBar } from '@/components/top-bar';
@@ -6,12 +6,18 @@ import { SectionHeader } from '@/components/section-header';
 import { useMusicStore } from '@/store/music-store';
 import { useFavoritesStore } from '@/store/favorites-store';
 import { usePlayerStore } from '@/store/player-store';
+import { usePlaylistStore } from '@/store/playlist-store';
 import { useRouter } from 'expo-router';
 import {
   SquareCheck, Square, Trash2, Heart, Share2, Music,
-  ListPlus,
+  ListPlus, ListMusic,
 } from 'lucide-react-native';
 import { deleteFiles, shareFiles } from '@/services/file-operations';
+import {
+  BottomSheetModal,
+  BottomSheetBackdrop,
+  BottomSheetScrollView,
+} from '@gorhom/bottom-sheet';
 
 export default function BatchOperationsScreen() {
   const { colors } = useTheme();
@@ -24,6 +30,8 @@ export default function BatchOperationsScreen() {
 
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [operating, setOperating] = useState(false);
+  const playlistSheetRef = useRef<BottomSheetModal>(null);
+  const { playlists, addSongsToPlaylist } = usePlaylistStore();
 
   const toggleSelect = (id: string) => {
     setSelected((prev) => {
@@ -114,6 +122,18 @@ export default function BatchOperationsScreen() {
     }
   };
 
+  const handleAddToPlaylist = (playlistId: string) => {
+    addSongsToPlaylist(playlistId, Array.from(selected));
+    const playlist = playlists.find((p) => p.id === playlistId);
+    Alert.alert('Added', `${selected.size} tracks added to "${playlist?.name ?? 'playlist'}"`);
+    setSelected(new Set());
+    playlistSheetRef.current?.dismiss();
+  };
+
+  const renderBackdrop = (props: any) => (
+    <BottomSheetBackdrop {...props} disappearsOnIndex={-1} appearsOnIndex={0} opacity={0.5} />
+  );
+
   return (
     <View className="flex-1" style={{ backgroundColor: colors.background }}>
       <TopBar
@@ -143,6 +163,11 @@ export default function BatchOperationsScreen() {
                 <ActionButton
                   icon={Heart} label="Add to Favorites" count={selected.size}
                   onPress={handleFavorite} colors={colors}
+                  disabled={operating}
+                />
+                <ActionButton
+                  icon={ListMusic} label="Add to Playlist" count={selected.size}
+                  onPress={() => playlistSheetRef.current?.present()} colors={colors}
                   disabled={operating}
                 />
                 <ActionButton
@@ -196,6 +221,50 @@ export default function BatchOperationsScreen() {
           </View>
         </View>
       </ScrollView>
+      <BottomSheetModal
+        ref={playlistSheetRef}
+        snapPoints={['40%', '70%']}
+        backdropComponent={renderBackdrop}
+        backgroundStyle={{ backgroundColor: colors.surface }}
+        handleIndicatorStyle={{ backgroundColor: colors.textMuted }}
+      >
+        <BottomSheetScrollView contentContainerStyle={{ padding: 20 }}>
+          <Text style={{ fontSize: 17, fontWeight: '600', color: colors.text, marginBottom: 16 }}>
+            Add to Playlist
+          </Text>
+          {playlists.length === 0 ? (
+            <View style={{ alignItems: 'center', paddingVertical: 32 }}>
+              <ListMusic size={32} color={colors.textMuted} />
+              <Text style={{ fontSize: 14, color: colors.textMuted, marginTop: 8 }}>
+                No playlists yet. Create one first.
+              </Text>
+            </View>
+          ) : (
+            playlists.map((playlist) => (
+              <Pressable
+                key={playlist.id}
+                onPress={() => handleAddToPlaylist(playlist.id)}
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 12,
+                  paddingVertical: 14,
+                  paddingHorizontal: 16,
+                  borderRadius: 16,
+                  marginBottom: 8,
+                  backgroundColor: colors.card,
+                }}
+              >
+                <ListMusic size={20} color={colors.accent} />
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 15, fontWeight: '500', color: colors.text }}>{playlist.name}</Text>
+                  <Text style={{ fontSize: 12, color: colors.textMuted }}>{playlist.songIds.length} songs</Text>
+                </View>
+              </Pressable>
+            ))
+          )}
+        </BottomSheetScrollView>
+      </BottomSheetModal>
     </View>
   );
 }

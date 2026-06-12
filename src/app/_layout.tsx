@@ -112,6 +112,18 @@ function RootStack() {
           name="gesture-controls"
           options={{ animation: 'slide_from_right' }}
         />
+        <Stack.Screen
+          name="playlists"
+          options={{ animation: 'slide_from_right' }}
+        />
+        <Stack.Screen
+          name="playlist/[id]"
+          options={{ animation: 'slide_from_right' }}
+        />
+        <Stack.Screen
+          name="lyrics-editor"
+          options={{ animation: 'slide_from_right' }}
+        />
       </Stack>
     </>
   );

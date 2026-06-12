@@ -1,4 +1,5 @@
 const LYRICS_API = 'https://api.lyrics.ovh/v1';
+const LRCLIB_API = 'https://lrclib.net/api';
 
 export interface SyncedLine {
   time: number;
@@ -53,40 +54,83 @@ export function getSyncedLine(synced: SyncedLine[], position: number): number {
   return idx;
 }
 
-export async function fetchLyrics(artist: string, title: string): Promise<LyricsResult | null> {
-  const key = cacheKey(artist, title);
-  if (cache.has(key)) return cache.get(key) ?? null;
+async function fetchFromLrclib(artist: string, title: string): Promise<LyricsResult | null> {
+  try {
+    const cleanArtist = artist.replace(/[-–—].*$/, '').trim();
+    const cleanTitle = title.replace(/\s*\(.*?\)\s*/g, '').replace(/\s*\[.*?\]\s*/g, '').trim();
 
+    const response = await fetch(
+      `${LRCLIB_API}/get?artist_name=${encodeURIComponent(cleanArtist)}&track_name=${encodeURIComponent(cleanTitle)}`,
+      { signal: AbortSignal.timeout(5000) }
+    );
+
+    if (!response.ok) return null;
+
+    const data = await response.json();
+    const syncedLrc = data.syncedLyrics;
+    const plainLyrics = data.plainLyrics;
+
+    if (syncedLrc) {
+      const synced = parseLRC(syncedLrc);
+      const plainText = stripLRCMetadata(syncedLrc);
+      return { lyrics: plainText, synced, source: 'lrclib' };
+    }
+
+    if (plainLyrics) {
+      return { lyrics: plainLyrics, synced: [], source: 'lrclib' };
+    }
+
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+async function fetchFromLyricsOvh(artist: string, title: string): Promise<LyricsResult | null> {
   try {
     const cleanArtist = artist.replace(/[-–—].*$/, '').trim();
     const cleanTitle = title.replace(/\s*\(.*?\)\s*/g, '').replace(/\s*\[.*?\]\s*/g, '').trim();
 
     const response = await fetch(
       `${LYRICS_API}/${encodeURIComponent(cleanArtist)}/${encodeURIComponent(cleanTitle)}`,
+      { signal: AbortSignal.timeout(5000) }
     );
 
-    if (!response.ok) {
-      cache.set(key, null);
-      return null;
-    }
+    if (!response.ok) return null;
 
     const data = await response.json();
     const raw: string = data.lyrics ?? '';
     const synced = parseLRC(raw);
     const plainText = stripLRCMetadata(raw);
 
-    const lyrics: LyricsResult = {
+    return {
       lyrics: plainText,
       synced,
       source: 'lyrics.ovh',
     };
-
-    cache.set(key, lyrics);
-    return lyrics;
   } catch {
-    cache.set(key, null);
     return null;
   }
+}
+
+export async function fetchLyrics(artist: string, title: string): Promise<LyricsResult | null> {
+  const key = cacheKey(artist, title);
+  if (cache.has(key)) return cache.get(key) ?? null;
+
+  const lrclibResult = await fetchFromLrclib(artist, title);
+  if (lrclibResult) {
+    cache.set(key, lrclibResult);
+    return lrclibResult;
+  }
+
+  const ovhResult = await fetchFromLyricsOvh(artist, title);
+  if (ovhResult) {
+    cache.set(key, ovhResult);
+    return ovhResult;
+  }
+
+  cache.set(key, null);
+  return null;
 }
 
 export function parseSyncedLyrics(lrcContent: string): LyricsResult {

@@ -9,6 +9,9 @@ import { useQueuePersistStore, reconstructQueue } from '@/store/queue-persist-st
 import { initializeNotifications } from '@/services/notifications';
 import { syncEqualizerToEngine } from '@/store/equalizer-store';
 import { syncReplayGainToEngine } from '@/store/replay-gain-store';
+import { initBackgroundScan } from '@/services/background-scanner';
+import { useLoudnessEnhancerStore } from '@/store/loudness-enhancer-store';
+import { audioEngine } from '@/services/audio-engine';
 
 function PlayerSync() {
   useTrackPlayerSync();
@@ -43,6 +46,12 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         await initializeNotifications();
       } catch (e) {
         console.warn('Notification setup failed:', e);
+      }
+
+      try {
+        await initBackgroundScan();
+      } catch (e) {
+        console.warn('Background scan setup failed:', e);
       }
 
       // Restore queue from persistence
@@ -87,6 +96,9 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     syncEqualizerToEngine();
     syncReplayGainToEngine();
+    const le = useLoudnessEnhancerStore.getState();
+    audioEngine.setLoudnessEnabled(le.enabled);
+    audioEngine.setLoudnessLevel(le.level);
   }, []);
 
   if (!ready) {

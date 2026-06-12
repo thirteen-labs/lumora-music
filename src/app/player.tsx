@@ -21,6 +21,7 @@ import {
   LayoutGrid,
   ChevronUp,
   ChevronDown as ChevronDownIcon,
+  PenLine,
 } from 'lucide-react-native';
 import { formatDuration } from '@/utils/cn';
 import Slider from '@react-native-community/slider';
@@ -314,9 +315,27 @@ export default function PlayerScreen() {
         handleIndicatorStyle={{ backgroundColor: colors.textMuted }}
       >
         <BottomSheetScrollView contentContainerStyle={{ padding: 20, paddingBottom: 32 }}>
-          <Text style={{ fontSize: 17, fontWeight: '600', color: colors.text, marginBottom: 16 }}>
-            Lyrics
-          </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+            <Text style={{ fontSize: 17, fontWeight: '600', color: colors.text }}>
+              Lyrics
+            </Text>
+            <Pressable
+              onPress={() => {
+                lyricsSheetRef.current?.dismiss();
+                router.push({
+                  pathname: '/lyrics-editor',
+                  params: {
+                    title: currentTrack?.title ?? '',
+                    artist: currentTrack?.artist ?? '',
+                  },
+                });
+              }}
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 6, paddingHorizontal: 10, borderRadius: 12, backgroundColor: colors.card }}
+            >
+              <PenLine size={14} color={colors.accent} />
+              <Text style={{ fontSize: 12, fontWeight: '600', color: colors.accent }}>Edit</Text>
+            </Pressable>
+          </View>
           {isLyricsLoading ? (
             <View style={{ alignItems: 'center', paddingVertical: 40 }}>
               <ActivityIndicator size="large" color={colors.accent} />

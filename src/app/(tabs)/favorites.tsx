@@ -9,12 +9,14 @@ import { Heart } from 'lucide-react-native';
 import { Artwork } from '@/components/artwork';
 import { formatDuration } from '@/utils/cn';
 import { useState } from 'react';
+import { useRouter } from 'expo-router';
 
 export default function FavoritesScreen() {
   const { colors } = useTheme();
   const { songs, videos } = useFavoritesStore();
   const [tab, setTab] = useState<'songs' | 'videos'>('songs');
   const { bottomSheetRef, present, song } = useSongContextMenu();
+  const router = useRouter();
 
   return (
     <View className="flex-1" style={{ backgroundColor: colors.background }}>
@@ -70,6 +72,7 @@ export default function FavoritesScreen() {
           contentContainerStyle={{ paddingBottom: 120 }}
           renderItem={({ item }) => (
             <Pressable
+              onPress={() => router.push({ pathname: '/video-player', params: { uri: item.uri, title: item.title } })}
               className="flex-row items-center gap-3 px-4 py-3"
               style={{ borderBottomWidth: 1, borderBottomColor: colors.border }}
             >

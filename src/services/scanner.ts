@@ -9,6 +9,7 @@ import {
   getArtwork,
   getMetadata,
 } from '@missingcore/react-native-metadata-retriever';
+import * as FileSystem from 'expo-file-system';
 import type { Song, Album as LumoraAlbum, Artist, Genre, Video, MediaScanStatus } from '@/types/media';
 
 const METADATA_FIELDS = [
@@ -34,6 +35,16 @@ export function getCachedVideos(): Video[] { return cachedVideos; }
 export async function requestPermissions(): Promise<boolean> {
   const { status } = await requestPermissionsAsync();
   return status === 'granted';
+}
+
+async function getFileSize(uri: string): Promise<number> {
+  try {
+    const info = await FileSystem.getInfoAsync(uri);
+    if (info.exists && 'size' in info) {
+      return info.size;
+    }
+  } catch {}
+  return 0;
 }
 
 async function parseAudioMetadata(uri: string): Promise<{
@@ -84,19 +95,21 @@ async function fetchSongs(): Promise<Song[]> {
     const resolved = await Promise.all(
       result.assets.map(async (asset) => {
         const info = await getAssetInfoAsync(asset.id);
-        const meta = await parseAudioMetadata(info.uri ?? asset.uri);
+        const uri = info.uri ?? asset.uri;
+        const meta = await parseAudioMetadata(uri);
+        let fileSize = await getFileSize(uri);
 
         return {
           id: info.id,
-          uri: info.uri ?? asset.uri,
+          uri,
           title: meta.title ?? asset.filename.replace(/\.[^/.]+$/, ''),
           artist: meta.artist ?? 'Unknown Artist',
           album: meta.album ?? 'Unknown Album',
           albumId: info.id,
           duration: info.duration ?? 0,
-          fileSize: 0,
+          fileSize,
           dateAdded: info.creationTime ?? 0,
-          artwork: meta.artwork ?? info.uri ?? asset.uri,
+          artwork: meta.artwork ?? uri ?? asset.uri,
           genre: meta.genre,
           bitrate: meta.bitrate,
           sampleRate: meta.sampleRate,
@@ -131,14 +144,16 @@ async function fetchVideos(): Promise<Video[]> {
     const resolved = await Promise.all(
       result.assets.map(async (asset) => {
         const info = await getAssetInfoAsync(asset.id);
+        const uri = info.uri ?? asset.uri;
+        let fileSize = await getFileSize(uri);
         return {
           id: info.id,
-          uri: info.uri ?? asset.uri,
+          uri,
           title: info.filename?.replace(/\.[^/.]+$/, '') ?? asset.filename.replace(/\.[^/.]+$/, ''),
           duration: info.duration ?? asset.duration ?? 0,
-          fileSize: 0,
+          fileSize,
           dateAdded: info.creationTime ?? asset.creationTime ?? 0,
-          thumbnail: info.uri ?? asset.uri,
+          thumbnail: uri ?? asset.uri,
           width: info.width ?? asset.width,
           height: info.height ?? asset.height,
         };

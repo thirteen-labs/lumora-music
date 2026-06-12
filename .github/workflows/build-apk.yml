@@ -77,8 +77,15 @@ jobs:
       - name: Make gradlew executable
         run: chmod +x android/gradlew
 
+      - name: Bundle JS for Android (verify before Gradle)
+        run: npx expo export --platform android
+        env:
+          NODE_OPTIONS: --max_old_space_size=8192
+
       - name: Build APK
-        run: cd android && ./gradlew assembleRelease
+        run: cd android && ./gradlew assembleRelease --no-daemon --stacktrace
+        env:
+          NODE_OPTIONS: --max_old_space_size=8192
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
