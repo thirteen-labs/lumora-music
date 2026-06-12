@@ -3,29 +3,32 @@ import { useTheme } from '@/hooks/use-theme';
 import { useFavoritesStore } from '@/store/favorites-store';
 import { usePlayerStore } from '@/store/player-store';
 import { useVideoStore } from '@/store/video-store';
+import { useMusicStore } from '@/store/music-store';
 import { TopBar } from '@/components/top-bar';
 import { MiniPlayer } from '@/components/mini-player';
 import { SongContextMenu, useSongContextMenu } from '@/components/song-context-menu';
 import { Heart } from 'lucide-react-native';
 import { Artwork } from '@/components/artwork';
 import { formatDuration } from '@/utils/cn';
-import { useState, useEffect } from 'react';
-import { useRouter } from 'expo-router';
+import { useState, useEffect, useCallback } from 'react';
+import { useRouter, useFocusEffect } from 'expo-router';
 
 export default function FavoritesScreen() {
   const { colors } = useTheme();
-  const { songs, videos, refreshFavoriteVideos } = useFavoritesStore();
+  const { songs, videos, hydrateFavorites } = useFavoritesStore();
   const [tab, setTab] = useState<'songs' | 'videos'>('songs');
   const { bottomSheetRef, present, song } = useSongContextMenu();
   const router = useRouter();
 
-  useEffect(() => {
-    const allVideos = useVideoStore.getState().videos;
-    if (allVideos.length > 0) {
-      refreshFavoriteVideos(allVideos);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      const allSongs = useMusicStore.getState().songs;
+      const allVideos = useVideoStore.getState().videos;
+      if (allSongs.length > 0 || allVideos.length > 0) {
+        hydrateFavorites(allSongs, allVideos);
+      }
+    }, [hydrateFavorites])
+  );
 
   return (
     <View className="flex-1" style={{ backgroundColor: colors.background }}>

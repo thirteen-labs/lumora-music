@@ -2,7 +2,7 @@
 
 ## Vision
 
-Lumora is a premium offline-first music and video player built with Expo SDK 55, focused on:
+Lumora is a premium offline-first music and video player built with Expo SDK 56, focused on:
 
 - Blazing-fast local media indexing
 - Beautiful color-aware UI
@@ -17,7 +17,7 @@ Lumora is a premium offline-first music and video player built with Expo SDK 55,
 
 ## Core
 
-- Expo SDK 55
+- Expo SDK 56
 - React Native
 - TypeScript
 - Expo Router
@@ -34,23 +34,21 @@ Lumora is a premium offline-first music and video player built with Expo SDK 55,
 
 ## Playback
 
-- @rntp/player
+- react-native-audio-api
 - expo-video
 
 ## Media Discovery
 
 - expo-media-library
+- @missingcore/react-native-metadata-retriever
 - expo-file-system
-- music-metadata-browser
 
 ## UI
 
 - NativeWind
-- Moti
 - FlashList
 - Bottom Sheet
 - Expo Blur
-- Expo Haptics
 
 ## Theme Engine
 
@@ -66,16 +64,14 @@ npm install \
 expo-router \
 zustand \
 immer \
-@rntp/player \
-music-metadata-browser \
+react-native-audio-api \
+@missingcore/react-native-metadata-retriever \
 react-native-image-colors \
 @shopify/flash-list \
 @gorhom/bottom-sheet \
-moti \
 clsx \
 tailwind-merge \
 lucide-react-native \
-date-fns \
 nativewind \
 tailwindcss
 ```
@@ -88,7 +84,6 @@ expo-media-library \
 expo-file-system \
 expo-image \
 expo-blur \
-expo-haptics \
 react-native-safe-area-context \
 react-native-screens \
 react-native-gesture-handler \
@@ -387,7 +382,7 @@ Media Scanner
 
 Music Player
 
-- RTNP integration
+- react-native-audio-api integration
 - Queue
 - Notifications
 

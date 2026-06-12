@@ -51,6 +51,14 @@ export async function initializeNotifications(): Promise<void> {
   notificationInitialized = true;
 }
 
+function resolveArtworkUri(artwork: string | null): string | null {
+  if (!artwork) return null;
+  if (artwork.startsWith('http://') || artwork.startsWith('https://') || artwork.startsWith('file://') || artwork.startsWith('content://')) {
+    return artwork;
+  }
+  return `file://${artwork}`;
+}
+
 export async function showNowPlayingNotification(track: Song, isPlaying: boolean): Promise<void> {
   if (Platform.OS !== 'android') return;
 
@@ -72,8 +80,9 @@ export async function showNowPlayingNotification(track: Song, isPlaying: boolean
       : {}),
   };
 
-  if (track.artwork) {
-    (notificationContent as any).image = track.artwork;
+  const artworkUri = resolveArtworkUri(track.artwork);
+  if (artworkUri) {
+    (notificationContent as any).image = artworkUri;
   }
 
   await Notifications.scheduleNotificationAsync({
@@ -104,8 +113,9 @@ export async function updateNotificationPlaybackState(isPlaying: boolean, track:
       : {}),
   };
 
-  if (track.artwork) {
-    (notificationContent as any).image = track.artwork;
+  const artworkUri = resolveArtworkUri(track.artwork);
+  if (artworkUri) {
+    (notificationContent as any).image = artworkUri;
   }
 
   await Notifications.scheduleNotificationAsync({

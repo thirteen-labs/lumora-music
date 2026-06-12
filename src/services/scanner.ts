@@ -47,12 +47,17 @@ async function getFileSize(uri: string): Promise<number> {
   return 0;
 }
 
-async function getAssetFileSize(assetUri: string): Promise<number> {
+async function getAssetFileSize(assetUri: string, assetId?: string): Promise<number> {
   try {
-    const assetInfo = await getAssetInfoAsync(assetUri);
-    const localUri = (assetInfo as any).localUri as string | undefined;
-    if (localUri) {
-      return getFileSize(localUri);
+    if (assetId) {
+      const assetInfo = await getAssetInfoAsync(assetId);
+      if (assetInfo && 'fileSize' in assetInfo && typeof (assetInfo as any).fileSize === 'number') {
+        return (assetInfo as any).fileSize;
+      }
+      const localUri = (assetInfo as any).localUri as string | undefined;
+      if (localUri) {
+        return getFileSize(localUri);
+      }
     }
   } catch {}
   return getFileSize(assetUri);
@@ -108,7 +113,7 @@ async function fetchSongs(): Promise<Song[]> {
         const info = await getAssetInfoAsync(asset.id);
         const uri = info.uri ?? asset.uri;
         const meta = await parseAudioMetadata(uri);
-        let fileSize = await getAssetFileSize(uri);
+        let fileSize = await getAssetFileSize(uri, asset.id);
 
         return {
           id: info.id,
@@ -156,7 +161,7 @@ async function fetchVideos(): Promise<Video[]> {
       result.assets.map(async (asset) => {
         const info = await getAssetInfoAsync(asset.id);
         const uri = info.uri ?? asset.uri;
-        let fileSize = await getAssetFileSize(uri);
+        let fileSize = await getAssetFileSize(uri, asset.id);
         return {
           id: info.id,
           uri,

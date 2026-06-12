@@ -21,6 +21,7 @@ export default function HomeScreen() {
   const { currentTrack } = usePlayerStore();
   const router = useRouter();
   const { bottomSheetRef, present, song } = useSongContextMenu();
+  const trackStats = useStatsStore((s) => s.trackStats);
 
   useEffect(() => {
     scan().then(() => {
@@ -33,7 +34,7 @@ export default function HomeScreen() {
 
   const recentSongs = [...songs].sort((a, b) => b.dateAdded - a.dateAdded).slice(0, 10);
   const favSongs = songs.filter((s) => favoriteSongIds.includes(s.id)).slice(0, 10);
-  const recentlyPlayed = useMemo(() => useStatsStore.getState().getRecentlyPlayed(songs, 10), [songs]);
+  const recentlyPlayed = useMemo(() => useStatsStore.getState().getRecentlyPlayed(songs, 10), [songs, trackStats]);
 
   return (
     <View className="flex-1" style={{ backgroundColor: colors.background }}>

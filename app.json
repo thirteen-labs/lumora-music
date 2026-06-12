@@ -82,8 +82,6 @@
         }
       ],
       "expo-asset",
-      "expo-background-fetch",
-      "expo-task-manager",
       [
         "react-native-audio-api",
         {
