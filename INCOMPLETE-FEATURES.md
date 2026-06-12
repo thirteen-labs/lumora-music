@@ -45,8 +45,7 @@
 | 14 | **Online Subtitle Downloading** | Requires subtitle API (OpenSubtitles, etc.) |
 | 15 | **AI Playlists / Mood Detection / NLP Search** | Requires ML models or cloud AI APIs |
 | 16 | **Cloud Backup & Sync** | Requires cloud storage backend and auth |
-| 17 | **Background Scanning** | Requires `expo-task-manager` integration |
-| 18 | **Frame-by-Frame Stepping** | `expo-video` doesn't support it natively |
+| 17 | **Background Scanning** | Requires `expo-task-manager` integration (v2 feature) |
 | 19 | **File Operations** (rename/move/copy/delete) | **IMPLEMENTED** in `src/services/file-operations.ts` using `expo-file-system` |
 
 ---
@@ -90,15 +89,21 @@
 3. Cloud backup & sync
 
 ### P2 - Native Module Features
-4. Background scanning (expo-task-manager)
-5. Frame-by-frame stepping (native video module)
+4. Background scanning (expo-task-manager) — v2 feature
 
 ### P3 - Already Implemented
-6. ~~Tag editing~~ ✅
-7. ~~Batch delete~~ ✅
-8. ~~Batch share~~ ✅
+5. ~~Tag editing~~ ✅
+6. ~~Batch delete~~ ✅
+7. ~~Batch share~~ ✅
+8. ~~Batch add to playlist~~ ✅
 9. ~~Queue drag reorder~~ ✅
 10. ~~Gesture controls~~ ✅
 11. ~~File operations~~ ✅
 12. ~~PiP~~ ✅
 13. ~~Equalizer/Bass/Balance/ReplayGain~~ ✅
+14. ~~Lock screen controls~~ ✅
+15. ~~Notification album artwork~~ ✅
+16. ~~True crossfade with overlapping audio~~ ✅
+17. ~~Recently Played section~~ ✅
+18. ~~Favorites video playback~~ ✅
+19. ~~fileSize in scanner~~ ✅

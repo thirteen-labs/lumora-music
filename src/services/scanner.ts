@@ -47,20 +47,39 @@ async function getFileSize(uri: string): Promise<number> {
   return 0;
 }
 
-async function getAssetFileSize(assetUri: string, assetId?: string): Promise<number> {
+async function getAssetFileSize(
+  assetUri: string,
+  assetId?: string,
+  preloadedInfo?: any,
+): Promise<number> {
   try {
+    if (preloadedInfo && typeof preloadedInfo.fileSize === 'number' && preloadedInfo.fileSize > 0) {
+      return preloadedInfo.fileSize;
+    }
     if (assetId) {
-      const assetInfo = await getAssetInfoAsync(assetId);
-      if (assetInfo && 'fileSize' in assetInfo && typeof (assetInfo as any).fileSize === 'number') {
-        return (assetInfo as any).fileSize;
+      const assetInfo = preloadedInfo ?? await getAssetInfoAsync(assetId);
+      if (assetInfo && typeof assetInfo.fileSize === 'number' && assetInfo.fileSize > 0) {
+        return assetInfo.fileSize;
       }
-      const localUri = (assetInfo as any).localUri as string | undefined;
-      if (localUri) {
-        return getFileSize(localUri);
+      if (assetInfo?.localUri) {
+        const size = await getFileSize(assetInfo.localUri);
+        if (size > 0) return size;
       }
     }
   } catch {}
-  return getFileSize(assetUri);
+  const fsSize = await getFileSize(assetUri);
+  if (fsSize > 0) return fsSize;
+  return 0;
+}
+
+function estimateFileSizeFromBitrate(bitrate: number | null, sampleRate: number | null, duration: number): number {
+  if (bitrate && bitrate > 0) {
+    return Math.round((bitrate / 8) * duration);
+  }
+  if (sampleRate && sampleRate > 0) {
+    return Math.round(sampleRate * 2 * 2 * duration);
+  }
+  return 0;
 }
 
 async function parseAudioMetadata(uri: string): Promise<{
@@ -113,7 +132,11 @@ async function fetchSongs(): Promise<Song[]> {
         const info = await getAssetInfoAsync(asset.id);
         const uri = info.uri ?? asset.uri;
         const meta = await parseAudioMetadata(uri);
-        let fileSize = await getAssetFileSize(uri, asset.id);
+        let fileSize = await getAssetFileSize(uri, asset.id, info);
+
+        if (fileSize <= 0) {
+          fileSize = estimateFileSizeFromBitrate(meta.bitrate, meta.sampleRate, info.duration ?? asset.duration ?? 0);
+        }
 
         return {
           id: info.id,
@@ -161,7 +184,13 @@ async function fetchVideos(): Promise<Video[]> {
       result.assets.map(async (asset) => {
         const info = await getAssetInfoAsync(asset.id);
         const uri = info.uri ?? asset.uri;
-        let fileSize = await getAssetFileSize(uri, asset.id);
+        let fileSize = await getAssetFileSize(uri, asset.id, info);
+
+        if (fileSize <= 0 && info.duration && info.width && info.height) {
+          const bitrateEstimate = (info.width ?? 1920) * (info.height ?? 1080) * 3 * 8;
+          fileSize = estimateFileSizeFromBitrate(bitrateEstimate, null, info.duration ?? asset.duration ?? 0);
+        }
+
         return {
           id: info.id,
           uri,

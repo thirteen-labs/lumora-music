@@ -34,7 +34,12 @@ export default function HomeScreen() {
 
   const recentSongs = [...songs].sort((a, b) => b.dateAdded - a.dateAdded).slice(0, 10);
   const favSongs = songs.filter((s) => favoriteSongIds.includes(s.id)).slice(0, 10);
-  const recentlyPlayed = useMemo(() => useStatsStore.getState().getRecentlyPlayed(songs, 10), [songs, trackStats]);
+  const recentlyPlayed = useMemo(() => {
+    return [...songs]
+      .filter((s) => trackStats[s.id]?.lastPlayed)
+      .sort((a, b) => (trackStats[b.id]?.lastPlayed || 0) - (trackStats[a.id]?.lastPlayed || 0))
+      .slice(0, 10);
+  }, [songs, trackStats]);
 
   return (
     <View className="flex-1" style={{ backgroundColor: colors.background }}>

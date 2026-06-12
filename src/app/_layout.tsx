@@ -113,6 +113,18 @@ function RootStack() {
           options={{ animation: 'slide_from_right' }}
         />
         <Stack.Screen
+          name="hidden-files"
+          options={{ animation: 'slide_from_right' }}
+        />
+        <Stack.Screen
+          name="play-time"
+          options={{ animation: 'slide_from_right' }}
+        />
+        <Stack.Screen
+          name="recently-deleted"
+          options={{ animation: 'slide_from_right' }}
+        />
+        <Stack.Screen
           name="playlists"
           options={{ animation: 'slide_from_right' }}
         />

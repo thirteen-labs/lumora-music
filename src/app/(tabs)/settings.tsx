@@ -12,7 +12,8 @@ import {
   Shuffle, Repeat, Zap, Info, Image as ImageIcon, LayoutGrid,
   Equal, Moon, Activity, ListMusic, Music, Tag,
   HardDrive, Hand, Captions, Brain, Cloud,
-  Disc, ChevronRight, Timer,
+  Disc, ChevronRight, Timer, EyeOff, Clock, Trash2,
+  Sparkles, Mic, Film, RefreshCw, Bell, ListPlus,
 } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { Image } from 'expo-image';
@@ -308,6 +309,41 @@ export default function SettingsScreen() {
                 onPress={() => router.push('/storage' as any)}
                 colors={colors}
               />
+              <SettingRow
+                icon={Hand}
+                label="Gesture Controls"
+                subtitle="Video swipe gestures"
+                onPress={() => router.push('/gesture-controls' as any)}
+                colors={colors}
+              />
+            </View>
+          </View>
+
+          {/* Files & Management */}
+          <View>
+            <SectionHeader title="Files & Management" />
+            <View className="rounded-3xl overflow-hidden" style={{ backgroundColor: colors.surface }}>
+              <SettingRow
+                icon={EyeOff}
+                label="Hidden Files"
+                subtitle="Manage hidden songs & videos"
+                onPress={() => router.push('/hidden-files' as any)}
+                colors={colors}
+              />
+              <SettingRow
+                icon={Clock}
+                label="Play Time"
+                subtitle="Duration of play & listening stats"
+                onPress={() => router.push('/play-time' as any)}
+                colors={colors}
+              />
+              <SettingRow
+                icon={Trash2}
+                label="Recently Deleted"
+                subtitle="Restore or permanently delete"
+                onPress={() => router.push('/recently-deleted' as any)}
+                colors={colors}
+              />
             </View>
           </View>
 
@@ -333,17 +369,102 @@ export default function SettingsScreen() {
               />
               <SettingRow
                 icon={Cloud}
-                label="Cloud Backup & Sync"
-                subtitle="Backup & sync across devices"
+                label="Cloud Backup"
+                subtitle="Backup playlists, favorites & settings"
                 onPress={() => router.push('/cloud-sync' as any)}
                 colors={colors}
                 comingSoon
               />
               <SettingRow
-                icon={Hand}
-                label="Gesture Controls"
-                subtitle="Video swipe gestures"
-                onPress={() => router.push('/gesture-controls' as any)}
+                icon={Cloud}
+                label="Cloud Restore"
+                subtitle="Restore data from a previous backup"
+                onPress={() => router.push('/cloud-sync' as any)}
+                colors={colors}
+                comingSoon
+              />
+            </View>
+          </View>
+
+          <View>
+            <SectionHeader title="Future Features" />
+            <View className="rounded-3xl overflow-hidden" style={{ backgroundColor: colors.surface }}>
+              <FutureFeatureRow
+                icon={Captions}
+                title="Online Subtitle Downloader"
+                subtitle="Fetch subtitles from online databases"
+                colors={colors}
+              />
+              <FutureFeatureRow
+                icon={Sparkles}
+                title="AI Smart Playlists"
+                subtitle="Generate playlists from descriptions"
+                colors={colors}
+              />
+              <FutureFeatureRow
+                icon={Brain}
+                title="AI Mood Detection"
+                subtitle="Auto-create mood-based playlists"
+                colors={colors}
+              />
+              <FutureFeatureRow
+                icon={Music}
+                title="AI Natural Search"
+                subtitle="Search with natural language queries"
+                colors={colors}
+              />
+              <FutureFeatureRow
+                icon={Cloud}
+                title="Cloud Sync"
+                subtitle="Sync data across all your devices"
+                colors={colors}
+              />
+              <FutureFeatureRow
+                icon={RefreshCw}
+                title="Background Scanning"
+                subtitle="Scan for new media in the background"
+                colors={colors}
+              />
+              <FutureFeatureRow
+                icon={Film}
+                title="Frame-by-Frame Stepping"
+                subtitle="Step through video one frame at a time"
+                colors={colors}
+              />
+              <FutureFeatureRow
+                icon={Zap}
+                title="True Crossfade"
+                subtitle="Overlapping audio crossfade between tracks"
+                colors={colors}
+              />
+              <FutureFeatureRow
+                icon={Mic}
+                title="Lyrics Editor"
+                subtitle="Create and edit synced lyrics in-app"
+                colors={colors}
+              />
+              <FutureFeatureRow
+                icon={Equal}
+                title="Loudness Enhancer"
+                subtitle="Boost perceived audio loudness"
+                colors={colors}
+              />
+              <FutureFeatureRow
+                icon={Clock}
+                title="Continue Watching"
+                subtitle="Resume video playback from last position"
+                colors={colors}
+              />
+              <FutureFeatureRow
+                icon={Bell}
+                title="Notification Artwork"
+                subtitle="Show album art in notification controls"
+                colors={colors}
+              />
+              <FutureFeatureRow
+                icon={ListPlus}
+                title="Batch Add to Playlist"
+                subtitle="Add multiple songs to playlists at once"
                 colors={colors}
               />
             </View>
@@ -360,15 +481,22 @@ export default function SettingsScreen() {
 
           <View>
             <SectionHeader title="About" />
-            <View className="p-4 rounded-3xl" style={{ backgroundColor: colors.surface }}>
-              <View className="flex-row items-center gap-2 mb-2">
-                <Info size={16} color={colors.accent} />
-                <Text className="text-sm font-semibold" style={{ color: colors.text }}>Lumora</Text>
+            <View className="rounded-3xl overflow-hidden" style={{ backgroundColor: colors.surface }}>
+              <View className="p-4">
+                <View className="flex-row items-center gap-2 mb-2">
+                  <Info size={16} color={colors.accent} />
+                  <Text className="text-sm font-semibold" style={{ color: colors.text }}>Lumora</Text>
+                </View>
+                <Text className="text-sm" style={{ color: colors.textMuted }}>Version 1.0.0</Text>
+                <Text className="text-xs mt-1" style={{ color: colors.textMuted }}>
+                  Premium offline media player
+                </Text>
               </View>
-              <Text className="text-sm" style={{ color: colors.textMuted }}>Version 1.0.0</Text>
-              <Text className="text-xs mt-1" style={{ color: colors.textMuted }}>
-                Premium offline media player
-              </Text>
+              <View className="p-4" style={{ borderTopWidth: 1, borderTopColor: colors.border }}>
+                <Text className="text-xs" style={{ color: colors.textMuted }}>
+                  Developed by Cadmus Labs
+                </Text>
+              </View>
             </View>
           </View>
         </View>
@@ -446,5 +574,35 @@ function SettingRow({
       </View>
       <ChevronRight size={16} color={colors.textMuted} />
     </Pressable>
+  );
+}
+
+function FutureFeatureRow({
+  icon: Icon,
+  title,
+  subtitle,
+  colors,
+}: {
+  icon: any;
+  title: string;
+  subtitle: string;
+  colors: any;
+}) {
+  return (
+    <View
+      className="flex-row items-center gap-4 p-4"
+      style={{ borderBottomWidth: 1, borderBottomColor: colors.border }}
+    >
+      <Icon size={20} color={colors.textMuted} />
+      <View className="flex-1">
+        <View className="flex-row items-center gap-2">
+          <Text className="text-sm font-medium" style={{ color: colors.text }}>{title}</Text>
+          <View className="px-2 py-0.5 rounded-full" style={{ backgroundColor: colors.textMuted + '20' }}>
+            <Text className="text-[10px] font-semibold" style={{ color: colors.textMuted }}>SOON</Text>
+          </View>
+        </View>
+        <Text className="text-xs mt-0.5" style={{ color: colors.textMuted }}>{subtitle}</Text>
+      </View>
+    </View>
   );
 }

@@ -10,7 +10,7 @@ import { SongContextMenu, useSongContextMenu } from '@/components/song-context-m
 import { Heart } from 'lucide-react-native';
 import { Artwork } from '@/components/artwork';
 import { formatDuration } from '@/utils/cn';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { useRouter, useFocusEffect } from 'expo-router';
 
 export default function FavoritesScreen() {
@@ -23,6 +23,7 @@ export default function FavoritesScreen() {
   useFocusEffect(
     useCallback(() => {
       const allSongs = useMusicStore.getState().songs;
+      useVideoStore.getState().loadVideos();
       const allVideos = useVideoStore.getState().videos;
       if (allSongs.length > 0 || allVideos.length > 0) {
         hydrateFavorites(allSongs, allVideos);
