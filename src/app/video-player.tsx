@@ -30,6 +30,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useVideoProgressStore } from '@/store/video-progress-store';
 import * as ScreenOrientation from 'expo-screen-orientation';
+import { useTranslation } from '@/hooks/use-translation';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -180,6 +181,7 @@ function BrightnessIndicator({ brightness }: { brightness: number }) {
 
 export default function VideoPlayerScreen() {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const { uri, title } = useLocalSearchParams<{ uri: string; title: string }>();
   const router = useRouter();
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -674,14 +676,14 @@ export default function VideoPlayerScreen() {
                         Resume Playback?
                       </Text>
                       <Text style={{ fontSize: 13, color: colors.textMuted, marginBottom: 16 }}>
-                        You were at {formatDuration(resumePosition)}
+                        {t('video.resume', { position: formatDuration(resumePosition) })}
                       </Text>
                       <View style={{ flexDirection: 'row', gap: 12 }}>
                         <Pressable
                           onPress={handleStartOver}
                           style={{ flex: 1, paddingVertical: 12, borderRadius: 16, backgroundColor: colors.card, alignItems: 'center' }}
                         >
-                          <Text style={{ fontSize: 14, fontWeight: '600', color: colors.text }}>Start Over</Text>
+                          <Text style={{ fontSize: 14, fontWeight: '600', color: colors.text }}>{t('video.start.over')}</Text>
                         </Pressable>
                         <Pressable
                           onPress={handleResume}
@@ -737,7 +739,7 @@ export default function VideoPlayerScreen() {
             >
               {isLocked ? <Lock size={14} color={colors.accent} /> : <Unlock size={14} color={colors.textMuted} />}
               <Text className="text-xs font-medium" style={{ color: isLocked ? colors.accent : colors.text }}>
-                {isLocked ? 'Locked' : 'Lock'}
+                {isLocked ? t('video.unlock') : t('video.lock')}
               </Text>
             </Pressable>
 
@@ -776,7 +778,7 @@ export default function VideoPlayerScreen() {
             >
               <Captions size={14} color={colors.accent} />
               <Text className="text-xs font-medium" style={{ color: colors.text }}>
-                {activeSubtitle ? 'Subs On' : 'Subtitles'}
+                {activeSubtitle ? 'Subs On' : t('video.subtitles')}
               </Text>
             </Pressable>
 

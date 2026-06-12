@@ -1,5 +1,6 @@
 import { View, Text, ScrollView, Pressable, Alert } from 'react-native';
 import { useTheme } from '@/hooks/use-theme';
+import { useTranslation } from '@/hooks/use-translation';
 import { TopBar } from '@/components/top-bar';
 import { SectionHeader } from '@/components/section-header';
 import {
@@ -17,6 +18,7 @@ import { useState } from 'react';
 
 export default function LibraryToolsScreen() {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const songs = useMusicStore((s) => s.songs);
   const [missingCount, setMissingCount] = useState<number | null>(null);
   const [scanInfo, setScanInfo] = useState<{ newFiles: number; removedFiles: number } | null>(null);
@@ -29,10 +31,10 @@ export default function LibraryToolsScreen() {
     const missing = findMissingFiles(songs, knownUris);
     setMissingCount(missing.length);
     Alert.alert(
-      'Missing Files',
+      t('tools.missing'),
       missing.length > 0
-        ? `Found ${missing.length} missing file(s) in your library. These entries point to files that no longer exist on disk.`
-        : 'No missing files found. All library entries point to existing files.',
+        ? t('tools.missing.found', { count: missing.length })
+        : t('tools.missing.none'),
     );
   };
 
@@ -42,30 +44,30 @@ export default function LibraryToolsScreen() {
     const removedFiles = findRemovedFiles(currentUris);
     setScanInfo({ newFiles: newFiles.length, removedFiles: removedFiles.length });
     Alert.alert(
-      'Incremental Scan',
-      `New files: ${newFiles.length}\nRemoved files: ${removedFiles.length}\n\nRun a full scan to pick up changes.`,
+      t('tools.incremental'),
+      t('tools.changes', { newFiles: newFiles.length, removedFiles: removedFiles.length }),
     );
   };
 
   const updateScanIndex = () => {
     updateKnownFiles(songs);
-    Alert.alert('Updated', 'Scan index updated with current library.');
+    Alert.alert(t('common.ok'), 'Scan index updated with current library.');
   };
 
   return (
     <View className="flex-1" style={{ backgroundColor: colors.background }}>
-      <TopBar title="Library Tools" showSettings={false} />
+      <TopBar title={t('tools.title')} showSettings={false} />
       <ScrollView className="flex-1" contentContainerStyle={{ paddingBottom: 120 }}>
         <View className="px-4 py-4 gap-6">
           {/* Library Health */}
           <View>
-            <SectionHeader title="Library Health" />
+            <SectionHeader title={t('tools.health')} />
             <View className="rounded-3xl overflow-hidden p-4 gap-3" style={{ backgroundColor: colors.surface }}>
               <View className="flex-row items-center gap-3">
                 <CircleCheck size={20} color="#22C55E" />
                 <View className="flex-1">
-                  <Text className="text-sm font-medium" style={{ color: colors.text }}>Total Songs</Text>
-                  <Text className="text-xs" style={{ color: colors.textMuted }}>{songs.length} tracks in library</Text>
+                  <Text className="text-sm font-medium" style={{ color: colors.text }}>{t('tools.total.songs')}</Text>
+                  <Text className="text-xs" style={{ color: colors.textMuted }}>{t('tools.tracks.in.library', { count: songs.length })}</Text>
                 </View>
               </View>
               <View className="flex-row items-center gap-3">
@@ -73,7 +75,7 @@ export default function LibraryToolsScreen() {
                 <View className="flex-1">
                   <Text className="text-sm font-medium" style={{ color: colors.text }}>Duplicate Detection</Text>
                   <Text className="text-xs" style={{ color: colors.textMuted }}>
-                    {duplicates.length > 0 ? `${duplicates.length} potential duplicates found` : 'No duplicates found'}
+                    {duplicates.length > 0 ? t('tools.duplicates.found', { count: duplicates.length }) : t('tools.no.duplicates')}
                   </Text>
                 </View>
               </View>
@@ -94,7 +96,7 @@ export default function LibraryToolsScreen() {
           {/* Duplicates */}
           {duplicates.length > 0 && (
             <View>
-              <SectionHeader title="Potential Duplicates" />
+              <SectionHeader title={t('tools.duplicates')} />
               <View className="rounded-3xl overflow-hidden" style={{ backgroundColor: colors.surface }}>
                 {duplicates.slice(0, 20).map((group, i) => (
                   <View
@@ -108,7 +110,7 @@ export default function LibraryToolsScreen() {
                         {group.song.title}
                       </Text>
                       <Text className="text-xs" style={{ color: colors.textMuted }}>
-                        {group.duplicates.length + 1} copies
+                        {t('tools.copy', { count: group.duplicates.length + 1 })}
                       </Text>
                     </View>
                     <Text className="text-xs" style={{ color: colors.textMuted }}>
@@ -122,10 +124,10 @@ export default function LibraryToolsScreen() {
 
           {/* Missing Files */}
           <View>
-            <SectionHeader title="Missing File Cleanup" />
+            <SectionHeader title={t('tools.missing')} />
             <View className="rounded-3xl p-4 gap-3" style={{ backgroundColor: colors.surface }}>
               <Text className="text-sm" style={{ color: colors.text }}>
-                Missing file detection checks your library for entries that no longer point to existing files on disk.
+                {t('tools.missing.desc')}
               </Text>
               <Pressable
                 onPress={checkMissingFiles}
@@ -134,12 +136,12 @@ export default function LibraryToolsScreen() {
               >
                 <Trash2 size={16} color={colors.background} />
                 <Text className="text-sm font-semibold" style={{ color: colors.background }}>
-                  Check for Missing Files
+                  {t('tools.missing.check')}
                 </Text>
               </Pressable>
               {missingCount !== null && (
                 <Text className="text-xs text-center" style={{ color: colors.textMuted }}>
-                  {missingCount > 0 ? `${missingCount} missing file(s) found` : 'No missing files'}
+                  {missingCount > 0 ? t('tools.missing.found', { count: missingCount }) : t('tools.missing.none')}
                 </Text>
               )}
             </View>
@@ -147,10 +149,10 @@ export default function LibraryToolsScreen() {
 
           {/* Incremental Scan */}
           <View>
-            <SectionHeader title="Incremental Scan" />
+            <SectionHeader title={t('tools.incremental')} />
             <View className="rounded-3xl p-4 gap-3" style={{ backgroundColor: colors.surface }}>
               <Text className="text-sm" style={{ color: colors.text }}>
-                Incremental scanning only processes new or modified files since the last scan, making rescans much faster.
+                {t('tools.incremental.desc')}
               </Text>
               <View className="flex-row gap-2">
                 <Pressable
@@ -160,7 +162,7 @@ export default function LibraryToolsScreen() {
                 >
                   <Search size={16} color={colors.accent} />
                   <Text className="text-sm font-semibold" style={{ color: colors.text }}>
-                    Check Changes
+                    {t('tools.check.changes')}
                   </Text>
                 </Pressable>
                 <Pressable
@@ -170,13 +172,13 @@ export default function LibraryToolsScreen() {
                 >
                   <RefreshCw size={16} color={colors.background} />
                   <Text className="text-sm font-semibold" style={{ color: colors.background }}>
-                    Update Index
+                    {t('tools.update.index')}
                   </Text>
                 </Pressable>
               </View>
               {scanInfo !== null && (
                 <Text className="text-xs text-center" style={{ color: colors.textMuted }}>
-                  {scanInfo.newFiles} new · {scanInfo.removedFiles} removed
+                  {t('tools.changes', { newFiles: scanInfo.newFiles, removedFiles: scanInfo.removedFiles })}
                 </Text>
               )}
             </View>

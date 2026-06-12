@@ -1,5 +1,6 @@
 import { View, Text, ScrollView, Pressable, Alert } from 'react-native';
 import { useTheme } from '@/hooks/use-theme';
+import { useTranslation } from '@/hooks/use-translation';
 import { TopBar } from '@/components/top-bar';
 import { SectionHeader } from '@/components/section-header';
 import { useHiddenFilesStore } from '@/store/hidden-files-store';
@@ -9,6 +10,7 @@ import { EyeOff, Music, Film, Trash2 } from 'lucide-react-native';
 
 export default function HiddenFilesScreen() {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const songs = useMusicStore((s) => s.songs);
   const videos = useVideoStore((s) => s.videos);
   const hiddenSongIds = useHiddenFilesStore((s) => s.hiddenSongIds);
@@ -20,39 +22,39 @@ export default function HiddenFilesScreen() {
   const hiddenVideos = videos.filter((v) => hiddenVideoIds.has(v.id));
 
   const handleUnhideSong = (id: string, title: string) => {
-    Alert.alert('Unhide Song', `Show "${title}" in your library?`, [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Unhide', onPress: () => unhideSong(id) },
+    Alert.alert(t('hidden.unhide'), t('hidden.unhide.song', { title }), [
+      { text: t('common.cancel'), style: 'cancel' },
+      { text: t('hidden.unhide'), onPress: () => unhideSong(id) },
     ]);
   };
 
   const handleUnhideVideo = (id: string, title: string) => {
-    Alert.alert('Unhide Video', `Show "${title}" in your library?`, [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Unhide', onPress: () => unhideVideo(id) },
+    Alert.alert(t('hidden.unhide'), t('hidden.unhide.video', { title }), [
+      { text: t('common.cancel'), style: 'cancel' },
+      { text: t('hidden.unhide'), onPress: () => unhideVideo(id) },
     ]);
   };
 
   return (
     <View className="flex-1" style={{ backgroundColor: colors.background }}>
-      <TopBar title="Hidden Files" showSettings={false} />
+      <TopBar title={t('hidden.title')} showSettings={false} />
       <ScrollView className="flex-1" contentContainerStyle={{ paddingBottom: 120 }}>
         <View className="px-4 py-4 gap-6">
           {hiddenSongs.length === 0 && hiddenVideos.length === 0 ? (
             <View className="items-center py-12">
               <EyeOff size={48} color={colors.textMuted} />
               <Text className="text-sm mt-4" style={{ color: colors.textMuted }}>
-                No hidden files
+                {t('hidden.none')}
               </Text>
               <Text className="text-xs mt-1" style={{ color: colors.textMuted }}>
-                Files you hide from your library will appear here
+                {t('hidden.desc')}
               </Text>
             </View>
           ) : (
             <>
               {hiddenSongs.length > 0 && (
                 <View>
-                  <SectionHeader title={`Hidden Songs (${hiddenSongs.length})`} />
+                  <SectionHeader title={t('hidden.songs', { count: hiddenSongs.length })} />
                   <View className="rounded-3xl overflow-hidden" style={{ backgroundColor: colors.surface }}>
                     {hiddenSongs.map((song, i) => (
                       <Pressable
@@ -79,7 +81,7 @@ export default function HiddenFilesScreen() {
 
               {hiddenVideos.length > 0 && (
                 <View>
-                  <SectionHeader title={`Hidden Videos (${hiddenVideos.length})`} />
+                  <SectionHeader title={t('hidden.videos', { count: hiddenVideos.length })} />
                   <View className="rounded-3xl overflow-hidden" style={{ backgroundColor: colors.surface }}>
                     {hiddenVideos.map((video, i) => (
                       <Pressable

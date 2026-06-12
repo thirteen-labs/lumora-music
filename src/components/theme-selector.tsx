@@ -20,7 +20,6 @@ export function ThemeSelector() {
           <Pressable
             onPress={() => setTheme(item.id)}
             className="items-center mb-4"
-            style={{ flex: 1 / 5 }}
           >
             <View
               className="w-12 h-12 rounded-full items-center justify-center mb-1"

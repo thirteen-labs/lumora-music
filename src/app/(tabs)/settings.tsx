@@ -1,6 +1,6 @@
 import { View, Text, ScrollView, Pressable, Alert, Switch } from 'react-native';
 import { useTheme } from '@/hooks/use-theme';
-import { useSettingsStore } from '@/store/settings-store';
+import { useSettingsStore, LANGUAGE_OPTIONS, FONT_OPTIONS } from '@/store/settings-store';
 import { useMusicStore } from '@/store/music-store';
 import { useVideoStore } from '@/store/video-store';
 import { TopBar } from '@/components/top-bar';
@@ -9,6 +9,7 @@ import { ThemeSelector } from '@/components/theme-selector';
 import { SectionHeader } from '@/components/section-header';
 import { useRouter } from 'expo-router';
 import { useScanManager } from '@/hooks/use-scan-manager';
+import { useTranslation } from '@/hooks/use-translation';
 import {
   getScanInterval as getStoredScanInterval,
   setScanInterval as setStoredScanInterval,
@@ -20,14 +21,21 @@ import {
   HardDrive, Hand, Captions, Brain, Cloud,
   Disc, ChevronRight, Timer, EyeOff, Clock, Trash2,
   Sparkles, Mic, Film, RefreshCw, Bell, ListPlus,
+  Languages, Type, ShieldCheck, ShieldOff,
 } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { Image } from 'expo-image';
 import Slider from '@react-native-community/slider';
-import { useState } from 'react';
+import { useState, useRef, useCallback, useMemo } from 'react';
+import {
+  BottomSheetModal,
+  BottomSheetView,
+  BottomSheetBackdrop,
+} from '@gorhom/bottom-sheet';
 
 export default function SettingsScreen() {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const router = useRouter();
   const defaultShuffle = useSettingsStore((s) => s.defaultShuffle);
   const setDefaultShuffle = useSettingsStore((s) => s.setDefaultShuffle);
@@ -50,8 +58,30 @@ export default function SettingsScreen() {
   const bgScanEnabled = useMusicStore((s) => s.backgroundScanEnabled);
   const setBgScanEnabled = useMusicStore((s) => s.setBackgroundScanEnabled);
   const { manualScan } = useScanManager();
+  const language = useSettingsStore((s) => s.language);
+  const setLanguage = useSettingsStore((s) => s.setLanguage);
+  const fontFamily = useSettingsStore((s) => s.fontFamily);
+  const setFontFamily = useSettingsStore((s) => s.setFontFamily);
+  const adsRemoved = useSettingsStore((s) => s.adsRemoved);
+  const setAdsRemoved = useSettingsStore((s) => s.setAdsRemoved);
   const [scanInterval, setScanIntervalState] = useState(getStoredScanInterval());
   const [lastBgScan, setLastBgScan] = useState(getLastBackgroundScanTime());
+  const languageSheetRef = useRef<BottomSheetModal>(null);
+  const fontSheetRef = useRef<BottomSheetModal>(null);
+
+  const renderBackdrop = useCallback(
+    (props: any) => (
+      <BottomSheetBackdrop {...props} disappearsOnIndex={-1} appearsOnIndex={0} opacity={0.5} />
+    ),
+    [],
+  );
+
+  const langSnapPoints = useMemo(() => ['50%', '75%'], []);
+  const fontSnapPoints = useMemo(() => ['35%'], []);
+
+  const currentLang = LANGUAGE_OPTIONS.find((l) => l.code === language);
+  const currentFont = FONT_OPTIONS.find((f) => f.key === fontFamily);
+  const languageLabel = currentLang ? `${currentLang.native} (${currentLang.label})` : t('settings.app.language');
 
   const pickBackgroundImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -66,9 +96,9 @@ export default function SettingsScreen() {
   };
 
   const removeBackground = () => {
-    Alert.alert('Remove Background', 'Remove the current background image?', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Remove', style: 'destructive', onPress: () => setBackgroundImage(null) },
+    Alert.alert(t('settings.remove.image'), t('settings.remove.background'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      { text: t('common.remove'), style: 'destructive', onPress: () => setBackgroundImage(null) },
     ]);
   };
 
@@ -78,12 +108,12 @@ export default function SettingsScreen() {
       <ScrollView className="flex-1" contentContainerStyle={{ paddingBottom: 120 }}>
         <View className="px-4 py-4 gap-6">
           <View>
-            <SectionHeader title="File Size Theme" />
+            <SectionHeader title={t('settings.file.size.theme')} />
             <FileSizeSelector />
           </View>
 
           <View>
-            <SectionHeader title="Image Background" />
+            <SectionHeader title={t('settings.image.background')} />
             <View
               className="rounded-3xl overflow-hidden"
               style={{ backgroundColor: colors.surface }}
@@ -98,7 +128,7 @@ export default function SettingsScreen() {
                 ) : (
                   <View className="items-center">
                     <ImageIcon size={32} color={colors.textMuted} />
-                    <Text className="mt-2 text-sm" style={{ color: colors.textMuted }}>No background set</Text>
+                    <Text className="mt-2 text-sm" style={{ color: colors.textMuted }}>{t('settings.no.background')}</Text>
                   </View>
                 )}
               </View>
@@ -109,7 +139,7 @@ export default function SettingsScreen() {
                   style={{ backgroundColor: colors.accent }}
                 >
                   <Text className="text-sm font-semibold" style={{ color: colors.background }}>
-                    {backgroundImage ? 'Change' : 'Select Image'}
+                    {backgroundImage ? t('settings.change.image') : t('settings.select.image')}
                   </Text>
                 </Pressable>
                 {backgroundImage && (
@@ -118,7 +148,7 @@ export default function SettingsScreen() {
                     className="py-3 px-5 rounded-2xl items-center"
                     style={{ backgroundColor: colors.card }}
                   >
-                    <Text className="text-sm" style={{ color: colors.text }}>Remove</Text>
+                    <Text className="text-sm" style={{ color: colors.text }}>{t('settings.remove.image')}</Text>
                   </Pressable>
                 )}
               </View>
@@ -126,21 +156,21 @@ export default function SettingsScreen() {
           </View>
 
           <View>
-            <SectionHeader title="Themes" />
+            <SectionHeader title={t('settings.themes')} />
             <View className="rounded-3xl overflow-hidden" style={{ backgroundColor: colors.surface }}>
               <ThemeSelector />
             </View>
           </View>
 
           <View>
-            <SectionHeader title="Color Aware" />
+            <SectionHeader title={t('settings.color.aware')} />
             <View className="flex-row items-center justify-between p-4 rounded-3xl" style={{ backgroundColor: colors.surface }}>
               <View className="flex-1">
                 <Text className="text-sm font-medium" style={{ color: colors.text }}>
-                  Extract colors from artwork
+                  {t('settings.color.aware')}
                 </Text>
                 <Text className="text-xs mt-1" style={{ color: colors.textMuted }}>
-                  Auto-theme based on album art
+                  {t('settings.color.aware.desc')}
                 </Text>
               </View>
               <Pressable
@@ -160,7 +190,7 @@ export default function SettingsScreen() {
           </View>
 
           <View>
-            <SectionHeader title="Library Scanning" />
+            <SectionHeader title={t('settings.library.scanning')} />
             <View className="rounded-3xl overflow-hidden" style={{ backgroundColor: colors.surface }}>
               <View
                 className="flex-row items-center gap-4 p-4"
@@ -169,10 +199,10 @@ export default function SettingsScreen() {
                 <RefreshCw size={20} color={colors.accent} />
                 <View className="flex-1">
                   <Text className="text-sm font-medium" style={{ color: colors.text }}>
-                    Background Scanning
+                    {t('settings.bg.scan')}
                   </Text>
                   <Text className="text-xs mt-0.5" style={{ color: colors.textMuted }}>
-                    Auto-scan for new music
+                    {t('settings.bg.scan.desc')}
                   </Text>
                 </View>
                 <Switch
@@ -186,7 +216,7 @@ export default function SettingsScreen() {
               {bgScanEnabled && (
                 <View className="p-4" style={{ borderBottomWidth: 1, borderBottomColor: colors.border }}>
                   <Text className="text-xs font-medium mb-2" style={{ color: colors.textMuted }}>
-                    Scan Interval
+                    {t('settings.scan.interval')}
                   </Text>
                   <View className="flex-row gap-2">
                     {[
@@ -224,7 +254,7 @@ export default function SettingsScreen() {
               {lastBgScan > 0 && (
                 <View className="px-4 py-3">
                   <Text className="text-xs" style={{ color: colors.textMuted }}>
-                    Last scan: {new Date(lastBgScan).toLocaleString()}
+                    {t('settings.last.scan')}: {new Date(lastBgScan).toLocaleString()}
                   </Text>
                 </View>
               )}
@@ -236,10 +266,10 @@ export default function SettingsScreen() {
                 <RefreshCw size={20} color={colors.accent} />
                 <View className="flex-1">
                   <Text className="text-sm font-medium" style={{ color: colors.text }}>
-                    Scan Now
+                    {t('settings.scan.now')}
                   </Text>
                   <Text className="text-xs mt-0.5" style={{ color: colors.textMuted }}>
-                    Manually scan your library
+                    {t('settings.scan.now.desc')}
                   </Text>
                 </View>
                 <ChevronRight size={16} color={colors.textMuted} />
@@ -247,8 +277,85 @@ export default function SettingsScreen() {
             </View>
           </View>
 
+          {/* Language */}
           <View>
-            <SectionHeader title="Now Playing Layout" />
+            <SectionHeader title={t('settings.language')} />
+            <Pressable
+              onPress={() => languageSheetRef.current?.present()}
+              className="flex-row items-center gap-4 p-4 rounded-3xl"
+              style={{ backgroundColor: colors.surface }}
+            >
+              <Languages size={20} color={colors.accent} />
+              <View className="flex-1">
+                <Text className="text-sm font-medium" style={{ color: colors.text }}>{t('settings.app.language')}</Text>
+                <Text className="text-xs mt-0.5" style={{ color: colors.textMuted }}>{languageLabel}</Text>
+              </View>
+              <ChevronRight size={16} color={colors.textMuted} />
+            </Pressable>
+          </View>
+
+          {/* Font */}
+          <View>
+            <SectionHeader title={t('settings.font')} />
+            <Pressable
+              onPress={() => fontSheetRef.current?.present()}
+              className="flex-row items-center gap-4 p-4 rounded-3xl"
+              style={{ backgroundColor: colors.surface }}
+            >
+              <Type size={20} color={colors.accent} />
+              <View className="flex-1">
+                <Text className="text-sm font-medium" style={{ color: colors.text }}>{t('settings.app.font')}</Text>
+                <Text className="text-xs mt-0.5" style={{ color: colors.textMuted }}>{currentFont?.label ?? t('settings.app.font')}</Text>
+              </View>
+              <ChevronRight size={16} color={colors.textMuted} />
+            </Pressable>
+          </View>
+
+          {/* Remove Ads */}
+          <View>
+            <SectionHeader title={t('settings.ads')} />
+            <View className="flex-row items-center justify-between p-4 rounded-3xl" style={{ backgroundColor: colors.surface }}>
+              <View className="flex-row items-center gap-3 flex-1">
+                {adsRemoved ? (
+                  <ShieldCheck size={20} color={colors.accent} />
+                ) : (
+                  <ShieldOff size={20} color={colors.textMuted} />
+                )}
+                <View className="flex-1">
+                  <Text className="text-sm font-medium" style={{ color: colors.text }}>{t('settings.remove.ads')}</Text>
+                  <Text className="text-xs mt-0.5" style={{ color: colors.textMuted }}>
+                    {adsRemoved ? t('settings.ads.disabled') : t('settings.remove.ads.desc')}
+                  </Text>
+                </View>
+              </View>
+              <Pressable
+                onPress={() => {
+                  if (adsRemoved) {
+                    setAdsRemoved(false);
+                  } else {
+                    Alert.alert(
+                      t('settings.remove.ads'),
+                      t('settings.ads.prompt'),
+                      [
+                        { text: t('common.cancel'), style: 'cancel' },
+                        { text: t('settings.ads.upgrade'), style: 'default', onPress: () => setAdsRemoved(true) },
+                      ],
+                    );
+                  }
+                }}
+                className="w-14 h-8 rounded-full items-center justify-end px-1"
+                style={{ backgroundColor: adsRemoved ? colors.accent : colors.card }}
+              >
+                <View
+                  className="w-6 h-6 rounded-full"
+                  style={{ backgroundColor: '#fff', transform: [{ translateX: adsRemoved ? 0 : -22 }] }}
+                />
+              </Pressable>
+            </View>
+          </View>
+
+          <View>
+            <SectionHeader title={t('settings.now.playing.layout')} />
             <View className="rounded-3xl overflow-hidden" style={{ backgroundColor: colors.surface }}>
               <View className="flex-row p-2 gap-2">
                 {(['classic', 'modern', 'minimal'] as const).map((layout) => (
@@ -272,18 +379,18 @@ export default function SettingsScreen() {
           </View>
 
           <View>
-            <SectionHeader title="Playback" />
+            <SectionHeader title={t('settings.playback')} />
             <View className="rounded-3xl overflow-hidden" style={{ backgroundColor: colors.surface }}>
               <SettingToggle
                 icon={Shuffle}
-                label="Default Shuffle"
+                label={t('settings.default.shuffle')}
                 value={defaultShuffle}
                 onToggle={() => setDefaultShuffle(!defaultShuffle)}
                 colors={colors}
               />
               <SettingToggle
                 icon={Repeat}
-                label="Default Repeat"
+                label={t('settings.default.repeat')}
                 value={defaultRepeat === 'all'}
                 onToggle={() => {
                   const modes = ['off', 'all', 'one'] as const;
@@ -294,7 +401,7 @@ export default function SettingsScreen() {
               />
               <SettingToggle
                 icon={Zap}
-                label="Crossfade"
+                label={t('settings.crossfade')}
                 value={crossfade}
                 onToggle={() => setCrossfade(!crossfade)}
                 colors={colors}
@@ -305,7 +412,7 @@ export default function SettingsScreen() {
                     <View className="flex-row items-center gap-2">
                       <Timer size={16} color={colors.accent} />
                       <Text className="text-xs font-medium" style={{ color: colors.textMuted }}>
-                        Crossfade Duration
+                        {t('settings.crossfade.duration')}
                       </Text>
                     </View>
                     <Text className="text-xs font-semibold" style={{ color: colors.accent }}>
@@ -330,19 +437,19 @@ export default function SettingsScreen() {
 
           {/* Audio Features */}
           <View>
-            <SectionHeader title="Audio" />
+            <SectionHeader title={t('settings.audio')} />
             <View className="rounded-3xl overflow-hidden" style={{ backgroundColor: colors.surface }}>
               <SettingRow
                 icon={Equal}
-                label="Equalizer & Audio Effects"
-                subtitle="EQ, bass boost, balance, speed"
+                label={t('settings.equalizer')}
+                subtitle={t('settings.equalizer.desc')}
                 onPress={() => router.push('/audio-features' as any)}
                 colors={colors}
               />
               <SettingRow
                 icon={Moon}
-                label="Sleep Timer"
-                subtitle="Auto-stop after duration"
+                label={t('settings.sleep.timer')}
+                subtitle={t('settings.sleep.timer.desc')}
                 onPress={() => router.push('/sleep-timer' as any)}
                 colors={colors}
               />
@@ -351,40 +458,40 @@ export default function SettingsScreen() {
 
           {/* Library */}
           <View>
-            <SectionHeader title="Library" />
+            <SectionHeader title={t('settings.library')} />
             <View className="rounded-3xl overflow-hidden" style={{ backgroundColor: colors.surface }}>
               <SettingRow
                 icon={ListMusic}
-                label="Smart Playlists"
-                subtitle="Rules-based auto-playlists"
+                label={t('settings.smart.playlists')}
+                subtitle={t('settings.smart.playlists.desc')}
                 onPress={() => router.push('/smart-playlists' as any)}
                 colors={colors}
               />
               <SettingRow
                 icon={ListMusic}
-                label="My Playlists"
-                subtitle="Create and manage playlists"
+                label={t('settings.my.playlists')}
+                subtitle={t('settings.my.playlists.desc')}
                 onPress={() => router.push('/playlists' as any)}
                 colors={colors}
               />
               <SettingRow
                 icon={Activity}
-                label="Statistics"
-                subtitle="Play counts & listening stats"
+                label={t('settings.statistics')}
+                subtitle={t('settings.statistics.desc')}
                 onPress={() => router.push('/statistics' as any)}
                 colors={colors}
               />
               <SettingRow
                 icon={Tag}
-                label="Tag Editor"
-                subtitle="Edit song metadata"
+                label={t('settings.tag.editor')}
+                subtitle={t('settings.tag.editor.desc')}
                 onPress={() => router.push('/tag-edit' as any)}
                 colors={colors}
               />
               <SettingRow
                 icon={Disc}
-                label="Library Tools"
-                subtitle="Duplicates, missing files, scanning"
+                label={t('settings.library.tools')}
+                subtitle={t('settings.library.tools.desc')}
                 onPress={() => router.push('/library-tools' as any)}
                 colors={colors}
               />
@@ -393,26 +500,26 @@ export default function SettingsScreen() {
 
           {/* Power User */}
           <View>
-            <SectionHeader title="Power User" />
+            <SectionHeader title={t('settings.power.user')} />
             <View className="rounded-3xl overflow-hidden" style={{ backgroundColor: colors.surface }}>
               <SettingRow
                 icon={Music}
-                label="Batch Operations"
-                subtitle="Multi-select actions"
+                label={t('settings.batch.ops')}
+                subtitle={t('settings.batch.ops.desc')}
                 onPress={() => router.push('/batch-operations' as any)}
                 colors={colors}
               />
               <SettingRow
                 icon={HardDrive}
-                label="Storage Analysis"
-                subtitle="File sizes & breakdown"
+                label={t('settings.storage')}
+                subtitle={t('settings.storage.desc')}
                 onPress={() => router.push('/storage' as any)}
                 colors={colors}
               />
               <SettingRow
                 icon={Hand}
-                label="Gesture Controls"
-                subtitle="Video swipe gestures"
+                label={t('settings.gestures')}
+                subtitle={t('settings.gestures.desc')}
                 onPress={() => router.push('/gesture-controls' as any)}
                 colors={colors}
               />
@@ -421,26 +528,26 @@ export default function SettingsScreen() {
 
           {/* Files & Management */}
           <View>
-            <SectionHeader title="Files & Management" />
+            <SectionHeader title={t('settings.files.management')} />
             <View className="rounded-3xl overflow-hidden" style={{ backgroundColor: colors.surface }}>
               <SettingRow
                 icon={EyeOff}
-                label="Hidden Files"
-                subtitle="Manage hidden songs & videos"
+                label={t('settings.hidden.files')}
+                subtitle={t('settings.hidden.files.desc')}
                 onPress={() => router.push('/hidden-files' as any)}
                 colors={colors}
               />
               <SettingRow
                 icon={Clock}
-                label="Play Time"
-                subtitle="Duration of play & listening stats"
+                label={t('settings.play.time')}
+                subtitle={t('settings.play.time.desc')}
                 onPress={() => router.push('/play-time' as any)}
                 colors={colors}
               />
               <SettingRow
                 icon={Trash2}
-                label="Recently Deleted"
-                subtitle="Restore or permanently delete"
+                label={t('settings.recently.deleted')}
+                subtitle={t('settings.recently.deleted.desc')}
                 onPress={() => router.push('/recently-deleted' as any)}
                 colors={colors}
               />
@@ -449,36 +556,36 @@ export default function SettingsScreen() {
 
           {/* Online Features */}
           <View>
-            <SectionHeader title="Online Features" />
+            <SectionHeader title={t('settings.online')} />
             <View className="rounded-3xl overflow-hidden" style={{ backgroundColor: colors.surface }}>
               <SettingRow
                 icon={Captions}
-                label="Subtitle Downloader"
-                subtitle="Download subtitles online"
+                label={t('settings.subtitles')}
+                subtitle={t('settings.subtitles.desc')}
                 onPress={() => router.push('/online-subtitles' as any)}
                 colors={colors}
                 comingSoon
               />
               <SettingRow
                 icon={Brain}
-                label="AI Features"
-                subtitle="Smart playlists, mood detection"
+                label={t('settings.ai')}
+                subtitle={t('settings.ai.desc')}
                 onPress={() => router.push('/ai-features' as any)}
                 colors={colors}
                 comingSoon
               />
               <SettingRow
                 icon={Cloud}
-                label="Cloud Backup"
-                subtitle="Backup playlists, favorites & settings"
+                label={t('settings.cloud.backup')}
+                subtitle={t('settings.cloud.backup.desc')}
                 onPress={() => router.push('/cloud-sync' as any)}
                 colors={colors}
                 comingSoon
               />
               <SettingRow
                 icon={Cloud}
-                label="Cloud Restore"
-                subtitle="Restore data from a previous backup"
+                label={t('settings.cloud.restore')}
+                subtitle={t('settings.cloud.restore.desc')}
                 onPress={() => router.push('/cloud-sync' as any)}
                 colors={colors}
                 comingSoon
@@ -565,36 +672,145 @@ export default function SettingsScreen() {
           </View>
 
           <View>
-            <SectionHeader title="Storage" />
+            <SectionHeader title={t('settings.storage')} />
             <View className="p-4 rounded-3xl" style={{ backgroundColor: colors.surface }}>
               <Text className="text-sm" style={{ color: colors.text }}>
-                {songs.length} songs • {albums.length} albums • {artists.length} artists • {videos.length} videos
+                {t('settings.storage.info', { songs: songs.length, albums: albums.length, artists: artists.length, videos: videos.length })}
               </Text>
             </View>
           </View>
 
           <View>
-            <SectionHeader title="About" />
+            <SectionHeader title={t('settings.about')} />
             <View className="rounded-3xl overflow-hidden" style={{ backgroundColor: colors.surface }}>
               <View className="p-4">
                 <View className="flex-row items-center gap-2 mb-2">
                   <Info size={16} color={colors.accent} />
                   <Text className="text-sm font-semibold" style={{ color: colors.text }}>Lumora</Text>
                 </View>
-                <Text className="text-sm" style={{ color: colors.textMuted }}>Version 1.0.0</Text>
+                <Text className="text-sm" style={{ color: colors.textMuted }}>{t('settings.version')}</Text>
                 <Text className="text-xs mt-1" style={{ color: colors.textMuted }}>
-                  Premium offline media player
+                  {t('settings.tagline')}
                 </Text>
               </View>
               <View className="p-4" style={{ borderTopWidth: 1, borderTopColor: colors.border }}>
                 <Text className="text-xs" style={{ color: colors.textMuted }}>
-                  Developed by Cadmus Labs
+                  {t('settings.developed.by')}
                 </Text>
               </View>
             </View>
           </View>
         </View>
       </ScrollView>
+
+      {/* Language Picker */}
+      <BottomSheetModal
+        ref={languageSheetRef}
+        snapPoints={langSnapPoints}
+        backdropComponent={renderBackdrop}
+        backgroundStyle={{ backgroundColor: colors.surface }}
+        handleIndicatorStyle={{ backgroundColor: colors.textMuted }}
+      >
+        <BottomSheetView style={{ flex: 1, paddingTop: 8 }}>
+          <Text
+            style={{
+              fontSize: 17,
+              fontWeight: '600',
+              color: colors.text,
+              paddingHorizontal: 20,
+              paddingBottom: 12,
+            }}
+          >
+            {t('settings.app.language')}
+          </Text>
+          {LANGUAGE_OPTIONS.map((lang) => {
+            const isActive = lang.code === language;
+            return (
+              <Pressable
+                key={lang.code}
+                onPress={() => {
+                  setLanguage(lang.code);
+                  languageSheetRef.current?.dismiss();
+                }}
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 12,
+                  paddingHorizontal: 20,
+                  paddingVertical: 14,
+                  backgroundColor: isActive ? colors.accent + '18' : 'transparent',
+                }}
+              >
+                <Text style={{ fontSize: 16 }}>{lang.native}</Text>
+                <View style={{ flex: 1 }}>
+                  <Text
+                    style={{
+                      fontSize: 15,
+                      color: isActive ? colors.accent : colors.text,
+                      fontWeight: isActive ? '600' : '400',
+                    }}
+                  >
+                    {lang.label}
+                  </Text>
+                </View>
+                {isActive && (
+                  <Text style={{ fontSize: 14, color: colors.accent }}>✓</Text>
+                )}
+              </Pressable>
+            );
+          })}
+        </BottomSheetView>
+      </BottomSheetModal>
+
+      {/* Font Picker */}
+      <BottomSheetModal
+        ref={fontSheetRef}
+        snapPoints={fontSnapPoints}
+        backdropComponent={renderBackdrop}
+        backgroundStyle={{ backgroundColor: colors.surface }}
+        handleIndicatorStyle={{ backgroundColor: colors.textMuted }}
+      >
+        <BottomSheetView style={{ flex: 1, paddingTop: 8 }}>
+          <Text
+            style={{
+              fontSize: 17,
+              fontWeight: '600',
+              color: colors.text,
+              paddingHorizontal: 20,
+              paddingBottom: 12,
+            }}
+          >
+            {t('settings.app.font')}
+          </Text>
+          {FONT_OPTIONS.map((font) => {
+            const isActive = font.key === fontFamily;
+            return (
+              <Pressable
+                key={font.key}
+                onPress={() => {
+                  setFontFamily(font.key);
+                  fontSheetRef.current?.dismiss();
+                }}
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 12,
+                  paddingHorizontal: 20,
+                  paddingVertical: 14,
+                  backgroundColor: isActive ? colors.accent + '18' : 'transparent',
+                }}
+              >
+                <Text style={{ fontSize: 15, color: isActive ? colors.accent : colors.text, fontWeight: isActive ? '600' : '400' }}>
+                  {font.label}
+                </Text>
+                {isActive && (
+                  <Text style={{ fontSize: 14, color: colors.accent, marginLeft: 8 }}>✓</Text>
+                )}
+              </Pressable>
+            );
+          })}
+        </BottomSheetView>
+      </BottomSheetModal>
     </View>
   );
 }

@@ -1,12 +1,12 @@
 import { View, Text, ScrollView, Pressable, Alert } from 'react-native';
 import { useTheme } from '@/hooks/use-theme';
+import { useTranslation } from '@/hooks/use-translation';
 import { TopBar } from '@/components/top-bar';
 import { SectionHeader } from '@/components/section-header';
 import { useEqualizerStore, EQUALIZER_PRESETS } from '@/store/equalizer-store';
 import { useReplayGainStore } from '@/store/replay-gain-store';
 import { usePlaybackSpeedStore, SPEED_OPTIONS } from '@/store/playback-speed-store';
 import { useLoudnessEnhancerStore } from '@/store/loudness-enhancer-store';
-import { audioEngine } from '@/services/audio-engine';
 import Slider from '@react-native-community/slider';
 import {
   Music, Gauge, Volume2, AudioLines, RotateCcw, Volume,
@@ -14,6 +14,7 @@ import {
 
 export default function AudioFeaturesScreen() {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const eq = useEqualizerStore();
   const rg = useReplayGainStore();
   const speed = usePlaybackSpeedStore();
@@ -21,17 +22,17 @@ export default function AudioFeaturesScreen() {
 
   return (
     <View className="flex-1" style={{ backgroundColor: colors.background }}>
-      <TopBar title="Audio Features" showSettings={false} />
+      <TopBar title={t('audio.title')} showSettings={false} />
       <ScrollView className="flex-1" contentContainerStyle={{ paddingBottom: 120 }}>
         <View className="px-4 py-4 gap-6">
           {/* Equalizer */}
           <View>
-            <SectionHeader title="Equalizer" />
+            <SectionHeader title={t('audio.equalizer')} />
             <View className="rounded-3xl overflow-hidden p-4" style={{ backgroundColor: colors.surface }}>
               <View className="flex-row items-center justify-between mb-4">
                 <View className="flex-row items-center gap-2">
                   <AudioLines size={18} color={colors.accent} />
-                  <Text className="text-sm font-semibold" style={{ color: colors.text }}>10-Band Equalizer</Text>
+                  <Text className="text-sm font-semibold" style={{ color: colors.text }}>{t('audio.equalizer.10band')}</Text>
                 </View>
                 <Pressable
                   onPress={() => eq.setEnabled(!eq.enabled)}
@@ -94,7 +95,7 @@ export default function AudioFeaturesScreen() {
 
           {/* Bass Boost */}
           <View>
-            <SectionHeader title="Bass Boost" />
+            <SectionHeader title={t('audio.bass.boost')} />
             <View className="rounded-3xl overflow-hidden p-4" style={{ backgroundColor: colors.surface }}>
               <View className="flex-row items-center gap-2 mb-3">
                 <Volume2 size={18} color={colors.accent} />
@@ -121,12 +122,12 @@ export default function AudioFeaturesScreen() {
 
           {/* Audio Balance */}
           <View>
-            <SectionHeader title="Audio Balance" />
+            <SectionHeader title={t('audio.balance')} />
             <View className="rounded-3xl overflow-hidden p-4" style={{ backgroundColor: colors.surface }}>
               <View className="flex-row items-center justify-between mb-3">
                 <Text className="text-sm font-medium" style={{ color: colors.text }}>L</Text>
                 <Text className="text-sm font-medium" style={{ color: colors.text }}>
-                  {eq.balance === 0 ? 'Center' : eq.balance < 0 ? `Left ${Math.abs(eq.balance)}` : `Right ${eq.balance}`}
+                  {eq.balance === 0 ? t('audio.balance.center') : eq.balance < 0 ? t('audio.balance.left', { value: Math.abs(eq.balance) }) : t('audio.balance.right', { value: eq.balance })}
                 </Text>
                 <Text className="text-sm font-medium" style={{ color: colors.text }}>R</Text>
               </View>
@@ -145,7 +146,7 @@ export default function AudioFeaturesScreen() {
 
           {/* Playback Speed */}
           <View>
-            <SectionHeader title="Playback Speed" />
+            <SectionHeader title={t('audio.speed')} />
             <View className="rounded-3xl overflow-hidden p-4" style={{ backgroundColor: colors.surface }}>
               <View className="flex-row items-center gap-2 mb-4">
                 <Gauge size={18} color={colors.accent} />
@@ -174,9 +175,9 @@ export default function AudioFeaturesScreen() {
               </View>
               <View className="flex-row items-center justify-between">
                 <View className="flex-1">
-                  <Text className="text-sm font-medium" style={{ color: colors.text }}>Pitch Correction</Text>
+                  <Text className="text-sm font-medium" style={{ color: colors.text }}>{t('audio.pitch')}</Text>
                   <Text className="text-xs mt-0.5" style={{ color: colors.textMuted }}>
-                    Maintain pitch at different speeds
+                    {t('audio.pitch.desc')}
                   </Text>
                 </View>
                 <Pressable
@@ -195,12 +196,12 @@ export default function AudioFeaturesScreen() {
 
           {/* ReplayGain */}
           <View>
-            <SectionHeader title="Volume Normalization" />
+            <SectionHeader title={t('audio.replaygain')} />
             <View className="rounded-3xl overflow-hidden p-4" style={{ backgroundColor: colors.surface }}>
               <View className="flex-row items-center justify-between mb-4">
                 <View className="flex-row items-center gap-2">
                   <Music size={18} color={colors.accent} />
-                  <Text className="text-sm font-semibold" style={{ color: colors.text }}>ReplayGain</Text>
+                  <Text className="text-sm font-semibold" style={{ color: colors.text }}>{t('audio.replaygain')}</Text>
                 </View>
                 <Pressable
                   onPress={() => rg.setEnabled(!rg.enabled)}
@@ -218,7 +219,7 @@ export default function AudioFeaturesScreen() {
                 <>
                   <View className="mb-4">
                     <Text className="text-sm font-medium mb-2" style={{ color: colors.text }}>
-                      Preamp: {rg.preamp > 0 ? '+' : ''}{rg.preamp} dB
+                      {t('audio.preamp', { value: `${rg.preamp > 0 ? '+' : ''}${rg.preamp}` })}
                     </Text>
                     <Slider
                       value={(rg.preamp + 12) / 24}
@@ -238,7 +239,7 @@ export default function AudioFeaturesScreen() {
                       style={{ backgroundColor: rg.trackGain ? colors.accent : colors.card }}
                     >
                       <Text className="text-xs font-semibold" style={{ color: rg.trackGain ? colors.background : colors.textMuted }}>
-                        Track Gain
+                        {t('audio.track.gain')}
                       </Text>
                     </Pressable>
                     <Pressable
@@ -247,7 +248,7 @@ export default function AudioFeaturesScreen() {
                       style={{ backgroundColor: rg.albumGain ? colors.accent : colors.card }}
                     >
                       <Text className="text-xs font-semibold" style={{ color: rg.albumGain ? colors.background : colors.textMuted }}>
-                        Album Gain
+                        {t('audio.album.gain')}
                       </Text>
                     </Pressable>
                   </View>
@@ -258,15 +259,15 @@ export default function AudioFeaturesScreen() {
 
           {/* Loudness Enhancer */}
           <View>
-            <SectionHeader title="Loudness Enhancer" />
+            <SectionHeader title={t('audio.loudness')} />
             <View className="rounded-3xl overflow-hidden p-4" style={{ backgroundColor: colors.surface }}>
               <View className="flex-row items-center justify-between mb-4">
                 <View className="flex-row items-center gap-2">
                   <Volume size={18} color={colors.accent} />
-                  <Text className="text-sm font-semibold" style={{ color: colors.text }}>Loudness Enhancer</Text>
+                  <Text className="text-sm font-semibold" style={{ color: colors.text }}>{t('audio.loudness')}</Text>
                 </View>
                 <Pressable
-                  onPress={() => { le.setEnabled(!le.enabled); audioEngine.setLoudnessEnabled(!le.enabled); }}
+                  onPress={() => { le.setEnabled(!le.enabled); }}
                   className="w-14 h-8 rounded-full items-center justify-end px-1"
                   style={{ backgroundColor: le.enabled ? colors.accent : colors.card }}
                 >
@@ -280,12 +281,12 @@ export default function AudioFeaturesScreen() {
                 <>
                   <View className="flex-row items-center justify-between mb-3">
                     <Text className="text-sm font-medium" style={{ color: colors.text }}>
-                      Level: {le.level} dB
+                      {t('audio.loudness.level', { value: le.level })}
                     </Text>
                   </View>
                   <Slider
                     value={le.level / 12}
-                    onValueChange={(val) => { const v = Math.round(val * 12); le.setLevel(v); audioEngine.setLoudnessLevel(v); }}
+                    onValueChange={(val) => { const v = Math.round(val * 12); le.setLevel(v); }}
                     minimumValue={0}
                     maximumValue={1}
                     minimumTrackTintColor={colors.accent}
@@ -298,7 +299,7 @@ export default function AudioFeaturesScreen() {
                     <Text className="text-xs" style={{ color: colors.textMuted }}>Maximum</Text>
                   </View>
                   <Text className="text-xs mt-2" style={{ color: colors.textMuted }}>
-                    Boosts perceived loudness using bass and treble contour
+                    {t('audio.loudness.help')}
                   </Text>
                 </>
               )}
@@ -308,16 +309,16 @@ export default function AudioFeaturesScreen() {
           {/* Reset */}
           <Pressable
             onPress={() => {
-              Alert.alert('Reset Audio', 'Reset all audio settings to defaults?', [
-                { text: 'Cancel', style: 'cancel' },
-                { text: 'Reset', style: 'destructive', onPress: () => { eq.reset(); rg.setEnabled(false); speed.setSpeed(1.0); le.setEnabled(false); le.setLevel(6); audioEngine.setLoudnessEnabled(false); audioEngine.setLoudnessLevel(6); } },
+              Alert.alert(t('audio.reset'), t('audio.reset.confirm'), [
+                { text: t('common.cancel'), style: 'cancel' },
+                { text: t('common.reset'), style: 'destructive', onPress: () => { eq.reset(); rg.setEnabled(false); speed.setSpeed(1.0); le.setEnabled(false); le.setLevel(6); } },
               ]);
             }}
             className="flex-row items-center justify-center gap-2 py-4 rounded-3xl"
             style={{ backgroundColor: colors.surface }}
           >
             <RotateCcw size={16} color={colors.textMuted} />
-            <Text className="text-sm font-medium" style={{ color: colors.textMuted }}>Reset All Audio Settings</Text>
+            <Text className="text-sm font-medium" style={{ color: colors.textMuted }}>{t('audio.reset')}</Text>
           </Pressable>
         </View>
       </ScrollView>

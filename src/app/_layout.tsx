@@ -1,7 +1,9 @@
 import { Stack } from 'expo-router';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { ThemeProvider } from '@/theme/provider';
+import { FontProvider } from '@/components/font-provider';
 import { ColorAwareProvider } from '@/components/color-aware-provider';
 import { PlayerProvider } from '@/components/player-provider';
 import { ErrorBoundary } from '@/components/error-boundary';
@@ -147,13 +149,17 @@ export default function RootLayout() {
     <ErrorBoundary>
       <SafeAreaProvider>
         <GestureHandlerRootView style={{ flex: 1 }}>
-          <ThemeProvider>
-            <ColorAwareProvider>
-              <PlayerProvider>
-                <RootStack />
-              </PlayerProvider>
-            </ColorAwareProvider>
-          </ThemeProvider>
+          <BottomSheetModalProvider>
+            <ThemeProvider>
+              <FontProvider>
+                <ColorAwareProvider>
+                  <PlayerProvider>
+                    <RootStack />
+                  </PlayerProvider>
+                </ColorAwareProvider>
+              </FontProvider>
+            </ThemeProvider>
+          </BottomSheetModalProvider>
         </GestureHandlerRootView>
       </SafeAreaProvider>
     </ErrorBoundary>

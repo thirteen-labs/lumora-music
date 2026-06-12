@@ -36,6 +36,7 @@ import {
   BottomSheetBackdrop,
 } from '@gorhom/bottom-sheet';
 import { useSyncedLyricsScroll } from '@/hooks/use-synced-lyrics-scroll';
+import { useTranslation } from '@/hooks/use-translation';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const ARTWORK_SIZE = SCREEN_WIDTH * 0.72;
@@ -64,6 +65,7 @@ export default function PlayerScreen() {
   const nowPlayingLayout = useSettingsStore((s) => s.nowPlayingLayout);
   const setNowPlayingLayout = useSettingsStore((s) => s.setNowPlayingLayout);
   const router = useRouter();
+  const { t } = useTranslation();
 
   const queueSheetRef = useRef<BottomSheetModal>(null);
   const lyricsSheetRef = useRef<BottomSheetModal>(null);
@@ -190,7 +192,7 @@ export default function PlayerScreen() {
   if (!currentTrack) {
     return (
       <View className="flex-1 items-center justify-center" style={{ backgroundColor: colors.background }}>
-        <Text style={{ color: colors.textMuted }}>No track playing</Text>
+        <Text style={{ color: colors.textMuted }}>{t('player.no.track')}</Text>
         <Pressable onPress={() => router.back()} className="mt-4">
           <Text style={{ color: colors.accent }}>Go back</Text>
         </Pressable>
@@ -291,7 +293,7 @@ export default function PlayerScreen() {
         <View style={{ flex: 1 }}>
           <View style={{ paddingHorizontal: 20, paddingTop: 12, paddingBottom: 8 }}>
             <Text style={{ fontSize: 17, fontWeight: '600', color: colors.text }}>
-              Queue
+              {t('player.queue')}
             </Text>
             <Text style={{ fontSize: 13, color: colors.textMuted, marginTop: 2 }}>
               {queue.length} tracks
@@ -317,7 +319,7 @@ export default function PlayerScreen() {
         <BottomSheetScrollView contentContainerStyle={{ padding: 20, paddingBottom: 32 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
             <Text style={{ fontSize: 17, fontWeight: '600', color: colors.text }}>
-              Lyrics
+              {t('player.lyrics')}
             </Text>
             <Pressable
               onPress={() => {
@@ -447,6 +449,7 @@ function RepeatButton({ repeat, setRepeat, colors }: { repeat: string; setRepeat
 
 function ClassicLayout(props: LayoutProps) {
   const { colors, currentTrack, isPlaying, progress, isFav, shuffle, repeat, duration } = props;
+  const { t } = useTranslation();
 
   return (
     <View className="flex-1">
@@ -455,7 +458,7 @@ function ClassicLayout(props: LayoutProps) {
           <ChevronDown size={28} color={colors.text} />
         </Pressable>
         <Text className="text-sm font-semibold" style={{ color: colors.textMuted }}>
-          Now Playing
+          {t('player.now.playing')}
         </Text>
         <Pressable onPress={props.cycleLayout} className="w-10 h-10 items-center justify-center">
           <LayoutGrid size={20} color={colors.textMuted} />
@@ -525,6 +528,7 @@ function ClassicLayout(props: LayoutProps) {
 
 function ModernLayout(props: LayoutProps) {
   const { colors, currentTrack, isPlaying, progress, isFav, shuffle, repeat, duration } = props;
+  const { t } = useTranslation();
 
   return (
     <View className="flex-1">
@@ -544,7 +548,7 @@ function ModernLayout(props: LayoutProps) {
             <ChevronDown size={28} color="#fff" />
           </Pressable>
           <Text className="text-sm font-semibold" style={{ color: 'rgba(255,255,255,0.7)' }}>
-            Now Playing
+            {t('player.now.playing')}
           </Text>
           <Pressable onPress={props.cycleLayout} className="w-10 h-10 items-center justify-center">
             <LayoutGrid size={20} color="rgba(255,255,255,0.7)" />
@@ -614,6 +618,7 @@ function ModernLayout(props: LayoutProps) {
 
 function MinimalLayout(props: LayoutProps) {
   const { colors, currentTrack, isPlaying, progress, isFav, shuffle, repeat, duration } = props;
+  const { t } = useTranslation();
 
   return (
     <View className="flex-1">
@@ -622,7 +627,7 @@ function MinimalLayout(props: LayoutProps) {
           <ChevronDown size={28} color={colors.text} />
         </Pressable>
         <Text className="text-sm font-semibold" style={{ color: colors.textMuted }}>
-          Now Playing
+          {t('player.now.playing')}
         </Text>
         <Pressable onPress={props.cycleLayout} className="w-10 h-10 items-center justify-center">
           <LayoutGrid size={20} color={colors.textMuted} />

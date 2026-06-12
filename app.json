@@ -39,16 +39,16 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#03000d",
-          "image": "./assets/splash.png",
-          "resizeMode": "cover",
+          "backgroundColor": "#020008",
+          "image": "./assets/name-v2.png",
+          "resizeMode": "contain",
           "android": {
-            "image": "./assets/splash.png",
-            "resizeMode": "cover"
+            "image": "./assets/name-v2.png",
+            "resizeMode": "contain"
           },
           "ios": {
-            "image": "./assets/splash.png",
-            "resizeMode": "cover"
+            "image": "./assets/name-v2.png",
+            "resizeMode": "contain"
           }
         }
       ],
@@ -99,7 +99,8 @@
         }
       ],
       "expo-task-manager",
-      "expo-background-fetch"
+      "expo-background-fetch",
+      "expo-font"
     ],
     "experiments": {
       "typedRoutes": true,

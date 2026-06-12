@@ -27,7 +27,7 @@ const playerAdapter = {
     return audioEngine.getState().isLoaded;
   },
   get playbackRate(): number {
-    return audioEngine.getState().playing ? 1 : 1;
+    return audioEngine.getSpeed();
   },
   set playbackRate(rate: number) {
     audioEngine.setSpeed(rate);

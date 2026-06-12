@@ -14,9 +14,11 @@ import { formatDuration } from '@/utils/cn';
 import { useEffect, useMemo } from 'react';
 import { useRouter } from 'expo-router';
 import { useScanManager } from '@/hooks/use-scan-manager';
+import { useTranslation } from '@/hooks/use-translation';
 
 export default function HomeScreen() {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const { songs } = useMusicStore();
   const { favoriteSongIds, hydrateFavorites } = useFavoritesStore();
   const { currentTrack } = usePlayerStore();
@@ -51,10 +53,10 @@ export default function HomeScreen() {
       <ScrollView className="flex-1" contentContainerStyle={{ paddingBottom: 120 }}>
         <View className="px-4 py-6">
           <Text className="text-2xl font-bold" style={{ color: colors.text }}>
-            Welcome to Lumora
+            {t('home.welcome')}
           </Text>
           <Text className="text-sm mt-1" style={{ color: colors.textMuted }}>
-            {songs.length} songs · {favoriteSongIds.length} favorites
+            {t('home.songs.favorites', { songs: songs.length, favorites: favoriteSongIds.length })}
           </Text>
         </View>
 
@@ -88,7 +90,7 @@ export default function HomeScreen() {
             <View className="flex-row items-center gap-2 mb-3">
               <PlayCircle size={18} color={colors.accent} />
               <Text className="text-lg font-semibold" style={{ color: colors.text }}>
-                Recently Played
+                {t('library.recently.played')}
               </Text>
             </View>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
@@ -120,7 +122,7 @@ export default function HomeScreen() {
             <View className="flex-row items-center gap-2 mb-3">
               <Clock size={18} color={colors.accent} />
               <Text className="text-lg font-semibold" style={{ color: colors.text }}>
-                Recently Added
+                {t('library.recently.added')}
               </Text>
             </View>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
@@ -152,7 +154,7 @@ export default function HomeScreen() {
             <View className="flex-row items-center gap-2 mb-3">
               <Heart size={18} color={colors.accent} />
               <Text className="text-lg font-semibold" style={{ color: colors.text }}>
-                Favorites
+                {t('library.favorites')}
               </Text>
             </View>
             {favSongs.map((song) => (
@@ -186,17 +188,17 @@ export default function HomeScreen() {
           <View className="items-center py-20">
             <Music size={48} color={colors.textMuted} />
             <Text className="text-lg mt-4" style={{ color: colors.textMuted }}>
-              No songs found
+              {t('home.no.songs')}
             </Text>
             <Text className="text-sm mt-1" style={{ color: colors.textMuted }}>
-              Grant media access to scan your library
+              {t('home.no.songs.desc')}
             </Text>
             <Pressable
               onPress={() => manualScan()}
               className="mt-4 px-6 py-3 rounded-2xl"
               style={{ backgroundColor: colors.accent }}
             >
-              <Text className="font-semibold" style={{ color: colors.background }}>Scan Library</Text>
+              <Text className="font-semibold" style={{ color: colors.background }}>{t('home.scan')}</Text>
             </Pressable>
           </View>
         )}

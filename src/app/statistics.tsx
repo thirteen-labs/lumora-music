@@ -1,5 +1,6 @@
 import { View, Text, ScrollView } from 'react-native';
 import { useTheme } from '@/hooks/use-theme';
+import { useTranslation } from '@/hooks/use-translation';
 import { TopBar } from '@/components/top-bar';
 import { SectionHeader } from '@/components/section-header';
 import { useStatsStore } from '@/store/stats-store';
@@ -8,6 +9,7 @@ import { TrendingUp, Music, Clock, Activity, User, Disc, BarChart3 } from 'lucid
 
 export default function StatisticsScreen() {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const songs = useMusicStore((s) => s.songs);
   const stats = useStatsStore();
   const topSongs = stats.getTopSongs(songs, 10);
@@ -22,17 +24,17 @@ export default function StatisticsScreen() {
 
   return (
     <View className="flex-1" style={{ backgroundColor: colors.background }}>
-      <TopBar title="Statistics" showSettings={false} />
+      <TopBar title={t('stats.title')} showSettings={false} />
       <ScrollView className="flex-1" contentContainerStyle={{ paddingBottom: 120 }}>
         <View className="px-4 py-4 gap-6">
           {/* Overview */}
           <View>
-            <SectionHeader title="Overview" />
+            <SectionHeader title={t('stats.overview')} />
             <View className="flex-row gap-3">
               <View className="flex-1 rounded-3xl p-4 items-center" style={{ backgroundColor: colors.surface }}>
                 <Music size={24} color={colors.accent} />
                 <Text className="text-2xl font-bold mt-2" style={{ color: colors.text }}>{totalPlayCount}</Text>
-                <Text className="text-xs mt-1" style={{ color: colors.textMuted }}>Total Plays</Text>
+                <Text className="text-xs mt-1" style={{ color: colors.textMuted }}>{t('stats.total.plays')}</Text>
               </View>
               <View className="flex-1 rounded-3xl p-4 items-center" style={{ backgroundColor: colors.surface }}>
                 <Clock size={24} color={colors.accent} />
@@ -43,23 +45,23 @@ export default function StatisticsScreen() {
                     ? `${Math.floor(totalListenTime / 60)}m`
                     : `${totalListenTime}s`}
                 </Text>
-                <Text className="text-xs mt-1" style={{ color: colors.textMuted }}>Listen Time</Text>
+                <Text className="text-xs mt-1" style={{ color: colors.textMuted }}>{t('stats.listen.time')}</Text>
               </View>
               <View className="flex-1 rounded-3xl p-4 items-center" style={{ backgroundColor: colors.surface }}>
                 <TrendingUp size={24} color={colors.accent} />
                 <Text className="text-2xl font-bold mt-2" style={{ color: colors.text }}>{listeningStats.totalTracksPlayed}</Text>
-                <Text className="text-xs mt-1" style={{ color: colors.textMuted }}>Tracks Played</Text>
+                <Text className="text-xs mt-1" style={{ color: colors.textMuted }}>{t('stats.tracks.played')}</Text>
               </View>
             </View>
           </View>
 
           {/* Weekly Listening */}
           <View>
-            <SectionHeader title="This Week" />
+            <SectionHeader title={t('stats.week')} />
             <View className="rounded-3xl p-4" style={{ backgroundColor: colors.surface }}>
               <View className="flex-row items-center gap-2 mb-4">
                 <BarChart3 size={20} color={colors.accent} />
-                <Text className="text-sm font-semibold" style={{ color: colors.text }}>Daily Listening (minutes)</Text>
+                <Text className="text-sm font-semibold" style={{ color: colors.text }}>{t('stats.daily')}</Text>
               </View>
               <View className="flex-row items-end justify-between" style={{ height: 120 }}>
                 {weeklyMinutes.map((minutes, i) => (
@@ -86,12 +88,12 @@ export default function StatisticsScreen() {
 
           {/* Top Songs */}
           <View>
-            <SectionHeader title="Most Played Songs" />
+            <SectionHeader title={t('stats.most.played')} />
             <View className="rounded-3xl overflow-hidden" style={{ backgroundColor: colors.surface }}>
               {topSongs.length === 0 ? (
                 <View className="p-8 items-center">
                   <Activity size={32} color={colors.textMuted} />
-                  <Text className="text-sm mt-2" style={{ color: colors.textMuted }}>No plays recorded yet</Text>
+                  <Text className="text-sm mt-2" style={{ color: colors.textMuted }}>{t('stats.no.plays')}</Text>
                 </View>
               ) : (
                 topSongs.map(({ song, count }, i) => (
@@ -116,12 +118,12 @@ export default function StatisticsScreen() {
 
           {/* Top Artists */}
           <View>
-            <SectionHeader title="Top Artists" />
+            <SectionHeader title={t('stats.top.artists')} />
             <View className="rounded-3xl overflow-hidden" style={{ backgroundColor: colors.surface }}>
               {listeningStats.topArtists.length === 0 ? (
                 <View className="p-8 items-center">
                   <User size={32} color={colors.textMuted} />
-                  <Text className="text-sm mt-2" style={{ color: colors.textMuted }}>No data yet</Text>
+                  <Text className="text-sm mt-2" style={{ color: colors.textMuted }}>{t('stats.no.data')}</Text>
                 </View>
               ) : (
                 listeningStats.topArtists.map(({ name, count }, i) => (
@@ -132,7 +134,7 @@ export default function StatisticsScreen() {
                   >
                     <Text className="text-sm font-bold w-6 text-center" style={{ color: colors.accent }}>{i + 1}</Text>
                     <Text className="flex-1 text-sm font-medium" style={{ color: colors.text }} numberOfLines={1}>{name}</Text>
-                    <Text className="text-sm" style={{ color: colors.textMuted }}>{count} plays</Text>
+                    <Text className="text-sm" style={{ color: colors.textMuted }}>{t('stats.plays', { count })}</Text>
                   </View>
                 ))
               )}
@@ -141,12 +143,12 @@ export default function StatisticsScreen() {
 
           {/* Top Albums */}
           <View>
-            <SectionHeader title="Top Albums" />
+            <SectionHeader title={t('stats.top.albums')} />
             <View className="rounded-3xl overflow-hidden" style={{ backgroundColor: colors.surface }}>
               {listeningStats.topAlbums.length === 0 ? (
                 <View className="p-8 items-center">
                   <Disc size={32} color={colors.textMuted} />
-                  <Text className="text-sm mt-2" style={{ color: colors.textMuted }}>No data yet</Text>
+                  <Text className="text-sm mt-2" style={{ color: colors.textMuted }}>{t('stats.no.data')}</Text>
                 </View>
               ) : (
                 listeningStats.topAlbums.map(({ name, count }, i) => (
@@ -157,7 +159,7 @@ export default function StatisticsScreen() {
                   >
                     <Text className="text-sm font-bold w-6 text-center" style={{ color: colors.accent }}>{i + 1}</Text>
                     <Text className="flex-1 text-sm font-medium" style={{ color: colors.text }} numberOfLines={1}>{name}</Text>
-                    <Text className="text-sm" style={{ color: colors.textMuted }}>{count} plays</Text>
+                    <Text className="text-sm" style={{ color: colors.textMuted }}>{t('stats.plays', { count })}</Text>
                   </View>
                 ))
               )}

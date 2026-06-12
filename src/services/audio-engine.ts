@@ -405,6 +405,10 @@ class AudioEngine {
     };
   }
 
+  getSpeed(): number {
+    return this._speed;
+  }
+
   getCurrentUri(): string | null {
     return this._currentTrackUri;
   }

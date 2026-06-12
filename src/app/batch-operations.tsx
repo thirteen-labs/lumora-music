@@ -1,6 +1,7 @@
 import { useState, useMemo, useRef } from 'react';
 import { View, Text, ScrollView, Pressable, Alert } from 'react-native';
 import { useTheme } from '@/hooks/use-theme';
+import { useTranslation } from '@/hooks/use-translation';
 import { TopBar } from '@/components/top-bar';
 import { SectionHeader } from '@/components/section-header';
 import { useMusicStore } from '@/store/music-store';
@@ -21,6 +22,7 @@ import {
 
 export default function BatchOperationsScreen() {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const router = useRouter();
   const songs = useMusicStore((s) => s.songs);
   const toggleSongFavorite = useFavoritesStore((s) => s.toggleSongFavorite);
@@ -57,7 +59,7 @@ export default function BatchOperationsScreen() {
 
   const handleAddToQueue = () => {
     selectedSongs.forEach((s) => addToQueue(s));
-    Alert.alert('Added', `${selectedSongs.length} tracks added to queue`);
+    Alert.alert(t('common.ok'), t('batch.added.queue', { count: selectedSongs.length }));
     setSelected(new Set());
   };
 
@@ -65,7 +67,7 @@ export default function BatchOperationsScreen() {
     selectedSongs.forEach((s) => {
       if (!isSongFavorite(s.id)) toggleSongFavorite(s);
     });
-    Alert.alert('Done', `${selectedSongs.length} tracks favorited`);
+    Alert.alert(t('common.ok'), t('batch.favorited', { count: selectedSongs.length }));
     setSelected(new Set());
   };
 
@@ -77,12 +79,12 @@ export default function BatchOperationsScreen() {
 
   const handleDelete = () => {
     Alert.alert(
-      'Delete Files',
-      `Are you sure you want to delete ${selectedSongs.length} file(s)? This cannot be undone.`,
+      t('batch.delete'),
+      t('batch.delete.confirm', { count: selectedSongs.length }),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Delete',
+          text: t('deleted.delete'),
           style: 'destructive',
           onPress: async () => {
             setOperating(true);
@@ -94,7 +96,7 @@ export default function BatchOperationsScreen() {
                 useMusicStore.setState((state) => ({
                   songs: state.songs.filter((s) => !deletedIds.has(s.id)),
                 }));
-                Alert.alert('Deleted', `${selectedSongs.length} file(s) deleted.`);
+                Alert.alert(t('common.ok'), t('batch.deleted', { count: selectedSongs.length }));
                 setSelected(new Set());
               } else {
                 Alert.alert('Error', result.error ?? 'Failed to delete files.');
@@ -125,7 +127,7 @@ export default function BatchOperationsScreen() {
   const handleAddToPlaylist = (playlistId: string) => {
     addSongsToPlaylist(playlistId, Array.from(selected));
     const playlist = playlists.find((p) => p.id === playlistId);
-    Alert.alert('Added', `${selected.size} tracks added to "${playlist?.name ?? 'playlist'}"`);
+    Alert.alert(t('common.ok'), `${selected.size} tracks added to "${playlist?.name ?? 'playlist'}"`);
     setSelected(new Set());
     playlistSheetRef.current?.dismiss();
   };
@@ -137,51 +139,51 @@ export default function BatchOperationsScreen() {
   return (
     <View className="flex-1" style={{ backgroundColor: colors.background }}>
       <TopBar
-        title={`${selected.size} Selected`}
+        title={t('batch.selected', { count: selected.size })}
         showSettings={false}
       />
       <ScrollView className="flex-1" contentContainerStyle={{ paddingBottom: 120 }}>
         <View className="px-4 py-4 gap-4">
           <View className="flex-row gap-2">
             <Pressable onPress={selectAll} className="flex-1 py-3 rounded-2xl items-center" style={{ backgroundColor: colors.card }}>
-              <Text className="text-xs font-semibold" style={{ color: colors.text }}>Select All</Text>
+              <Text className="text-xs font-semibold" style={{ color: colors.text }}>{t('batch.select.all')}</Text>
             </Pressable>
             <Pressable onPress={deselectAll} className="flex-1 py-3 rounded-2xl items-center" style={{ backgroundColor: colors.card }}>
-              <Text className="text-xs font-semibold" style={{ color: colors.text }}>Deselect All</Text>
+              <Text className="text-xs font-semibold" style={{ color: colors.text }}>{t('batch.deselect.all')}</Text>
             </Pressable>
           </View>
 
           {selected.size > 0 && (
             <View>
-              <SectionHeader title="Actions" />
+              <SectionHeader title={t('batch.actions')} />
               <View className="rounded-3xl overflow-hidden" style={{ backgroundColor: colors.surface }}>
                 <ActionButton
-                  icon={ListPlus} label="Add to Queue" count={selected.size}
+                  icon={ListPlus} label={t('batch.add.queue')} count={selected.size}
                   onPress={handleAddToQueue} colors={colors}
                   disabled={operating}
                 />
                 <ActionButton
-                  icon={Heart} label="Add to Favorites" count={selected.size}
+                  icon={Heart} label={t('batch.add.favorites')} count={selected.size}
                   onPress={handleFavorite} colors={colors}
                   disabled={operating}
                 />
                 <ActionButton
-                  icon={ListMusic} label="Add to Playlist" count={selected.size}
+                  icon={ListMusic} label={t('batch.add.playlist')} count={selected.size}
                   onPress={() => playlistSheetRef.current?.present()} colors={colors}
                   disabled={operating}
                 />
                 <ActionButton
-                  icon={Music} label="Play Now" count={selected.size}
+                  icon={Music} label={t('batch.play.now')} count={selected.size}
                   onPress={handlePlayNow} colors={colors}
                   disabled={operating}
                 />
                 <ActionButton
-                  icon={Share2} label="Share" count={selected.size}
+                  icon={Share2} label={t('batch.share')} count={selected.size}
                   onPress={handleShare} colors={colors}
                   disabled={operating}
                 />
                 <ActionButton
-                  icon={Trash2} label="Delete Files" count={selected.size}
+                  icon={Trash2} label={t('batch.delete')} count={selected.size}
                   onPress={handleDelete} colors={colors} danger
                   disabled={operating}
                 />
@@ -190,7 +192,7 @@ export default function BatchOperationsScreen() {
           )}
 
           <View>
-            <SectionHeader title={`Songs (${songs.length})`} />
+            <SectionHeader title={t('library.songs.count', { count: songs.length })} />
             <View className="rounded-3xl overflow-hidden" style={{ backgroundColor: colors.surface }}>
               {songs.map((song, i) => {
                 const isSelected = selected.has(song.id);
@@ -230,7 +232,7 @@ export default function BatchOperationsScreen() {
       >
         <BottomSheetScrollView contentContainerStyle={{ padding: 20 }}>
           <Text style={{ fontSize: 17, fontWeight: '600', color: colors.text, marginBottom: 16 }}>
-            Add to Playlist
+            {t('batch.add.playlist')}
           </Text>
           {playlists.length === 0 ? (
             <View style={{ alignItems: 'center', paddingVertical: 32 }}>

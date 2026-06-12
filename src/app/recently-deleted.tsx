@@ -1,19 +1,21 @@
 import { View, Text, ScrollView, Pressable, Alert } from 'react-native';
 import { useTheme } from '@/hooks/use-theme';
+import { useTranslation } from '@/hooks/use-translation';
+import type { TranslationKey } from '@/i18n/translations';
 import { TopBar } from '@/components/top-bar';
 import { SectionHeader } from '@/components/section-header';
 import { useRecentlyDeletedStore } from '@/store/recently-deleted-store';
 import { Music, Film, Trash2, RotateCcw, X } from 'lucide-react-native';
 
-function formatTimeAgo(timestamp: number): string {
+function formatTimeAgo(timestamp: number, t: (key: TranslationKey, params?: Record<string, string | number>) => string): string {
   const diff = Date.now() - timestamp;
   const minutes = Math.floor(diff / 60000);
-  if (minutes < 1) return 'Just now';
-  if (minutes < 60) return `${minutes}m ago`;
+  if (minutes < 1) return t('deleted.just.now');
+  if (minutes < 60) return t('deleted.ago', { minutes });
   const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
+  if (hours < 24) return t('deleted.hours.ago', { hours });
   const days = Math.floor(hours / 24);
-  return `${days}d ago`;
+  return t('deleted.days.ago', { days });
 }
 
 function formatFileSize(bytes: number): string {
@@ -24,6 +26,7 @@ function formatFileSize(bytes: number): string {
 
 export default function RecentlyDeletedScreen() {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const items = useRecentlyDeletedStore((s) => s.items);
   const restoreItem = useRecentlyDeletedStore((s) => s.restoreItem);
   const permanentlyDelete = useRecentlyDeletedStore((s) => s.permanentlyDelete);
@@ -33,36 +36,36 @@ export default function RecentlyDeletedScreen() {
   const videos = items.filter((i) => i.type === 'video');
 
   const handleRestore = (id: string, title: string) => {
-    Alert.alert('Restore', `Restore "${title}" to your library?`, [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Restore', onPress: () => restoreItem(id) },
+    Alert.alert(t('deleted.restore', { title }), t('deleted.restore', { title }), [
+      { text: t('common.cancel'), style: 'cancel' },
+      { text: t('common.ok'), onPress: () => restoreItem(id) },
     ]);
   };
 
   const handlePermanentDelete = (id: string, title: string) => {
-    Alert.alert('Permanently Delete', `Delete "${title}" forever? This cannot be undone.`, [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete', style: 'destructive', onPress: () => permanentlyDelete(id) },
+    Alert.alert(t('deleted.permanent.delete', { title }), t('deleted.permanent.delete', { title }), [
+      { text: t('common.cancel'), style: 'cancel' },
+      { text: t('deleted.delete'), style: 'destructive', onPress: () => permanentlyDelete(id) },
     ]);
   };
 
   const handleClearAll = () => {
-    Alert.alert('Clear All', 'Permanently delete all items? This cannot be undone.', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Clear All', style: 'destructive', onPress: clearAll },
+    Alert.alert(t('deleted.clear'), t('deleted.clear.confirm'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      { text: t('deleted.clear'), style: 'destructive', onPress: clearAll },
     ]);
   };
 
   return (
     <View className="flex-1" style={{ backgroundColor: colors.background }}>
-      <TopBar title="Recently Deleted" showSettings={false} />
+      <TopBar title={t('deleted.title')} showSettings={false} />
       <ScrollView className="flex-1" contentContainerStyle={{ paddingBottom: 120 }}>
         <View className="px-4 py-4 gap-6">
           {items.length === 0 ? (
             <View className="items-center py-12">
               <Trash2 size={48} color={colors.textMuted} />
               <Text className="text-sm mt-4" style={{ color: colors.textMuted }}>
-                No recently deleted items
+                {t('deleted.none')}
               </Text>
             </View>
           ) : (
@@ -70,14 +73,14 @@ export default function RecentlyDeletedScreen() {
               {items.length > 0 && (
                 <View className="flex-row justify-end">
                   <Pressable onPress={handleClearAll}>
-                    <Text className="text-xs font-semibold" style={{ color: colors.accent }}>Clear All</Text>
+                    <Text className="text-xs font-semibold" style={{ color: colors.accent }}>{t('deleted.clear.all')}</Text>
                   </Pressable>
                 </View>
               )}
 
               {songs.length > 0 && (
                 <View>
-                  <SectionHeader title={`Songs (${songs.length})`} />
+                  <SectionHeader title={t('deleted.songs', { count: songs.length })} />
                   <View className="rounded-3xl overflow-hidden" style={{ backgroundColor: colors.surface }}>
                     {songs.map((item, i) => (
                       <View
@@ -91,7 +94,7 @@ export default function RecentlyDeletedScreen() {
                             {item.title}
                           </Text>
                           <Text className="text-xs" style={{ color: colors.textMuted }}>
-                            {item.artist || 'Unknown'} · {formatFileSize(item.fileSize)} · {formatTimeAgo(item.deletedAt)}
+                            {item.artist || 'Unknown'} · {formatFileSize(item.fileSize)} · {formatTimeAgo(item.deletedAt, t)}
                           </Text>
                         </View>
                         <Pressable
@@ -116,7 +119,7 @@ export default function RecentlyDeletedScreen() {
 
               {videos.length > 0 && (
                 <View>
-                  <SectionHeader title={`Videos (${videos.length})`} />
+                  <SectionHeader title={t('deleted.videos', { count: videos.length })} />
                   <View className="rounded-3xl overflow-hidden" style={{ backgroundColor: colors.surface }}>
                     {videos.map((item, i) => (
                       <View
@@ -130,7 +133,7 @@ export default function RecentlyDeletedScreen() {
                             {item.title}
                           </Text>
                           <Text className="text-xs" style={{ color: colors.textMuted }}>
-                            {formatFileSize(item.fileSize)} · {formatTimeAgo(item.deletedAt)}
+                            {formatFileSize(item.fileSize)} · {formatTimeAgo(item.deletedAt, t)}
                           </Text>
                         </View>
                         <Pressable

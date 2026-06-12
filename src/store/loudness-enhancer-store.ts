@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 import { storage } from '@/services/mmkv';
+import { audioEngine } from '@/services/audio-engine';
 
 const LOUDNESS_KEY = 'lumora-loudness-enhancer';
 
@@ -23,10 +24,20 @@ export const useLoudnessEnhancerStore = create<LoudnessEnhancerState>()(
     setEnabled: (enabled) => {
       set((s) => { s.enabled = enabled; });
       try { storage.set(LOUDNESS_KEY, enabled); } catch {}
+      syncLoudnessToEngine();
     },
 
     setLevel: (level) => {
       set((s) => { s.level = Math.max(0, Math.min(12, level)); });
+      syncLoudnessToEngine();
     },
   })),
 );
+
+function syncLoudnessToEngine(): void {
+  try {
+    const state = useLoudnessEnhancerStore.getState();
+    audioEngine.setLoudnessEnabled(state.enabled);
+    audioEngine.setLoudnessLevel(state.level);
+  } catch {}
+}

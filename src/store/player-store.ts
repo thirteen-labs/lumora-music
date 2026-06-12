@@ -205,7 +205,17 @@ export const usePlayerStore = create<PlayerState>()(
 
       if (shuffle) {
         const order = shuffleArray(state.queue.length);
-        set((s) => { s.shuffledOrder = order; });
+        const currentQueueIdx = state.queueIndex;
+        const currentShuffledIdx = order.indexOf(currentQueueIdx);
+        if (currentShuffledIdx > 0) {
+          const tmp = order[0];
+          order[0] = order[currentShuffledIdx];
+          order[currentShuffledIdx] = tmp;
+        }
+        set((s) => {
+          s.shuffledOrder = order;
+          s.queueIndex = order[0];
+        });
       } else {
         set((s) => { s.shuffledOrder = []; });
       }
@@ -222,9 +232,17 @@ export const usePlayerStore = create<PlayerState>()(
     removeFromQueue: (index) => {
       set((state) => {
         state.queue.splice(index, 1);
-        if (index < state.queueIndex) state.queueIndex--;
+        if (index < state.queueIndex) {
+          state.queueIndex--;
+        } else if (index === state.queueIndex) {
+          if (state.queueIndex >= state.queue.length) {
+            state.queueIndex = Math.max(0, state.queue.length - 1);
+          }
+        }
         if (state.shuffle) {
-          state.shuffledOrder = state.shuffledOrder.filter((i) => i !== index);
+          state.shuffledOrder = state.shuffledOrder
+            .filter((i) => i !== index)
+            .map((i) => (i > index ? i - 1 : i));
         }
       });
     },

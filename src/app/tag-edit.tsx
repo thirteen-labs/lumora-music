@@ -8,6 +8,7 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { TagField } from '@/components/tag-field';
+import { useTranslation } from '@/hooks/use-translation';
 
 const tagSchema = z.object({
   title: z.string().min(1, 'Title is required'),
@@ -21,6 +22,7 @@ type TagFormData = z.infer<typeof tagSchema>;
 
 export default function TagEditScreen() {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const router = useRouter();
   const route = useRoute();
   const songs = useMusicStore((s) => s.songs);
@@ -46,7 +48,7 @@ export default function TagEditScreen() {
   if (!song) {
     return (
       <View className="flex-1 items-center justify-center" style={{ backgroundColor: colors.background }}>
-        <Text style={{ color: colors.textMuted }}>Song not found</Text>
+        <Text style={{ color: colors.textMuted }}>{t('tag.not.found')}</Text>
         <Pressable onPress={() => router.back()} className="mt-4">
           <Text style={{ color: colors.accent }}>Go back</Text>
         </Pressable>
@@ -69,12 +71,12 @@ export default function TagEditScreen() {
       });
     }
 
-    Alert.alert('Saved', 'Tags updated successfully.', [{ text: 'OK', onPress: () => router.back() }]);
+    Alert.alert('Saved', t('tag.saved'), [{ text: 'OK', onPress: () => router.back() }]);
   };
 
   return (
     <View className="flex-1" style={{ backgroundColor: colors.background }}>
-      <TopBar title="Edit Tags" showSettings={false} />
+      <TopBar title={t('tag.title')} showSettings={false} />
       <ScrollView className="flex-1" contentContainerStyle={{ paddingBottom: 120 }}>
         <View className="px-4 py-4 gap-4">
           <View className="rounded-3xl p-4 gap-4" style={{ backgroundColor: colors.surface }}>
@@ -83,7 +85,7 @@ export default function TagEditScreen() {
               name="title"
               render={({ field: { onChange, onBlur, value } }) => (
                 <TagField
-                  label="Title"
+                  label={t('tag.title.field')}
                   value={value}
                   onChange={onChange}
                   onBlur={onBlur}
@@ -97,7 +99,7 @@ export default function TagEditScreen() {
               name="artist"
               render={({ field: { onChange, onBlur, value } }) => (
                 <TagField
-                  label="Artist"
+                  label={t('tag.artist.field')}
                   value={value}
                   onChange={onChange}
                   onBlur={onBlur}
@@ -111,7 +113,7 @@ export default function TagEditScreen() {
               name="album"
               render={({ field: { onChange, onBlur, value } }) => (
                 <TagField
-                  label="Album"
+                  label={t('tag.album.field')}
                   value={value}
                   onChange={onChange}
                   onBlur={onBlur}
@@ -124,7 +126,7 @@ export default function TagEditScreen() {
               name="genre"
               render={({ field: { onChange, onBlur, value } }) => (
                 <TagField
-                  label="Genre"
+                  label={t('tag.genre.field')}
                   value={value}
                   onChange={onChange}
                   onBlur={onBlur}
@@ -137,7 +139,7 @@ export default function TagEditScreen() {
               name="year"
               render={({ field: { onChange, onBlur, value } }) => (
                 <TagField
-                  label="Year"
+                  label={t('tag.year.field')}
                   value={value}
                   onChange={onChange}
                   onBlur={onBlur}
@@ -155,7 +157,7 @@ export default function TagEditScreen() {
               style={{ backgroundColor: colors.card }}
             >
               <X size={18} color={colors.text} />
-              <Text className="text-sm font-semibold" style={{ color: colors.text }}>Cancel</Text>
+              <Text className="text-sm font-semibold" style={{ color: colors.text }}>{t('common.cancel')}</Text>
             </Pressable>
             <Pressable
               onPress={handleSubmit(handleSave)}
@@ -163,7 +165,7 @@ export default function TagEditScreen() {
               style={{ backgroundColor: isDirty ? colors.accent : colors.card }}
             >
               <Save size={18} color={isDirty ? colors.background : colors.textMuted} />
-              <Text className="text-sm font-semibold" style={{ color: isDirty ? colors.background : colors.textMuted }}>Save</Text>
+              <Text className="text-sm font-semibold" style={{ color: isDirty ? colors.background : colors.textMuted }}>{t('common.save')}</Text>
             </Pressable>
           </View>
         </View>
