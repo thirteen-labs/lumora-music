@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 import { storage } from '@/services/mmkv';
+import { audioEngine } from '@/services/audio-engine';
 import type { PlaybackSpeedSettings } from '@/types/audio';
 
 const SPEED_KEY = 'lumora-playback-speed';
@@ -50,3 +51,7 @@ export const usePlaybackSpeedStore = create<SpeedState>()(
 );
 
 export { SPEED_OPTIONS };
+
+usePlaybackSpeedStore.subscribe((state) => {
+  audioEngine.setSpeed(state.speed);
+});

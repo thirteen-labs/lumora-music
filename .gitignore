@@ -39,7 +39,7 @@ yarn-error.*
 
 # local env files
 .env*.local
-
+features.md
 # typescript
 *.tsbuildinfo
 *.af

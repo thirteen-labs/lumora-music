@@ -42,6 +42,7 @@ module.exports = function withMedia3Exclude(config) {
         '  configurations.all {',
         '    resolutionStrategy {',
         "      dependencySubstitution {",
+        "        substitute module('com.github.MissingCore.media:media3-exoplayer') using module('androidx.media3:media3-exoplayer:1.9.3')",
         "        substitute module('com.github.MissingCore.media:media3-extractor') using module('androidx.media3:media3-extractor:1.9.3')",
         "      }",
         '    }',

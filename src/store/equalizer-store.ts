@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 import { storage } from '@/services/mmkv';
+import { audioEngine } from '@/services/audio-engine';
 import type { EqualizerSettings, EqualizerBand, EqualizerPreset } from '@/types/audio';
 
 const EQ_KEY = 'lumora-eq-settings';
@@ -160,3 +161,21 @@ export const EQUALIZER_PRESETS: { key: EqualizerPreset; label: string }[] = [
   { key: 'pop', label: 'Pop' },
   { key: 'custom', label: 'Custom' },
 ];
+
+export function syncEqualizerToEngine(): void {
+  const state = useEqualizerStore.getState();
+  audioEngine.setEqEnabled(state.enabled);
+  if (state.enabled) {
+    audioEngine.setBandGains(state.bands);
+    audioEngine.setBassBoost(state.bassBoost);
+    audioEngine.setBalance(state.balance);
+  } else {
+    audioEngine.setBandGains(DEFAULT_BANDS);
+    audioEngine.setBassBoost(0);
+    audioEngine.setBalance(0);
+  }
+}
+
+useEqualizerStore.subscribe(() => {
+  syncEqualizerToEngine();
+});

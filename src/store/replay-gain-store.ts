@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 import { storage } from '@/services/mmkv';
+import { audioEngine } from '@/services/audio-engine';
 import type { ReplayGainSettings } from '@/types/audio';
 
 const RG_KEY = 'lumora-replay-gain';
@@ -49,3 +50,21 @@ export const useReplayGainStore = create<RGState>()(
     },
   })),
 );
+
+function dbToLinear(db: number): number {
+  return Math.pow(10, db / 20);
+}
+
+export function syncReplayGainToEngine(): void {
+  const state = useReplayGainStore.getState();
+  if (state.enabled) {
+    const preampLinear = dbToLinear(state.preamp);
+    audioEngine.setReplayGainVolume(preampLinear);
+  } else {
+    audioEngine.setReplayGainVolume(1.0);
+  }
+}
+
+useReplayGainStore.subscribe(() => {
+  syncReplayGainToEngine();
+});

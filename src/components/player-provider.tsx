@@ -6,8 +6,9 @@ import { useSettingsStore } from '@/store/settings-store';
 import { usePlayerStore } from '@/store/player-store';
 import { useMusicStore } from '@/store/music-store';
 import { useQueuePersistStore, reconstructQueue } from '@/store/queue-persist-store';
-import { usePlaybackSpeedStore } from '@/store/playback-speed-store';
 import { initializeNotifications } from '@/services/notifications';
+import { syncEqualizerToEngine } from '@/store/equalizer-store';
+import { syncReplayGainToEngine } from '@/store/replay-gain-store';
 
 function PlayerSync() {
   useTrackPlayerSync();
@@ -81,16 +82,10 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     setCrossfadeEnabled(crossfade);
   }, [crossfade]);
 
-  // Apply playback speed when it changes
-  const speed = usePlaybackSpeedStore((s) => s.speed);
   useEffect(() => {
-    import('@/services/track-player').then(({ getPlayer }) => {
-      const player = getPlayer();
-      if (player) {
-        try { player.playbackRate = speed; } catch {}
-      }
-    });
-  }, [speed]);
+    syncEqualizerToEngine();
+    syncReplayGainToEngine();
+  }, []);
 
   if (!ready) {
     return (
