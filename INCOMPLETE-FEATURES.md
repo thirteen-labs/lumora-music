@@ -8,10 +8,10 @@
 
 | # | Feature | File | Problem |
 |---|---------|------|---------|
-| 1 | **Equalizer** | `src/app/audio-features.tsx` + `src/store/equalizer-store.ts` | Full 10-band UI with presets, but settings are never applied to audio output. Purely cosmetic. |
-| 2 | **Bass Boost** | Same as above | Slider UI (0-12), persisted in MMKV, never touches the player. |
-| 3 | **Audio Balance (L/R)** | Same as above | Slider from L10 to R10, saved but no stereo panning applied. |
-| 4 | **ReplayGain** | `src/store/replay-gain-store.ts` | Toggle + preamp + track/album gain toggles. No ReplayGain tags are read from files, no volume adjustment applied. |
+| ~~1~~ | ~~**Equalizer**~~ | ~~`src/app/audio-features.tsx` + `src/store/equalizer-store.ts`~~ | ~~Full 10-band UI with presets, but settings are never applied to audio output.~~ **FIXED**: Engine wiring verified - `syncEqualizerToEngine()` pushes to `audioEngine` BiquadFilter chain on every state change. |
+| ~~2~~ | ~~**Bass Boost**~~ | ~~Same as above~~ | ~~Slider UI (0-12), persisted in MMKV, never touches the player.~~ **FIXED**: Wired to `audioEngine.setBassBoost()` via lowshelf filter at 150Hz. |
+| ~~3~~ | ~~**Audio Balance (L/R)**~~ | ~~Same as above~~ | ~~Slider from L10 to R10, saved but no stereo panning applied.~~ **FIXED**: Wired to `audioEngine.setBalance()` via StereoPannerNode. |
+| ~~4~~ | ~~**ReplayGain**~~ | ~~`src/store/replay-gain-store.ts`~~ | ~~Toggle + preamp + track/album gain toggles.~~ **FIXED**: `syncReplayGainToEngine()` pushes preamp dB→linear conversion to `audioEngine.setReplayGainVolume()`. |
 
 ---
 
@@ -19,13 +19,13 @@
 
 | # | Feature | File | What's Missing |
 |---|---------|------|----------------|
-| 5 | **Tag Editing** | `src/app/tag-edit.tsx` | Save button shows `Alert.alert('Coming Soon')`. No native metadata writing. |
-| 6 | **Batch Delete** | `src/app/batch-operations.tsx` | Shows `Alert.alert('Coming Soon')`. No file deletion logic. |
-| 7 | **Batch Share** | `src/app/batch-operations.tsx` | Shows `Alert.alert('Coming Soon')`. No multi-file share logic. |
+| ~~5~~ | ~~**Tag Editing**~~ | ~~`src/app/tag-edit.tsx`~~ | **IMPLEMENTED**: Full form with `react-hook-form` + `zod` validation. Saves to music store. |
+| ~~6~~ | ~~**Batch Delete**~~ | ~~`src/app/batch-operations.tsx`~~ | **IMPLEMENTED**: Uses `expo-file-system` to delete files, removes from music store. |
+| ~~7~~ | ~~**Batch Share**~~ | ~~`src/app/batch-operations.tsx`~~ | **IMPLEMENTED**: Uses `expo-sharing` to share files. |
 | 8 | **Online Subtitles** | `src/app/online-subtitles.tsx` | Static screen with "Coming Soon" badge. Requires online API. |
 | 9 | **AI Features** | `src/app/ai-features.tsx` | 3 planned features. Requires online API / ML models. |
 | 10 | **Cloud Backup & Sync** | `src/app/cloud-sync.tsx` | Backup/Restore/Sync cards. Requires cloud infrastructure. |
-| 11 | **Gesture Controls** | `src/app/gesture-controls.tsx` | Lists 9 gestures. No gesture handling in video player at all. |
+| ~~11~~ | ~~**Gesture Controls**~~ | ~~`src/app/gesture-controls.tsx`~~ | **IMPLEMENTED**: Swipe gestures (seek, volume, brightness) and double-tap seek in video player. Settings screen with toggles. |
 
 ---
 
@@ -33,8 +33,8 @@
 
 | # | Feature | File | Problem |
 |---|---------|------|---------|
-| 12 | **Picture-in-Picture** | `src/app/video-player.tsx` | `allowsPictureInPicture` prop set, but no Android manifest entries, no iOS background mode, no PiP plugin configured. |
-| 13 | **Queue Drag Reorder** | `src/app/player.tsx` | `GripVertical` icon shown for each item, but `BottomSheetFlatList` has no drag-and-drop. |
+| ~~12~~ | ~~**Picture-in-Picture**~~ | ~~`src/app/video-player.tsx`~~ | **FIXED**: Added `android:supportsPictureInPicture="true"` to Android manifest, added `SYSTEM_ALERT_WINDOW` and `FOREGROUND_SERVICE_SPECIAL_USE` permissions. |
+| ~~13~~ | ~~**Queue Drag Reorder**~~ | ~~`src/app/player.tsx`~~ | **IMPLEMENTED**: Up/down arrow buttons on each queue item for reordering via `reorderQueue()` action. |
 
 ---
 
@@ -47,7 +47,7 @@
 | 16 | **Cloud Backup & Sync** | Requires cloud storage backend and auth |
 | 17 | **Background Scanning** | Requires `expo-task-manager` integration |
 | 18 | **Frame-by-Frame Stepping** | `expo-video` doesn't support it natively |
-| 19 | **File Operations** (rename/move/copy/delete) | No native file operation modules integrated |
+| 19 | **File Operations** (rename/move/copy/delete) | **IMPLEMENTED** in `src/services/file-operations.ts` using `expo-file-system` |
 
 ---
 
@@ -67,27 +67,38 @@
 | 10 | Weekly Listening Minutes | Daily listening time tracked, bar chart in statistics screen |
 | 11 | Video Subtitle Rendering | SRT/VTT parsing and overlay on video (normal + fullscreen) |
 | 12 | Dead Code Removal | Removed unused `PlaceholderFeature` type |
+| 13 | Equalizer Engine Wiring | `syncEqualizerToEngine()` verified - pushes to BiquadFilter chain |
+| 14 | Bass Boost Engine Wiring | Wired to lowshelf filter at 150Hz via `audioEngine.setBassBoost()` |
+| 15 | Audio Balance Engine Wiring | Wired to StereoPannerNode via `audioEngine.setBalance()` |
+| 16 | ReplayGain Engine Wiring | dB→linear conversion pushed to `audioEngine.setReplayGainVolume()` |
+| 17 | Tag Editing | Full form with react-hook-form + zod validation, saves to music store |
+| 18 | Batch Delete | File deletion via expo-file-system with confirmation dialog |
+| 19 | Batch Share | Multi-file sharing via expo-sharing |
+| 20 | Video Gesture Controls | Swipe seek/volume/brightness + double-tap seek with indicators |
+| 21 | Gesture Controls Settings | Toggle individual gestures on/off, persisted to MMKV |
+| 22 | Queue Drag Reorder | Up/down arrows on each queue item, wired to `reorderQueue()` |
+| 23 | Picture-in-Picture | Android manifest configured with `supportsPictureInPicture` |
+| 24 | File Operations Service | `src/services/file-operations.ts` - delete/rename/move/copy/share |
 
 ---
 
 ## RECOMMENDED REMAINING PRIORITY
 
-### P1 - Placeholder Screens
-1. Tag editing -- implement native metadata writing or remove screen
-2. Batch delete -- implement file deletion or remove screen
-3. Batch share -- implement multi-file sharing or remove screen
+### P1 - Online Features (requires API/backend)
+1. Online subtitle downloader
+2. AI features (smart playlists, mood detection, NLP search)
+3. Cloud backup & sync
 
-### P2 - Advanced Features
-4. Queue drag reorder -- add gesture-based drag-and-drop
-5. Picture-in-Picture -- configure Android manifest and background modes
-6. Gesture controls for video -- implement swipe gestures
+### P2 - Native Module Features
+4. Background scanning (expo-task-manager)
+5. Frame-by-frame stepping (native video module)
 
-### P3 - Online Features (requires API/backend)
-7. Online subtitle downloader
-8. AI features (smart playlists, mood detection, NLP search)
-9. Cloud backup & sync
-
-### P4 - Native Module Features
-10. Background scanning (expo-task-manager)
-11. Frame-by-frame stepping (native video module)
-12. File operations (rename/move/copy/delete)
+### P3 - Already Implemented
+6. ~~Tag editing~~ ✅
+7. ~~Batch delete~~ ✅
+8. ~~Batch share~~ ✅
+9. ~~Queue drag reorder~~ ✅
+10. ~~Gesture controls~~ ✅
+11. ~~File operations~~ ✅
+12. ~~PiP~~ ✅
+13. ~~Equalizer/Bass/Balance/ReplayGain~~ ✅

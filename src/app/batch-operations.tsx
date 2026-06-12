@@ -11,6 +11,7 @@ import {
   SquareCheck, Square, Trash2, Heart, Share2, Music,
   ListPlus,
 } from 'lucide-react-native';
+import { deleteFiles, shareFiles } from '@/services/file-operations';
 
 export default function BatchOperationsScreen() {
   const { colors } = useTheme();
@@ -22,6 +23,7 @@ export default function BatchOperationsScreen() {
   const addToQueue = usePlayerStore((s) => s.addToQueue);
 
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [operating, setOperating] = useState(false);
 
   const toggleSelect = (id: string) => {
     setSelected((prev) => {
@@ -65,6 +67,53 @@ export default function BatchOperationsScreen() {
     router.back();
   };
 
+  const handleDelete = () => {
+    Alert.alert(
+      'Delete Files',
+      `Are you sure you want to delete ${selectedSongs.length} file(s)? This cannot be undone.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            setOperating(true);
+            try {
+              const uris = selectedSongs.map((s) => s.uri);
+              const result = await deleteFiles(uris);
+              if (result.success) {
+                const deletedIds = new Set(selectedSongs.map((s) => s.id));
+                useMusicStore.setState((state) => ({
+                  songs: state.songs.filter((s) => !deletedIds.has(s.id)),
+                }));
+                Alert.alert('Deleted', `${selectedSongs.length} file(s) deleted.`);
+                setSelected(new Set());
+              } else {
+                Alert.alert('Error', result.error ?? 'Failed to delete files.');
+              }
+            } finally {
+              setOperating(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleShare = async () => {
+    setOperating(true);
+    try {
+      const uris = selectedSongs.map((s) => s.uri);
+      const result = await shareFiles(uris);
+      if (!result.success) {
+        Alert.alert('Error', result.error ?? 'Failed to share files.');
+      }
+      setSelected(new Set());
+    } finally {
+      setOperating(false);
+    }
+  };
+
   return (
     <View className="flex-1" style={{ backgroundColor: colors.background }}>
       <TopBar
@@ -73,7 +122,6 @@ export default function BatchOperationsScreen() {
       />
       <ScrollView className="flex-1" contentContainerStyle={{ paddingBottom: 120 }}>
         <View className="px-4 py-4 gap-4">
-          {/* Selection Controls */}
           <View className="flex-row gap-2">
             <Pressable onPress={selectAll} className="flex-1 py-3 rounded-2xl items-center" style={{ backgroundColor: colors.card }}>
               <Text className="text-xs font-semibold" style={{ color: colors.text }}>Select All</Text>
@@ -83,7 +131,6 @@ export default function BatchOperationsScreen() {
             </Pressable>
           </View>
 
-          {/* Actions */}
           {selected.size > 0 && (
             <View>
               <SectionHeader title="Actions" />
@@ -91,30 +138,32 @@ export default function BatchOperationsScreen() {
                 <ActionButton
                   icon={ListPlus} label="Add to Queue" count={selected.size}
                   onPress={handleAddToQueue} colors={colors}
+                  disabled={operating}
                 />
                 <ActionButton
                   icon={Heart} label="Add to Favorites" count={selected.size}
                   onPress={handleFavorite} colors={colors}
+                  disabled={operating}
                 />
                 <ActionButton
                   icon={Music} label="Play Now" count={selected.size}
                   onPress={handlePlayNow} colors={colors}
-                />
-                <ActionButton
-                  icon={Trash2} label="Delete Files" count={selected.size}
-                  onPress={() => Alert.alert('Coming Soon', 'Batch delete will be available in a future update.')}
-                  colors={colors} danger
+                  disabled={operating}
                 />
                 <ActionButton
                   icon={Share2} label="Share" count={selected.size}
-                  onPress={() => Alert.alert('Coming Soon', 'Batch share will be available in a future update.')}
-                  colors={colors}
+                  onPress={handleShare} colors={colors}
+                  disabled={operating}
+                />
+                <ActionButton
+                  icon={Trash2} label="Delete Files" count={selected.size}
+                  onPress={handleDelete} colors={colors} danger
+                  disabled={operating}
                 />
               </View>
             </View>
           )}
 
-          {/* Song List */}
           <View>
             <SectionHeader title={`Songs (${songs.length})`} />
             <View className="rounded-3xl overflow-hidden" style={{ backgroundColor: colors.surface }}>
@@ -152,15 +201,16 @@ export default function BatchOperationsScreen() {
 }
 
 function ActionButton({
-  icon: Icon, label, count, onPress, colors, danger,
+  icon: Icon, label, count, onPress, colors, danger, disabled,
 }: {
-  icon: any; label: string; count: number; onPress: () => void; colors: any; danger?: boolean;
+  icon: any; label: string; count: number; onPress: () => void; colors: any; danger?: boolean; disabled?: boolean;
 }) {
   return (
     <Pressable
       onPress={onPress}
+      disabled={disabled}
       className="flex-row items-center gap-3 p-4"
-      style={{ borderBottomWidth: 1, borderBottomColor: colors.border }}
+      style={{ borderBottomWidth: 1, borderBottomColor: colors.border, opacity: disabled ? 0.5 : 1 }}
     >
       <Icon size={18} color={danger ? '#EF4444' : colors.accent} />
       <Text className="flex-1 text-sm font-medium" style={{ color: danger ? '#EF4444' : colors.text }}>{label}</Text>

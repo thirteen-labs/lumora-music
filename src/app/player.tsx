@@ -19,6 +19,8 @@ import {
   GripVertical,
   Trash2,
   LayoutGrid,
+  ChevronUp,
+  ChevronDown as ChevronDownIcon,
 } from 'lucide-react-native';
 import { formatDuration } from '@/utils/cn';
 import Slider from '@react-native-community/slider';
@@ -53,6 +55,7 @@ export default function PlayerScreen() {
   const setRepeat = usePlayerStore((s) => s.setRepeat);
   const queue = usePlayerStore((s) => s.queue);
   const queueIndex = usePlayerStore((s) => s.queueIndex);
+  const reorderQueue = usePlayerStore((s) => s.reorderQueue);
   const removeFromQueue = usePlayerStore((s) => s.removeFromQueue);
   const hideFullPlayer = usePlayerStore((s) => s.hideFullPlayer);
   const favoriteSongIds = useFavoritesStore((s) => s.favoriteSongIds);
@@ -111,13 +114,31 @@ export default function PlayerScreen() {
           style={{
             flexDirection: 'row',
             alignItems: 'center',
-            gap: 12,
-            paddingHorizontal: 20,
-            paddingVertical: 10,
+            gap: 8,
+            paddingHorizontal: 16,
+            paddingVertical: 8,
             backgroundColor: isCurrent ? colors.accent + '18' : 'transparent',
           }}
         >
-          <GripVertical size={16} color={colors.textMuted} />
+          <View style={{ alignItems: 'center', gap: 2 }}>
+            <Pressable
+              onPress={() => index > 0 && reorderQueue(index, index - 1)}
+              disabled={index === 0}
+              hitSlop={4}
+              style={{ padding: 2, opacity: index === 0 ? 0.2 : 1 }}
+            >
+              <ChevronUp size={14} color={colors.textMuted} />
+            </Pressable>
+            <Pressable
+              onPress={() => index < queue.length - 1 && reorderQueue(index, index + 1)}
+              disabled={index === queue.length - 1}
+              hitSlop={4}
+              style={{ padding: 2, opacity: index === queue.length - 1 ? 0.2 : 1 }}
+            >
+              <ChevronDownIcon size={14} color={colors.textMuted} />
+            </Pressable>
+          </View>
+          <GripVertical size={14} color={colors.textMuted} />
           <View
             style={{
               width: 40,
@@ -162,7 +183,7 @@ export default function PlayerScreen() {
         </View>
       );
     },
-    [queueIndex, colors, removeFromQueue],
+    [queueIndex, queue.length, colors, removeFromQueue, reorderQueue],
   );
 
   if (!currentTrack) {
