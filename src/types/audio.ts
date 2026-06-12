@@ -82,5 +82,3 @@ export interface QueuedTrack {
   song: import('./media').Song;
   addedAt: number;
 }
-
-export type PlaceholderFeature = 'subtitles' | 'ai' | 'cloud';

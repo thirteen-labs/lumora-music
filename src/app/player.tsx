@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState, useEffect } from 'react';
-import { View, Text, Pressable, Dimensions, ActivityIndicator } from 'react-native';
+import { View, Text, Pressable, Dimensions, ActivityIndicator, ScrollView } from 'react-native';
 import { useTheme } from '@/hooks/use-theme';
 import { usePlayerStore } from '@/store/player-store';
 import { useSettingsStore, type NowPlayingLayout } from '@/store/settings-store';
@@ -25,13 +25,14 @@ import Slider from '@react-native-community/slider';
 import { useRouter } from 'expo-router';
 import { useFavoritesStore } from '@/store/favorites-store';
 import { Image } from 'expo-image';
-import { fetchLyrics, getSyncedLine, type LyricsResult, type SyncedLine } from '@/services/lyrics';
+import { fetchLyrics, type LyricsResult, type SyncedLine } from '@/services/lyrics';
 import {
   BottomSheetModal,
   BottomSheetFlatList,
   BottomSheetScrollView,
   BottomSheetBackdrop,
 } from '@gorhom/bottom-sheet';
+import { useSyncedLyricsScroll } from '@/hooks/use-synced-lyrics-scroll';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const ARTWORK_SIZE = SCREEN_WIDTH * 0.72;
@@ -650,16 +651,22 @@ function MinimalLayout(props: LayoutProps) {
 }
 
 function SyncedLyricsView({ synced, position, colors }: { synced: SyncedLine[]; position: number; colors: any }) {
-  const activeIdx = getSyncedLine(synced, position);
+  const { scrollRef, registerLine, activeIdx } = useSyncedLyricsScroll(synced, position);
 
   return (
-    <View style={{ paddingVertical: 8 }}>
+    <ScrollView
+      ref={scrollRef}
+      style={{ paddingVertical: 8 }}
+      contentContainerStyle={{ paddingVertical: 80 }}
+      showsVerticalScrollIndicator={false}
+    >
       {synced.map((line, i) => {
         const isActive = i === activeIdx;
         const isPast = activeIdx >= 0 && i < activeIdx;
         return (
           <Text
             key={`${i}-${line.time}`}
+            onLayout={(e) => registerLine(i, e.nativeEvent.layout.y)}
             style={{
               fontSize: isActive ? 20 : 16,
               fontWeight: isActive ? '700' : '400',
@@ -673,6 +680,6 @@ function SyncedLyricsView({ synced, position, colors }: { synced: SyncedLine[]; 
           </Text>
         );
       })}
-    </View>
+    </ScrollView>
   );
 }

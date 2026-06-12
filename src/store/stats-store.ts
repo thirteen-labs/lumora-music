@@ -5,6 +5,11 @@ import type { TrackStats, ListeningStats } from '@/types/audio';
 import type { Song } from '@/types/media';
 
 const STATS_KEY = 'lumora-track-stats';
+const DAILY_KEY = 'lumora-daily-listening';
+
+interface DailyListening {
+  [date: string]: number;
+}
 
 function loadStats(): Record<string, TrackStats> {
   try {
@@ -14,8 +19,25 @@ function loadStats(): Record<string, TrackStats> {
   return {};
 }
 
+function loadDailyListening(): DailyListening {
+  try {
+    const raw = storage.getString(DAILY_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch {}
+  return {};
+}
+
 function saveStats(stats: Record<string, TrackStats>): void {
   try { storage.set(STATS_KEY, JSON.stringify(stats)); } catch {}
+}
+
+function saveDailyListening(daily: DailyListening): void {
+  try { storage.set(DAILY_KEY, JSON.stringify(daily)); } catch {}
+}
+
+function getTodayKey(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
 interface StatsState {
@@ -23,6 +45,7 @@ interface StatsState {
   recordPlay: (songId: string) => void;
   recordSkip: (songId: string) => void;
   addPlayTime: (songId: string, seconds: number) => void;
+  recordDailyListening: (seconds: number) => void;
   getTrackStats: (songId: string) => TrackStats;
   getMostPlayed: (songs: Song[], limit?: number) => Song[];
   getNeverPlayed: (songs: Song[]) => Song[];
@@ -71,6 +94,13 @@ export const useStatsStore = create<StatsState>()(
       saveStats(get().trackStats);
     },
 
+    recordDailyListening: (seconds) => {
+      const daily = loadDailyListening();
+      const key = getTodayKey();
+      daily[key] = (daily[key] || 0) + seconds;
+      saveDailyListening(daily);
+    },
+
     getTrackStats: (songId) => {
       return get().trackStats[songId] || {
         songId, playCount: 0, skipCount: 0, lastPlayed: 0, totalPlayTime: 0,
@@ -108,6 +138,7 @@ export const useStatsStore = create<StatsState>()(
 
     getListeningStats: (songs) => {
       const stats = get().trackStats;
+      const daily = loadDailyListening();
       let totalPlayTime = 0;
       let totalTracksPlayed = 0;
       const artistCounts: Record<string, number> = {};
@@ -140,7 +171,15 @@ export const useStatsStore = create<StatsState>()(
         .sort((a, b) => b.count - a.count)
         .slice(0, 10);
 
-      return { totalPlayTime, totalTracksPlayed, topArtists, topAlbums, topSongs, weeklyMinutes: [] };
+      const weeklyMinutes: number[] = [];
+      for (let i = 6; i >= 0; i--) {
+        const d = new Date();
+        d.setDate(d.getDate() - i);
+        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        weeklyMinutes.push(Math.round((daily[key] || 0) / 60));
+      }
+
+      return { totalPlayTime, totalTracksPlayed, topArtists, topAlbums, topSongs, weeklyMinutes };
     },
 
     getTotalPlayCount: () => {

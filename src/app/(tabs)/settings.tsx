@@ -12,10 +12,11 @@ import {
   Shuffle, Repeat, Zap, Info, Image as ImageIcon, LayoutGrid,
   Equal, Moon, Activity, ListMusic, Music, Tag,
   HardDrive, Hand, Captions, Brain, Cloud,
-  Disc, ChevronRight,
+  Disc, ChevronRight, Timer,
 } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { Image } from 'expo-image';
+import Slider from '@react-native-community/slider';
 
 export default function SettingsScreen() {
   const { colors } = useTheme();
@@ -26,6 +27,8 @@ export default function SettingsScreen() {
   const setDefaultRepeat = useSettingsStore((s) => s.setDefaultRepeat);
   const crossfade = useSettingsStore((s) => s.crossfade);
   const setCrossfade = useSettingsStore((s) => s.setCrossfade);
+  const crossfadeDuration = useSettingsStore((s) => s.crossfadeDuration);
+  const setCrossfadeDuration = useSettingsStore((s) => s.setCrossfadeDuration);
   const colorAware = useSettingsStore((s) => s.colorAware);
   const setColorAware = useSettingsStore((s) => s.setColorAware);
   const backgroundImage = useSettingsStore((s) => s.backgroundImage);
@@ -195,6 +198,32 @@ export default function SettingsScreen() {
                 onToggle={() => setCrossfade(!crossfade)}
                 colors={colors}
               />
+              {crossfade && (
+                <View className="px-4 py-3" style={{ borderBottomWidth: 1, borderBottomColor: colors.border }}>
+                  <View className="flex-row items-center justify-between mb-2">
+                    <View className="flex-row items-center gap-2">
+                      <Timer size={16} color={colors.accent} />
+                      <Text className="text-xs font-medium" style={{ color: colors.textMuted }}>
+                        Crossfade Duration
+                      </Text>
+                    </View>
+                    <Text className="text-xs font-semibold" style={{ color: colors.accent }}>
+                      {crossfadeDuration}s
+                    </Text>
+                  </View>
+                  <Slider
+                    value={crossfadeDuration}
+                    onValueChange={(val) => setCrossfadeDuration(Math.round(val * 2) / 2)}
+                    minimumValue={1}
+                    maximumValue={12}
+                    step={0.5}
+                    minimumTrackTintColor={colors.accent}
+                    maximumTrackTintColor={colors.border}
+                    thumbTintColor={colors.accent}
+                    style={{ width: '100%', height: 32 }}
+                  />
+                </View>
+              )}
             </View>
           </View>
 

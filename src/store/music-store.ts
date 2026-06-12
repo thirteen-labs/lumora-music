@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 import type { Song, Album, Artist, Genre, MediaScanStatus, SortField, SortOrder } from '@/types/media';
 import { scanMediaLibrary, getCachedSongs, getCachedAlbums, getCachedArtists, getCachedGenres } from '@/services/scanner';
+import { useStatsStore } from '@/store/stats-store';
 
 interface MusicState {
   songs: Song[];
@@ -63,6 +64,7 @@ export const useMusicStore = create<MusicState>()(
 
     getSortedSongs: () => {
       const state = get();
+      const stats = useStatsStore.getState().trackStats;
       const sorted = [...state.songs];
       sorted.sort((a, b) => {
         let cmp = 0;
@@ -72,6 +74,8 @@ export const useMusicStore = create<MusicState>()(
           case 'dateAdded': cmp = a.dateAdded - b.dateAdded; break;
           case 'duration': cmp = a.duration - b.duration; break;
           case 'fileSize': cmp = a.fileSize - b.fileSize; break;
+          case 'playCount': cmp = (stats[a.id]?.playCount || 0) - (stats[b.id]?.playCount || 0); break;
+          case 'lastPlayed': cmp = (stats[a.id]?.lastPlayed || 0) - (stats[b.id]?.lastPlayed || 0); break;
         }
         return state.sortOrder === 'desc' ? -cmp : cmp;
       });

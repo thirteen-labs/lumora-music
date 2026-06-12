@@ -4,6 +4,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { useMusicStore } from '@/store/music-store';
 import { usePlayerStore } from '@/store/player-store';
 import { useLayoutStore } from '@/store/layout-store';
+import { useStatsStore } from '@/store/stats-store';
 import { TopBar } from '@/components/top-bar';
 import { MiniPlayer } from '@/components/mini-player';
 import { SortMenu } from '@/components/sort-menu';
@@ -15,7 +16,7 @@ import { SORT_OPTIONS, type SortField, type SortOrder } from '@/types/media';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
-function sortSongs(songs: any[], sortField: SortField, sortOrder: SortOrder) {
+function sortSongs(songs: any[], sortField: SortField, sortOrder: SortOrder, stats: Record<string, any>) {
   const sorted = [...songs];
   sorted.sort((a, b) => {
     let cmp = 0;
@@ -25,6 +26,8 @@ function sortSongs(songs: any[], sortField: SortField, sortOrder: SortOrder) {
       case 'dateAdded': cmp = a.dateAdded - b.dateAdded; break;
       case 'duration': cmp = a.duration - b.duration; break;
       case 'fileSize': cmp = a.fileSize - b.fileSize; break;
+      case 'playCount': cmp = (stats[a.id]?.playCount || 0) - (stats[b.id]?.playCount || 0); break;
+      case 'lastPlayed': cmp = (stats[a.id]?.lastPlayed || 0) - (stats[b.id]?.lastPlayed || 0); break;
     }
     return sortOrder === 'desc' ? -cmp : cmp;
   });
@@ -37,8 +40,9 @@ export default function SongsScreen() {
   const sortField = useMusicStore((s) => s.sortField);
   const sortOrder = useMusicStore((s) => s.sortOrder);
   const setSort = useMusicStore((s) => s.setSort);
+  const trackStats = useStatsStore((s) => s.trackStats);
   const { fileSizeTheme, libraryViewMode, setLibraryViewMode } = useLayoutStore();
-  const sortedSongs = useMemo(() => sortSongs(songs, sortField, sortOrder), [songs, sortField, sortOrder]);
+  const sortedSongs = useMemo(() => sortSongs(songs, sortField, sortOrder, trackStats), [songs, sortField, sortOrder, trackStats]);
   const { bottomSheetRef, present, song } = useSongContextMenu();
 
   const heightMap = { small: 56, medium: 68, big: 84 };

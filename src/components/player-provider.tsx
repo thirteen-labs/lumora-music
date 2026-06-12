@@ -1,6 +1,6 @@
 import { useEffect, useState, ReactNode } from 'react';
 import { View, ActivityIndicator, Platform } from 'react-native';
-import { setupPlayer, setCrossfadeEnabled } from '@/services/track-player';
+import { setupPlayer, setCrossfadeEnabled, setCrossfadeDuration } from '@/services/track-player';
 import { useTrackPlayerSync } from '@/hooks/use-track-player-sync';
 import { useSettingsStore } from '@/store/settings-store';
 import { usePlayerStore } from '@/store/player-store';
@@ -18,6 +18,7 @@ function PlayerSync() {
 export function PlayerProvider({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(false);
   const crossfade = useSettingsStore((s) => s.crossfade);
+  const crossfadeDuration = useSettingsStore((s) => s.crossfadeDuration);
 
   useEffect(() => {
     let cancelled = false;
@@ -80,7 +81,8 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     setCrossfadeEnabled(crossfade);
-  }, [crossfade]);
+    setCrossfadeDuration(crossfadeDuration);
+  }, [crossfade, crossfadeDuration]);
 
   useEffect(() => {
     syncEqualizerToEngine();

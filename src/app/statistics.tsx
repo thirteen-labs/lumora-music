@@ -4,7 +4,7 @@ import { TopBar } from '@/components/top-bar';
 import { SectionHeader } from '@/components/section-header';
 import { useStatsStore } from '@/store/stats-store';
 import { useMusicStore } from '@/store/music-store';
-import { TrendingUp, Music, Clock, Activity, User, Disc } from 'lucide-react-native';
+import { TrendingUp, Music, Clock, Activity, User, Disc, BarChart3 } from 'lucide-react-native';
 
 export default function StatisticsScreen() {
   const { colors } = useTheme();
@@ -14,6 +14,11 @@ export default function StatisticsScreen() {
   const totalPlayCount = stats.getTotalPlayCount();
   const totalListenTime = stats.getTotalListenTime();
   const listeningStats = stats.getListeningStats(songs);
+  const weeklyMinutes = listeningStats.weeklyMinutes;
+  const maxWeeklyMinutes = Math.max(...weeklyMinutes, 1);
+  const dayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  const today = new Date().getDay();
+  const orderedLabels = [...dayLabels.slice(today + 1), ...dayLabels.slice(0, today + 1)];
 
   return (
     <View className="flex-1" style={{ backgroundColor: colors.background }}>
@@ -44,6 +49,37 @@ export default function StatisticsScreen() {
                 <TrendingUp size={24} color={colors.accent} />
                 <Text className="text-2xl font-bold mt-2" style={{ color: colors.text }}>{listeningStats.totalTracksPlayed}</Text>
                 <Text className="text-xs mt-1" style={{ color: colors.textMuted }}>Tracks Played</Text>
+              </View>
+            </View>
+          </View>
+
+          {/* Weekly Listening */}
+          <View>
+            <SectionHeader title="This Week" />
+            <View className="rounded-3xl p-4" style={{ backgroundColor: colors.surface }}>
+              <View className="flex-row items-center gap-2 mb-4">
+                <BarChart3 size={20} color={colors.accent} />
+                <Text className="text-sm font-semibold" style={{ color: colors.text }}>Daily Listening (minutes)</Text>
+              </View>
+              <View className="flex-row items-end justify-between" style={{ height: 120 }}>
+                {weeklyMinutes.map((minutes, i) => (
+                  <View key={i} className="flex-1 items-center">
+                    <Text className="text-[10px] mb-1" style={{ color: colors.textMuted }}>
+                      {minutes > 0 ? `${minutes}m` : ''}
+                    </Text>
+                    <View
+                      style={{
+                        width: 24,
+                        height: Math.max(4, (minutes / maxWeeklyMinutes) * 80),
+                        borderRadius: 6,
+                        backgroundColor: i === weeklyMinutes.length - 1 ? colors.accent : colors.accent + '40',
+                      }}
+                    />
+                    <Text className="text-[10px] mt-1" style={{ color: i === weeklyMinutes.length - 1 ? colors.accent : colors.textMuted }}>
+                      {orderedLabels[i]}
+                    </Text>
+                  </View>
+                ))}
               </View>
             </View>
           </View>

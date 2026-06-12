@@ -49,7 +49,7 @@ export interface Video {
   height: number;
 }
 
-export type SortField = 'title' | 'artist' | 'dateAdded' | 'duration' | 'fileSize';
+export type SortField = 'title' | 'artist' | 'dateAdded' | 'duration' | 'fileSize' | 'playCount' | 'lastPlayed';
 export type SortOrder = 'asc' | 'desc';
 
 export interface SortOption {
@@ -67,6 +67,10 @@ export const SORT_OPTIONS: SortOption[] = [
   { field: 'duration', order: 'asc', label: 'Shortest First' },
   { field: 'fileSize', order: 'desc', label: 'Largest First' },
   { field: 'fileSize', order: 'asc', label: 'Smallest First' },
+  { field: 'playCount', order: 'desc', label: 'Most Played' },
+  { field: 'playCount', order: 'asc', label: 'Least Played' },
+  { field: 'lastPlayed', order: 'desc', label: 'Recently Played' },
+  { field: 'lastPlayed', order: 'asc', label: 'Longest Unplayed' },
 ];
 
 export type MediaScanStatus = 'idle' | 'scanning' | 'complete' | 'error';

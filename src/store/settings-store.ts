@@ -9,6 +9,7 @@ const SETTINGS_KEYS = {
   defaultShuffle: 'lumora-setting-shuffle',
   defaultRepeat: 'lumora-setting-repeat',
   crossfade: 'lumora-setting-crossfade',
+  crossfadeDuration: 'lumora-setting-crossfade-duration',
   colorAware: 'lumora-setting-color-aware',
   backgroundImage: 'lumora-setting-bg-image',
   nowPlayingLayout: 'lumora-setting-np-layout',
@@ -25,12 +26,14 @@ interface SettingsState {
   defaultShuffle: boolean;
   defaultRepeat: RepeatMode;
   crossfade: boolean;
+  crossfadeDuration: number;
   colorAware: boolean;
   backgroundImage: string | null;
   nowPlayingLayout: NowPlayingLayout;
   setDefaultShuffle: (v: boolean) => void;
   setDefaultRepeat: (v: RepeatMode) => void;
   setCrossfade: (v: boolean) => void;
+  setCrossfadeDuration: (v: number) => void;
   setColorAware: (v: boolean) => void;
   setBackgroundImage: (path: string | null) => void;
   setNowPlayingLayout: (layout: NowPlayingLayout) => void;
@@ -41,6 +44,7 @@ export const useSettingsStore = create<SettingsState>()(
     defaultShuffle: loadBool(SETTINGS_KEYS.defaultShuffle, false),
     defaultRepeat: loadString(SETTINGS_KEYS.defaultRepeat, 'off') as RepeatMode,
     crossfade: loadBool(SETTINGS_KEYS.crossfade, false),
+    crossfadeDuration: (() => { try { return Number(storage.getString(SETTINGS_KEYS.crossfadeDuration)) || 5; } catch { return 5; } })(),
     colorAware: loadBool(SETTINGS_KEYS.colorAware, false),
     backgroundImage: loadString(SETTINGS_KEYS.backgroundImage, ''),
     nowPlayingLayout: (loadString(SETTINGS_KEYS.nowPlayingLayout, 'classic') as NowPlayingLayout) || 'classic',
@@ -56,6 +60,10 @@ export const useSettingsStore = create<SettingsState>()(
     setCrossfade: (v) => {
       set((s) => { s.crossfade = v; });
       try { storage.set(SETTINGS_KEYS.crossfade, v); } catch {}
+    },
+    setCrossfadeDuration: (v) => {
+      set((s) => { s.crossfadeDuration = v; });
+      try { storage.set(SETTINGS_KEYS.crossfadeDuration, String(v)); } catch {}
     },
     setColorAware: (v) => {
       set((s) => { s.colorAware = v; });

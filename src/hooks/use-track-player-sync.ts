@@ -86,7 +86,9 @@ export function useTrackPlayerSync() {
     if (delta > 0 && delta < 2) {
       playTimeAccumRef.current += delta;
       if (playTimeAccumRef.current >= 5) {
-        useStatsStore.getState().addPlayTime(trackId, Math.floor(playTimeAccumRef.current));
+        const seconds = Math.floor(playTimeAccumRef.current);
+        useStatsStore.getState().addPlayTime(trackId, seconds);
+        useStatsStore.getState().recordDailyListening(seconds);
         playTimeAccumRef.current = 0;
       }
     }

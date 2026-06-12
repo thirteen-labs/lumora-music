@@ -3,12 +3,14 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useTheme } from '@/hooks/use-theme';
 import { ChevronLeft, Maximize2, Minimize2, Captions, Gauge, X } from 'lucide-react-native';
 import { useVideoPlayer, VideoView, type VideoPlayer } from 'expo-video';
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import * as DocumentPicker from 'expo-document-picker';
+import * as FileSystem from 'expo-file-system';
 import {
   BottomSheetModal,
   BottomSheetBackdrop,
 } from '@gorhom/bottom-sheet';
+import { parseSRT, parseVTT, getActiveCue, type SubtitleCue } from '@/utils/subtitle-parser';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -22,6 +24,8 @@ export default function VideoPlayerScreen() {
   const [playbackRate, setPlaybackRate] = useState(1);
   const [subtitles, setSubtitles] = useState<any[]>([]);
   const [activeSubtitle, setActiveSubtitle] = useState<string | null>(null);
+  const parsedCuesRef = useRef<SubtitleCue[]>([]);
+  const [currentCueText, setCurrentCueText] = useState<string | null>(null);
   const speedSheetRef = useRef<BottomSheetModal>(null);
 
   const playerRef = useRef<VideoPlayer | null>(null);
@@ -58,6 +62,14 @@ export default function VideoPlayerScreen() {
         };
         setSubtitles((prev) => [...prev, sub]);
         setActiveSubtitle(sub.uri);
+
+        try {
+          const content = await FileSystem.readAsStringAsync(sub.uri, { encoding: FileSystem.EncodingType.UTF8 });
+          const ext = sub.label.split('.').pop()?.toLowerCase();
+          parsedCuesRef.current = ext === 'vtt' ? parseVTT(content) : parseSRT(content);
+        } catch (e) {
+          console.warn('Failed to parse subtitle file:', e);
+        }
       }
     } catch (e) {
       console.warn('Subtitle pick failed:', e);
@@ -70,6 +82,24 @@ export default function VideoPlayerScreen() {
     ),
     [],
   );
+
+  useEffect(() => {
+    if (!activeSubtitle) {
+      parsedCuesRef.current = [];
+    }
+  }, [activeSubtitle]);
+
+  useEffect(() => {
+    if (parsedCuesRef.current.length === 0 && !activeSubtitle) return;
+    const interval = setInterval(() => {
+      if (playerRef.current) {
+        const pos = playerRef.current.currentTime;
+        const cue = getActiveCue(parsedCuesRef.current, pos);
+        setCurrentCueText(cue?.text ?? null);
+      }
+    }, 250);
+    return () => clearInterval(interval);
+  }, [activeSubtitle]);
 
   if (!uri) {
     return (
@@ -91,6 +121,11 @@ export default function VideoPlayerScreen() {
           allowsPictureInPicture
           contentFit="contain"
         />
+        {activeSubtitle && currentCueText && (
+          <View style={styles.fullscreenSubtitleContainer}>
+            <Text style={styles.subtitleText}>{currentCueText}</Text>
+          </View>
+        )}
         <View style={styles.fullscreenControls}>
           <Pressable onPress={toggleFullscreen} style={styles.fullscreenButton}>
             <Minimize2 size={24} color="#fff" />
@@ -118,12 +153,19 @@ export default function VideoPlayerScreen() {
       </View>
 
       <View className="flex-1 items-center justify-center px-4">
-        <VideoView
-          style={styles.video}
-          player={player}
-          allowsPictureInPicture
-          contentFit="contain"
-        />
+        <View>
+          <VideoView
+            style={styles.video}
+            player={player}
+            allowsPictureInPicture
+            contentFit="contain"
+          />
+          {activeSubtitle && currentCueText && (
+            <View style={styles.subtitleOverlay}>
+              <Text style={styles.subtitleText}>{currentCueText}</Text>
+            </View>
+          )}
+        </View>
       </View>
 
       <View className="px-4 pb-4">
@@ -268,5 +310,30 @@ const styles = StyleSheet.create({
   },
   backButton: {
     padding: 8,
+  },
+  subtitleOverlay: {
+    position: 'absolute',
+    bottom: 16,
+    left: 16,
+    right: 16,
+    alignItems: 'center',
+  },
+  fullscreenSubtitleContainer: {
+    position: 'absolute',
+    bottom: 60,
+    left: 32,
+    right: 32,
+    alignItems: 'center',
+  },
+  subtitleText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+    textAlign: 'center',
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    overflow: 'hidden',
   },
 });

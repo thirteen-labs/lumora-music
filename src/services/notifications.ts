@@ -31,7 +31,8 @@ export async function initializeNotifications(): Promise<void> {
   });
 
   Notifications.addNotificationResponseReceivedListener((response) => {
-    const action = response.notification.request.content.data?.action;
+    const action = response.notification.request.content.data?.action
+      ?? response.actionIdentifier;
     if (action === 'play-pause') {
       import('@/store/player-store').then(({ usePlayerStore }) => {
         usePlayerStore.getState().togglePlay();
@@ -62,6 +63,15 @@ export async function showNowPlayingNotification(track: Song, isPlaying: boolean
       sticky: true,
       ...(track.artwork ? { sound: undefined } : {}),
       ...(Platform.OS === 'android' ? { channelId: NOTIFICATION_CHANNEL_ID } : {}),
+      ...(Platform.OS === 'android'
+        ? {
+            actions: [
+              { identifier: 'previous', title: 'Previous' },
+              { identifier: 'play-pause', title: isPlaying ? 'Pause' : 'Play' },
+              { identifier: 'next', title: 'Next' },
+            ],
+          }
+        : {}),
     } as any,
     trigger: null,
     identifier: NOTIFICATION_ID,
@@ -79,6 +89,15 @@ export async function updateNotificationPlaybackState(isPlaying: boolean, track:
       autoDismiss: false,
       sticky: true,
       ...(Platform.OS === 'android' ? { channelId: NOTIFICATION_CHANNEL_ID } : {}),
+      ...(Platform.OS === 'android'
+        ? {
+            actions: [
+              { identifier: 'previous', title: 'Previous' },
+              { identifier: 'play-pause', title: isPlaying ? 'Pause' : 'Play' },
+              { identifier: 'next', title: 'Next' },
+            ],
+          }
+        : {}),
     } as any,
     trigger: null,
     identifier: NOTIFICATION_ID,
