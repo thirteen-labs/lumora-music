@@ -52,5 +52,5 @@ export function reconstructQueue(persisted: PersistedQueue, allSongs: Song[]): {
   const songMap = new Map(allSongs.map((s) => [s.id, s]));
   const queue = persisted.queueIds.map((id) => songMap.get(id)).filter(Boolean) as Song[];
   const track = persisted.currentTrackId ? songMap.get(persisted.currentTrackId) ?? null : null;
-  return { track, queue, queueIndex: Math.min(persisted.queueIndex, queue.length - 1) };
+  return { track, queue, queueIndex: queue.length > 0 ? Math.min(persisted.queueIndex, queue.length - 1) : 0 };
 }

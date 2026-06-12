@@ -19,8 +19,8 @@ export default function StatisticsScreen() {
   const weeklyMinutes = listeningStats.weeklyMinutes;
   const maxWeeklyMinutes = Math.max(...weeklyMinutes, 1);
   const dayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-  const today = new Date().getDay();
-  const orderedLabels = [...dayLabels.slice(today + 1), ...dayLabels.slice(0, today + 1)];
+  const todayIdx = (new Date().getDay() + 6) % 7;
+  const orderedLabels = [...dayLabels.slice(todayIdx + 1), ...dayLabels.slice(0, todayIdx + 1)];
 
   return (
     <View className="flex-1" style={{ backgroundColor: colors.background }}>

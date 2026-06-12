@@ -4,9 +4,14 @@ import { storage } from '@/services/mmkv';
 import { audioEngine } from '@/services/audio-engine';
 
 const LOUDNESS_KEY = 'lumora-loudness-enhancer';
+const LOUDNESS_LEVEL_KEY = 'lumora-loudness-level';
 
 function loadEnabled(): boolean {
   try { return storage.getBoolean(LOUDNESS_KEY) ?? false; } catch { return false; }
+}
+
+function loadLevel(): number {
+  try { return storage.getNumber(LOUDNESS_LEVEL_KEY) ?? 6; } catch { return 6; }
 }
 
 interface LoudnessEnhancerState {
@@ -19,7 +24,7 @@ interface LoudnessEnhancerState {
 export const useLoudnessEnhancerStore = create<LoudnessEnhancerState>()(
   immer((set) => ({
     enabled: loadEnabled(),
-    level: 6,
+    level: loadLevel(),
 
     setEnabled: (enabled) => {
       set((s) => { s.enabled = enabled; });
@@ -28,7 +33,9 @@ export const useLoudnessEnhancerStore = create<LoudnessEnhancerState>()(
     },
 
     setLevel: (level) => {
-      set((s) => { s.level = Math.max(0, Math.min(12, level)); });
+      const clamped = Math.max(0, Math.min(12, level));
+      set((s) => { s.level = clamped; });
+      try { storage.set(LOUDNESS_LEVEL_KEY, clamped); } catch {}
       syncLoudnessToEngine();
     },
   })),

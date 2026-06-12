@@ -47,8 +47,8 @@ function makeTheme(
       success: '#22C55E',
       warning: '#F59E0B',
       info: '#3B82F6',
-      textSecondary: isDark ? hexToRgba(text, 0.7) : hexToRgba(text, 0.7),
-      textMuted: isDark ? hexToRgba(text, 0.5) : hexToRgba(text, 0.5),
+      textSecondary: hexToRgba(text, 0.7),
+      textMuted: hexToRgba(text, 0.5),
     },
   };
 }

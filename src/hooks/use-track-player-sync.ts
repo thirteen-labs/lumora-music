@@ -14,6 +14,7 @@ export function useTrackPlayerSync() {
   const crossfadeTriggeredRef = useRef(false);
   const lastTrackIdRef = useRef<string | null>(null);
   const playTimeAccumRef = useRef(0);
+  const lastQueueSaveRef = useRef(0);
 
   function handleTrackEnd() {
     const state = usePlayerStore.getState();
@@ -123,6 +124,7 @@ export function useTrackPlayerSync() {
       // Notification handling
       if (state.currentTrack && state.currentTrack.id !== lastTrackIdRef.current) {
         lastTrackIdRef.current = state.currentTrack.id;
+        playTimeAccumRef.current = 0;
         showNowPlayingNotification(state.currentTrack, isNowPlaying);
       } else if (state.currentTrack && isNowPlaying !== wasPlayingRef.current) {
         updateNotificationPlaybackState(isNowPlaying, state.currentTrack);
@@ -160,8 +162,9 @@ export function useTrackPlayerSync() {
       }
 
       // Periodic queue save (every 10 seconds)
-      if (isNowPlaying && Math.floor(currentTime) % 10 === 0 && currentTime !== lastTimeRef.current) {
+      if (isNowPlaying && currentTime - lastQueueSaveRef.current >= 10) {
         saveQueueState();
+        lastQueueSaveRef.current = currentTime;
       }
 
       if (isNowPlaying) {

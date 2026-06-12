@@ -25,14 +25,14 @@ function fuzzyScore(query: string, target: string): number {
   const q = query.toLowerCase();
   const t = target.toLowerCase();
 
-  if (t.includes(q)) return 100 - q.length;
-
-  if (t.startsWith(q)) return 90 - q.length;
+  if (t.startsWith(q)) return 100 - q.length;
 
   const words = t.split(/\s+/);
   for (const word of words) {
-    if (word.startsWith(q)) return 80 - q.length;
+    if (word.startsWith(q)) return 90 - q.length;
   }
+
+  if (t.includes(q)) return 80 - q.length;
 
   let qi = 0;
   let consecutive = 0;

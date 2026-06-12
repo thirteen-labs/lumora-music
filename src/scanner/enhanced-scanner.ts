@@ -46,9 +46,9 @@ export function findRemovedFiles(currentUris: string[]): string[] {
 }
 
 export function updateKnownFiles(songs: Song[]): void {
-  const known: Record<string, number> = {};
+  const known = getKnownFiles();
   for (const song of songs) {
-    known[song.id] = Date.now();
+    known[song.uri] = Date.now();
   }
   saveKnownFiles(known);
 }

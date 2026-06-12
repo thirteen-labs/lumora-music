@@ -116,15 +116,18 @@ class AudioEngine {
     this.bassBoostFilter.connect(this.replayGainNode);
     this.replayGainNode.connect(this.volumeGain);
 
-    let lastLoudness: BiquadFilterNode | null = null;
-    for (const filter of this.loudnessFilters) {
-      if (lastLoudness) {
-        lastLoudness.connect(filter);
+    if (this.loudnessFilters.length > 0) {
+      this.volumeGain.connect(this.loudnessFilters[0]);
+      let lastLoudness: BiquadFilterNode | null = null;
+      for (const filter of this.loudnessFilters) {
+        if (lastLoudness) {
+          lastLoudness.connect(filter);
+        }
+        lastLoudness = filter;
       }
-      lastLoudness = filter;
-    }
-    if (lastLoudness) {
-      lastLoudness.connect(this.balancePanner);
+      if (lastLoudness) {
+        lastLoudness.connect(this.balancePanner);
+      }
     } else {
       this.volumeGain.connect(this.balancePanner);
     }

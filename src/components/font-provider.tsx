@@ -47,6 +47,7 @@ export function FontProvider({ children }: FontProviderProps) {
 
   useEffect(() => {
     let cancelled = false;
+    setLoaded(false);
 
     async function loadFonts() {
       try {

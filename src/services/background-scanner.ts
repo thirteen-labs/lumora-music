@@ -77,12 +77,12 @@ export async function isBackgroundScanRegistered(): Promise<boolean> {
 
 export function getScanInterval(): number {
   const stored = storage.getString(SCAN_INTERVAL_KEY);
-  return stored ? parseInt(stored, 10) : 360;
+  return stored ? parseInt(stored, 10) || 360 : 360;
 }
 
 export function setScanInterval(minutes: number): void {
   storage.set(SCAN_INTERVAL_KEY, minutes.toString());
-  unregisterBackgroundScan().then(() => registerBackgroundScan());
+  unregisterBackgroundScan().then(() => registerBackgroundScan()).catch(() => {});
 }
 
 export function isBackgroundScanEnabled(): boolean {
@@ -101,5 +101,5 @@ export function setBackgroundScanEnabled(enabled: boolean): void {
 
 export function getLastBackgroundScanTime(): number {
   const stored = storage.getString(LAST_BG_SCAN_KEY);
-  return stored ? parseInt(stored, 10) : 0;
+  return stored ? parseInt(stored, 10) || 0 : 0;
 }

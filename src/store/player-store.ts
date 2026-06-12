@@ -76,7 +76,8 @@ export const usePlayerStore = create<PlayerState>()(
         s.isMiniPlayerVisible = true;
         if (queue) {
           s.queue = queue;
-          s.queueIndex = queue.findIndex((t) => t.id === track.id);
+          const idx = queue.findIndex((t) => t.id === track.id);
+          s.queueIndex = idx >= 0 ? idx : 0;
         }
       });
 
@@ -235,8 +236,14 @@ export const usePlayerStore = create<PlayerState>()(
         if (index < state.queueIndex) {
           state.queueIndex--;
         } else if (index === state.queueIndex) {
-          if (state.queueIndex >= state.queue.length) {
-            state.queueIndex = Math.max(0, state.queue.length - 1);
+          if (state.queue.length === 0) {
+            state.currentTrack = null;
+            state.queueIndex = 0;
+          } else if (state.queueIndex >= state.queue.length) {
+            state.queueIndex = state.queue.length - 1;
+            state.currentTrack = state.queue[state.queueIndex];
+          } else {
+            state.currentTrack = state.queue[state.queueIndex];
           }
         }
         if (state.shuffle) {
@@ -257,6 +264,14 @@ export const usePlayerStore = create<PlayerState>()(
           state.queueIndex--;
         } else if (fromIndex > state.queueIndex && toIndex <= state.queueIndex) {
           state.queueIndex++;
+        }
+        if (state.shuffle) {
+          state.shuffledOrder = state.shuffledOrder.map((i) => {
+            if (i === fromIndex) return toIndex;
+            if (fromIndex < toIndex && i > fromIndex && i <= toIndex) return i - 1;
+            if (fromIndex > toIndex && i >= toIndex && i < fromIndex) return i + 1;
+            return i;
+          });
         }
       });
     },
