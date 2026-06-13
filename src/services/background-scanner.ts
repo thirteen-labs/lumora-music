@@ -17,7 +17,7 @@ function ensureTaskDefined(): void {
     TaskManager.defineTask(BACKGROUND_SCAN_TASK, async () => {
       try {
         const { scanMediaLibrary } = require('./scanner');
-        const { updateKnownFiles } = require('@/scanner/enhanced-scanner');
+        const { updateKnownFiles } = require('../scanner/enhanced-scanner');
 
         const enabled = storage.getString(BG_SCAN_ENABLED_KEY);
         if (enabled === 'false') {

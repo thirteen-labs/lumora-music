@@ -64,14 +64,14 @@ export default function LibraryToolsScreen() {
             <SectionHeader title={t('tools.health')} />
             <View className="rounded-3xl overflow-hidden p-4 gap-3" style={{ backgroundColor: colors.surface }}>
               <View className="flex-row items-center gap-3">
-                <CircleCheck size={20} color="#22C55E" />
+                <CircleCheck size={20} color={colors.success} />
                 <View className="flex-1">
                   <Text className="text-sm font-medium" style={{ color: colors.text }}>{t('tools.total.songs')}</Text>
                   <Text className="text-xs" style={{ color: colors.textMuted }}>{t('tools.tracks.in.library', { count: songs.length })}</Text>
                 </View>
               </View>
               <View className="flex-row items-center gap-3">
-                <TriangleAlert size={20} color={duplicates.length > 0 ? '#F59E0B' : '#22C55E'} />
+                <TriangleAlert size={20} color={duplicates.length > 0 ? '#F59E0B' : colors.success} />
                 <View className="flex-1">
                   <Text className="text-sm font-medium" style={{ color: colors.text }}>Duplicate Detection</Text>
                   <Text className="text-xs" style={{ color: colors.textMuted }}>

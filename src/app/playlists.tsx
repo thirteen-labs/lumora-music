@@ -91,7 +91,7 @@ export default function PlaylistsScreen() {
             {item.songIds.length > 0 && (
               <Pressable
                 onPress={() => handlePlayAll(item.id)}
-                className="w-10 h-10 rounded-full items-center justify-center"
+                className="w-11 h-11 rounded-full items-center justify-center"
                 style={{ backgroundColor: colors.accent }}
               >
                 <Play size={18} color={colors.background} fill={colors.background} />
@@ -99,7 +99,7 @@ export default function PlaylistsScreen() {
             )}
             <Pressable
               onPress={() => handleDelete(item.id, item.name)}
-              className="w-10 h-10 items-center justify-center"
+              className="w-11 h-11 items-center justify-center"
             >
               <Trash2 size={18} color={colors.textMuted} />
             </Pressable>
@@ -148,6 +148,7 @@ export default function PlaylistsScreen() {
             }}
             autoFocus
             onSubmitEditing={handleCreate}
+            accessibilityLabel="Playlist name"
           />
           <Pressable
             onPress={handleCreate}

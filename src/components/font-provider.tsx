@@ -43,11 +43,12 @@ interface FontProviderProps {
 
 export function FontProvider({ children }: FontProviderProps) {
   const fontFamily = useSettingsStore((s) => s.fontFamily);
-  const [loaded, setLoaded] = useState(false);
+  const [loadedFont, setLoadedFont] = useState<string | null>(null);
+
+  const loaded = loadedFont === fontFamily;
 
   useEffect(() => {
     let cancelled = false;
-    setLoaded(false);
 
     async function loadFonts() {
       try {
@@ -59,7 +60,7 @@ export function FontProvider({ children }: FontProviderProps) {
         console.warn('Failed to load font:', e);
       }
       if (!cancelled) {
-        setLoaded(true);
+        setLoadedFont(fontFamily);
       }
     }
 

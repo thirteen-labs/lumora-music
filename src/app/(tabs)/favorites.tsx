@@ -2,7 +2,6 @@ import { View, Text, FlatList, Pressable } from 'react-native';
 import { useTheme } from '@/hooks/use-theme';
 import { useFavoritesStore } from '@/store/favorites-store';
 import { usePlayerStore } from '@/store/player-store';
-import { useVideoStore } from '@/store/video-store';
 import { useMusicStore } from '@/store/music-store';
 import { TopBar } from '@/components/top-bar';
 import { MiniPlayer } from '@/components/mini-player';
@@ -10,100 +9,53 @@ import { SongContextMenu, useSongContextMenu } from '@/components/song-context-m
 import { Heart } from 'lucide-react-native';
 import { Artwork } from '@/components/artwork';
 import { formatDuration } from '@/utils/cn';
-import { useState, useCallback } from 'react';
-import { useRouter, useFocusEffect } from 'expo-router';
+import { useCallback } from 'react';
+import { useFocusEffect } from 'expo-router';
 
 export default function FavoritesScreen() {
   const { colors } = useTheme();
-  const { songs, videos, hydrateFavorites } = useFavoritesStore();
-  const [tab, setTab] = useState<'songs' | 'videos'>('songs');
+  const { songs, hydrateFavorites } = useFavoritesStore();
   const { bottomSheetRef, present, song } = useSongContextMenu();
-  const router = useRouter();
 
   useFocusEffect(
     useCallback(() => {
       const allSongs = useMusicStore.getState().songs;
-      useVideoStore.getState().loadVideos();
-      const allVideos = useVideoStore.getState().videos;
-      if (allSongs.length > 0 || allVideos.length > 0) {
-        hydrateFavorites(allSongs, allVideos);
+      if (allSongs.length > 0) {
+        hydrateFavorites(allSongs, []);
       }
     }, [hydrateFavorites])
   );
 
   return (
     <View className="flex-1" style={{ backgroundColor: colors.background }}>
-      <TopBar title="Favorites" />
-      <View className="flex-row px-4 py-3 gap-2">
-        {(['songs', 'videos'] as const).map((t) => (
+      <TopBar />
+      <FlatList
+        data={songs}
+        keyExtractor={(item) => item.id}
+        contentContainerStyle={{ paddingBottom: 120 }}
+        renderItem={({ item }) => (
           <Pressable
-            key={t}
-            onPress={() => setTab(t)}
-            className="flex-1 py-3 rounded-2xl items-center"
-            style={{ backgroundColor: tab === t ? colors.accent : colors.surface }}
+            onPress={() => usePlayerStore.getState().play(item, songs)}
+            onLongPress={() => present(item)}
+            className="flex-row items-center gap-3 px-4 py-3"
+            style={{ borderBottomWidth: 1, borderBottomColor: colors.border }}
           >
-            <Text
-              className="text-sm font-semibold capitalize"
-              style={{ color: tab === t ? colors.background : colors.text }}
-            >
-              {t}
-            </Text>
+            <Artwork uri={item.artwork} size={44} borderRadius={16} iconSize={18} iconColor={colors.accent} backgroundColor={colors.surface} />
+            <View className="flex-1">
+              <Text className="text-sm font-medium" style={{ color: colors.text }} numberOfLines={1}>{item.title}</Text>
+              <Text className="text-xs" style={{ color: colors.textMuted }}>{item.artist}</Text>
+            </View>
+            <Text className="text-xs" style={{ color: colors.textMuted }}>{formatDuration(item.duration)}</Text>
           </Pressable>
-        ))}
-      </View>
-
-      {tab === 'songs' ? (
-        <FlatList
-          data={songs}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={{ paddingBottom: 120 }}
-          renderItem={({ item }) => (
-            <Pressable
-              onPress={() => usePlayerStore.getState().play(item, songs)}
-              onLongPress={() => present(item)}
-              className="flex-row items-center gap-3 px-4 py-3"
-              style={{ borderBottomWidth: 1, borderBottomColor: colors.border }}
-            >
-              <Artwork uri={item.artwork} size={44} borderRadius={16} iconSize={18} iconColor={colors.accent} backgroundColor={colors.surface} />
-              <View className="flex-1">
-                <Text className="text-sm font-medium" style={{ color: colors.text }} numberOfLines={1}>{item.title}</Text>
-                <Text className="text-xs" style={{ color: colors.textMuted }}>{item.artist}</Text>
-              </View>
-            </Pressable>
-          )}
-          ListEmptyComponent={
-            <View className="items-center py-20">
-              <Heart size={40} color={colors.textMuted} />
-              <Text className="mt-3" style={{ color: colors.textMuted }}>No songs in favorites</Text>
-            </View>
-          }
-        />
-      ) : (
-        <FlatList
-          data={videos}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={{ paddingBottom: 120 }}
-          renderItem={({ item }) => (
-            <Pressable
-              onPress={() => router.push({ pathname: '/video-player', params: { uri: item.uri, title: item.title } })}
-              className="flex-row items-center gap-3 px-4 py-3"
-              style={{ borderBottomWidth: 1, borderBottomColor: colors.border }}
-            >
-              <Artwork uri={item.thumbnail} size={44} borderRadius={16} iconSize={18} iconColor={colors.accent} backgroundColor={colors.surface} />
-              <View className="flex-1">
-                <Text className="text-sm font-medium" style={{ color: colors.text }} numberOfLines={1}>{item.title}</Text>
-                <Text className="text-xs" style={{ color: colors.textMuted }}>{formatDuration(item.duration)}</Text>
-              </View>
-            </Pressable>
-          )}
-          ListEmptyComponent={
-            <View className="items-center py-20">
-              <Heart size={40} color={colors.textMuted} />
-              <Text className="mt-3" style={{ color: colors.textMuted }}>No videos in favorites</Text>
-            </View>
-          }
-        />
-      )}
+        )}
+        ListEmptyComponent={
+          <View className="items-center py-20">
+            <Heart size={40} color={colors.textMuted} />
+            <Text className="mt-3" style={{ color: colors.textMuted }}>No favorite songs yet</Text>
+            <Text className="text-xs mt-1" style={{ color: colors.textMuted }}>Tap the heart icon in the player</Text>
+          </View>
+        }
+      />
       <SongContextMenu bottomSheetRef={bottomSheetRef} song={song} />
       <MiniPlayer />
     </View>

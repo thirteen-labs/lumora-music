@@ -283,8 +283,8 @@ function ActionButton({
       className="flex-row items-center gap-3 p-4"
       style={{ borderBottomWidth: 1, borderBottomColor: colors.border, opacity: disabled ? 0.5 : 1 }}
     >
-      <Icon size={18} color={danger ? '#EF4444' : colors.accent} />
-      <Text className="flex-1 text-sm font-medium" style={{ color: danger ? '#EF4444' : colors.text }}>{label}</Text>
+      <Icon size={18} color={danger ? colors.notification : colors.accent} />
+      <Text className="flex-1 text-sm font-medium" style={{ color: danger ? colors.notification : colors.text }}>{label}</Text>
       <Text className="text-xs" style={{ color: colors.textMuted }}>{count} items</Text>
     </Pressable>
   );

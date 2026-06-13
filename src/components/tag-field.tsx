@@ -8,9 +8,10 @@ interface TagFieldProps {
   colors: any;
   error?: string;
   keyboardType?: 'default' | 'numeric';
+  accessibilityLabel?: string;
 }
 
-export function TagField({ label, value, onChange, onBlur, colors, error, keyboardType }: TagFieldProps) {
+export function TagField({ label, value, onChange, onBlur, colors, error, keyboardType, accessibilityLabel }: TagFieldProps) {
   return (
     <View>
       <Text className="text-xs font-medium mb-1" style={{ color: colors.textMuted }}>{label}</Text>
@@ -26,11 +27,12 @@ export function TagField({ label, value, onChange, onBlur, colors, error, keyboa
           backgroundColor: colors.card,
           color: colors.text,
           borderWidth: error ? 1 : 0,
-          borderColor: error ? '#EF4444' : 'transparent',
+          borderColor: error ? colors.notification : 'transparent',
         }}
+        accessibilityLabel={accessibilityLabel ?? label}
       />
       {error && (
-        <Text className="text-xs mt-1" style={{ color: '#EF4444' }}>{error}</Text>
+        <Text className="text-xs mt-1" style={{ color: colors.notification }}>{error}</Text>
       )}
     </View>
   );

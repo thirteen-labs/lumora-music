@@ -14,13 +14,6 @@ function lighten(hex: string, amount: number): string {
   return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
 }
 
-function darken(hex: string, amount: number): string {
-  const r = Math.max(0, parseInt(hex.slice(1, 3), 16) - amount);
-  const g = Math.max(0, parseInt(hex.slice(3, 5), 16) - amount);
-  const b = Math.max(0, parseInt(hex.slice(5, 7), 16) - amount);
-  return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
-}
-
 function makeTheme(
   id: string,
   name: string,
@@ -30,7 +23,7 @@ function makeTheme(
   accent: string,
   isDark: boolean,
 ): Theme {
-  return {
+  const theme: Theme = {
     id,
     name,
     isDark,
@@ -40,40 +33,45 @@ function makeTheme(
       text,
       accent,
       primary: accent,
-      secondary: isDark ? lighten(accent, 40) : darken(accent, 40),
-      border: isDark ? lighten(surface, 30) : darken(surface, 20),
-      card: isDark ? lighten(surface, 15) : darken(surface, 10),
+      secondary: isDark ? lighten(accent, 40) : '#6B7280',
+      border: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)',
+      card: isDark ? lighten(surface, 8) : '#F8FAFC',
       notification: '#EF4444',
       success: '#22C55E',
       warning: '#F59E0B',
       info: '#3B82F6',
-      textSecondary: hexToRgba(text, 0.7),
-      textMuted: hexToRgba(text, 0.5),
+      textSecondary: hexToRgba(text, 0.6),
+      textMuted: hexToRgba(text, 0.4),
+    },
+    spacing: {
+      xs: 4,
+      sm: 8,
+      md: 16,
+      lg: 24,
+      xl: 32,
+      '2xl': 48,
+      '3xl': 64,
+    },
+    borderRadius: {
+      sm: 6,
+      md: 10,
+      lg: 14,
+      xl: 18,
+      '2xl': 22,
+      '3xl': 28,
+      full: 9999,
+    },
+    shadows: {
+      sm: { elevation: 2, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.2, shadowRadius: 2 },
+      md: { elevation: 4, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 4 },
+      lg: { elevation: 8, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8 },
     },
   };
+  return theme;
 }
 
 export const themes: Theme[] = [
-  makeTheme('obsidian', 'Obsidian', '#000000', '#121212', '#FFFFFF', '#00E5FF', true),
-  makeTheme('midnight', 'Midnight', '#0B1220', '#111827', '#F9FAFB', '#3B82F6', true),
-  makeTheme('phantom', 'Phantom', '#0A0A0A', '#1A1A1A', '#F5F5F5', '#8B5CF6', true),
-  makeTheme('aurora', 'Aurora', '#071A1A', '#0F2E2E', '#F0FFFF', '#22D3EE', true),
-  makeTheme('nebula', 'Nebula', '#140C1F', '#231338', '#F5EDFF', '#A855F7', true),
-  makeTheme('oceanic', 'Oceanic', '#081B29', '#102A43', '#F0F9FF', '#38BDF8', true),
-  makeTheme('ember', 'Ember', '#2B1200', '#402000', '#FFF7ED', '#F97316', true),
-  makeTheme('forest', 'Forest', '#0A170D', '#112415', '#F0FDF4', '#22C55E', true),
-  makeTheme('crimson', 'Crimson', '#19090A', '#2B1012', '#FFF5F5', '#EF4444', true),
-  makeTheme('velvet', 'Velvet', '#2D1821', '#40222E', '#FFF1F5', '#FB7185', true),
-  makeTheme('cyber-neon', 'Cyber Neon', '#050816', '#0F172A', '#E0F2FE', '#00F5D4', true),
-  makeTheme('matrix', 'Matrix', '#020A02', '#071507', '#E6FFE6', '#00FF66', true),
-  makeTheme('golden-hour', 'Golden Hour', '#2A1A00', '#3B2600', '#FFF8E7', '#FBBF24', true),
-  makeTheme('royal', 'Royal', '#0F1029', '#191B45', '#F5F3FF', '#6366F1', true),
-  makeTheme('rose-gold', 'Rose Gold', '#2B1D20', '#3C2A2E', '#FFF5F7', '#F472B6', true),
-  makeTheme('slate', 'Slate', '#111827', '#1F2937', '#F9FAFB', '#94A3B8', true),
-  makeTheme('glacier', 'Glacier', '#EAF4FF', '#FFFFFF', '#0F172A', '#2563EB', false),
-  makeTheme('arctic', 'Arctic', '#F8FAFC', '#FFFFFF', '#0F172A', '#2563EB', false),
-  makeTheme('paper', 'Paper', '#FAFAF9', '#FFFFFF', '#1C1917', '#EA580C', false),
-  makeTheme('lavender', 'Lavender', '#F5F3FF', '#FFFFFF', '#312E81', '#8B5CF6', false),
+  makeTheme('obsidian', 'Obsidian', '#080A0F', '#0F1117', '#F0F2F8', '#7C82F8', true),
 ];
 
 export const DEFAULT_THEME_ID = 'obsidian';

@@ -171,8 +171,8 @@ function BrightnessIndicator({ brightness }: { brightness: number }) {
         animatedStyle,
       ]}
     >
-      <View style={{ width: 4, height: 80, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.3)', overflow: 'hidden' }}>
-        <View style={{ width: 4, height: `${brightness * 100}%`, borderRadius: 2, backgroundColor: '#fff' }} />
+      <View style={{ width: 4, height: 80, borderRadius: 6, backgroundColor: 'rgba(255,255,255,0.3)', overflow: 'hidden' }}>
+        <View style={{ width: 4, height: `${brightness * 100}%`, borderRadius: 6, backgroundColor: '#fff' }} />
       </View>
       <Text style={{ color: '#fff', fontSize: 12, marginTop: 4 }}>{Math.round(brightness * 100)}%</Text>
     </Animated.View>
@@ -596,18 +596,18 @@ export default function VideoPlayerScreen() {
             </Pressable>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
               {videoResolution && (
-                <View style={{ backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4 }}>
+                <View style={{ backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: 10, paddingHorizontal: 8, paddingVertical: 4 }}>
                   <Text style={{ color: '#fff', fontSize: 11, fontWeight: '600' }}>
                     {videoResolution.width}x{videoResolution.height}
                   </Text>
                 </View>
               )}
               <Pressable onPress={toggleLock} style={styles.fullscreenButton}>
-                {isLocked ? <Lock size={22} color="#FFD700" /> : <Unlock size={22} color="#fff" />}
+                {isLocked ? <Lock size={22} color={colors.warning} /> : <Unlock size={22} color="#fff" />}
               </Pressable>
               {isPiPSupported && (
                 <Pressable onPress={handlePiP} style={styles.fullscreenButton}>
-                  <MonitorPlay size={22} color={isPiPActive ? '#FFD700' : '#fff'} />
+                  <MonitorPlay size={22} color={isPiPActive ? colors.warning : '#fff'} />
                 </Pressable>
               )}
               <Pressable onPress={() => router.back()} style={styles.backButton}>
@@ -624,20 +624,20 @@ export default function VideoPlayerScreen() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <View className="flex-1" style={{ backgroundColor: colors.background }}>
         <View className="flex-row items-center gap-3 px-4 pt-12 pb-4">
-          <Pressable onPress={() => router.back()} className="w-10 h-10 items-center justify-center">
+          <Pressable onPress={() => router.back()} className="w-11 h-11 items-center justify-center">
             <ChevronLeft size={28} color={colors.text} />
           </Pressable>
           <Text className="text-base font-semibold flex-1" style={{ color: colors.text }} numberOfLines={1}>
             {title ?? 'Video'}
           </Text>
           {videoResolution && (
-            <View style={{ backgroundColor: colors.card, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 }}>
+            <View style={{ backgroundColor: colors.card, borderRadius: 10, paddingHorizontal: 8, paddingVertical: 3 }}>
               <Text style={{ color: colors.textMuted, fontSize: 11, fontWeight: '600' }}>
                 {videoResolution.width}x{videoResolution.height}
               </Text>
             </View>
           )}
-          <Pressable onPress={toggleFullscreen} className="w-10 h-10 items-center justify-center">
+          <Pressable onPress={toggleFullscreen} className="w-11 h-11 items-center justify-center">
             <Maximize2 size={22} color={colors.text} />
           </Pressable>
         </View>
@@ -681,13 +681,13 @@ export default function VideoPlayerScreen() {
                       <View style={{ flexDirection: 'row', gap: 12 }}>
                         <Pressable
                           onPress={handleStartOver}
-                          style={{ flex: 1, paddingVertical: 12, borderRadius: 16, backgroundColor: colors.card, alignItems: 'center' }}
+                          style={{ flex: 1, paddingVertical: 12, borderRadius: 14, backgroundColor: colors.card, alignItems: 'center' }}
                         >
                           <Text style={{ fontSize: 14, fontWeight: '600', color: colors.text }}>{t('video.start.over')}</Text>
                         </Pressable>
                         <Pressable
                           onPress={handleResume}
-                          style={{ flex: 1, paddingVertical: 12, borderRadius: 16, backgroundColor: colors.accent, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 6 }}
+                          style={{ flex: 1, paddingVertical: 12, borderRadius: 14, backgroundColor: colors.accent, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 6 }}
                         >
                           <Play size={16} color={colors.background} fill={colors.background} />
                           <Text style={{ fontSize: 14, fontWeight: '600', color: colors.background }}>Resume</Text>
@@ -859,7 +859,7 @@ export default function VideoPlayerScreen() {
                   style={{
                     paddingVertical: 10,
                     paddingHorizontal: 20,
-                    borderRadius: 20,
+                    borderRadius: 18,
                     backgroundColor: playbackRate === speed ? colors.accent : colors.card,
                   }}
                 >
@@ -903,7 +903,7 @@ export default function VideoPlayerScreen() {
                   style={{
                     paddingVertical: 10,
                     paddingHorizontal: 18,
-                    borderRadius: 20,
+                    borderRadius: 18,
                     backgroundColor: scale === option.value ? colors.accent : colors.card,
                   }}
                 >
@@ -929,7 +929,7 @@ export default function VideoPlayerScreen() {
                   style={{
                     paddingVertical: 10,
                     paddingHorizontal: 18,
-                    borderRadius: 20,
+                    borderRadius: 18,
                     backgroundColor: scale === option.value ? colors.accent : colors.card,
                   }}
                 >
@@ -949,7 +949,7 @@ export default function VideoPlayerScreen() {
               style={{
                 marginTop: 16,
                 paddingVertical: 10,
-                borderRadius: 20,
+                borderRadius: 18,
                 backgroundColor: scale === 1 ? colors.accent : colors.card,
                 alignItems: 'center',
               }}
@@ -973,7 +973,7 @@ const styles = StyleSheet.create({
   video: {
     width: SCREEN_WIDTH - 32,
     height: (SCREEN_WIDTH - 32) * 0.5625,
-    borderRadius: 16,
+    borderRadius: 14,
     overflow: 'hidden',
   },
   fullscreenContainer: {
@@ -1025,7 +1025,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.7)',
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 8,
+    borderRadius: 10,
     overflow: 'hidden',
   },
   resumeOverlay: {
@@ -1037,11 +1037,11 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.6)',
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 16,
+    borderRadius: 14,
   },
   resumeCard: {
     backgroundColor: 'rgba(20,20,30,0.95)',
-    borderRadius: 20,
+    borderRadius: 18,
     padding: 24,
     width: '80%',
     alignItems: 'center',

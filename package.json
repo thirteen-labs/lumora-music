@@ -59,6 +59,7 @@
     "eslint": "^9.0.0",
     "eslint-config-expo": "~56.0.4",
     "react-refresh": "^0.18.0",
+    "tsx": "^4.22.4",
     "typescript": "~6.0.3"
   },
   "scripts": {
@@ -68,7 +69,9 @@
     "ios": "expo run:ios",
     "web": "expo start --web",
     "lint": "expo lint",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "ux:review": "npx tsx src/scripts/ux-review.ts",
+    "ux:review:json": "npx tsx src/scripts/ux-review.ts --json"
   },
   "private": true
 }

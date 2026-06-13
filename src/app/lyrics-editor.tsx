@@ -236,6 +236,7 @@ export default function LyricsEditorScreen() {
                 padding: 0,
               }}
               multiline
+              accessibilityLabel="Lyrics text"
             />
 
             <Pressable

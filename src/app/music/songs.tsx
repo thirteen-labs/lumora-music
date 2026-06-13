@@ -34,6 +34,22 @@ function sortSongs(songs: any[], sortField: SortField, sortOrder: SortOrder, sta
   return sorted;
 }
 
+function LyricsBadge({ colors }: { colors: any }) {
+  return (
+    <View
+      style={{
+        backgroundColor: colors.accent + '20',
+        borderRadius: 6,
+        paddingHorizontal: 6,
+        paddingVertical: 2,
+        marginLeft: 6,
+      }}
+    >
+      <Text style={{ fontSize: 9, fontWeight: '700', color: colors.accent }}>Lyrics</Text>
+    </View>
+  );
+}
+
 export default function SongsScreen() {
   const { colors } = useTheme();
   const songs = useMusicStore((s) => s.songs);
@@ -45,18 +61,26 @@ export default function SongsScreen() {
   const sortedSongs = useMemo(() => sortSongs(songs, sortField, sortOrder, trackStats), [songs, sortField, sortOrder, trackStats]);
   const { bottomSheetRef, present, song } = useSongContextMenu();
 
-  const heightMap = { small: 56, medium: 68, big: 84 };
-  const rowHeight = heightMap[fileSizeTheme];
-  const artSizeMap = { small: 36, medium: 44, big: 56 };
-  const artSize = artSizeMap[fileSizeTheme];
   const activeSort = SORT_OPTIONS.find((o) => o.field === sortField && o.order === sortOrder) ?? SORT_OPTIONS[0];
   const isGrid = libraryViewMode === 'grid';
-  const GRID_COLUMNS = 3;
+
+  const gridConfig = {
+    small: { columns: 3, thumbHeight: 64, showSize: false },
+    medium: { columns: 3, thumbHeight: 96, showSize: false },
+    big: { columns: 2, thumbHeight: 0, showSize: true },
+  }[fileSizeTheme];
+
+  const GRID_COLUMNS = gridConfig.columns;
   const GRID_ITEM_WIDTH = (SCREEN_WIDTH - 32 - (GRID_COLUMNS - 1) * 12) / GRID_COLUMNS;
+
+  const listHeightMap = { small: 56, medium: 68, big: 84 };
+  const rowHeight = listHeightMap[fileSizeTheme];
+  const listArtSizeMap = { small: 36, medium: 44, big: 56 };
+  const artSize = listArtSizeMap[fileSizeTheme];
 
   return (
     <View className="flex-1" style={{ backgroundColor: colors.background }}>
-      <TopBar title="Songs" showMenu />
+      <TopBar title="Songs" />
       <SortMenu
         options={SORT_OPTIONS}
         active={activeSort}
@@ -65,13 +89,13 @@ export default function SongsScreen() {
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', paddingHorizontal: 16, paddingBottom: 8, gap: 8 }}>
         <Pressable
           onPress={() => setLibraryViewMode('list')}
-          style={{ padding: 6, borderRadius: 8, backgroundColor: !isGrid ? colors.accent + '20' : 'transparent' }}
+          style={{ padding: 6, borderRadius: 6, backgroundColor: !isGrid ? colors.accent + '20' : 'transparent' }}
         >
           <List size={18} color={!isGrid ? colors.accent : colors.textMuted} />
         </Pressable>
         <Pressable
           onPress={() => setLibraryViewMode('grid')}
-          style={{ padding: 6, borderRadius: 8, backgroundColor: isGrid ? colors.accent + '20' : 'transparent' }}
+          style={{ padding: 6, borderRadius: 6, backgroundColor: isGrid ? colors.accent + '20' : 'transparent' }}
         >
           <LayoutGrid size={18} color={isGrid ? colors.accent : colors.textMuted} />
         </Pressable>
@@ -89,9 +113,45 @@ export default function SongsScreen() {
               onLongPress={() => present(item)}
               style={{ width: GRID_ITEM_WIDTH, marginBottom: 16 }}
             >
-              <Artwork uri={item.artwork} size={GRID_ITEM_WIDTH} borderRadius={16} iconSize={28} iconColor={colors.accent} backgroundColor={colors.surface} />
-              <Text style={{ fontSize: 12, fontWeight: '500', color: colors.text, marginTop: 8 }} numberOfLines={1}>{item.title}</Text>
-              <Text style={{ fontSize: 11, color: colors.textMuted, marginTop: 2 }} numberOfLines={1}>{item.artist}</Text>
+              {fileSizeTheme === 'big' ? (
+                <>
+                  <View
+                    style={{
+                      width: GRID_ITEM_WIDTH,
+                      height: GRID_ITEM_WIDTH,
+                      borderRadius: 14,
+                      overflow: 'hidden',
+                      backgroundColor: colors.surface,
+                    }}
+                  >
+                    <Artwork uri={item.artwork} size={GRID_ITEM_WIDTH} borderRadius={14} iconSize={36} iconColor={colors.accent} backgroundColor={colors.surface} />
+                  </View>
+                  <Text style={{ fontSize: 13, fontWeight: '600', color: colors.text, marginTop: 8 }} numberOfLines={1}>{item.title}</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 3 }}>
+                    <Text style={{ fontSize: 11, color: colors.textMuted }} numberOfLines={1}>{item.artist}</Text>
+                    <LyricsBadge colors={colors} />
+                  </View>
+                </>
+              ) : (
+                <>
+                  <View
+                    style={{
+                      width: GRID_ITEM_WIDTH,
+                      height: gridConfig.thumbHeight,
+                      borderRadius: 12,
+                      overflow: 'hidden',
+                      backgroundColor: colors.surface,
+                    }}
+                  >
+                    <Artwork uri={item.artwork} size={GRID_ITEM_WIDTH} borderRadius={12} iconSize={24} iconColor={colors.accent} backgroundColor={colors.surface} />
+                  </View>
+                  <Text style={{ fontSize: 12, fontWeight: '500', color: colors.text, marginTop: 8 }} numberOfLines={1}>{item.title}</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 2 }}>
+                    <Text style={{ fontSize: 11, color: colors.textMuted }} numberOfLines={1}>{item.artist}</Text>
+                    <LyricsBadge colors={colors} />
+                  </View>
+                </>
+              )}
             </Pressable>
           )}
           ListEmptyComponent={
@@ -116,9 +176,17 @@ export default function SongsScreen() {
               <Artwork uri={item.artwork} size={artSize} borderRadius={artSize * 0.25} iconColor={colors.accent} backgroundColor={colors.surface} />
               <View className="flex-1">
                 <Text className="text-sm font-medium" style={{ color: colors.text }} numberOfLines={1}>{item.title}</Text>
-                <Text className="text-xs" style={{ color: colors.textMuted }} numberOfLines={1}>
-                  {item.artist} {fileSizeTheme === 'big' ? `· ${formatFileSize(item.fileSize)}` : ''}
-                </Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 2 }}>
+                  <Text className="text-xs" style={{ color: colors.textMuted }} numberOfLines={1}>
+                    {item.artist}
+                  </Text>
+                  <LyricsBadge colors={colors} />
+                  {fileSizeTheme === 'big' && (
+                    <Text className="text-xs" style={{ color: colors.textMuted, marginLeft: 6 }}>
+                      {formatFileSize(item.fileSize)}
+                    </Text>
+                  )}
+                </View>
               </View>
               <Text className="text-xs" style={{ color: colors.textMuted }}>{formatDuration(item.duration)}</Text>
             </Pressable>

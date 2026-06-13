@@ -128,6 +128,62 @@ function RootStack() {
           options={{ animation: 'slide_from_right' }}
         />
         <Stack.Screen
+          name="themes"
+          options={{ animation: 'slide_from_right' }}
+        />
+        <Stack.Screen
+          name="accent-color"
+          options={{ animation: 'slide_from_right' }}
+        />
+        <Stack.Screen
+          name="language-settings"
+          options={{ animation: 'slide_from_right' }}
+        />
+        <Stack.Screen
+          name="audio-quality"
+          options={{ animation: 'slide_from_right' }}
+        />
+        <Stack.Screen
+          name="video-quality"
+          options={{ animation: 'slide_from_right' }}
+        />
+        <Stack.Screen
+          name="crossfade-settings"
+          options={{ animation: 'slide_from_right' }}
+        />
+        <Stack.Screen
+          name="scan-locations"
+          options={{ animation: 'slide_from_right' }}
+        />
+        <Stack.Screen
+          name="privacy"
+          options={{ animation: 'slide_from_right' }}
+        />
+        <Stack.Screen
+          name="help-support"
+          options={{ animation: 'slide_from_right' }}
+        />
+        <Stack.Screen
+          name="about"
+          options={{ animation: 'slide_from_right' }}
+        />
+        <Stack.Screen
+          name="recently-played"
+          options={{ animation: 'slide_from_right' }}
+        />
+        <Stack.Screen
+          name="with-lyrics"
+          options={{ animation: 'slide_from_right' }}
+        />
+        <Stack.Screen
+          name="not-used"
+          options={{ animation: 'slide_from_right' }}
+        />
+        <Stack.Screen
+          name="private-folder"
+          options={{ animation: 'slide_from_right' }}
+        />
+        <Stack.Screen
           name="playlists"
           options={{ animation: 'slide_from_right' }}
         />

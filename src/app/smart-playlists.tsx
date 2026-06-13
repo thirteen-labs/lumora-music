@@ -181,6 +181,7 @@ function CreateSmartPlaylist({ onClose }: { onClose: () => void }) {
         placeholderTextColor={colors.textMuted}
         className="px-4 py-3 rounded-2xl text-sm"
         style={{ backgroundColor: colors.card, color: colors.text }}
+        accessibilityLabel="Playlist name"
       />
 
       {rules.map((rule, i) => (
