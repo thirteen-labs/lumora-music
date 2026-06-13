@@ -4,6 +4,7 @@ import { TopBar } from '@/components/top-bar';
 import { SectionHeader } from '@/components/section-header';
 import { useStatsStore } from '@/store/stats-store';
 import { useMusicStore } from '@/store/music-store';
+import { useMemo } from 'react';
 import { Clock, Music, Calendar } from 'lucide-react-native';
 
 function formatDuration(seconds: number): string {
@@ -19,11 +20,14 @@ function formatDuration(seconds: number): string {
 export default function PlayTimeScreen() {
   const { colors } = useTheme();
   const songs = useMusicStore((s) => s.songs);
-  const stats = useStatsStore();
-  const listeningStats = stats.getListeningStats(songs);
-  const totalPlayCount = stats.getTotalPlayCount();
-  const totalListenTime = stats.getTotalListenTime();
-  const topSongs = stats.getTopSongs(songs, 10);
+  const getListeningStats = useStatsStore((s) => s.getListeningStats);
+  const getTotalPlayCount = useStatsStore((s) => s.getTotalPlayCount);
+  const getTotalListenTime = useStatsStore((s) => s.getTotalListenTime);
+  const getTopSongs = useStatsStore((s) => s.getTopSongs);
+  const listeningStats = useMemo(() => getListeningStats(songs), [songs, getListeningStats]);
+  const totalPlayCount = useMemo(() => getTotalPlayCount(), [getTotalPlayCount]);
+  const totalListenTime = useMemo(() => getTotalListenTime(), [getTotalListenTime]);
+  const topSongs = useMemo(() => getTopSongs(songs, 10), [songs, getTopSongs]);
 
   const avgPerDay = listeningStats.weeklyMinutes.length > 0
     ? Math.round(listeningStats.weeklyMinutes.reduce((a, b) => a + b, 0) / 7)

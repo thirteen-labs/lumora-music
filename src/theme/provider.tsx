@@ -63,10 +63,9 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
               left: 0,
               right: 0,
               bottom: 0,
-              opacity: 0.15,
+              opacity: 0.35,
             }}
             contentFit="cover"
-            blurRadius={20}
           />
         ) : null}
         {children}

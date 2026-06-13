@@ -1,9 +1,11 @@
-import { View, Text, ScrollView, Pressable, Switch } from 'react-native';
+import { View, Text, ScrollView, Pressable, Switch, Alert } from 'react-native';
 import { useTheme } from '@/hooks/use-theme';
 import { useSettingsStore } from '@/store/settings-store';
 import { useMusicStore } from '@/store/music-store';
 import { useRouter } from 'expo-router';
 import { useTranslation } from '@/hooks/use-translation';
+import { Image } from 'expo-image';
+import * as ImagePicker from 'expo-image-picker';
 import {
   Settings,
   Paintbrush,
@@ -21,6 +23,8 @@ import {
   HelpCircle,
   Info,
   ChevronRight,
+  ImageIcon,
+  Pencil,
 } from 'lucide-react-native';
 
 export default function SettingsScreen() {
@@ -30,6 +34,38 @@ export default function SettingsScreen() {
   const language = useSettingsStore((s) => s.language);
   const songs = useMusicStore((s) => s.songs);
   const albums = useMusicStore((s) => s.albums);
+  const backgroundImage = useSettingsStore((s) => s.backgroundImage);
+  const setBackgroundImage = useSettingsStore((s) => s.setBackgroundImage);
+
+  const handleBackgroundImagePress = () => {
+    const options = ['Choose from Gallery'];
+    if (backgroundImage) options.push('Remove Background');
+    options.push('Cancel');
+
+    Alert.alert('Background Image', 'Set a custom background image for the app.', options.map((opt) => ({
+      text: opt,
+      style: opt === 'Cancel' ? 'cancel' : opt === 'Remove Background' ? 'destructive' : 'default',
+      onPress: async () => {
+        if (opt === 'Choose from Gallery') {
+          const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+          if (!permission.granted) {
+            Alert.alert('Permission Required', 'Allow access to your photo library to choose a background image.');
+            return;
+          }
+          const result = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ['images'],
+            quality: 0.8,
+            allowsEditing: false,
+          });
+          if (!result.canceled && result.assets[0]) {
+            setBackgroundImage(result.assets[0].uri);
+          }
+        } else if (opt === 'Remove Background') {
+          setBackgroundImage(null);
+        }
+      },
+    })));
+  };
 
   const languageLabel: Record<string, string> = {
     en: 'English', es: 'Español', fr: 'Français', de: 'Deutsch',
@@ -53,6 +89,50 @@ export default function SettingsScreen() {
           </View>
 
           <Section title="APPEARANCE" colors={colors}>
+            <Pressable
+              onPress={handleBackgroundImagePress}
+              className="items-center justify-center p-4"
+              style={{ borderBottomWidth: 1, borderBottomColor: colors.border + '20' }}
+            >
+              <View
+                style={{
+                  width: '100%',
+                  aspectRatio: 1,
+                  borderRadius: 16,
+                  overflow: 'hidden',
+                  backgroundColor: colors.card,
+                }}
+              >
+                {backgroundImage ? (
+                  <Image
+                    source={{ uri: backgroundImage }}
+                    style={{ width: '100%', height: '100%' }}
+                    contentFit="cover"
+                  />
+                ) : (
+                  <View className="flex-1 items-center justify-center" style={{ backgroundColor: colors.card }}>
+                    <ImageIcon size={32} color={colors.textMuted} />
+                    <Text className="text-xs mt-2" style={{ color: colors.textMuted }}>No background set</Text>
+                  </View>
+                )}
+                <View
+                  style={{
+                    position: 'absolute',
+                    top: 8,
+                    right: 8,
+                    width: 32,
+                    height: 32,
+                    borderRadius: 16,
+                    backgroundColor: colors.accent,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <Pencil size={16} color="#fff" />
+                </View>
+              </View>
+              <Text className="text-sm font-medium mt-2" style={{ color: colors.text }}>Background Image</Text>
+            </Pressable>
             <SettingRow
               icon={Paintbrush}
               label="Theme"

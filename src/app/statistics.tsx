@@ -5,17 +5,21 @@ import { TopBar } from '@/components/top-bar';
 import { SectionHeader } from '@/components/section-header';
 import { useStatsStore } from '@/store/stats-store';
 import { useMusicStore } from '@/store/music-store';
+import { useMemo } from 'react';
 import { TrendingUp, Music, Clock, Activity, User, Disc, BarChart3 } from 'lucide-react-native';
 
 export default function StatisticsScreen() {
   const { colors } = useTheme();
   const { t } = useTranslation();
   const songs = useMusicStore((s) => s.songs);
-  const stats = useStatsStore();
-  const topSongs = stats.getTopSongs(songs, 10);
-  const totalPlayCount = stats.getTotalPlayCount();
-  const totalListenTime = stats.getTotalListenTime();
-  const listeningStats = stats.getListeningStats(songs);
+  const getTopSongs = useStatsStore((s) => s.getTopSongs);
+  const getTotalPlayCount = useStatsStore((s) => s.getTotalPlayCount);
+  const getTotalListenTime = useStatsStore((s) => s.getTotalListenTime);
+  const getListeningStats = useStatsStore((s) => s.getListeningStats);
+  const topSongs = useMemo(() => getTopSongs(songs, 10), [songs, getTopSongs]);
+  const totalPlayCount = useMemo(() => getTotalPlayCount(), [getTotalPlayCount]);
+  const totalListenTime = useMemo(() => getTotalListenTime(), [getTotalListenTime]);
+  const listeningStats = useMemo(() => getListeningStats(songs), [songs, getListeningStats]);
   const weeklyMinutes = listeningStats.weeklyMinutes;
   const maxWeeklyMinutes = Math.max(...weeklyMinutes, 1);
   const dayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];

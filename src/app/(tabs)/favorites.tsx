@@ -11,6 +11,8 @@ import { Artwork } from '@/components/artwork';
 import { formatDuration } from '@/utils/cn';
 import { useCallback } from 'react';
 import { useFocusEffect } from 'expo-router';
+import type { ListRenderItemInfo } from 'react-native';
+import type { Song } from '@/types/media';
 
 export default function FavoritesScreen() {
   const { colors } = useTheme();
@@ -33,7 +35,7 @@ export default function FavoritesScreen() {
         data={songs}
         keyExtractor={(item) => item.id}
         contentContainerStyle={{ paddingBottom: 120 }}
-        renderItem={({ item }) => (
+        renderItem={useCallback(({ item }: ListRenderItemInfo<Song>) => (
           <Pressable
             onPress={() => usePlayerStore.getState().play(item, songs)}
             onLongPress={() => present(item)}
@@ -47,7 +49,7 @@ export default function FavoritesScreen() {
             </View>
             <Text className="text-xs" style={{ color: colors.textMuted }}>{formatDuration(item.duration)}</Text>
           </Pressable>
-        )}
+        ), [songs, colors, present])}
         ListEmptyComponent={
           <View className="items-center py-20">
             <Heart size={40} color={colors.textMuted} />

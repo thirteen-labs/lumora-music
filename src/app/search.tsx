@@ -6,7 +6,7 @@ import { usePlayerStore } from "@/store/player-store";
 import { TopBar } from "@/components/top-bar";
 import { Search, X, Clock } from "lucide-react-native";
 import { Artwork } from "@/components/artwork";
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import { formatDuration } from "@/utils/cn";
 import { fuzzySearch } from "@/utils/fuzzy";
 import { useRouter, useFocusEffect } from "expo-router";
@@ -14,6 +14,15 @@ import { storage } from "@/services/mmkv";
 
 const RECENT_KEY = "lumora-recent-searches";
 const MAX_RECENT = 10;
+
+function useDebounce<T>(value: T, delay: number): T {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedValue(value), delay);
+    return () => clearTimeout(timer);
+  }, [value, delay]);
+  return debouncedValue;
+}
 
 function loadRecent(): string[] {
   try {
@@ -35,8 +44,11 @@ export default function SearchScreen() {
   const { songs, albums, artists, genres } = useMusicStore();
   const { videos } = useVideoStore();
   const [query, setQuery] = useState("");
+  const debouncedQuery = useDebounce(query, 200);
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
   const router = useRouter();
+  const recentRef = useRef(recentSearches);
+  recentRef.current = recentSearches;
 
   useFocusEffect(
     useCallback(() => {
@@ -47,7 +59,8 @@ export default function SearchScreen() {
   const addRecent = (term: string) => {
     const trimmed = term.trim();
     if (!trimmed) return;
-    const updated = [trimmed, ...recentSearches.filter((r) => r !== trimmed)].slice(0, MAX_RECENT);
+    const current = recentRef.current;
+    const updated = [trimmed, ...current.filter((r) => r !== trimmed)].slice(0, MAX_RECENT);
     setRecentSearches(updated);
     saveRecent(updated);
   };
@@ -63,7 +76,7 @@ export default function SearchScreen() {
   };
 
   const results = useMemo(() => {
-    if (!query.trim())
+    if (!debouncedQuery.trim())
       return { songs: [], videos: [], albums: [], artists: [], genres: [] };
     const matchedSongs = fuzzySearch(songs, query, (s) => [
       s.title,
@@ -84,7 +97,7 @@ export default function SearchScreen() {
       artists: matchedArtists.map((r) => r.item),
       genres: matchedGenres.map((r) => r.item),
     };
-  }, [query, songs, videos, albums, artists, genres]);
+  }, [debouncedQuery, songs, videos, albums, artists, genres]);
 
   const totalResults =
     results.songs.length +
@@ -135,7 +148,7 @@ export default function SearchScreen() {
         thumbnail: null;
       };
 
-  const items: ResultItem[] = [
+  const items: ResultItem[] = useMemo(() => [
     ...results.albums.map((a) => ({
       type: "album" as const,
       id: a.id,
@@ -176,7 +189,7 @@ export default function SearchScreen() {
       artwork: null,
       thumbnail: v.thumbnail,
     })),
-  ];
+  ], [results]);
 
   return (
     <View className="flex-1" style={{ backgroundColor: colors.background }}>
@@ -255,7 +268,7 @@ export default function SearchScreen() {
               {totalResults} result{totalResults !== 1 ? "s" : ""} found
             </Text>
           }
-          renderItem={({ item }) => (
+          renderItem={useCallback(({ item }: { item: ResultItem }) => (
             <Pressable
               onPress={() => {
                 if (item.type === "song") {
@@ -323,7 +336,7 @@ export default function SearchScreen() {
                 </Text>
               </View>
             </Pressable>
-          )}
+          ), [songs, videos, results.songs, router, colors])}
           ListEmptyComponent={
             <View className="items-center py-20">
               <Search size={40} color={colors.textMuted} />

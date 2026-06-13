@@ -1,5 +1,6 @@
-import { View, Text, ScrollView, Pressable } from 'react-native';
+import { View, Text, ScrollView, Pressable, Dimensions } from 'react-native';
 import { useTheme } from '@/hooks/use-theme';
+import { useThemeStore } from '@/store/theme-store';
 import { useRouter } from 'expo-router';
 import { ChevronLeft, Check, Paintbrush } from 'lucide-react-native';
 
@@ -12,10 +13,15 @@ const THEMES = [
   { id: 'midnight', name: 'Midnight', colors: ['#1E1B4B', '#312E81'] },
 ];
 
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const PADDING = 40;
+const GAP = 12;
+const ITEM_SIZE = (SCREEN_WIDTH - PADDING - GAP * 2) / 3;
+
 export default function ThemesScreen() {
   const { colors } = useTheme();
   const router = useRouter();
-  const currentTheme = 'nebula';
+  const { currentThemeId, setTheme } = useThemeStore();
 
   return (
     <View className="flex-1" style={{ backgroundColor: colors.background }}>
@@ -29,20 +35,29 @@ export default function ThemesScreen() {
         <Text className="text-lg font-bold" style={{ color: colors.text }}>Theme</Text>
       </View>
       <ScrollView contentContainerStyle={{ paddingBottom: 120, paddingTop: 8 }} showsVerticalScrollIndicator={false}>
-        <View className="px-5">
-          <View style={{ backgroundColor: colors.surface, borderRadius: 16, overflow: 'hidden' }}>
-            {THEMES.map((theme, i) => (
+        <View className="px-5 flex-row flex-wrap" style={{ gap: GAP }}>
+          {THEMES.map((theme) => {
+            const isActive = currentThemeId === theme.id;
+            return (
               <Pressable
                 key={theme.id}
-                className="flex-row items-center gap-4 p-4"
-                style={{ borderBottomWidth: i < THEMES.length - 1 ? 1 : 0, borderBottomColor: colors.border + '20' }}
+                onPress={() => setTheme(theme.id)}
               >
-                <View className="w-10 h-10 rounded-full" style={{ backgroundColor: theme.colors[0] }} />
-                <Text className="flex-1 text-sm font-medium" style={{ color: colors.text }}>{theme.name}</Text>
-                {currentTheme === theme.id && <Check size={18} color={colors.accent} />}
+                <View
+                  className="items-center justify-center rounded-2xl"
+                  style={{
+                    width: ITEM_SIZE,
+                    height: ITEM_SIZE,
+                    backgroundColor: theme.colors[0],
+                    borderWidth: isActive ? 3 : 0,
+                    borderColor: isActive ? colors.accent : 'transparent',
+                  }}
+                >
+                  {isActive && <Check size={28} color="#fff" />}
+                </View>
               </Pressable>
-            ))}
-          </View>
+            );
+          })}
         </View>
       </ScrollView>
     </View>

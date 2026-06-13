@@ -7,7 +7,7 @@ import { useStatsStore } from '@/store/stats-store';
 import { useQueuePersistStore } from '@/store/queue-persist-store';
 
 export function useTrackPlayerSync() {
-  const syncFromPlayer = usePlayerStore((s) => s.syncFromPlayer);
+  const syncFromPlayerRef = useRef(usePlayerStore.getState().syncFromPlayer);
   const wasPlayingRef = useRef(false);
   const trackEndedRef = useRef(false);
   const lastTimeRef = useRef(0);
@@ -15,6 +15,11 @@ export function useTrackPlayerSync() {
   const lastTrackIdRef = useRef<string | null>(null);
   const playTimeAccumRef = useRef(0);
   const lastQueueSaveRef = useRef(0);
+  const lastNotifUpdateRef = useRef(0);
+
+  useEffect(() => {
+    syncFromPlayerRef.current = usePlayerStore.getState().syncFromPlayer;
+  });
 
   function handleTrackEnd() {
     const state = usePlayerStore.getState();
@@ -109,25 +114,32 @@ export function useTrackPlayerSync() {
     }
   }
 
+  const crossfadeEnabled = isCrossfadeEnabled();
+
   useEffect(() => {
     const interval = setInterval(() => {
       const player = getPlayer();
       if (!player) return;
 
-      syncFromPlayer();
+      syncFromPlayerRef.current();
 
       const state = usePlayerStore.getState();
       const isNowPlaying = player.playing;
       const currentTime = player.currentTime;
       const duration = player.duration;
+      const now = Date.now();
 
-      // Notification handling
-      if (state.currentTrack && state.currentTrack.id !== lastTrackIdRef.current) {
-        lastTrackIdRef.current = state.currentTrack.id;
-        playTimeAccumRef.current = 0;
-        showNowPlayingNotification(state.currentTrack, isNowPlaying);
-      } else if (state.currentTrack && isNowPlaying !== wasPlayingRef.current) {
-        updateNotificationPlaybackState(isNowPlaying, state.currentTrack);
+      // Notification handling (throttled to once per second)
+      if (now - lastNotifUpdateRef.current >= 1000) {
+        if (state.currentTrack && state.currentTrack.id !== lastTrackIdRef.current) {
+          lastTrackIdRef.current = state.currentTrack.id;
+          playTimeAccumRef.current = 0;
+          showNowPlayingNotification(state.currentTrack, isNowPlaying);
+          lastNotifUpdateRef.current = now;
+        } else if (state.currentTrack && isNowPlaying !== wasPlayingRef.current) {
+          updateNotificationPlaybackState(isNowPlaying, state.currentTrack);
+          lastNotifUpdateRef.current = now;
+        }
       }
 
       if (!state.currentTrack && lastTrackIdRef.current) {
@@ -136,7 +148,7 @@ export function useTrackPlayerSync() {
       }
 
       // Crossfade
-      if (isCrossfadeEnabled() && isNowPlaying) {
+      if (crossfadeEnabled && isNowPlaying) {
         handleCrossfade();
       }
 
@@ -185,5 +197,5 @@ export function useTrackPlayerSync() {
     }, 250);
 
     return () => clearInterval(interval);
-  }, [syncFromPlayer]);
+  }, [crossfadeEnabled]);
 }

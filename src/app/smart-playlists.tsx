@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { View, Text, ScrollView, Pressable, Alert, TextInput } from 'react-native';
 import { useTheme } from '@/hooks/use-theme';
 import { TopBar } from '@/components/top-bar';
@@ -22,20 +22,37 @@ export default function SmartPlaylistsScreen() {
   const { colors } = useTheme();
   const router = useRouter();
   const songs = useMusicStore((s) => s.songs);
-  const stats = useStatsStore();
-  const smartPlaylists = useSmartPlaylistStore();
+  const trackStats = useStatsStore((s) => s.trackStats);
+  const resolveSongs = useSmartPlaylistStore((s) => s.resolveSongs);
+  const customPlaylists = useSmartPlaylistStore((s) => s.playlists);
   const play = usePlayerStore((s) => s.play);
   const [showCreate, setShowCreate] = useState(false);
 
-  const handlePlayPlaylist = (playlist: SmartPlaylist) => {
-    const resolved = smartPlaylists.resolveSongs(playlist.id, songs, stats.trackStats);
+  const builtInCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const p of BUILT_IN_PLAYLISTS) {
+      counts[p.id] = resolveSongs(p.id, songs, trackStats).length;
+    }
+    return counts;
+  }, [songs, trackStats, resolveSongs]);
+
+  const customCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const p of customPlaylists) {
+      counts[p.id] = resolveSongs(p.id, songs, trackStats).length;
+    }
+    return counts;
+  }, [customPlaylists, songs, trackStats, resolveSongs]);
+
+  const handlePlayPlaylist = useCallback((playlist: SmartPlaylist) => {
+    const resolved = resolveSongs(playlist.id, songs, trackStats);
     if (resolved.length === 0) {
       Alert.alert('Empty Playlist', 'No songs match the rules for this playlist.');
       return;
     }
     play(resolved[0], resolved);
     router.back();
-  };
+  }, [resolveSongs, songs, trackStats, play, router]);
 
   const builtInIcon = (icon: string) => {
     const Icon = ICONS[icon] || Music;
@@ -51,7 +68,7 @@ export default function SmartPlaylistsScreen() {
             <SectionHeader title="Automatic Playlists" />
             <View className="rounded-3xl overflow-hidden" style={{ backgroundColor: colors.surface }}>
               {BUILT_IN_PLAYLISTS.map((playlist, i) => {
-                const count = smartPlaylists.resolveSongs(playlist.id, songs, stats.trackStats).length;
+                const count = builtInCounts[playlist.id] ?? 0;
                 return (
                   <Pressable
                     key={playlist.id}
@@ -73,7 +90,7 @@ export default function SmartPlaylistsScreen() {
 
           <View>
             <SectionHeader title="Your Smart Playlists" />
-            {smartPlaylists.playlists.length === 0 ? (
+            {customPlaylists.length === 0 ? (
               <View className="rounded-3xl p-8 items-center" style={{ backgroundColor: colors.surface }}>
                 <Zap size={32} color={colors.textMuted} />
                 <Text className="text-sm mt-2" style={{ color: colors.textMuted }}>No custom playlists yet</Text>
@@ -81,13 +98,13 @@ export default function SmartPlaylistsScreen() {
               </View>
             ) : (
               <View className="rounded-3xl overflow-hidden" style={{ backgroundColor: colors.surface }}>
-                {smartPlaylists.playlists.map((playlist, i) => {
-                  const count = smartPlaylists.resolveSongs(playlist.id, songs, stats.trackStats).length;
+                {customPlaylists.map((playlist, i) => {
+                  const count = customCounts[playlist.id] ?? 0;
                   return (
                     <View
                       key={playlist.id}
                       className="flex-row items-center gap-3 p-4"
-                      style={{ borderBottomWidth: i < smartPlaylists.playlists.length - 1 ? 1 : 0, borderBottomColor: colors.border }}
+                      style={{ borderBottomWidth: i < customPlaylists.length - 1 ? 1 : 0, borderBottomColor: colors.border }}
                     >
                       <Zap size={20} color={colors.accent} />
                       <Pressable className="flex-1" onPress={() => handlePlayPlaylist(playlist)}>
@@ -100,7 +117,7 @@ export default function SmartPlaylistsScreen() {
                         onPress={() => {
                           Alert.alert('Delete', `Delete "${playlist.name}"?`, [
                             { text: 'Cancel', style: 'cancel' },
-                            { text: 'Delete', style: 'destructive', onPress: () => smartPlaylists.deletePlaylist(playlist.id) },
+                            { text: 'Delete', style: 'destructive', onPress: () => useSmartPlaylistStore.getState().deletePlaylist(playlist.id) },
                           ]);
                         }}
                         style={{ padding: 4 }}

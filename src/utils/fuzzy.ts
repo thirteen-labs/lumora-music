@@ -22,8 +22,8 @@ function levenshtein(a: string, b: string): number {
 }
 
 function fuzzyScore(query: string, target: string): number {
-  const q = query.toLowerCase();
-  const t = target.toLowerCase();
+  const q = query;
+  const t = target;
 
   if (t.startsWith(q)) return 100 - q.length;
 
@@ -63,12 +63,13 @@ export function fuzzySearch<T>(
   threshold: number = 20,
 ): FuzzyResult<T>[] {
   if (!query.trim()) return [];
+  const qLower = query.toLowerCase();
   const results: FuzzyResult<T>[] = [];
   for (const item of items) {
     const fields = getFields(item);
     let bestScore = -1;
     for (const field of fields) {
-      const score = fuzzyScore(query, field);
+      const score = fuzzyScore(qLower, field.toLowerCase());
       if (score > bestScore) bestScore = score;
     }
     if (bestScore >= threshold) {

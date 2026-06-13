@@ -4,7 +4,7 @@ import { useMusicStore } from '@/store/music-store';
 import { usePlayerStore } from '@/store/player-store';
 import { TopBar } from '@/components/top-bar';
 import { MiniPlayer } from '@/components/mini-player';
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { Music, List, Disc3, User, Tag, Play, ArrowRight } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { Artwork } from '@/components/artwork';
@@ -23,16 +23,21 @@ export default function MusicScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const topSongs = useStatsStore(s => Object.entries(s.trackStats)
-    .sort((a, b) => (b[1].playCount ?? 0) - (a[1].playCount ?? 0))
-    .slice(0, 5)
-    .map(([id]) => songs.find(s => s.id === id))
-    .filter((s): s is Song => !!s));
+  const trackStats = useStatsStore((s) => s.trackStats);
+  const topSongs = useMemo(() => {
+    return Object.entries(trackStats)
+      .sort((a, b) => (b[1].playCount ?? 0) - (a[1].playCount ?? 0))
+      .slice(0, 5)
+      .map(([id]) => songs.find(s => s.id === id))
+      .filter((s): s is Song => !!s);
+  }, [trackStats, songs]);
 
-  const recentlyPlayed = [...songs]
-    .filter(s => useStatsStore.getState().trackStats[s.id]?.lastPlayed)
-    .sort((a, b) => (useStatsStore.getState().trackStats[b.id]?.lastPlayed ?? 0) - (useStatsStore.getState().trackStats[a.id]?.lastPlayed ?? 0))
-    .slice(0, 5);
+  const recentlyPlayed = useMemo(() => {
+    return [...songs]
+      .filter(s => trackStats[s.id]?.lastPlayed)
+      .sort((a, b) => (trackStats[b.id]?.lastPlayed ?? 0) - (trackStats[a.id]?.lastPlayed ?? 0))
+      .slice(0, 5);
+  }, [songs, trackStats]);
 
   return (
     <View className="flex-1" style={{ backgroundColor: colors.background }}>

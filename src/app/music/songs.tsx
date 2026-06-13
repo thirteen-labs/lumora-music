@@ -1,5 +1,7 @@
 import { View, Text, FlatList, Pressable, Dimensions } from 'react-native';
-import { useMemo } from 'react';
+import { useMemo, useCallback } from 'react';
+import type { ListRenderItemInfo } from 'react-native';
+import type { Song } from '@/types/media';
 import { useTheme } from '@/hooks/use-theme';
 import { useMusicStore } from '@/store/music-store';
 import { usePlayerStore } from '@/store/player-store';
@@ -107,7 +109,7 @@ export default function SongsScreen() {
           numColumns={GRID_COLUMNS}
           contentContainerStyle={{ paddingBottom: 120, paddingHorizontal: 16 }}
           columnWrapperStyle={{ gap: 12 }}
-          renderItem={({ item }) => (
+          renderItem={useCallback(({ item }: ListRenderItemInfo<Song>) => (
             <Pressable
               onPress={() => usePlayerStore.getState().play(item, sortedSongs)}
               onLongPress={() => present(item)}
@@ -153,7 +155,7 @@ export default function SongsScreen() {
                 </>
               )}
             </Pressable>
-          )}
+          ), [sortedSongs, present, colors, fileSizeTheme, GRID_ITEM_WIDTH, gridConfig])}
           ListEmptyComponent={
             <View className="items-center py-20">
               <Music size={40} color={colors.textMuted} />
@@ -166,7 +168,7 @@ export default function SongsScreen() {
           data={sortedSongs}
           keyExtractor={(item) => item.id}
           contentContainerStyle={{ paddingBottom: 120 }}
-          renderItem={({ item }) => (
+          renderItem={useCallback(({ item }: ListRenderItemInfo<Song>) => (
             <Pressable
               onPress={() => usePlayerStore.getState().play(item, sortedSongs)}
               onLongPress={() => present(item)}
@@ -190,7 +192,7 @@ export default function SongsScreen() {
               </View>
               <Text className="text-xs" style={{ color: colors.textMuted }}>{formatDuration(item.duration)}</Text>
             </Pressable>
-          )}
+          ), [sortedSongs, present, colors, fileSizeTheme, rowHeight, artSize])}
           ListEmptyComponent={
             <View className="items-center py-20">
               <Music size={40} color={colors.textMuted} />
