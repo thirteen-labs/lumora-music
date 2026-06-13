@@ -37,7 +37,7 @@ export function Artwork({ uri, size, borderRadius, iconSize, iconColor, backgrou
         backgroundColor: backgroundColor ?? 'transparent',
       }}
     >
-      <Music size={iSize} color={iconColor ?? '#8B5CF6'} />
+      <Music size={iSize} color={iconColor ?? '#7C82F8'} />
     </View>
   );
 }

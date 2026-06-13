@@ -42,7 +42,7 @@ export default function CrossfadeSettingsScreen() {
                     className="flex-1 py-2 rounded-xl items-center justify-center"
                     style={{ backgroundColor: crossfadeDuration === d ? colors.accent : colors.card }}
                   >
-                    <Text className="text-sm font-semibold" style={{ color: crossfadeDuration === d ? '#fff' : colors.text }}>{d}s</Text>
+                    <Text className="text-sm font-semibold" style={{ color: crossfadeDuration === d ? colors.background : colors.text }}>{d}s</Text>
                   </Pressable>
                 ))}
               </View>

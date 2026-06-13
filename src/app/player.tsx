@@ -27,6 +27,7 @@ import { formatDuration } from '@/utils/cn';
 import Slider from '@react-native-community/slider';
 import { useRouter } from 'expo-router';
 import { useFavoritesStore } from '@/store/favorites-store';
+import { useToastStore } from '@/store/toast-store';
 import { Image } from 'expo-image';
 import { fetchLyrics, type LyricsResult, type SyncedLine } from '@/services/lyrics';
 import {
@@ -66,6 +67,7 @@ export default function PlayerScreen() {
   const setNowPlayingLayout = useSettingsStore((s) => s.setNowPlayingLayout);
   const router = useRouter();
   const { t } = useTranslation();
+  const showToast = useToastStore((s) => s.showToast);
 
   const queueSheetRef = useRef<BottomSheetModal>(null);
   const lyricsSheetRef = useRef<BottomSheetModal>(null);
@@ -189,25 +191,34 @@ export default function PlayerScreen() {
     [queueIndex, queue.length, colors, removeFromQueue, reorderQueue],
   );
 
-  if (!currentTrack) {
-    return (
-      <View className="flex-1 items-center justify-center" style={{ backgroundColor: colors.background }}>
-        <Text style={{ color: colors.textMuted }}>{t('player.no.track')}</Text>
-        <Pressable onPress={() => router.back()} className="mt-4">
-          <Text style={{ color: colors.accent }}>Go back</Text>
-        </Pressable>
-      </View>
-    );
-  }
-
-  const isFav = favoriteSongIds.includes(currentTrack.id);
+  const isFav = currentTrack ? favoriteSongIds.includes(currentTrack.id) : false;
   const progress = duration > 0 ? position / duration : 0;
+
+  const toggleFavWithToast = useCallback(() => {
+    const track = usePlayerStore.getState().currentTrack;
+    if (!track) return;
+    const nextFav = !favoriteSongIds.includes(track.id);
+    toggleSongFavorite(track);
+    showToast(nextFav ? 'Added to favorites' : 'Removed from favorites', 'heart');
+  }, [favoriteSongIds, toggleSongFavorite, showToast]);
 
   const cycleLayout = () => {
     const layouts: NowPlayingLayout[] = ['classic', 'modern', 'minimal'];
     const idx = layouts.indexOf(nowPlayingLayout);
     setNowPlayingLayout(layouts[(idx + 1) % layouts.length]);
   };
+
+  if (!currentTrack) {
+    return (
+      <View className="flex-1 items-center justify-center" style={{ backgroundColor: colors.background }}>
+        <Music size={48} color={colors.textMuted} />
+        <Text className="mt-4" style={{ color: colors.textMuted }}>{t('player.no.track')}</Text>
+        <Pressable onPress={() => router.back()} className="mt-4">
+          <Text style={{ color: colors.accent }}>Go back</Text>
+        </Pressable>
+      </View>
+    );
+  }
 
   return (
     <View className="flex-1" style={{ backgroundColor: colors.background }}>
@@ -228,7 +239,7 @@ export default function PlayerScreen() {
           seekTo={seekTo}
           setShuffle={setShuffle}
           setRepeat={setRepeat}
-          toggleSongFavorite={toggleSongFavorite}
+          toggleSongFavorite={toggleFavWithToast}
           cycleLayout={cycleLayout}
           hideFullPlayer={() => { hideFullPlayer(); router.back(); }}
           onQueuePress={() => queueSheetRef.current?.present()}
@@ -251,7 +262,7 @@ export default function PlayerScreen() {
           seekTo={seekTo}
           setShuffle={setShuffle}
           setRepeat={setRepeat}
-          toggleSongFavorite={toggleSongFavorite}
+          toggleSongFavorite={toggleFavWithToast}
           cycleLayout={cycleLayout}
           hideFullPlayer={() => { hideFullPlayer(); router.back(); }}
           onQueuePress={() => queueSheetRef.current?.present()}
@@ -274,7 +285,7 @@ export default function PlayerScreen() {
           seekTo={seekTo}
           setShuffle={setShuffle}
           setRepeat={setRepeat}
-          toggleSongFavorite={toggleSongFavorite}
+          toggleSongFavorite={toggleFavWithToast}
           cycleLayout={cycleLayout}
           hideFullPlayer={() => { hideFullPlayer(); router.back(); }}
           onQueuePress={() => queueSheetRef.current?.present()}
@@ -582,7 +593,7 @@ function ModernLayout(props: LayoutProps) {
 
           <View className="w-full mt-8">
             <Slider value={progress} onValueChange={(val) => props.seekTo(val * duration)} minimumValue={0} maximumValue={1}
-              minimumTrackTintColor={m.text} maximumTrackTintColor={m.sliderMax} thumbTintColor={m.text}
+              minimumTrackTintColor={m.text} maximumTrackTintColor={m.sliderMax} thumbTintColor={colors.accent}
               style={{ width: '100%', height: 40 }} />
             <View className="flex-row justify-between px-1">
               <Text className="text-xs" style={{ color: m.textMuted }}>{formatDuration(props.position)}</Text>

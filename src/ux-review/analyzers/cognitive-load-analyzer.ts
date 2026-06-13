@@ -9,12 +9,6 @@ export const cognitiveLoadAnalyzer: Analyzer = {
     const issues: UxIssue[] = [];
     const { lines, relativePath, content } = ctx.file;
 
-    let sectionCount = 0;
-    const sectionPattern = /text-xs\s+font-bold\s+uppercase\s+tracking-widest|Section\s+title=|<Section\b/;
-    for (const line of lines) {
-      if (sectionPattern.test(line)) sectionCount++;
-    }
-
     const sectionMatches = content.match(/\}\s*\)\s*\}\)/g);
     if (sectionMatches && sectionMatches.length > MAX_SECTIONS_PER_SCREEN) {
       issues.push({
@@ -26,13 +20,6 @@ export const cognitiveLoadAnalyzer: Analyzer = {
         suggestion: 'Consider consolidating sections or using tabs to reduce visual complexity',
         rule: 'section-count',
       });
-    }
-
-    let actionCount = 0;
-    for (const line of lines) {
-      if (line.includes('onPress') || line.includes('onLongPress')) {
-        actionCount++;
-      }
     }
 
     const uniqueActions = new Set(

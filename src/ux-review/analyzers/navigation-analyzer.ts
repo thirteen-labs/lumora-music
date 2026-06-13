@@ -6,7 +6,7 @@ export const navigationAnalyzer: Analyzer = {
 
   analyze(ctx: RuleContext): RuleResult {
     const issues: UxIssue[] = [];
-    const { lines, relativePath, content } = ctx.file;
+    const { relativePath, content } = ctx.file;
 
     const isTabScreen = relativePath.startsWith('src/app/(tabs)/');
     const isPushedScreen = !isTabScreen && relativePath.startsWith('src/app/');
@@ -50,7 +50,6 @@ export const navigationAnalyzer: Analyzer = {
       }
     }
 
-    const hasRouter = content.includes('useRouter');
     const hasLinks = content.includes('router.push') || content.includes('router.replace');
 
     if (isTabScreen && !hasLinks) {

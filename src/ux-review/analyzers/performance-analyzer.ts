@@ -57,13 +57,6 @@ export const performanceAnalyzer: Analyzer = {
       });
     }
 
-    const missingMemo = lines.filter((l) =>
-      l.match(/const\s+\w+\s*=\s*\(/) &&
-      !l.includes('useCallback') &&
-      !l.includes('useMemo') &&
-      !l.includes('React.memo')
-    );
-
     const componentDefs = lines.filter((l) =>
       l.match(/^(export\s+)?(default\s+)?function\s+\w+/) ||
       l.match(/^(export\s+)?const\s+\w+\s*[:=]\s*(\([^)]*\)\s*=>|React\.memo)/)

@@ -1,6 +1,6 @@
 import { View, Text, Pressable } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Search, Settings, ArrowUpDown, Music, Video, Folder, Heart } from 'lucide-react-native';
+import { Search, Settings, Music, Video, Folder, Heart } from 'lucide-react-native';
 import { useRouter, usePathname } from 'expo-router';
 import { useTheme } from '@/hooks/use-theme';
 
@@ -76,20 +76,6 @@ export function TopBar({ showSearch = true, showSettings = true, title }: TopBar
         </View>
 
         <View className="flex-row items-center gap-2">
-          <Pressable
-            onPress={() => {}}
-            className="w-11 h-11 rounded-full items-center justify-center"
-            style={{
-              backgroundColor: colors.surface,
-              elevation: 4,
-              shadowColor: '#000',
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: 0.25,
-              shadowRadius: 4,
-            }}
-          >
-            <ArrowUpDown size={20} color={colors.text} />
-          </Pressable>
           {showSearch && (
             <Pressable
               onPress={() => router.push('/search')}

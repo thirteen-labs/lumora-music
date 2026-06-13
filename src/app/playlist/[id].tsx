@@ -8,7 +8,7 @@ import { usePlaylistStore } from '@/store/playlist-store';
 import { useMusicStore } from '@/store/music-store';
 import { usePlayerStore } from '@/store/player-store';
 import { formatDuration } from '@/utils/cn';
-import { Music, Play } from 'lucide-react-native';
+import { Music, Play, Plus } from 'lucide-react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
   BottomSheetModal,
@@ -117,10 +117,11 @@ export default function PlaylistDetailScreen() {
               </Pressable>
               <Pressable
                 onPress={() => addSheetRef.current?.present()}
-                className="py-3 px-5 rounded-2xl items-center"
+                className="py-3 px-5 rounded-2xl items-center flex-row gap-1.5"
                 style={{ backgroundColor: colors.card }}
               >
-                <Text className="text-sm font-semibold" style={{ color: colors.text }}>+ Add</Text>
+                <Plus size={16} color={colors.text} />
+                <Text className="text-sm font-semibold" style={{ color: colors.text }}>Add</Text>
               </Pressable>
             </View>
 
@@ -225,7 +226,7 @@ export default function PlaylistDetailScreen() {
                     backgroundColor: isSelected ? colors.accent + '10' : 'transparent',
                   }}
                 >
-                  <Artwork uri={item.artwork} size={40} borderRadius={10} iconSize={16} iconColor={colors.accent} backgroundColor={colors.card} />
+                  <Artwork uri={item.artwork} size={40} borderRadius={10} iconSize={16} iconColor={colors.accent} backgroundColor={colors.surface} />
                   <View style={{ flex: 1 }}>
                     <Text style={{ fontSize: 14, fontWeight: '500', color: colors.text }} numberOfLines={1}>{item.title}</Text>
                     <Text style={{ fontSize: 12, color: colors.textMuted }} numberOfLines={1}>{item.artist}</Text>

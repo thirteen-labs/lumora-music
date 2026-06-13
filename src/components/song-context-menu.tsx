@@ -8,6 +8,7 @@ import {
 import { useTheme } from '@/hooks/use-theme';
 import { usePlayerStore } from '@/store/player-store';
 import { useFavoritesStore } from '@/store/favorites-store';
+import { useToastStore } from '@/store/toast-store';
 import type { Song } from '@/types/media';
 import {
   Play,
@@ -40,6 +41,7 @@ export function SongContextMenu({ bottomSheetRef, song, onDismiss }: SongContext
   const { colors } = useTheme();
   const { play, addToQueue } = usePlayerStore();
   const { favoriteSongIds, toggleSongFavorite } = useFavoritesStore();
+  const showToast = useToastStore((s) => s.showToast);
 
   const renderBackdrop = useCallback(
     (props: any) => (
@@ -132,7 +134,7 @@ export function SongContextMenu({ bottomSheetRef, song, onDismiss }: SongContext
               <Text style={{ fontSize: 15, color: colors.text }}>Play Now</Text>
             </Pressable>
             <Pressable
-              onPress={() => { addToQueue(song); dismiss(); }}
+              onPress={() => { addToQueue(song); showToast('Added to queue', 'list'); dismiss(); }}
               style={{
                 flexDirection: 'row',
                 alignItems: 'center',
@@ -145,7 +147,7 @@ export function SongContextMenu({ bottomSheetRef, song, onDismiss }: SongContext
               <Text style={{ fontSize: 15, color: colors.text }}>Add to Queue</Text>
             </Pressable>
             <Pressable
-              onPress={() => { toggleSongFavorite(song); dismiss(); }}
+              onPress={() => { toggleSongFavorite(song); showToast(isFav ? 'Removed from favorites' : 'Added to favorites', 'heart'); dismiss(); }}
               style={{
                 flexDirection: 'row',
                 alignItems: 'center',

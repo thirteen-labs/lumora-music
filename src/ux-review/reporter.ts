@@ -1,4 +1,4 @@
-import type { UxReport, UxIssue, CategoryScore, UxCategory } from './types';
+import type { UxReport, UxIssue, CategoryScore } from './types';
 import { CATEGORY_LABELS, SEVERITY_ICONS } from './constants';
 
 function pad(str: string, len: number): string {

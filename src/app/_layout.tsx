@@ -7,6 +7,7 @@ import { FontProvider } from '@/components/font-provider';
 import { ColorAwareProvider } from '@/components/color-aware-provider';
 import { PlayerProvider } from '@/components/player-provider';
 import { ErrorBoundary } from '@/components/error-boundary';
+import { Toast } from '@/components/toast';
 import { StatusBar } from 'expo-status-bar';
 import { useTheme } from '@/hooks/use-theme';
 
@@ -211,6 +212,7 @@ export default function RootLayout() {
                 <ColorAwareProvider>
                   <PlayerProvider>
                     <RootStack />
+                    <Toast />
                   </PlayerProvider>
                 </ColorAwareProvider>
               </FontProvider>

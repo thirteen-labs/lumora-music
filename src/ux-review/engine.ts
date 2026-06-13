@@ -1,6 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import type { AnalyzedFile, Analyzer, RuleContext, ThemeProfile, UxReport, UxIssue, ScreenReport } from './types';
+import type { AnalyzedFile, Analyzer, RuleContext, UxReport, UxIssue, ScreenReport } from './types';
 import { extractTheme } from './theme-extractor';
 import { calculateScores } from './scoring';
 import { accessibilityAnalyzer } from './analyzers/accessibility-analyzer';
@@ -85,7 +85,7 @@ export function runUxReview(projectRoot: string, options: ReviewOptions = {}): U
       try {
         const result = analyzer.analyze(ctx);
         allIssues.push(...result.issues);
-      } catch (err) {
+      } catch {
         // Skip analyzer errors silently
       }
     }

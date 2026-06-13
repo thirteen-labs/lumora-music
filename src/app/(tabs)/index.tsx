@@ -8,7 +8,7 @@ import { useStatsStore } from '@/store/stats-store';
 import { TopBar } from '@/components/top-bar';
 import { MiniPlayer } from '@/components/mini-player';
 import { SongContextMenu, useSongContextMenu } from '@/components/song-context-menu';
-import { Music, Play } from 'lucide-react-native';
+import { Music, Play, Sparkles } from 'lucide-react-native';
 import { Artwork } from '@/components/artwork';
 import { formatDuration } from '@/utils/cn';
 import { useRouter } from 'expo-router';
@@ -18,6 +18,13 @@ import { useEffect } from 'react';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 const CARD_W = (SCREEN_W - 40) / 2.2;
+
+function getGreeting(): string {
+  const hour = new Date().getHours();
+  if (hour < 12) return 'Good Morning';
+  if (hour < 17) return 'Good Afternoon';
+  return 'Good Evening';
+}
 
 export default function HomeScreen() {
   const { colors } = useTheme();
@@ -69,13 +76,18 @@ export default function HomeScreen() {
             showsVerticalScrollIndicator={false}
           >
             {/* Greeting & Stats */}
-            <View className="px-5 pt-2 pb-5">
-              <Text className="text-3xl font-bold" style={{ color: colors.text }}>
-                Welcome
-              </Text>
-              <Text className="text-sm mt-1" style={{ color: colors.textMuted }}>
-                {songs.length} songs · {favoriteSongIds.length} favorites
-              </Text>
+            <View className="px-5 pt-2 pb-5 flex-row items-center gap-4">
+              <View className="w-14 h-14 rounded-2xl items-center justify-center" style={{ backgroundColor: colors.accent + '20' }}>
+                <Sparkles size={28} color={colors.accent} />
+              </View>
+              <View className="flex-1">
+                <Text className="text-3xl font-bold" style={{ color: colors.text }}>
+                  {getGreeting()}
+                </Text>
+                <Text className="text-sm mt-1" style={{ color: colors.textMuted }}>
+                  {songs.length} songs · {favoriteSongIds.length} favorites
+                </Text>
+              </View>
             </View>
 
             {/* Now Playing Card */}

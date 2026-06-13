@@ -7,7 +7,7 @@ export const musicPlayerAnalyzer: Analyzer = {
 
   analyze(ctx: RuleContext): RuleResult {
     const issues: UxIssue[] = [];
-    const { lines, relativePath, content } = ctx.file;
+    const { relativePath, content } = ctx.file;
 
     if (relativePath.includes('mini-player')) {
       const hasPlayPause = content.includes('Play') && content.includes('Pause');

@@ -1,7 +1,5 @@
 import type { Analyzer, RuleContext, RuleResult, UxIssue } from '../types';
 
-const KNOWN_ICON_SIZES: Record<number, string[]> = {};
-
 export const consistencyAnalyzer: Analyzer = {
   name: 'consistency',
   category: 'consistency',

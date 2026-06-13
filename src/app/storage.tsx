@@ -7,7 +7,7 @@ import { useMusicStore } from '@/store/music-store';
 import { useVideoStore } from '@/store/video-store';
 import { calculateStorageInfo } from '@/scanner/enhanced-scanner';
 import { formatFileSize } from '@/utils/cn';
-import { HardDrive, Music, Video as VideoIcon2, FileText } from 'lucide-react-native';
+import { HardDrive, Music, Video as VideoIcon2, FileText, Tag } from 'lucide-react-native';
 
 export default function StorageScreen() {
   const { colors } = useTheme();
@@ -82,7 +82,8 @@ export default function StorageScreen() {
             <View className="rounded-3xl overflow-hidden" style={{ backgroundColor: colors.surface }}>
               {info.genreBreakdown.length === 0 ? (
                 <View className="p-8 items-center">
-                  <Text className="text-sm" style={{ color: colors.textMuted }}>No genre data</Text>
+                  <Tag size={32} color={colors.textMuted} />
+                  <Text className="text-sm mt-2" style={{ color: colors.textMuted }}>No genre data</Text>
                 </View>
               ) : (
                 info.genreBreakdown.map((genre, i) => {

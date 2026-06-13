@@ -11,6 +11,7 @@ import { syncEqualizerToEngine } from '@/store/equalizer-store';
 import { syncReplayGainToEngine } from '@/store/replay-gain-store';
 import { useLoudnessEnhancerStore } from '@/store/loudness-enhancer-store';
 import { audioEngine } from '@/services/audio-engine';
+import { useTheme } from '@/hooks/use-theme';
 
 function PlayerSync() {
   useTrackPlayerSync();
@@ -98,10 +99,12 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     } catch {}
   }, []);
 
+  const { colors } = useTheme();
+
   if (!ready) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#0A0A0F' }}>
-        <ActivityIndicator size="large" color="#8B5CF6" />
+        <ActivityIndicator size="large" color={colors.accent} />
       </View>
     );
   }
