@@ -59,7 +59,7 @@ class AudioEngine {
 
   async init(): Promise<void> {
     if (this.context) return;
-    this.context = new AudioContext({ sampleRate: 44100 });
+    this.context = new AudioContext();
     this.buildProcessingChain();
   }
 

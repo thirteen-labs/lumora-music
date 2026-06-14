@@ -1,5 +1,7 @@
 import { useState, useMemo, useRef } from 'react';
-import { View, Text, FlatList, Pressable, Alert } from 'react-native';
+import { View, Text, Pressable, Alert } from 'react-native';
+import { s } from '@/styles';
+import { FlashList } from '@shopify/flash-list';
 import { useTheme } from '@/hooks/use-theme';
 import { TopBar } from '@/components/top-bar';
 import { MiniPlayer } from '@/components/mini-player';
@@ -44,9 +46,9 @@ export default function PlaylistDetailScreen() {
 
   if (!playlist) {
     return (
-      <View className="flex-1 items-center justify-center" style={{ backgroundColor: colors.background }}>
+      <View style={[s.flex1, s.itemsCenter, s.justifyCenter, { backgroundColor: colors.background }]}>
         <Text style={{ color: colors.textMuted }}>Playlist not found</Text>
-        <Pressable onPress={() => router.back()} className="mt-4">
+        <Pressable onPress={() => router.back()} style={s.mt4}>
           <Text style={{ color: colors.accent }}>Go back</Text>
         </Pressable>
       </View>
@@ -95,43 +97,40 @@ export default function PlaylistDetailScreen() {
   );
 
   return (
-    <View className="flex-1" style={{ backgroundColor: colors.background }}>
+    <View style={[s.flex1, { backgroundColor: colors.background }]}>
       <TopBar title={playlist.name} showSettings={false} />
-      <FlatList
+      <FlashList
         data={playlistSongs}
         keyExtractor={(item) => item.id}
         contentContainerStyle={{ paddingBottom: 120 }}
         ListHeaderComponent={
-          <View className="px-4 py-4">
-            <View className="flex-row items-center gap-3 mb-4">
+          <View style={[s.px4, s.py4]}>
+            <View style={[s.flexRow, s.itemsCenter, s.gap3, s.mb4]}>
               <Pressable
                 onPress={handlePlayAll}
                 disabled={playlistSongs.length === 0}
-                className="flex-1 py-3 rounded-2xl items-center flex-row justify-center gap-2"
-                style={{ backgroundColor: playlistSongs.length > 0 ? colors.accent : colors.card }}
+                style={[s.flex1, { paddingVertical: 12, borderRadius: 16, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 8, backgroundColor: playlistSongs.length > 0 ? colors.accent : colors.card }]}
               >
                 <Play size={18} color={playlistSongs.length > 0 ? colors.background : colors.textMuted} fill={playlistSongs.length > 0 ? colors.background : colors.textMuted} />
-                <Text className="text-sm font-semibold" style={{ color: playlistSongs.length > 0 ? colors.background : colors.textMuted }}>
+                <Text style={[s.textSm, s.fontSemibold, { color: playlistSongs.length > 0 ? colors.background : colors.textMuted }]}>
                   Play All
                 </Text>
               </Pressable>
               <Pressable
                 onPress={() => addSheetRef.current?.present()}
-                className="py-3 px-5 rounded-2xl items-center flex-row gap-1.5"
-                style={{ backgroundColor: colors.card }}
+                style={[{ paddingVertical: 12, paddingHorizontal: 20, borderRadius: 16, alignItems: 'center', flexDirection: 'row', gap: 6, backgroundColor: colors.card }]}
               >
                 <Plus size={16} color={colors.text} />
-                <Text className="text-sm font-semibold" style={{ color: colors.text }}>Add</Text>
+                <Text style={[s.textSm, s.fontSemibold, { color: colors.text }]}>Add</Text>
               </Pressable>
             </View>
 
             {selectedIds.size > 0 && (
               <Pressable
                 onPress={handleRemoveSelected}
-                className="py-3 rounded-2xl items-center mb-4"
-                style={{ backgroundColor: '#EF444420' }}
+                style={[{ paddingVertical: 12, borderRadius: 16, alignItems: 'center', marginBottom: 16, backgroundColor: '#EF444420' }]}
               >
-                <Text className="text-sm font-semibold" style={{ color: '#EF4444' }}>
+                <Text style={[s.textSm, s.fontSemibold, { color: '#EF4444' }]}>
                   Remove {selectedIds.size} Selected
                 </Text>
               </Pressable>
@@ -144,39 +143,33 @@ export default function PlaylistDetailScreen() {
             <Pressable
               onPress={() => toggleSelect(item.id)}
               onLongPress={() => toggleSelect(item.id)}
-              className="flex-row items-center gap-3 px-4 py-3"
-              style={{
-                borderBottomWidth: 1,
-                borderBottomColor: colors.border,
-                backgroundColor: isSelected ? colors.accent + '10' : 'transparent',
-              }}
+              style={[s.flexRow, s.itemsCenter, s.gap3, s.px4, s.py3, { borderBottomWidth: 1, borderBottomColor: colors.border, backgroundColor: isSelected ? colors.accent + '10' : 'transparent' }]}
             >
-              <Text className="text-xs w-6 text-center" style={{ color: colors.textMuted }}>
+              <Text style={[s.textXs, { width: 24, textAlign: 'center', color: colors.textMuted }]}>
                 {index + 1}
               </Text>
               <Artwork uri={item.artwork} size={44} borderRadius={12} iconSize={18} iconColor={colors.accent} backgroundColor={colors.surface} />
-              <View className="flex-1">
-                <Text className="text-sm font-medium" style={{ color: colors.text }} numberOfLines={1}>{item.title}</Text>
-                <Text className="text-xs" style={{ color: colors.textMuted }}>{item.artist} · {formatDuration(item.duration)}</Text>
+              <View style={s.flex1}>
+                <Text style={[s.textSm, s.fontMedium, { color: colors.text }]} numberOfLines={1}>{item.title}</Text>
+                <Text style={[s.textXs, { color: colors.textMuted }]}>{item.artist} · {formatDuration(item.duration)}</Text>
               </View>
               {isSelected && (
-                <View className="w-6 h-6 rounded-full items-center justify-center" style={{ backgroundColor: colors.accent }}>
-                  <Text className="text-xs font-bold" style={{ color: colors.background }}>✓</Text>
+                <View style={[{ width: 24, height: 24, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.accent }]}>
+                  <Text style={[s.textXs, s.fontBold, { color: colors.background }]}>✓</Text>
                 </View>
               )}
             </Pressable>
           );
         }}
         ListEmptyComponent={
-          <View className="items-center py-20">
+          <View style={[s.itemsCenter, s.py20]}>
             <Music size={40} color={colors.textMuted} />
-            <Text className="mt-3" style={{ color: colors.textMuted }}>No songs in this playlist</Text>
+            <Text style={[s.mt3, { color: colors.textMuted }]}>No songs in this playlist</Text>
             <Pressable
               onPress={() => addSheetRef.current?.present()}
-              className="mt-4 py-2 px-6 rounded-2xl"
-              style={{ backgroundColor: colors.accent }}
+              style={[s.mt4, { paddingVertical: 8, paddingHorizontal: 24, borderRadius: 16, backgroundColor: colors.accent }]}
             >
-              <Text className="text-sm font-semibold" style={{ color: colors.background }}>Add Songs</Text>
+              <Text style={[s.textSm, s.fontSemibold, { color: colors.background }]}>Add Songs</Text>
             </Pressable>
           </View>
         }

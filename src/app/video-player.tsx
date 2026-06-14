@@ -1,4 +1,6 @@
 import { View, Text, Pressable, Dimensions, StyleSheet } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { s } from '@/styles';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useTheme } from '@/hooks/use-theme';
 import {
@@ -182,6 +184,7 @@ function BrightnessIndicator({ brightness }: { brightness: number }) {
 export default function VideoPlayerScreen() {
   const { colors } = useTheme();
   const { t } = useTranslation();
+  const insets = useSafeAreaInsets();
   const { uri, title } = useLocalSearchParams<{ uri: string; title: string }>();
   const router = useRouter();
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -546,9 +549,9 @@ export default function VideoPlayerScreen() {
 
   if (!uri) {
     return (
-      <View className="flex-1 items-center justify-center" style={{ backgroundColor: '#000' }}>
+      <View style={[s.flex1, s.itemsCenter, s.justifyCenter, { backgroundColor: '#000' }]}>
         <Text style={{ color: colors.textMuted }}>No video URI provided</Text>
-        <Pressable onPress={() => router.back()} className="mt-4">
+        <Pressable onPress={() => router.back()} style={s.mt4}>
           <Text style={{ color: colors.accent }}>Go back</Text>
         </Pressable>
       </View>
@@ -574,7 +577,7 @@ export default function VideoPlayerScreen() {
             </View>
           </GestureDetector>
           {activeSubtitle && currentCueText && (
-            <View style={styles.fullscreenSubtitleContainer}>
+            <View style={[styles.fullscreenSubtitleContainer, { bottom: insets.bottom + 60 }]}>
               <Text style={styles.subtitleText}>{currentCueText}</Text>
             </View>
           )}
@@ -590,7 +593,7 @@ export default function VideoPlayerScreen() {
             </View>
           )}
 
-          <View style={styles.fullscreenControls}>
+          <View style={[styles.fullscreenControls, { paddingTop: insets.top + 4 }]}>
             <Pressable onPress={toggleFullscreen} style={styles.fullscreenButton}>
               <Minimize2 size={24} color="#fff" />
             </Pressable>
@@ -622,12 +625,12 @@ export default function VideoPlayerScreen() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <View className="flex-1" style={{ backgroundColor: colors.background }}>
-        <View className="flex-row items-center gap-3 px-4 pt-12 pb-4">
-          <Pressable onPress={() => router.back()} className="w-11 h-11 items-center justify-center">
+      <View style={[s.flex1, { backgroundColor: colors.background }]}>
+        <View style={[s.flexRow, s.itemsCenter, s.gap3, s.px4, s.pb4, { paddingTop: insets.top + 4 }]}>
+          <Pressable onPress={() => router.back()} style={[s.w11, s.h11, s.itemsCenter, s.justifyCenter]}>
             <ChevronLeft size={28} color={colors.text} />
           </Pressable>
-          <Text className="text-base font-semibold flex-1" style={{ color: colors.text }} numberOfLines={1}>
+          <Text style={[s.textBase, s.fontSemibold, s.flex1, { color: colors.text }]} numberOfLines={1}>
             {title ?? 'Video'}
           </Text>
           {videoResolution && (
@@ -637,12 +640,12 @@ export default function VideoPlayerScreen() {
               </Text>
             </View>
           )}
-          <Pressable onPress={toggleFullscreen} className="w-11 h-11 items-center justify-center">
+          <Pressable onPress={toggleFullscreen} style={[s.w11, s.h11, s.itemsCenter, s.justifyCenter]}>
             <Maximize2 size={22} color={colors.text} />
           </Pressable>
         </View>
 
-        <View className="flex-1 items-center justify-center px-4">
+        <View style={[s.flex1, s.itemsCenter, s.justifyCenter, s.px4]}>
           <View>
             <GestureDetector gesture={composedGestures}>
               <View>
@@ -657,7 +660,7 @@ export default function VideoPlayerScreen() {
                   contentFit="contain"
                 />
                 {activeSubtitle && currentCueText && (
-                  <View style={styles.subtitleOverlay}>
+                  <View style={[styles.subtitleOverlay, { bottom: insets.bottom + 16 }]}>
                     <Text style={styles.subtitleText}>{currentCueText}</Text>
                   </View>
                 )}
@@ -701,60 +704,55 @@ export default function VideoPlayerScreen() {
           </View>
         </View>
 
-        <View className="px-4 pb-4">
-          <Text className="text-lg font-bold mb-2" style={{ color: colors.text }}>
+        <View style={[s.px4, s.pb4]}>
+          <Text style={[s.textLg, s.fontBold, s.mb2, { color: colors.text }]}>
             {title ?? 'Untitled'}
           </Text>
-          <Text className="text-sm mb-4" style={{ color: colors.textMuted }}>
+          <Text style={[s.textSm, s.mb4, { color: colors.textMuted }]}>
             Local video
           </Text>
 
-          <View className="flex-row items-center gap-2 mb-3 flex-wrap">
+          <View style={[s.flexRow, s.itemsCenter, s.gap2, s.mb3, s.flexWrap]}>
             <Pressable
               onPress={() => speedSheetRef.current?.present()}
-              className="flex-row items-center gap-1.5 py-2 px-3 rounded-2xl"
-              style={{ backgroundColor: colors.surface }}
+              style={[s.flexRow, s.itemsCenter, { gap: 6, paddingVertical: 8, paddingHorizontal: 12, borderRadius: 16, backgroundColor: colors.surface }]}
             >
               <Gauge size={14} color={colors.accent} />
-              <Text className="text-xs font-medium" style={{ color: colors.text }}>
+              <Text style={[s.textXs, s.fontMedium, { color: colors.text }]}>
                 {playbackRate}x
               </Text>
             </Pressable>
 
             <Pressable
               onPress={() => scaleSheetRef.current?.present()}
-              className="flex-row items-center gap-1.5 py-2 px-3 rounded-2xl"
-              style={{ backgroundColor: colors.surface }}
+              style={[s.flexRow, s.itemsCenter, { gap: 6, paddingVertical: 8, paddingHorizontal: 12, borderRadius: 16, backgroundColor: colors.surface }]}
             >
               <Scaling size={14} color={colors.accent} />
-              <Text className="text-xs font-medium" style={{ color: colors.text }}>
+              <Text style={[s.textXs, s.fontMedium, { color: colors.text }]}>
                 {Math.round(scale * 100)}%
               </Text>
             </Pressable>
 
             <Pressable
               onPress={toggleLock}
-              className="flex-row items-center gap-1.5 py-2 px-3 rounded-2xl"
-              style={{ backgroundColor: isLocked ? colors.accent + '30' : colors.surface }}
+              style={[s.flexRow, s.itemsCenter, { gap: 6, paddingVertical: 8, paddingHorizontal: 12, borderRadius: 16, backgroundColor: isLocked ? colors.accent + '30' : colors.surface }]}
             >
               {isLocked ? <Lock size={14} color={colors.accent} /> : <Unlock size={14} color={colors.textMuted} />}
-              <Text className="text-xs font-medium" style={{ color: isLocked ? colors.accent : colors.text }}>
+              <Text style={[s.textXs, s.fontMedium, { color: isLocked ? colors.accent : colors.text }]}>
                 {isLocked ? t('video.unlock') : t('video.lock')}
               </Text>
             </Pressable>
 
             <Pressable
               onPress={() => rotateVideo('cw')}
-              className="py-2 px-3 rounded-2xl"
-              style={{ backgroundColor: colors.surface }}
+              style={[{ paddingVertical: 8, paddingHorizontal: 12, borderRadius: 16, backgroundColor: colors.surface }]}
             >
               <RotateCw size={14} color={colors.textMuted} />
             </Pressable>
 
             <Pressable
               onPress={() => rotateVideo('ccw')}
-              className="py-2 px-3 rounded-2xl"
-              style={{ backgroundColor: colors.surface }}
+              style={[{ paddingVertical: 8, paddingHorizontal: 12, borderRadius: 16, backgroundColor: colors.surface }]}
             >
               <RotateCcw size={14} color={colors.textMuted} />
             </Pressable>
@@ -762,22 +760,20 @@ export default function VideoPlayerScreen() {
             {isPiPSupported && (
               <Pressable
                 onPress={handlePiP}
-                className="py-2 px-3 rounded-2xl"
-                style={{ backgroundColor: isPiPActive ? colors.accent + '30' : colors.surface }}
+                style={[{ paddingVertical: 8, paddingHorizontal: 12, borderRadius: 16, backgroundColor: isPiPActive ? colors.accent + '30' : colors.surface }]}
               >
                 <MonitorPlay size={14} color={isPiPActive ? colors.accent : colors.textMuted} />
               </Pressable>
             )}
           </View>
 
-          <View className="flex-row items-center gap-2 mb-3 flex-wrap">
+          <View style={[s.flexRow, s.itemsCenter, s.gap2, s.mb3, s.flexWrap]}>
             <Pressable
               onPress={pickSubtitleFile}
-              className="flex-row items-center gap-1.5 py-2 px-3 rounded-2xl"
-              style={{ backgroundColor: colors.surface }}
+              style={[s.flexRow, s.itemsCenter, { gap: 6, paddingVertical: 8, paddingHorizontal: 12, borderRadius: 16, backgroundColor: colors.surface }]}
             >
               <Captions size={14} color={colors.accent} />
-              <Text className="text-xs font-medium" style={{ color: colors.text }}>
+              <Text style={[s.textXs, s.fontMedium, { color: colors.text }]}>
                 {activeSubtitle ? 'Subs On' : t('video.subtitles')}
               </Text>
             </Pressable>
@@ -785,46 +781,42 @@ export default function VideoPlayerScreen() {
             {activeSubtitle && (
               <Pressable
                 onPress={() => setActiveSubtitle(null)}
-                className="py-2 px-3 rounded-2xl"
-                style={{ backgroundColor: colors.surface }}
+                style={[{ paddingVertical: 8, paddingHorizontal: 12, borderRadius: 16, backgroundColor: colors.surface }]}
               >
                 <X size={14} color={colors.textMuted} />
               </Pressable>
             )}
 
-            <View style={{ flex: 1 }} />
+            <View style={s.flex1} />
 
             <Pressable
               onPress={stepBackward}
-              className="flex-row items-center gap-1 py-2 px-3 rounded-xl"
-              style={{ backgroundColor: colors.surface }}
+              style={[s.flexRow, s.itemsCenter, { gap: 4, paddingVertical: 8, paddingHorizontal: 12, borderRadius: 12, backgroundColor: colors.surface }]}
             >
               <SkipBack size={12} color={colors.accent} />
-              <Text className="text-[10px] font-semibold" style={{ color: colors.accent }}>1F</Text>
+              <Text style={[s.text10, s.fontSemibold, { color: colors.accent }]}>1F</Text>
             </Pressable>
             <Pressable
               onPress={stepForward}
-              className="flex-row items-center gap-1 py-2 px-3 rounded-xl"
-              style={{ backgroundColor: colors.surface }}
+              style={[s.flexRow, s.itemsCenter, { gap: 4, paddingVertical: 8, paddingHorizontal: 12, borderRadius: 12, backgroundColor: colors.surface }]}
             >
-              <Text className="text-[10px] font-semibold" style={{ color: colors.accent }}>1F</Text>
+              <Text style={[s.text10, s.fontSemibold, { color: colors.accent }]}>1F</Text>
               <SkipForward size={12} color={colors.accent} />
             </Pressable>
           </View>
 
           {subtitles.length > 0 && (
-            <View className="mb-2">
-              <Text className="text-xs font-semibold mb-2" style={{ color: colors.textMuted }}>
+            <View style={s.mb2}>
+              <Text style={[s.textXs, s.fontSemibold, s.mb2, { color: colors.textMuted }]}>
                 SUBTITLES
               </Text>
               {subtitles.map((sub, i) => (
                 <Pressable
                   key={i}
                   onPress={() => setActiveSubtitle(activeSubtitle === sub.uri ? null : sub.uri)}
-                  className="flex-row items-center justify-between py-2 px-3 rounded-xl mb-1"
-                  style={{ backgroundColor: activeSubtitle === sub.uri ? colors.accent + '20' : colors.surface }}
+                  style={[s.flexRow, s.itemsCenter, s.justifyBetween, { paddingVertical: 8, paddingHorizontal: 12, borderRadius: 12, marginBottom: 4, backgroundColor: activeSubtitle === sub.uri ? colors.accent + '20' : colors.surface }]}
                 >
-                  <Text className="text-sm" style={{ color: activeSubtitle === sub.uri ? colors.accent : colors.text }}>
+                  <Text style={[s.textSm, { color: activeSubtitle === sub.uri ? colors.accent : colors.text }]}>
                     {sub.label}
                   </Text>
                   <Pressable onPress={() => {
@@ -994,7 +986,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingTop: 48,
     paddingHorizontal: 16,
   },
   fullscreenButton: {
@@ -1005,14 +996,12 @@ const styles = StyleSheet.create({
   },
   subtitleOverlay: {
     position: 'absolute',
-    bottom: 16,
     left: 16,
     right: 16,
     alignItems: 'center',
   },
   fullscreenSubtitleContainer: {
     position: 'absolute',
-    bottom: 60,
     left: 32,
     right: 32,
     alignItems: 'center',

@@ -1,4 +1,5 @@
 import { View, Text, ScrollView, Pressable } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@/hooks/use-theme';
 import { useMusicStore } from '@/store/music-store';
 import { usePlayerStore } from '@/store/player-store';
@@ -11,9 +12,11 @@ import { Artwork } from '@/components/artwork';
 import { formatDuration } from '@/utils/cn';
 import { useStatsStore } from '@/store/stats-store';
 import type { Song } from '@/types/media';
+import { s } from '@/styles';
 
 export default function MusicScreen() {
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
   const router = useRouter();
   const { songs, albums, artists, genres, scan } = useMusicStore();
 
@@ -40,13 +43,13 @@ export default function MusicScreen() {
   }, [songs, trackStats]);
 
   return (
-    <View className="flex-1" style={{ backgroundColor: colors.background }}>
+    <View style={[s.flex1, { backgroundColor: colors.background }]}>
       <TopBar />
-      <ScrollView contentContainerStyle={{ paddingBottom: 120, paddingTop: 16 }} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={{ paddingBottom: 120 + insets.bottom, paddingTop: 16 }} showsVerticalScrollIndicator={false}>
         {/* Category Grid */}
-        <View className="px-5 mb-6">
-          <Text className="text-2xl font-bold mb-4" style={{ color: colors.text }}>Browse</Text>
-          <View className="gap-3">
+        <View style={[s.px5, s.mb6]}>
+          <Text style={[s.text2xl, s.fontBold, s.mb4, { color: colors.text }]}>Browse</Text>
+          <View style={[s.gap3]}>
             {[
               { icon: List, label: 'Songs', count: songs.length, route: '/music/songs' },
               { icon: Disc3, label: 'Albums', count: albums.length, route: '/music/albums' },
@@ -56,15 +59,14 @@ export default function MusicScreen() {
               <Pressable
                 key={label}
                 onPress={() => router.push(route as any)}
-                className="flex-row items-center gap-4 p-4 rounded-2xl"
-                style={{ backgroundColor: colors.surface }}
+                style={[s.flexRow, s.itemsCenter, s.gap4, s.p4, s.rounded2xl, { backgroundColor: colors.surface }]}
               >
-                <View className="w-12 h-12 rounded-xl items-center justify-center" style={{ backgroundColor: colors.card }}>
+                <View style={[s.w12, s.h12, s.roundedXl, s.itemsCenter, s.justifyCenter, { backgroundColor: colors.card }]}>
                   <Icon size={24} color={colors.accent} />
                 </View>
-                <View className="flex-1">
-                  <Text className="text-base font-semibold" style={{ color: colors.text }}>{label}</Text>
-                  <Text className="text-sm mt-0.5" style={{ color: colors.textMuted }}>{count} items</Text>
+                <View style={[s.flex1]}>
+                  <Text style={[s.textBase, s.fontSemibold, { color: colors.text }]}>{label}</Text>
+                  <Text style={[s.textSm, s.mt05, { color: colors.textMuted }]}>{count} items</Text>
                 </View>
                 <ArrowRight size={18} color={colors.textMuted} />
               </Pressable>
@@ -73,11 +75,11 @@ export default function MusicScreen() {
         </View>
 
         {/* Top Songs */}
-        <View className="px-5 mb-6">
-          <Text className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: colors.textMuted }}>
+        <View style={[s.px5, s.mb6]}>
+          <Text style={[s.textXs, s.fontBold, s.uppercase, { letterSpacing: 1, color: colors.textMuted }, s.mb3]}>
             Top Songs
           </Text>
-          <Text className="text-lg font-bold mb-3" style={{ color: colors.text }}>
+          <Text style={[s.textLg, s.fontBold, s.mb3, { color: colors.text }]}>
             Most Played
           </Text>
           <View style={{ backgroundColor: colors.surface, borderRadius: 14, overflow: 'hidden' }}>
@@ -85,23 +87,22 @@ export default function MusicScreen() {
               <Pressable
                 key={song.id}
                 onPress={() => usePlayerStore.getState().play(song, topSongs.filter(Boolean))}
-                className="flex-row items-center gap-3 py-3 px-4"
-                style={{ borderBottomWidth: i < topSongs.length - 1 ? 1 : 0, borderBottomColor: colors.border }}
+                style={[s.flexRow, s.itemsCenter, s.gap3, s.py3, s.px4, { borderBottomWidth: i < topSongs.length - 1 ? 1 : 0, borderBottomColor: colors.border }]}
               >
-                <View className="w-10 h-10 rounded-lg items-center justify-center" style={{ backgroundColor: colors.card }}>
-                  <Text className="text-xs font-semibold" style={{ color: colors.textMuted }}>{i + 1}</Text>
+                <View style={[s.w10, s.h10, s.roundedLg, s.itemsCenter, s.justifyCenter, { backgroundColor: colors.card }]}>
+                  <Text style={[s.textXs, s.fontSemibold, { color: colors.textMuted }]}>{i + 1}</Text>
                 </View>
-                <View className="flex-1">
-                  <Text className="text-sm font-semibold" style={{ color: colors.text }} numberOfLines={1}>{song.title}</Text>
-                  <Text className="text-xs mt-0.5" style={{ color: colors.textMuted }} numberOfLines={1}>{song.artist}</Text>
+                <View style={[s.flex1]}>
+                  <Text style={[s.textSm, s.fontSemibold, { color: colors.text }]} numberOfLines={1}>{song.title}</Text>
+                  <Text style={[s.textXs, s.mt05, { color: colors.textMuted }]} numberOfLines={1}>{song.artist}</Text>
                 </View>
-                <Text className="text-xs" style={{ color: colors.textMuted }}>{formatDuration(song.duration)}</Text>
+                <Text style={[s.textXs, { color: colors.textMuted }]}>{formatDuration(song.duration)}</Text>
               </Pressable>
             ))}
             {topSongs.length === 0 && (
-              <View className="py-6 items-center">
+              <View style={[s.py6, s.itemsCenter]}>
                 <Music size={32} color={colors.textMuted} />
-                <Text className="text-sm mt-2" style={{ color: colors.textMuted }}>No play history yet</Text>
+                <Text style={[s.textSm, s.mt2, { color: colors.textMuted }]}>No play history yet</Text>
               </View>
             )}
           </View>
@@ -109,25 +110,24 @@ export default function MusicScreen() {
 
         {/* Recently Played */}
         {recentlyPlayed.length > 0 && (
-          <View className="px-5 mb-6">
-            <Text className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: colors.textMuted }}>
+          <View style={[s.px5, s.mb6]}>
+            <Text style={[s.textXs, s.fontBold, s.uppercase, { letterSpacing: 1, color: colors.textMuted }, s.mb3]}>
               Recently Played
             </Text>
-            <Text className="text-lg font-bold mb-3" style={{ color: colors.text }}>Quick Replay</Text>
+            <Text style={[s.textLg, s.fontBold, s.mb3, { color: colors.text }]}>Quick Replay</Text>
             <View style={{ backgroundColor: colors.surface, borderRadius: 14, overflow: 'hidden' }}>
               {recentlyPlayed.map((song, i) => (
                 <Pressable
                   key={song.id}
                   onPress={() => usePlayerStore.getState().play(song, recentlyPlayed)}
-                  className="flex-row items-center gap-3 py-3 px-4"
-                  style={{ borderBottomWidth: i < recentlyPlayed.length - 1 ? 1 : 0, borderBottomColor: colors.border }}
+                  style={[s.flexRow, s.itemsCenter, s.gap3, s.py3, s.px4, { borderBottomWidth: i < recentlyPlayed.length - 1 ? 1 : 0, borderBottomColor: colors.border }]}
                 >
-                  <View className="w-10 h-10 rounded-lg items-center justify-center overflow-hidden" style={{ backgroundColor: colors.card }}>
+                  <View style={[s.w10, s.h10, s.roundedLg, s.itemsCenter, s.justifyCenter, s.overflowHidden, { backgroundColor: colors.card }]}>
                     <Artwork uri={song.artwork} size={40} borderRadius={8} iconSize={16} iconColor={colors.accent} backgroundColor="transparent" />
                   </View>
-                  <View className="flex-1">
-                    <Text className="text-sm font-semibold" style={{ color: colors.text }} numberOfLines={1}>{song.title}</Text>
-                    <Text className="text-xs mt-0.5" style={{ color: colors.textMuted }} numberOfLines={1}>{song.artist}</Text>
+                  <View style={[s.flex1]}>
+                    <Text style={[s.textSm, s.fontSemibold, { color: colors.text }]} numberOfLines={1}>{song.title}</Text>
+                    <Text style={[s.textXs, s.mt05, { color: colors.textMuted }]} numberOfLines={1}>{song.artist}</Text>
                   </View>
                   <Play size={18} color={colors.textMuted} />
                 </Pressable>

@@ -1,4 +1,6 @@
 import { View, Text, ScrollView } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { s } from '@/styles';
 import { useTheme } from '@/hooks/use-theme';
 import { useTranslation } from '@/hooks/use-translation';
 import { TopBar } from '@/components/top-bar';
@@ -10,6 +12,7 @@ import { TrendingUp, Music, Clock, Activity, User, Disc, BarChart3 } from 'lucid
 
 export default function StatisticsScreen() {
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
   const { t } = useTranslation();
   const songs = useMusicStore((s) => s.songs);
   const getTopSongs = useStatsStore((s) => s.getTopSongs);
@@ -27,34 +30,34 @@ export default function StatisticsScreen() {
   const orderedLabels = [...dayLabels.slice(todayIdx + 1), ...dayLabels.slice(0, todayIdx + 1)];
 
   return (
-    <View className="flex-1" style={{ backgroundColor: colors.background }}>
+    <View style={[s.flex1, { backgroundColor: colors.background }]}>
       <TopBar title={t('stats.title')} showSettings={false} />
-      <ScrollView className="flex-1" contentContainerStyle={{ paddingBottom: 120 }}>
-        <View className="px-4 py-4 gap-6">
+      <ScrollView style={s.flex1} contentContainerStyle={{ paddingBottom: 120 + insets.bottom }}>
+        <View style={[s.px4, s.py4, s.gap6]}>
           {/* Overview */}
           <View>
             <SectionHeader title={t('stats.overview')} />
-            <View className="flex-row gap-3">
-              <View className="flex-1 rounded-3xl p-4 items-center" style={{ backgroundColor: colors.surface }}>
+            <View style={[s.flexRow, s.gap3]}>
+              <View style={[s.flex1, s.rounded3xl, s.p4, s.itemsCenter, { backgroundColor: colors.surface }]}>
                 <Music size={24} color={colors.accent} />
-                <Text className="text-2xl font-bold mt-2" style={{ color: colors.text }}>{totalPlayCount}</Text>
-                <Text className="text-xs mt-1" style={{ color: colors.textMuted }}>{t('stats.total.plays')}</Text>
+                <Text style={[s.text2xl, s.fontBold, s.mt2, { color: colors.text }]}>{totalPlayCount}</Text>
+                <Text style={[s.textXs, s.mt1, { color: colors.textMuted }]}>{t('stats.total.plays')}</Text>
               </View>
-              <View className="flex-1 rounded-3xl p-4 items-center" style={{ backgroundColor: colors.surface }}>
+              <View style={[s.flex1, s.rounded3xl, s.p4, s.itemsCenter, { backgroundColor: colors.surface }]}>
                 <Clock size={24} color={colors.accent} />
-                <Text className="text-2xl font-bold mt-2" style={{ color: colors.text }}>
+                <Text style={[s.text2xl, s.fontBold, s.mt2, { color: colors.text }]}>
                   {totalListenTime > 3600
                     ? `${Math.floor(totalListenTime / 3600)}h`
                     : totalListenTime > 60
                     ? `${Math.floor(totalListenTime / 60)}m`
                     : `${totalListenTime}s`}
                 </Text>
-                <Text className="text-xs mt-1" style={{ color: colors.textMuted }}>{t('stats.listen.time')}</Text>
+                <Text style={[s.textXs, s.mt1, { color: colors.textMuted }]}>{t('stats.listen.time')}</Text>
               </View>
-              <View className="flex-1 rounded-3xl p-4 items-center" style={{ backgroundColor: colors.surface }}>
+              <View style={[s.flex1, s.rounded3xl, s.p4, s.itemsCenter, { backgroundColor: colors.surface }]}>
                 <TrendingUp size={24} color={colors.accent} />
-                <Text className="text-2xl font-bold mt-2" style={{ color: colors.text }}>{listeningStats.totalTracksPlayed}</Text>
-                <Text className="text-xs mt-1" style={{ color: colors.textMuted }}>{t('stats.tracks.played')}</Text>
+                <Text style={[s.text2xl, s.fontBold, s.mt2, { color: colors.text }]}>{listeningStats.totalTracksPlayed}</Text>
+                <Text style={[s.textXs, s.mt1, { color: colors.textMuted }]}>{t('stats.tracks.played')}</Text>
               </View>
             </View>
           </View>
@@ -62,15 +65,15 @@ export default function StatisticsScreen() {
           {/* Weekly Listening */}
           <View>
             <SectionHeader title={t('stats.week')} />
-            <View className="rounded-3xl p-4" style={{ backgroundColor: colors.surface }}>
-              <View className="flex-row items-center gap-2 mb-4">
+            <View style={[s.rounded3xl, s.p4, { backgroundColor: colors.surface }]}>
+              <View style={[s.flexRow, s.itemsCenter, s.gap2, s.mb4]}>
                 <BarChart3 size={20} color={colors.accent} />
-                <Text className="text-sm font-semibold" style={{ color: colors.text }}>{t('stats.daily')}</Text>
+                <Text style={[s.textSm, s.fontSemibold, { color: colors.text }]}>{t('stats.daily')}</Text>
               </View>
-              <View className="flex-row items-end justify-between" style={{ height: 120 }}>
+              <View style={[s.flexRow, s.itemsEnd, s.justifyBetween, { height: 120 }]}>
                 {weeklyMinutes.map((minutes, i) => (
-                  <View key={i} className="flex-1 items-center">
-                    <Text className="text-[10px] mb-1" style={{ color: colors.textMuted }}>
+                  <View key={i} style={[s.flex1, s.itemsCenter]}>
+                    <Text style={[s.text10, s.mb1, { color: colors.textMuted }]}>
                       {minutes > 0 ? `${minutes}m` : ''}
                     </Text>
                     <View
@@ -81,7 +84,7 @@ export default function StatisticsScreen() {
                         backgroundColor: i === weeklyMinutes.length - 1 ? colors.accent : colors.accent + '40',
                       }}
                     />
-                    <Text className="text-[10px] mt-1" style={{ color: i === weeklyMinutes.length - 1 ? colors.accent : colors.textMuted }}>
+                    <Text style={[s.text10, s.mt1, { color: i === weeklyMinutes.length - 1 ? colors.accent : colors.textMuted }]}>
                       {orderedLabels[i]}
                     </Text>
                   </View>
@@ -93,27 +96,26 @@ export default function StatisticsScreen() {
           {/* Top Songs */}
           <View>
             <SectionHeader title={t('stats.most.played')} />
-            <View className="rounded-3xl overflow-hidden" style={{ backgroundColor: colors.surface }}>
+            <View style={[s.rounded3xl, s.overflowHidden, { backgroundColor: colors.surface }]}>
               {topSongs.length === 0 ? (
-                <View className="p-8 items-center">
+                <View style={[s.p8, s.itemsCenter]}>
                   <Activity size={32} color={colors.textMuted} />
-                  <Text className="text-sm mt-2" style={{ color: colors.textMuted }}>{t('stats.no.plays')}</Text>
+                  <Text style={[s.textSm, s.mt2, { color: colors.textMuted }]}>{t('stats.no.plays')}</Text>
                 </View>
               ) : (
                 topSongs.map(({ song, count }, i) => (
                   <View
                     key={song.id}
-                    className="flex-row items-center gap-3 p-4"
-                    style={{ borderBottomWidth: i < topSongs.length - 1 ? 1 : 0, borderBottomColor: colors.border }}
+                    style={[s.flexRow, s.itemsCenter, s.gap3, s.p4, { borderBottomWidth: i < topSongs.length - 1 ? 1 : 0, borderBottomColor: colors.border }]}
                   >
-                    <Text className="text-sm font-bold w-6 text-center" style={{ color: colors.accent }}>
+                    <Text style={[s.textSm, s.fontBold, { width: 24, textAlign: 'center', color: colors.accent }]}>
                       {i + 1}
                     </Text>
-                    <View className="flex-1">
-                      <Text className="text-sm font-medium" style={{ color: colors.text }} numberOfLines={1}>{song.title}</Text>
-                      <Text className="text-xs" style={{ color: colors.textMuted }} numberOfLines={1}>{song.artist}</Text>
+                    <View style={s.flex1}>
+                      <Text style={[s.textSm, s.fontMedium, { color: colors.text }]} numberOfLines={1}>{song.title}</Text>
+                      <Text style={[s.textXs, { color: colors.textMuted }]} numberOfLines={1}>{song.artist}</Text>
                     </View>
-                    <Text className="text-sm font-semibold" style={{ color: colors.accent }}>{count}</Text>
+                    <Text style={[s.textSm, s.fontSemibold, { color: colors.accent }]}>{count}</Text>
                   </View>
                 ))
               )}
@@ -123,22 +125,21 @@ export default function StatisticsScreen() {
           {/* Top Artists */}
           <View>
             <SectionHeader title={t('stats.top.artists')} />
-            <View className="rounded-3xl overflow-hidden" style={{ backgroundColor: colors.surface }}>
+            <View style={[s.rounded3xl, s.overflowHidden, { backgroundColor: colors.surface }]}>
               {listeningStats.topArtists.length === 0 ? (
-                <View className="p-8 items-center">
+                <View style={[s.p8, s.itemsCenter]}>
                   <User size={32} color={colors.textMuted} />
-                  <Text className="text-sm mt-2" style={{ color: colors.textMuted }}>{t('stats.no.data')}</Text>
+                  <Text style={[s.textSm, s.mt2, { color: colors.textMuted }]}>{t('stats.no.data')}</Text>
                 </View>
               ) : (
                 listeningStats.topArtists.map(({ name, count }, i) => (
                   <View
                     key={name}
-                    className="flex-row items-center gap-3 p-4"
-                    style={{ borderBottomWidth: i < listeningStats.topArtists.length - 1 ? 1 : 0, borderBottomColor: colors.border }}
+                    style={[s.flexRow, s.itemsCenter, s.gap3, s.p4, { borderBottomWidth: i < listeningStats.topArtists.length - 1 ? 1 : 0, borderBottomColor: colors.border }]}
                   >
-                    <Text className="text-sm font-bold w-6 text-center" style={{ color: colors.accent }}>{i + 1}</Text>
-                    <Text className="flex-1 text-sm font-medium" style={{ color: colors.text }} numberOfLines={1}>{name}</Text>
-                    <Text className="text-sm" style={{ color: colors.textMuted }}>{t('stats.plays', { count })}</Text>
+                    <Text style={[s.textSm, s.fontBold, { width: 24, textAlign: 'center', color: colors.accent }]}>{i + 1}</Text>
+                    <Text style={[s.flex1, s.textSm, s.fontMedium, { color: colors.text }]} numberOfLines={1}>{name}</Text>
+                    <Text style={[s.textSm, { color: colors.textMuted }]}>{t('stats.plays', { count })}</Text>
                   </View>
                 ))
               )}
@@ -148,22 +149,21 @@ export default function StatisticsScreen() {
           {/* Top Albums */}
           <View>
             <SectionHeader title={t('stats.top.albums')} />
-            <View className="rounded-3xl overflow-hidden" style={{ backgroundColor: colors.surface }}>
+            <View style={[s.rounded3xl, s.overflowHidden, { backgroundColor: colors.surface }]}>
               {listeningStats.topAlbums.length === 0 ? (
-                <View className="p-8 items-center">
+                <View style={[s.p8, s.itemsCenter]}>
                   <Disc size={32} color={colors.textMuted} />
-                  <Text className="text-sm mt-2" style={{ color: colors.textMuted }}>{t('stats.no.data')}</Text>
+                  <Text style={[s.textSm, s.mt2, { color: colors.textMuted }]}>{t('stats.no.data')}</Text>
                 </View>
               ) : (
                 listeningStats.topAlbums.map(({ name, count }, i) => (
                   <View
                     key={name}
-                    className="flex-row items-center gap-3 p-4"
-                    style={{ borderBottomWidth: i < listeningStats.topAlbums.length - 1 ? 1 : 0, borderBottomColor: colors.border }}
+                    style={[s.flexRow, s.itemsCenter, s.gap3, s.p4, { borderBottomWidth: i < listeningStats.topAlbums.length - 1 ? 1 : 0, borderBottomColor: colors.border }]}
                   >
-                    <Text className="text-sm font-bold w-6 text-center" style={{ color: colors.accent }}>{i + 1}</Text>
-                    <Text className="flex-1 text-sm font-medium" style={{ color: colors.text }} numberOfLines={1}>{name}</Text>
-                    <Text className="text-sm" style={{ color: colors.textMuted }}>{t('stats.plays', { count })}</Text>
+                    <Text style={[s.textSm, s.fontBold, { width: 24, textAlign: 'center', color: colors.accent }]}>{i + 1}</Text>
+                    <Text style={[s.flex1, s.textSm, s.fontMedium, { color: colors.text }]} numberOfLines={1}>{name}</Text>
+                    <Text style={[s.textSm, { color: colors.textMuted }]}>{t('stats.plays', { count })}</Text>
                   </View>
                 ))
               )}

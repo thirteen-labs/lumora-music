@@ -1,12 +1,4 @@
 import * as ImageColors from "react-native-image-colors";
-import type { ThemeColors } from "@/types/theme";
-
-function hexToRgba(hex: string, alpha: number): string {
-  const r = parseInt(hex.slice(1, 3), 16);
-  const g = parseInt(hex.slice(3, 5), 16);
-  const b = parseInt(hex.slice(5, 7), 16);
-  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-}
 
 function luminance(hex: string): number {
   const r = parseInt(hex.slice(1, 3), 16) / 255;
@@ -79,18 +71,4 @@ export async function extractColorsFromImage(
   }
 }
 
-export function extractedColorsToThemeColors(
-  extracted: ExtractedColors,
-): Partial<ThemeColors> {
-  return {
-    background: extracted.background,
-    surface: extracted.surface,
-    primary: extracted.primary,
-    secondary: extracted.secondary,
-    accent: extracted.accent,
-    border: hexToRgba(extracted.primary, 0.2),
-    card: hexToRgba(extracted.surface, 0.5),
-    textSecondary: hexToRgba("#FFFFFF", 0.7),
-    textMuted: hexToRgba("#FFFFFF", 0.5),
-  };
-}
+

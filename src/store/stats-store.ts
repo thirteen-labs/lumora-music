@@ -11,6 +11,27 @@ interface DailyListening {
   [date: string]: number;
 }
 
+let _saveTimer: ReturnType<typeof setTimeout> | null = null;
+let _pendingTrackStats: Record<string, TrackStats> | null = null;
+let _pendingDaily: DailyListening | null = null;
+
+function flushSaves() {
+  _saveTimer = null;
+  if (_pendingTrackStats) {
+    try { storage.set(STATS_KEY, JSON.stringify(_pendingTrackStats)); } catch {}
+    _pendingTrackStats = null;
+  }
+  if (_pendingDaily) {
+    try { storage.set(DAILY_KEY, JSON.stringify(_pendingDaily)); } catch {}
+    _pendingDaily = null;
+  }
+}
+
+function scheduleSave() {
+  if (_saveTimer) clearTimeout(_saveTimer);
+  _saveTimer = setTimeout(flushSaves, 500);
+}
+
 function loadStats(): Record<string, TrackStats> {
   try {
     const raw = storage.getString(STATS_KEY);
@@ -25,14 +46,6 @@ function loadDailyListening(): DailyListening {
     if (raw) return JSON.parse(raw);
   } catch {}
   return {};
-}
-
-function saveStats(stats: Record<string, TrackStats>): void {
-  try { storage.set(STATS_KEY, JSON.stringify(stats)); } catch {}
-}
-
-function saveDailyListening(daily: DailyListening): void {
-  try { storage.set(DAILY_KEY, JSON.stringify(daily)); } catch {}
 }
 
 function getTodayKey(): string {
@@ -69,7 +82,8 @@ export const useStatsStore = create<StatsState>()(
         existing.lastPlayed = Date.now();
         s.trackStats[songId] = existing;
       });
-      saveStats(get().trackStats);
+      _pendingTrackStats = get().trackStats;
+      scheduleSave();
     },
 
     recordSkip: (songId) => {
@@ -80,7 +94,8 @@ export const useStatsStore = create<StatsState>()(
         existing.skipCount++;
         s.trackStats[songId] = existing;
       });
-      saveStats(get().trackStats);
+      _pendingTrackStats = get().trackStats;
+      scheduleSave();
     },
 
     addPlayTime: (songId, seconds) => {
@@ -91,14 +106,15 @@ export const useStatsStore = create<StatsState>()(
         existing.totalPlayTime += seconds;
         s.trackStats[songId] = existing;
       });
-      saveStats(get().trackStats);
+      _pendingTrackStats = get().trackStats;
+      scheduleSave();
     },
 
     recordDailyListening: (seconds) => {
-      const daily = loadDailyListening();
+      if (!_pendingDaily) _pendingDaily = loadDailyListening();
       const key = getTodayKey();
-      daily[key] = (daily[key] || 0) + seconds;
-      saveDailyListening(daily);
+      _pendingDaily[key] = (_pendingDaily[key] || 0) + seconds;
+      scheduleSave();
     },
 
     getTrackStats: (songId) => {

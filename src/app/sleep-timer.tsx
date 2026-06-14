@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
 import { View, Text, Pressable, ScrollView } from "react-native";
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { s } from '@/styles';
 import { useTheme } from "@/hooks/use-theme";
 import { useTranslation } from "@/hooks/use-translation";
 import { TopBar } from "@/components/top-bar";
@@ -12,6 +14,7 @@ import { Clock, Moon } from "lucide-react-native";
 
 export default function SleepTimerScreen() {
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
   const { t } = useTranslation();
   const timer = useSleepTimerStore();
   const [remaining, setRemaining] = useState(
@@ -39,29 +42,26 @@ export default function SleepTimerScreen() {
   };
 
   return (
-    <View className="flex-1" style={{ backgroundColor: colors.background }}>
+    <View style={[s.flex1, { backgroundColor: colors.background }]}>
       <TopBar title={t('timer.title')} showSettings={false} />
       <ScrollView
-        className="flex-1"
-        contentContainerStyle={{ paddingBottom: 120 }}
+        style={s.flex1}
+        contentContainerStyle={{ paddingBottom: 120 + insets.bottom }}
       >
-        <View className="px-4 py-4 gap-6">
+        <View style={[s.px4, s.py4, s.gap6]}>
           {/* Active Timer */}
           {timer.active && remaining > 0 && (
             <View
-              className="rounded-3xl overflow-hidden p-6 items-center"
-              style={{ backgroundColor: colors.surface }}
+              style={[s.rounded3xl, s.overflowHidden, { padding: 24, alignItems: 'center', backgroundColor: colors.surface }]}
             >
               <Moon size={40} color={colors.accent} />
               <Text
-                className="text-3xl font-bold mt-4"
-                style={{ color: colors.text }}
+                style={[s.text3xl, s.fontBold, s.mt4, { color: colors.text }]}
               >
                 {formatRemaining(remaining)}
               </Text>
               <Text
-                className="text-sm mt-2"
-                style={{ color: colors.textMuted }}
+                style={[s.textSm, s.mt2, { color: colors.textMuted }]}
               >
                 Timer ends at{" "}
                 {new Date(timer.endTime).toLocaleTimeString([], {
@@ -71,12 +71,10 @@ export default function SleepTimerScreen() {
               </Text>
               <Pressable
                 onPress={timer.cancel}
-                className="mt-4 px-8 py-3 rounded-full"
-                style={{ backgroundColor: colors.card }}
+                style={[s.mt4, s.px8, { paddingVertical: 12, borderRadius: 9999, backgroundColor: colors.card }]}
               >
                 <Text
-                  className="text-sm font-semibold"
-                  style={{ color: colors.accent }}
+                  style={[s.textSm, s.fontSemibold, { color: colors.accent }]}
                 >
                   {t('timer.cancel')}
                 </Text>
@@ -88,36 +86,31 @@ export default function SleepTimerScreen() {
           <View>
             <SectionHeader title={t('timer.set')} />
             <View
-              className="rounded-3xl overflow-hidden"
-              style={{ backgroundColor: colors.surface }}
+              style={[s.rounded3xl, s.overflowHidden, { backgroundColor: colors.surface }]}
             >
               {SLEEP_TIMER_OPTIONS.map((option, i) => (
                 <Pressable
                   key={option.minutes}
                   onPress={() => timer.start(option.minutes)}
-                  className="flex-row items-center justify-between p-4"
-                  style={{
+                  style={[s.flexRow, s.itemsCenter, s.justifyBetween, s.p4, {
                     borderBottomWidth:
                       i < SLEEP_TIMER_OPTIONS.length - 1 ? 1 : 0,
                     borderBottomColor: colors.border,
-                  }}
+                  }]}
                 >
-                  <View className="flex-row items-center gap-3">
+                  <View style={[s.flexRow, s.itemsCenter, s.gap3]}>
                     <Clock size={18} color={colors.accent} />
                     <Text
-                      className="text-sm font-medium"
-                      style={{ color: colors.text }}
+                      style={[s.textSm, s.fontMedium, { color: colors.text }]}
                     >
                       {option.label}
                     </Text>
                   </View>
                   <View
-                    className="w-6 h-6 rounded-full items-center justify-center"
-                    style={{ backgroundColor: colors.card }}
+                    style={[{ width: 24, height: 24, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.card }]}
                   >
                     <Text
-                      className="text-xs"
-                      style={{ color: colors.textMuted }}
+                      style={[s.textXs, { color: colors.textMuted }]}
                     >
                       +
                     </Text>
@@ -131,20 +124,17 @@ export default function SleepTimerScreen() {
           <View>
             <SectionHeader title={t('timer.options')} />
             <View
-              className="rounded-3xl overflow-hidden p-4"
-              style={{ backgroundColor: colors.surface }}
+              style={[s.rounded3xl, s.overflowHidden, s.p4, { backgroundColor: colors.surface }]}
             >
-              <View className="flex-row items-center justify-between">
-                <View className="flex-1">
+              <View style={[s.flexRow, s.itemsCenter, s.justifyBetween]}>
+                <View style={s.flex1}>
                   <Text
-                    className="text-sm font-medium"
-                    style={{ color: colors.text }}
+                    style={[s.textSm, s.fontMedium, { color: colors.text }]}
                   >
                     {t('timer.stop.end')}
                   </Text>
                   <Text
-                    className="text-xs mt-0.5"
-                    style={{ color: colors.textMuted }}
+                    style={[s.textXs, s.mt05, { color: colors.textMuted }]}
                   >
                     {t('timer.stop.end.desc')}
                   </Text>
@@ -157,21 +147,10 @@ export default function SleepTimerScreen() {
                       timer.start(60, !timer.stopAtEndOfTrack);
                     }
                   }}
-                  className="w-14 h-8 rounded-full items-center justify-end px-1"
-                  style={{
-                    backgroundColor: timer.stopAtEndOfTrack
-                      ? colors.accent
-                      : colors.card,
-                  }}
+                  style={[{ width: 56, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'flex-end', paddingHorizontal: 4, backgroundColor: timer.stopAtEndOfTrack ? colors.accent : colors.card }]}
                 >
                   <View
-                    className="w-6 h-6 rounded-full"
-                    style={{
-                      backgroundColor: "#fff",
-                      transform: [
-                        { translateX: timer.stopAtEndOfTrack ? 0 : -22 },
-                      ],
-                    }}
+                    style={[{ width: 24, height: 24, borderRadius: 12, backgroundColor: "#fff", transform: [{ translateX: timer.stopAtEndOfTrack ? 0 : -22 }] }]}
                   />
                 </Pressable>
               </View>

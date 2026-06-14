@@ -1,4 +1,6 @@
 import { View, Text, ScrollView, Pressable, Alert } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { s } from '@/styles';
 import { useTheme } from '@/hooks/use-theme';
 import { TopBar } from '@/components/top-bar';
 import { useRoute, useRouter } from 'expo-router';
@@ -22,6 +24,7 @@ type TagFormData = z.infer<typeof tagSchema>;
 
 export default function TagEditScreen() {
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
   const { t } = useTranslation();
   const router = useRouter();
   const route = useRoute();
@@ -47,9 +50,9 @@ export default function TagEditScreen() {
 
   if (!song) {
     return (
-      <View className="flex-1 items-center justify-center" style={{ backgroundColor: colors.background }}>
+      <View style={[s.flex1, s.itemsCenter, s.justifyCenter, { backgroundColor: colors.background }]}>
         <Text style={{ color: colors.textMuted }}>{t('tag.not.found')}</Text>
-        <Pressable onPress={() => router.back()} className="mt-4">
+        <Pressable onPress={() => router.back()} style={s.mt4}>
           <Text style={{ color: colors.accent }}>Go back</Text>
         </Pressable>
       </View>
@@ -75,11 +78,11 @@ export default function TagEditScreen() {
   };
 
   return (
-    <View className="flex-1" style={{ backgroundColor: colors.background }}>
+    <View style={[s.flex1, { backgroundColor: colors.background }]}>
       <TopBar title={t('tag.title')} showSettings={false} />
-      <ScrollView className="flex-1" contentContainerStyle={{ paddingBottom: 120 }}>
-        <View className="px-4 py-4 gap-4">
-          <View className="rounded-3xl p-4 gap-4" style={{ backgroundColor: colors.surface }}>
+      <ScrollView style={s.flex1} contentContainerStyle={{ paddingBottom: 120 + insets.bottom }}>
+        <View style={[s.px4, s.py4, s.gap4]}>
+          <View style={[s.rounded3xl, s.p4, s.gap4, { backgroundColor: colors.surface }]}>
             <Controller
               control={control}
               name="title"
@@ -150,22 +153,20 @@ export default function TagEditScreen() {
             />
           </View>
 
-          <View className="flex-row gap-3">
+          <View style={[s.flexRow, s.gap3]}>
             <Pressable
               onPress={() => router.back()}
-              className="flex-1 py-4 rounded-3xl items-center flex-row justify-center gap-2"
-              style={{ backgroundColor: colors.card }}
+              style={[s.flex1, { paddingVertical: 16, borderRadius: 24, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 8, backgroundColor: colors.card }]}
             >
               <X size={18} color={colors.text} />
-              <Text className="text-sm font-semibold" style={{ color: colors.text }}>{t('common.cancel')}</Text>
+              <Text style={[s.textSm, s.fontSemibold, { color: colors.text }]}>{t('common.cancel')}</Text>
             </Pressable>
             <Pressable
               onPress={handleSubmit(handleSave)}
-              className="flex-1 py-4 rounded-3xl items-center flex-row justify-center gap-2"
-              style={{ backgroundColor: isDirty ? colors.accent : colors.card }}
+              style={[s.flex1, { paddingVertical: 16, borderRadius: 24, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 8, backgroundColor: isDirty ? colors.accent : colors.card }]}
             >
               <Save size={18} color={isDirty ? colors.background : colors.textMuted} />
-              <Text className="text-sm font-semibold" style={{ color: isDirty ? colors.background : colors.textMuted }}>{t('common.save')}</Text>
+              <Text style={[s.textSm, s.fontSemibold, { color: isDirty ? colors.background : colors.textMuted }]}>{t('common.save')}</Text>
             </Pressable>
           </View>
         </View>

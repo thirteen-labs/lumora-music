@@ -1,8 +1,10 @@
 import { View, Text, ScrollView, Pressable, Switch } from 'react-native';
+import { s } from '@/styles';
 import { useTheme } from '@/hooks/use-theme';
 import { useSettingsStore } from '@/store/settings-store';
 import { useRouter } from 'expo-router';
 import { ChevronLeft, Zap } from 'lucide-react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const DURATIONS = [1, 2, 3, 5, 7, 10];
 
@@ -13,36 +15,36 @@ export default function CrossfadeSettingsScreen() {
   const setCrossfade = useSettingsStore((s) => s.setCrossfade);
   const crossfadeDuration = useSettingsStore((s) => s.crossfadeDuration);
   const setCrossfadeDuration = useSettingsStore((s) => s.setCrossfadeDuration);
+  const insets = useSafeAreaInsets();
 
   return (
-    <View className="flex-1" style={{ backgroundColor: colors.background }}>
-      <View className="flex-row items-center gap-3 px-5 pt-14 pb-4">
-        <Pressable onPress={() => router.back()} className="w-11 h-11 rounded-full items-center justify-center" style={{ backgroundColor: colors.surface }}>
+    <View style={[s.flex1, { backgroundColor: colors.background }]}>
+      <View style={[s.flexRow, s.itemsCenter, s.gap3, s.px5, { paddingTop: insets.top + 12 }, s.pb4]}>
+        <Pressable onPress={() => router.back()} style={[s.w11, s.h11, s.roundedFull, s.itemsCenter, s.justifyCenter, { backgroundColor: colors.surface }]}>
           <ChevronLeft size={22} color={colors.text} />
         </Pressable>
-        <Text className="text-lg font-bold" style={{ color: colors.text }}>Crossfade</Text>
+        <Text style={[s.textLg, s.fontBold, { color: colors.text }]}>Crossfade</Text>
       </View>
-      <ScrollView contentContainerStyle={{ paddingBottom: 120, paddingTop: 8 }} showsVerticalScrollIndicator={false}>
-        <View className="px-5">
-          <View className="mb-6" style={{ backgroundColor: colors.surface, borderRadius: 16, overflow: 'hidden' }}>
-            <View className="flex-row items-center gap-4 p-4" style={{ borderBottomWidth: 1, borderBottomColor: colors.border + '20' }}>
-              <View className="w-10 h-10 rounded-xl items-center justify-center" style={{ backgroundColor: colors.accent + '15' }}>
+      <ScrollView contentContainerStyle={{ paddingBottom: 120 + insets.bottom, paddingTop: 8 }} showsVerticalScrollIndicator={false}>
+        <View style={s.px5}>
+          <View style={[s.mb6, { backgroundColor: colors.surface, borderRadius: 16, overflow: 'hidden' }]}>
+            <View style={[s.flexRow, s.itemsCenter, s.gap4, s.p4, { borderBottomWidth: 1, borderBottomColor: colors.border + '20' }]}>
+              <View style={[s.w10, s.h10, s.roundedXl, s.itemsCenter, s.justifyCenter, { backgroundColor: colors.accent + '15' }]}>
                 <Zap size={20} color={colors.accent} />
               </View>
-              <Text className="flex-1 text-sm font-medium" style={{ color: colors.text }}>Enable Crossfade</Text>
+              <Text style={[s.flex1, s.textSm, s.fontMedium, { color: colors.text }]}>Enable Crossfade</Text>
               <Switch value={crossfade} onValueChange={() => setCrossfade(!crossfade)} trackColor={{ false: colors.card, true: colors.accent + '80' }} thumbColor="#fff" />
             </View>
-            <View className="p-4">
-              <Text className="text-sm font-medium mb-3" style={{ color: colors.text }}>Duration: {crossfadeDuration}s</Text>
-              <View className="flex-row gap-2">
+            <View style={s.p4}>
+              <Text style={[s.textSm, s.fontMedium, s.mb3, { color: colors.text }]}>Duration: {crossfadeDuration}s</Text>
+              <View style={[s.flexRow, s.gap2]}>
                 {DURATIONS.map((d) => (
                   <Pressable
                     key={d}
                     onPress={() => setCrossfadeDuration(d)}
-                    className="flex-1 py-2 rounded-xl items-center justify-center"
-                    style={{ backgroundColor: crossfadeDuration === d ? colors.accent : colors.card }}
+                    style={[s.flex1, { paddingVertical: 8, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: crossfadeDuration === d ? colors.accent : colors.card }]}
                   >
-                    <Text className="text-sm font-semibold" style={{ color: crossfadeDuration === d ? colors.background : colors.text }}>{d}s</Text>
+                    <Text style={[s.textSm, s.fontSemibold, { color: crossfadeDuration === d ? colors.background : colors.text }]}>{d}s</Text>
                   </Pressable>
                 ))}
               </View>

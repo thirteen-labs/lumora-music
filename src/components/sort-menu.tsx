@@ -5,6 +5,7 @@ import {
   BottomSheetView,
   BottomSheetBackdrop,
 } from '@gorhom/bottom-sheet';
+import { s } from '@/styles';
 import { useTheme } from '@/hooks/use-theme';
 import type { SortOption } from '@/types/media';
 import { Check } from 'lucide-react-native';
@@ -34,8 +35,8 @@ export function SortMenu({ options, active, onSelect }: SortMenuProps) {
 
   return (
     <>
-      <Pressable onPress={handlePresent} className="px-4 py-2">
-        <Text className="text-xs" style={{ color: colors.accent }}>
+      <Pressable onPress={handlePresent} style={[s.px4, s.py2]}>
+        <Text style={[s.textXs, { color: colors.accent }]}>
           {active.label} ▼
         </Text>
       </Pressable>

@@ -19,7 +19,7 @@ export function useColorAware() {
   }, [setExtractedColors]);
 
   useEffect(() => {
-    if (currentTrack?.artwork) {
+    if (colorAware && currentTrack?.artwork) {
       extractFromUri(currentTrack.artwork);
     } else if (colorAware && backgroundImage) {
       extractFromUri(backgroundImage);

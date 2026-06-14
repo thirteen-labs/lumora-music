@@ -1,4 +1,6 @@
+import { useMemo } from 'react';
 import { View, Text, ScrollView, Pressable, Switch, Alert } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@/hooks/use-theme';
 import { useSettingsStore } from '@/store/settings-store';
 import { useMusicStore } from '@/store/music-store';
@@ -26,14 +28,21 @@ import {
   ImageIcon,
   Pencil,
 } from 'lucide-react-native';
+import { s } from '@/styles';
 
 export default function SettingsScreen() {
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
   const { t } = useTranslation();
   const router = useRouter();
   const language = useSettingsStore((s) => s.language);
   const songs = useMusicStore((s) => s.songs);
   const albums = useMusicStore((s) => s.albums);
+  const scan = useMusicStore((s) => s.scan);
+  const scanStatus = useMusicStore((s) => s.scanStatus);
+  const lastScanTime = useMusicStore((s) => s.lastScanTime);
+  const colorAware = useSettingsStore((s) => s.colorAware);
+  const setColorAware = useSettingsStore((s) => s.setColorAware);
   const backgroundImage = useSettingsStore((s) => s.backgroundImage);
   const setBackgroundImage = useSettingsStore((s) => s.setBackgroundImage);
 
@@ -73,26 +82,36 @@ export default function SettingsScreen() {
     it: 'Italiano', ko: '한국어', ar: 'العربية', tr: 'Türkçe',
   };
 
-  return (
-    <View className="flex-1" style={{ backgroundColor: colors.background }}>
-      <ScrollView contentContainerStyle={{ paddingBottom: 120, paddingTop: 16 }} showsVerticalScrollIndicator={false}>
-        <View className="px-5">
+  const lastScanLabel = useMemo(() => {
+    if (scanStatus === 'scanning') return 'Scanning...';
+    if (!lastScanTime) return 'Never scanned';
+    // eslint-disable-next-line react-hooks/purity
+    const diff = Date.now() - lastScanTime;
+    if (diff < 60000) return 'Just now';
+    if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
+    if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`;
+    return `${Math.floor(diff / 86400000)}d ago`;
+  }, [scanStatus, lastScanTime]);
 
-          <View className="flex-row items-center gap-3 mb-8">
-            <View className="w-14 h-14 rounded-2xl items-center justify-center" style={{ backgroundColor: colors.accent + '25' }}>
+  return (
+    <View style={[s.flex1, { backgroundColor: colors.background }]}>
+      <ScrollView contentContainerStyle={{ paddingBottom: 120 + insets.bottom, paddingTop: 16 }} showsVerticalScrollIndicator={false}>
+        <View style={[s.px5]}>
+
+          <View style={[s.flexRow, s.itemsCenter, s.gap3, s.mb8]}>
+            <View style={[s.w14, s.h14, s.rounded2xl, s.itemsCenter, s.justifyCenter, { backgroundColor: colors.accent + '25' }]}>
               <Settings size={28} color={colors.accent} />
             </View>
             <View>
-              <Text className="text-2xl font-bold" style={{ color: colors.text }}>Settings</Text>
-              <Text className="text-sm" style={{ color: colors.textMuted }}>Customize your Lumora experience</Text>
+              <Text style={[s.text2xl, s.fontBold, { color: colors.text }]}>Settings</Text>
+              <Text style={[s.textSm, { color: colors.textMuted }]}>Customize your Lumora experience</Text>
             </View>
           </View>
 
           <Section title="APPEARANCE" colors={colors}>
             <Pressable
               onPress={handleBackgroundImagePress}
-              className="items-center justify-center p-4"
-              style={{ borderBottomWidth: 1, borderBottomColor: colors.border + '20' }}
+              style={[s.itemsCenter, s.justifyCenter, s.p4, { borderBottomWidth: 1, borderBottomColor: colors.border + '20' }]}
             >
               <View
                 style={{
@@ -110,9 +129,9 @@ export default function SettingsScreen() {
                     contentFit="cover"
                   />
                 ) : (
-                  <View className="flex-1 items-center justify-center" style={{ backgroundColor: colors.card }}>
+                  <View style={[s.flex1, s.itemsCenter, s.justifyCenter, { backgroundColor: colors.card }]}>
                     <ImageIcon size={32} color={colors.textMuted} />
-                    <Text className="text-xs mt-2" style={{ color: colors.textMuted }}>No background set</Text>
+                    <Text style={[s.textXs, s.mt2, { color: colors.textMuted }]}>No background set</Text>
                   </View>
                 )}
                 <View
@@ -131,8 +150,18 @@ export default function SettingsScreen() {
                   <Pencil size={16} color="#fff" />
                 </View>
               </View>
-              <Text className="text-sm font-medium mt-2" style={{ color: colors.text }}>Background Image</Text>
+              <Text style={[s.textSm, s.fontMedium, s.mt2, { color: colors.text }]}>Background Image</Text>
             </Pressable>
+            <View style={[s.flexRow, s.itemsCenter, s.gap4, s.p4, { borderBottomWidth: 1, borderBottomColor: colors.border + '20' }]}>
+              <View style={[s.w10, s.h10, s.roundedXl, s.itemsCenter, s.justifyCenter, { backgroundColor: colors.accent + '15' }]}>
+                <Palette size={20} color={colors.accent} />
+              </View>
+              <View style={[s.flex1]}>
+                <Text style={[s.textSm, s.fontMedium, { color: colors.text }]}>{t('settings.color.aware')}</Text>
+                <Text style={[s.textXs, s.mt05, { color: colors.textMuted }]}>{t('settings.color.aware.desc')}</Text>
+              </View>
+              <Switch value={colorAware} onValueChange={setColorAware} trackColor={{ false: colors.card, true: colors.accent + '80' }} thumbColor="#fff" />
+            </View>
             <SettingRow
               icon={Paintbrush}
               label="Theme"
@@ -147,13 +176,13 @@ export default function SettingsScreen() {
               onPress={() => router.push('/accent-color' as any)}
               colors={colors}
             />
-            <View className="flex-row items-center gap-4 p-4" style={{ borderBottomWidth: 1, borderBottomColor: colors.border + '20' }}>
-              <View className="w-10 h-10 rounded-xl items-center justify-center" style={{ backgroundColor: colors.accent + '15' }}>
+            <View style={[s.flexRow, s.itemsCenter, s.gap4, s.p4, { borderBottomWidth: 1, borderBottomColor: colors.border + '20' }]}>
+              <View style={[s.w10, s.h10, s.roundedXl, s.itemsCenter, s.justifyCenter, { backgroundColor: colors.accent + '15' }]}>
                 <Sun size={20} color={colors.accent} />
               </View>
-              <View className="flex-1">
-                <Text className="text-sm font-medium" style={{ color: colors.text }}>Dark Mode</Text>
-                <Text className="text-xs mt-0.5" style={{ color: colors.textMuted }}>Always on</Text>
+              <View style={[s.flex1]}>
+                <Text style={[s.textSm, s.fontMedium, { color: colors.text }]}>Dark Mode</Text>
+                <Text style={[s.textXs, s.mt05, { color: colors.textMuted }]}>Always on</Text>
               </View>
               <Switch value={true} disabled trackColor={{ false: colors.card, true: colors.accent + '80' }} thumbColor="#fff" />
             </View>
@@ -208,8 +237,8 @@ export default function SettingsScreen() {
             <SettingRow
               icon={RefreshCw}
               label="Rescan Library"
-              subtitle="Last scanned: Today, 8:30 AM"
-              onPress={() => {}}
+              subtitle={lastScanLabel}
+              onPress={() => scan(true)}
               colors={colors}
             />
             <SettingRow
@@ -253,8 +282,8 @@ export default function SettingsScreen() {
 
 function Section({ title, colors, children }: { title: string; colors: any; children: React.ReactNode }) {
   return (
-    <View className="mb-6">
-      <Text className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: colors.textMuted }}>{title}</Text>
+    <View style={[s.mb6]}>
+      <Text style={[s.textXs, s.fontBold, s.uppercase, { letterSpacing: 1, color: colors.textMuted }, s.mb3]}>{title}</Text>
       <View style={{ backgroundColor: colors.surface, borderRadius: 16, overflow: 'hidden' }}>
         {children}
       </View>
@@ -264,13 +293,13 @@ function Section({ title, colors, children }: { title: string; colors: any; chil
 
 function SettingRow({ icon: Icon, label, subtitle, onPress, colors }: { icon: any; label: string; subtitle: string; onPress: () => void; colors: any }) {
   return (
-    <Pressable onPress={onPress} className="flex-row items-center gap-4 p-4" style={{ borderBottomWidth: 1, borderBottomColor: colors.border + '20' }}>
-      <View className="w-10 h-10 rounded-xl items-center justify-center" style={{ backgroundColor: colors.accent + '15' }}>
+    <Pressable onPress={onPress} style={[s.flexRow, s.itemsCenter, s.gap4, s.p4, { borderBottomWidth: 1, borderBottomColor: colors.border + '20' }]}>
+      <View style={[s.w10, s.h10, s.roundedXl, s.itemsCenter, s.justifyCenter, { backgroundColor: colors.accent + '15' }]}>
         <Icon size={20} color={colors.accent} />
       </View>
-      <View className="flex-1">
-        <Text className="text-sm font-medium" style={{ color: colors.text }}>{label}</Text>
-        <Text className="text-xs mt-0.5" style={{ color: colors.textMuted }}>{subtitle}</Text>
+      <View style={[s.flex1]}>
+        <Text style={[s.textSm, s.fontMedium, { color: colors.text }]}>{label}</Text>
+        <Text style={[s.textXs, s.mt05, { color: colors.textMuted }]}>{subtitle}</Text>
       </View>
       <ChevronRight size={16} color={colors.textMuted} />
     </Pressable>

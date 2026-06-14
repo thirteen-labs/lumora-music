@@ -1,4 +1,6 @@
 import { View, Text, ScrollView, Pressable, Alert } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { s } from '@/styles';
 import { useTheme } from '@/hooks/use-theme';
 import { useTranslation } from '@/hooks/use-translation';
 import { TopBar } from '@/components/top-bar';
@@ -10,6 +12,7 @@ import { EyeOff, Music, Film, Trash2 } from 'lucide-react-native';
 
 export default function HiddenFilesScreen() {
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
   const { t } = useTranslation();
   const songs = useMusicStore((s) => s.songs);
   const videos = useVideoStore((s) => s.videos);
@@ -36,17 +39,17 @@ export default function HiddenFilesScreen() {
   };
 
   return (
-    <View className="flex-1" style={{ backgroundColor: colors.background }}>
+    <View style={[s.flex1, { backgroundColor: colors.background }]}>
       <TopBar title={t('hidden.title')} showSettings={false} />
-      <ScrollView className="flex-1" contentContainerStyle={{ paddingBottom: 120 }}>
-        <View className="px-4 py-4 gap-6">
+      <ScrollView style={s.flex1} contentContainerStyle={{ paddingBottom: 120 + insets.bottom }}>
+        <View style={[s.px4, s.py4, s.gap6]}>
           {hiddenSongs.length === 0 && hiddenVideos.length === 0 ? (
-            <View className="items-center py-12">
+            <View style={[s.itemsCenter, s.py12]}>
               <EyeOff size={48} color={colors.textMuted} />
-              <Text className="text-sm mt-4" style={{ color: colors.textMuted }}>
+              <Text style={[s.textSm, s.mt4, { color: colors.textMuted }]}>
                 {t('hidden.none')}
               </Text>
-              <Text className="text-xs mt-1" style={{ color: colors.textMuted }}>
+              <Text style={[s.textXs, s.mt1, { color: colors.textMuted }]}>
                 {t('hidden.desc')}
               </Text>
             </View>
@@ -55,20 +58,19 @@ export default function HiddenFilesScreen() {
               {hiddenSongs.length > 0 && (
                 <View>
                   <SectionHeader title={t('hidden.songs', { count: hiddenSongs.length })} />
-                  <View className="rounded-3xl overflow-hidden" style={{ backgroundColor: colors.surface }}>
+                  <View style={[s.rounded3xl, s.overflowHidden, { backgroundColor: colors.surface }]}>
                     {hiddenSongs.map((song, i) => (
                       <Pressable
                         key={song.id}
                         onPress={() => handleUnhideSong(song.id, song.title)}
-                        className="flex-row items-center gap-3 p-4"
-                        style={{ borderBottomWidth: i < hiddenSongs.length - 1 ? 1 : 0, borderBottomColor: colors.border }}
+                        style={[s.flexRow, s.itemsCenter, s.gap3, s.p4, { borderBottomWidth: i < hiddenSongs.length - 1 ? 1 : 0, borderBottomColor: colors.border }]}
                       >
                         <Music size={18} color={colors.accent} />
-                        <View className="flex-1">
-                          <Text className="text-sm font-medium" style={{ color: colors.text }} numberOfLines={1}>
+                        <View style={s.flex1}>
+                          <Text style={[s.textSm, s.fontMedium, { color: colors.text }]} numberOfLines={1}>
                             {song.title}
                           </Text>
-                          <Text className="text-xs" style={{ color: colors.textMuted }} numberOfLines={1}>
+                          <Text style={[s.textXs, { color: colors.textMuted }]} numberOfLines={1}>
                             {song.artist}
                           </Text>
                         </View>
@@ -82,17 +84,16 @@ export default function HiddenFilesScreen() {
               {hiddenVideos.length > 0 && (
                 <View>
                   <SectionHeader title={t('hidden.videos', { count: hiddenVideos.length })} />
-                  <View className="rounded-3xl overflow-hidden" style={{ backgroundColor: colors.surface }}>
+                  <View style={[s.rounded3xl, s.overflowHidden, { backgroundColor: colors.surface }]}>
                     {hiddenVideos.map((video, i) => (
                       <Pressable
                         key={video.id}
                         onPress={() => handleUnhideVideo(video.id, video.title)}
-                        className="flex-row items-center gap-3 p-4"
-                        style={{ borderBottomWidth: i < hiddenVideos.length - 1 ? 1 : 0, borderBottomColor: colors.border }}
+                        style={[s.flexRow, s.itemsCenter, s.gap3, s.p4, { borderBottomWidth: i < hiddenVideos.length - 1 ? 1 : 0, borderBottomColor: colors.border }]}
                       >
                         <Film size={18} color={colors.accent} />
-                        <View className="flex-1">
-                          <Text className="text-sm font-medium" style={{ color: colors.text }} numberOfLines={1}>
+                        <View style={s.flex1}>
+                          <Text style={[s.textSm, s.fontMedium, { color: colors.text }]} numberOfLines={1}>
                             {video.title}
                           </Text>
                         </View>

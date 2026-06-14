@@ -1,4 +1,6 @@
-import { View, Text, FlatList, Pressable } from 'react-native';
+import { View, Text, Pressable } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
+import { s } from '@/styles';
 import { useTheme } from '@/hooks/use-theme';
 import { useMusicStore } from '@/store/music-store';
 import { usePlayerStore } from '@/store/player-store';
@@ -26,22 +28,22 @@ export default function GenreDetailScreen() {
   const artSize = artSizeMap[fileSizeTheme];
 
   return (
-    <View className="flex-1" style={{ backgroundColor: colors.background }}>
+    <View style={[s.flex1, { backgroundColor: colors.background }]}>
       <TopBar title={genre?.name ?? 'Genre'} />
-      <View className="px-4 py-4 flex-row items-center gap-4" style={{ backgroundColor: colors.surface }}>
-        <View className="w-14 h-14 rounded-3xl items-center justify-center" style={{ backgroundColor: colors.card }}>
+      <View style={[s.px4, s.py4, s.flexRowCenter, s.gap4, { backgroundColor: colors.surface }]}>
+        <View style={[s.w14, s.h14, s.rounded3xl, s.center, { backgroundColor: colors.card }]}>
           <Tag size={28} color={colors.accent} />
         </View>
-        <View className="flex-1">
-          <Text className="text-lg font-bold" style={{ color: colors.text }}>
+        <View style={s.flex1}>
+          <Text style={[s.textLg, s.fontBold, { color: colors.text }]}>
             {genre?.name ?? 'Unknown Genre'}
           </Text>
-          <Text className="text-sm" style={{ color: colors.textMuted }}>
+          <Text style={[s.textSm, { color: colors.textMuted }]}>
             {genreSongs.length} songs
           </Text>
         </View>
       </View>
-      <FlatList
+      <FlashList
         data={genreSongs}
         keyExtractor={(item) => item.id}
         contentContainerStyle={{ paddingBottom: 120 }}
@@ -49,28 +51,27 @@ export default function GenreDetailScreen() {
           <Pressable
             onPress={() => usePlayerStore.getState().play(item, genreSongs)}
             onLongPress={() => present(item)}
-            className="flex-row items-center gap-3 px-4"
-            style={{ height: rowHeight, borderBottomWidth: 1, borderBottomColor: colors.border }}
+            style={[s.flexRowCenter, s.gap3, s.px4, { height: rowHeight, borderBottomWidth: 1, borderBottomColor: colors.border }]}
           >
-            <Text className="text-sm w-6 text-center" style={{ color: colors.textMuted }}>
+            <Text style={[s.textSm, s.textCenter, { width: 24, color: colors.textMuted }]}>
               {index + 1}
             </Text>
-            <View className="rounded-xl items-center justify-center" style={{ width: artSize, height: artSize, backgroundColor: colors.surface }}>
+            <View style={[s.roundedXl, s.center, { width: artSize, height: artSize, backgroundColor: colors.surface }]}>
               <Music size={artSize * 0.4} color={colors.accent} />
             </View>
-            <View className="flex-1">
-              <Text className="text-sm font-medium" style={{ color: colors.text }} numberOfLines={1}>{item.title}</Text>
-              <Text className="text-xs" style={{ color: colors.textMuted }} numberOfLines={1}>
+            <View style={s.flex1}>
+              <Text style={[s.textSm, s.fontMedium, { color: colors.text }]} numberOfLines={1}>{item.title}</Text>
+              <Text style={[s.textXs, { color: colors.textMuted }]} numberOfLines={1}>
                 {item.artist} {fileSizeTheme === 'big' ? `· ${formatFileSize(item.fileSize)}` : ''}
               </Text>
             </View>
-            <Text className="text-xs" style={{ color: colors.textMuted }}>{formatDuration(item.duration)}</Text>
+            <Text style={[s.textXs, { color: colors.textMuted }]}>{formatDuration(item.duration)}</Text>
           </Pressable>
         )}
         ListEmptyComponent={
-          <View className="items-center py-20">
+          <View style={[s.itemsCenter, s.py20]}>
             <Music size={40} color={colors.textMuted} />
-            <Text className="mt-3" style={{ color: colors.textMuted }}>No songs in this genre</Text>
+            <Text style={[s.mt3, { color: colors.textMuted }]}>No songs in this genre</Text>
           </View>
         }
       />

@@ -1,4 +1,6 @@
-import { View, Text, FlatList, Pressable, Dimensions, Image } from 'react-native';
+import { View, Text, Pressable, Dimensions, Image } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { FlashList } from '@shopify/flash-list';
 import { useTheme } from '@/hooks/use-theme';
 import { useVideoStore } from '@/store/video-store';
 import { useMusicStore } from '@/store/music-store';
@@ -11,6 +13,7 @@ import { formatDuration } from '@/utils/cn';
 import { useEffect, useMemo } from 'react';
 import { SORT_OPTIONS, type SortField, type SortOrder } from '@/types/media';
 import { useRouter } from 'expo-router';
+import { s } from '@/styles';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -49,6 +52,7 @@ function VideoThumb({ uri, width, height, borderRadius, colors }: { uri: string 
 
 export default function VideosScreen() {
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
   const videos = useVideoStore((s) => s.videos);
   const sortField = useVideoStore((s) => s.sortField);
   const sortOrder = useVideoStore((s) => s.sortOrder);
@@ -71,19 +75,18 @@ export default function VideosScreen() {
 
   if (fileSizeTheme === 'small') {
     return (
-      <View className="flex-1" style={{ backgroundColor: colors.background }}>
+      <View style={[s.flex1, { backgroundColor: colors.background }]}>
         <TopBar />
         <SortMenu
           options={SORT_OPTIONS.filter((o) => o.field !== 'artist')}
           active={activeSort}
           onSelect={(opt) => setSort(opt.field, opt.order)}
         />
-        <FlatList
+        <FlashList
           data={sortedVideos}
           keyExtractor={(item) => item.id}
           numColumns={SMALL_COLUMNS}
-          contentContainerStyle={{ paddingBottom: 120, paddingHorizontal: 16 }}
-          columnWrapperStyle={{ gap: SMALL_GAP }}
+          contentContainerStyle={{ paddingBottom: 120 + insets.bottom, paddingHorizontal: 16 }}
           renderItem={({ item }) => (
             <Pressable
               onPress={() => router.push({ pathname: '/video-player', params: { uri: item.uri, title: item.title } })}
@@ -93,9 +96,9 @@ export default function VideosScreen() {
             </Pressable>
           )}
           ListEmptyComponent={
-            <View className="items-center py-20">
+            <View style={[s.itemsCenter, s.py20]}>
               <VideoIcon size={40} color={colors.textMuted} />
-              <Text className="mt-3" style={{ color: colors.textMuted }}>No videos found</Text>
+              <Text style={[s.mt3, { color: colors.textMuted }]}>No videos found</Text>
             </View>
           }
         />
@@ -106,17 +109,17 @@ export default function VideosScreen() {
 
   if (fileSizeTheme === 'medium') {
     return (
-      <View className="flex-1" style={{ backgroundColor: colors.background }}>
+      <View style={[s.flex1, { backgroundColor: colors.background }]}>
         <TopBar />
         <SortMenu
           options={SORT_OPTIONS.filter((o) => o.field !== 'artist')}
           active={activeSort}
           onSelect={(opt) => setSort(opt.field, opt.order)}
         />
-        <FlatList
+        <FlashList
           data={sortedVideos}
           keyExtractor={(item) => item.id}
-          contentContainerStyle={{ paddingBottom: 120, paddingHorizontal: 16 }}
+          contentContainerStyle={{ paddingBottom: 120 + insets.bottom, paddingHorizontal: 16 }}
           renderItem={({ item }) => (
             <Pressable
               onPress={() => router.push({ pathname: '/video-player', params: { uri: item.uri, title: item.title } })}
@@ -132,9 +135,9 @@ export default function VideosScreen() {
             </Pressable>
           )}
           ListEmptyComponent={
-            <View className="items-center py-20">
+            <View style={[s.itemsCenter, s.py20]}>
               <VideoIcon size={40} color={colors.textMuted} />
-              <Text className="mt-3" style={{ color: colors.textMuted }}>No videos found</Text>
+              <Text style={[s.mt3, { color: colors.textMuted }]}>No videos found</Text>
             </View>
           }
         />
@@ -144,19 +147,18 @@ export default function VideosScreen() {
   }
 
   return (
-    <View className="flex-1" style={{ backgroundColor: colors.background }}>
+    <View style={[s.flex1, { backgroundColor: colors.background }]}>
       <TopBar />
       <SortMenu
         options={SORT_OPTIONS.filter((o) => o.field !== 'artist')}
         active={activeSort}
         onSelect={(opt) => setSort(opt.field, opt.order)}
       />
-      <FlatList
+      <FlashList
         data={sortedVideos}
         keyExtractor={(item) => item.id}
         numColumns={2}
-        contentContainerStyle={{ paddingBottom: 120, paddingHorizontal: 16 }}
-        columnWrapperStyle={{ gap: 12 }}
+        contentContainerStyle={{ paddingBottom: 120 + insets.bottom, paddingHorizontal: 16 }}
         renderItem={({ item }) => {
           const cardW = (SCREEN_WIDTH - 32 - 12) / 2;
           return (
@@ -173,9 +175,9 @@ export default function VideosScreen() {
           );
         }}
         ListEmptyComponent={
-          <View className="items-center py-20">
+          <View style={[s.itemsCenter, s.py20]}>
             <VideoIcon size={40} color={colors.textMuted} />
-            <Text className="mt-3" style={{ color: colors.textMuted }}>No videos found</Text>
+            <Text style={[s.mt3, { color: colors.textMuted }]}>No videos found</Text>
           </View>
         }
       />

@@ -1,4 +1,6 @@
 import { View, Text, ScrollView, Pressable, Alert } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { s } from '@/styles';
 import { useTheme } from '@/hooks/use-theme';
 import { useTranslation } from '@/hooks/use-translation';
 import { TopBar } from '@/components/top-bar';
@@ -14,6 +16,7 @@ import {
 
 export default function AudioFeaturesScreen() {
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
   const { t } = useTranslation();
   const eq = useEqualizerStore();
   const rg = useReplayGainStore();
@@ -21,46 +24,40 @@ export default function AudioFeaturesScreen() {
   const le = useLoudnessEnhancerStore();
 
   return (
-    <View className="flex-1" style={{ backgroundColor: colors.background }}>
+    <View style={[s.flex1, { backgroundColor: colors.background }]}>
       <TopBar title={t('audio.title')} showSettings={false} />
-      <ScrollView className="flex-1" contentContainerStyle={{ paddingBottom: 120 }}>
-        <View className="px-4 py-4 gap-6">
+      <ScrollView style={s.flex1} contentContainerStyle={{ paddingBottom: 120 + insets.bottom }}>
+        <View style={[s.px4, s.py4, s.gap6]}>
           {/* Equalizer */}
           <View>
             <SectionHeader title={t('audio.equalizer')} />
-            <View className="rounded-3xl overflow-hidden p-4" style={{ backgroundColor: colors.surface }}>
-              <View className="flex-row items-center justify-between mb-4">
-                <View className="flex-row items-center gap-2">
+            <View style={[s.rounded3xl, s.overflowHidden, s.p4, { backgroundColor: colors.surface }]}>
+              <View style={[s.flexRow, s.itemsCenter, s.justifyBetween, s.mb4]}>
+                <View style={[s.flexRow, s.itemsCenter, s.gap2]}>
                   <AudioLines size={18} color={colors.accent} />
-                  <Text className="text-sm font-semibold" style={{ color: colors.text }}>{t('audio.equalizer.10band')}</Text>
+                  <Text style={[s.textSm, s.fontSemibold, { color: colors.text }]}>{t('audio.equalizer.10band')}</Text>
                 </View>
                 <Pressable
                   onPress={() => eq.setEnabled(!eq.enabled)}
-                  className="w-14 h-8 rounded-full items-center justify-end px-1"
-                  style={{ backgroundColor: eq.enabled ? colors.accent : colors.card }}
+                  style={[{ width: 56, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'flex-end', paddingHorizontal: 4, backgroundColor: eq.enabled ? colors.accent : colors.card }]}
                 >
                   <View
-                    className="w-6 h-6 rounded-full"
-                    style={{ backgroundColor: '#fff', transform: [{ translateX: eq.enabled ? 0 : -22 }] }}
+                    style={[{ width: 24, height: 24, borderRadius: 12, backgroundColor: '#fff', transform: [{ translateX: eq.enabled ? 0 : -22 }] }]}
                   />
                 </Pressable>
               </View>
 
               {eq.enabled && (
                 <>
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-4 -mx-1">
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={[s.mb4, { marginHorizontal: -4 }]}>
                     {EQUALIZER_PRESETS.map((preset) => (
                       <Pressable
                         key={preset.key}
                         onPress={() => eq.setPreset(preset.key)}
-                        className="px-4 py-2 rounded-full mx-1"
-                        style={{
-                          backgroundColor: eq.preset === preset.key ? colors.accent : colors.card,
-                        }}
+                        style={[{ paddingHorizontal: 16, paddingVertical: 8, borderRadius: 9999, marginHorizontal: 4, backgroundColor: eq.preset === preset.key ? colors.accent : colors.card }]}
                       >
                         <Text
-                          className="text-xs font-semibold"
-                          style={{ color: eq.preset === preset.key ? colors.background : colors.textMuted }}
+                          style={[s.textXs, s.fontSemibold, { color: eq.preset === preset.key ? colors.background : colors.textMuted }]}
                         >
                           {preset.label}
                         </Text>
@@ -68,9 +65,9 @@ export default function AudioFeaturesScreen() {
                     ))}
                   </ScrollView>
 
-                  <View className="flex-row items-end justify-between gap-1 mb-4" style={{ height: 140 }}>
+                  <View style={[s.flexRow, s.itemsEnd, s.justifyBetween, s.gap1, s.mb4, { height: 140 }]}>
                     {eq.bands.map((band, i) => (
-                      <View key={band.frequency} className="flex-1 items-center">
+                      <View key={band.frequency} style={[s.flex1, s.itemsCenter]}>
                         <Slider
                           value={(band.gain + 12) / 24}
                           onValueChange={(val) => eq.setBandGain(i, Math.round((val * 24 - 12) * 2) / 2)}
@@ -82,7 +79,7 @@ export default function AudioFeaturesScreen() {
                           style={{ width: 28, height: 120 }}
                           vertical
                         />
-                        <Text className="text-[9px] mt-1" style={{ color: colors.textMuted }}>
+                        <Text style={[s.text9, s.mt1, { color: colors.textMuted }]}>
                           {band.frequency >= 1000 ? `${band.frequency / 1000}k` : band.frequency}
                         </Text>
                       </View>
@@ -96,10 +93,10 @@ export default function AudioFeaturesScreen() {
           {/* Bass Boost */}
           <View>
             <SectionHeader title={t('audio.bass.boost')} />
-            <View className="rounded-3xl overflow-hidden p-4" style={{ backgroundColor: colors.surface }}>
-              <View className="flex-row items-center gap-2 mb-3">
+            <View style={[s.rounded3xl, s.overflowHidden, s.p4, { backgroundColor: colors.surface }]}>
+              <View style={[s.flexRow, s.itemsCenter, s.gap2, s.mb3]}>
                 <Volume2 size={18} color={colors.accent} />
-                <Text className="text-sm font-medium" style={{ color: colors.text }}>
+                <Text style={[s.textSm, s.fontMedium, { color: colors.text }]}>
                   Level: {eq.bassBoost}
                 </Text>
               </View>
@@ -113,9 +110,9 @@ export default function AudioFeaturesScreen() {
                 thumbTintColor={colors.accent}
                 style={{ width: '100%', height: 40 }}
               />
-              <View className="flex-row justify-between px-1">
-                <Text className="text-xs" style={{ color: colors.textMuted }}>Off</Text>
-                <Text className="text-xs" style={{ color: colors.textMuted }}>Max</Text>
+              <View style={[s.flexRow, s.justifyBetween, s.px1]}>
+                <Text style={[s.textXs, { color: colors.textMuted }]}>Off</Text>
+                <Text style={[s.textXs, { color: colors.textMuted }]}>Max</Text>
               </View>
             </View>
           </View>
@@ -123,13 +120,13 @@ export default function AudioFeaturesScreen() {
           {/* Audio Balance */}
           <View>
             <SectionHeader title={t('audio.balance')} />
-            <View className="rounded-3xl overflow-hidden p-4" style={{ backgroundColor: colors.surface }}>
-              <View className="flex-row items-center justify-between mb-3">
-                <Text className="text-sm font-medium" style={{ color: colors.text }}>L</Text>
-                <Text className="text-sm font-medium" style={{ color: colors.text }}>
+            <View style={[s.rounded3xl, s.overflowHidden, s.p4, { backgroundColor: colors.surface }]}>
+              <View style={[s.flexRow, s.itemsCenter, s.justifyBetween, s.mb3]}>
+                <Text style={[s.textSm, s.fontMedium, { color: colors.text }]}>L</Text>
+                <Text style={[s.textSm, s.fontMedium, { color: colors.text }]}>
                   {eq.balance === 0 ? t('audio.balance.center') : eq.balance < 0 ? t('audio.balance.left', { value: Math.abs(eq.balance) }) : t('audio.balance.right', { value: eq.balance })}
                 </Text>
-                <Text className="text-sm font-medium" style={{ color: colors.text }}>R</Text>
+                <Text style={[s.textSm, s.fontMedium, { color: colors.text }]}>R</Text>
               </View>
               <Slider
                 value={(eq.balance + 10) / 20}
@@ -147,47 +144,41 @@ export default function AudioFeaturesScreen() {
           {/* Playback Speed */}
           <View>
             <SectionHeader title={t('audio.speed')} />
-            <View className="rounded-3xl overflow-hidden p-4" style={{ backgroundColor: colors.surface }}>
-              <View className="flex-row items-center gap-2 mb-4">
+            <View style={[s.rounded3xl, s.overflowHidden, s.p4, { backgroundColor: colors.surface }]}>
+              <View style={[s.flexRow, s.itemsCenter, s.gap2, s.mb4]}>
                 <Gauge size={18} color={colors.accent} />
-                <Text className="text-sm font-semibold" style={{ color: colors.text }}>
+                <Text style={[s.textSm, s.fontSemibold, { color: colors.text }]}>
                   {speed.speed.toFixed(2)}x
                 </Text>
               </View>
-              <View className="flex-row flex-wrap gap-2 mb-4">
-                {SPEED_OPTIONS.map((s) => (
+              <View style={[s.flexRow, s.flexWrap, s.gap2, s.mb4]}>
+                {SPEED_OPTIONS.map((sp) => (
                   <Pressable
-                    key={s}
-                    onPress={() => speed.setSpeed(s)}
-                    className="px-4 py-2 rounded-full"
-                    style={{
-                      backgroundColor: speed.speed === s ? colors.accent : colors.card,
-                    }}
+                    key={sp}
+                    onPress={() => speed.setSpeed(sp)}
+                    style={[{ paddingHorizontal: 16, paddingVertical: 8, borderRadius: 9999, backgroundColor: speed.speed === sp ? colors.accent : colors.card }]}
                   >
                     <Text
-                      className="text-xs font-semibold"
-                      style={{ color: speed.speed === s ? colors.background : colors.textMuted }}
+                      style={[s.textXs, s.fontSemibold, { color: speed.speed === sp ? colors.background : colors.textMuted }]}
                     >
-                      {s.toFixed(2)}x
+                      {sp.toFixed(2)}x
                     </Text>
                   </Pressable>
                 ))}
               </View>
-              <View className="flex-row items-center justify-between">
-                <View className="flex-1">
-                  <Text className="text-sm font-medium" style={{ color: colors.text }}>{t('audio.pitch')}</Text>
-                  <Text className="text-xs mt-0.5" style={{ color: colors.textMuted }}>
+              <View style={[s.flexRow, s.itemsCenter, s.justifyBetween]}>
+                <View style={s.flex1}>
+                  <Text style={[s.textSm, s.fontMedium, { color: colors.text }]}>{t('audio.pitch')}</Text>
+                  <Text style={[s.textXs, s.mt05, { color: colors.textMuted }]}>
                     {t('audio.pitch.desc')}
                   </Text>
                 </View>
                 <Pressable
                   onPress={() => speed.togglePitchCorrection()}
-                  className="w-14 h-8 rounded-full items-center justify-end px-1"
-                  style={{ backgroundColor: speed.pitchCorrection ? colors.accent : colors.card }}
+                  style={[{ width: 56, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'flex-end', paddingHorizontal: 4, backgroundColor: speed.pitchCorrection ? colors.accent : colors.card }]}
                 >
                   <View
-                    className="w-6 h-6 rounded-full"
-                    style={{ backgroundColor: '#fff', transform: [{ translateX: speed.pitchCorrection ? 0 : -22 }] }}
+                    style={[{ width: 24, height: 24, borderRadius: 12, backgroundColor: '#fff', transform: [{ translateX: speed.pitchCorrection ? 0 : -22 }] }]}
                   />
                 </Pressable>
               </View>
@@ -197,28 +188,26 @@ export default function AudioFeaturesScreen() {
           {/* ReplayGain */}
           <View>
             <SectionHeader title={t('audio.replaygain')} />
-            <View className="rounded-3xl overflow-hidden p-4" style={{ backgroundColor: colors.surface }}>
-              <View className="flex-row items-center justify-between mb-4">
-                <View className="flex-row items-center gap-2">
+            <View style={[s.rounded3xl, s.overflowHidden, s.p4, { backgroundColor: colors.surface }]}>
+              <View style={[s.flexRow, s.itemsCenter, s.justifyBetween, s.mb4]}>
+                <View style={[s.flexRow, s.itemsCenter, s.gap2]}>
                   <Music size={18} color={colors.accent} />
-                  <Text className="text-sm font-semibold" style={{ color: colors.text }}>{t('audio.replaygain')}</Text>
+                  <Text style={[s.textSm, s.fontSemibold, { color: colors.text }]}>{t('audio.replaygain')}</Text>
                 </View>
                 <Pressable
                   onPress={() => rg.setEnabled(!rg.enabled)}
-                  className="w-14 h-8 rounded-full items-center justify-end px-1"
-                  style={{ backgroundColor: rg.enabled ? colors.accent : colors.card }}
+                  style={[{ width: 56, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'flex-end', paddingHorizontal: 4, backgroundColor: rg.enabled ? colors.accent : colors.card }]}
                 >
                   <View
-                    className="w-6 h-6 rounded-full"
-                    style={{ backgroundColor: '#fff', transform: [{ translateX: rg.enabled ? 0 : -22 }] }}
+                    style={[{ width: 24, height: 24, borderRadius: 12, backgroundColor: '#fff', transform: [{ translateX: rg.enabled ? 0 : -22 }] }]}
                   />
                 </Pressable>
               </View>
 
               {rg.enabled && (
                 <>
-                  <View className="mb-4">
-                    <Text className="text-sm font-medium mb-2" style={{ color: colors.text }}>
+                  <View style={s.mb4}>
+                    <Text style={[s.textSm, s.fontMedium, s.mb2, { color: colors.text }]}>
                       {t('audio.preamp', { value: `${rg.preamp > 0 ? '+' : ''}${rg.preamp}` })}
                     </Text>
                     <Slider
@@ -232,22 +221,20 @@ export default function AudioFeaturesScreen() {
                       style={{ width: '100%', height: 40 }}
                     />
                   </View>
-                  <View className="flex-row gap-2">
+                  <View style={[s.flexRow, s.gap2]}>
                     <Pressable
                       onPress={() => { rg.setTrackGain(!rg.trackGain); }}
-                      className="flex-1 py-3 rounded-2xl items-center"
-                      style={{ backgroundColor: rg.trackGain ? colors.accent : colors.card }}
+                      style={[s.flex1, { paddingVertical: 12, borderRadius: 16, alignItems: 'center', backgroundColor: rg.trackGain ? colors.accent : colors.card }]}
                     >
-                      <Text className="text-xs font-semibold" style={{ color: rg.trackGain ? colors.background : colors.textMuted }}>
+                      <Text style={[s.textXs, s.fontSemibold, { color: rg.trackGain ? colors.background : colors.textMuted }]}>
                         {t('audio.track.gain')}
                       </Text>
                     </Pressable>
                     <Pressable
                       onPress={() => { rg.setAlbumGain(!rg.albumGain); }}
-                      className="flex-1 py-3 rounded-2xl items-center"
-                      style={{ backgroundColor: rg.albumGain ? colors.accent : colors.card }}
+                      style={[s.flex1, { paddingVertical: 12, borderRadius: 16, alignItems: 'center', backgroundColor: rg.albumGain ? colors.accent : colors.card }]}
                     >
-                      <Text className="text-xs font-semibold" style={{ color: rg.albumGain ? colors.background : colors.textMuted }}>
+                      <Text style={[s.textXs, s.fontSemibold, { color: rg.albumGain ? colors.background : colors.textMuted }]}>
                         {t('audio.album.gain')}
                       </Text>
                     </Pressable>
@@ -260,27 +247,25 @@ export default function AudioFeaturesScreen() {
           {/* Loudness Enhancer */}
           <View>
             <SectionHeader title={t('audio.loudness')} />
-            <View className="rounded-3xl overflow-hidden p-4" style={{ backgroundColor: colors.surface }}>
-              <View className="flex-row items-center justify-between mb-4">
-                <View className="flex-row items-center gap-2">
+            <View style={[s.rounded3xl, s.overflowHidden, s.p4, { backgroundColor: colors.surface }]}>
+              <View style={[s.flexRow, s.itemsCenter, s.justifyBetween, s.mb4]}>
+                <View style={[s.flexRow, s.itemsCenter, s.gap2]}>
                   <Volume size={18} color={colors.accent} />
-                  <Text className="text-sm font-semibold" style={{ color: colors.text }}>{t('audio.loudness')}</Text>
+                  <Text style={[s.textSm, s.fontSemibold, { color: colors.text }]}>{t('audio.loudness')}</Text>
                 </View>
                 <Pressable
                   onPress={() => { le.setEnabled(!le.enabled); }}
-                  className="w-14 h-8 rounded-full items-center justify-end px-1"
-                  style={{ backgroundColor: le.enabled ? colors.accent : colors.card }}
+                  style={[{ width: 56, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'flex-end', paddingHorizontal: 4, backgroundColor: le.enabled ? colors.accent : colors.card }]}
                 >
                   <View
-                    className="w-6 h-6 rounded-full"
-                    style={{ backgroundColor: '#fff', transform: [{ translateX: le.enabled ? 0 : -22 }] }}
+                    style={[{ width: 24, height: 24, borderRadius: 12, backgroundColor: '#fff', transform: [{ translateX: le.enabled ? 0 : -22 }] }]}
                   />
                 </Pressable>
               </View>
               {le.enabled && (
                 <>
-                  <View className="flex-row items-center justify-between mb-3">
-                    <Text className="text-sm font-medium" style={{ color: colors.text }}>
+                  <View style={[s.flexRow, s.itemsCenter, s.justifyBetween, s.mb3]}>
+                    <Text style={[s.textSm, s.fontMedium, { color: colors.text }]}>
                       {t('audio.loudness.level', { value: le.level })}
                     </Text>
                   </View>
@@ -294,11 +279,11 @@ export default function AudioFeaturesScreen() {
                     thumbTintColor={colors.accent}
                     style={{ width: '100%', height: 40 }}
                   />
-                  <View className="flex-row justify-between px-1">
-                    <Text className="text-xs" style={{ color: colors.textMuted }}>Subtle</Text>
-                    <Text className="text-xs" style={{ color: colors.textMuted }}>Maximum</Text>
+                  <View style={[s.flexRow, s.justifyBetween, s.px1]}>
+                    <Text style={[s.textXs, { color: colors.textMuted }]}>Subtle</Text>
+                    <Text style={[s.textXs, { color: colors.textMuted }]}>Maximum</Text>
                   </View>
-                  <Text className="text-xs mt-2" style={{ color: colors.textMuted }}>
+                  <Text style={[s.textXs, s.mt2, { color: colors.textMuted }]}>
                     {t('audio.loudness.help')}
                   </Text>
                 </>
@@ -314,11 +299,10 @@ export default function AudioFeaturesScreen() {
                 { text: t('common.reset'), style: 'destructive', onPress: () => { eq.reset(); rg.setEnabled(false); speed.setSpeed(1.0); le.setEnabled(false); le.setLevel(6); } },
               ]);
             }}
-            className="flex-row items-center justify-center gap-2 py-4 rounded-3xl"
-            style={{ backgroundColor: colors.surface }}
+            style={[s.flexRow, s.itemsCenter, s.justifyCenter, s.gap2, { paddingVertical: 16, borderRadius: 24, backgroundColor: colors.surface }]}
           >
             <RotateCcw size={16} color={colors.textMuted} />
-            <Text className="text-sm font-medium" style={{ color: colors.textMuted }}>{t('audio.reset')}</Text>
+            <Text style={[s.textSm, s.fontMedium, { color: colors.textMuted }]}>{t('audio.reset')}</Text>
           </Pressable>
         </View>
       </ScrollView>

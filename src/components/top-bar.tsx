@@ -2,6 +2,7 @@ import { View, Text, Pressable } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Search, Settings, Music, Video, Folder, Heart } from 'lucide-react-native';
 import { useRouter, usePathname } from 'expo-router';
+import { s } from '@/styles';
 import { useTheme } from '@/hooks/use-theme';
 
 interface TopBarProps {
@@ -39,55 +40,52 @@ export function TopBar({ showSearch = true, showSettings = true, title }: TopBar
 
   return (
     <View
-      style={{
+      style={[s.wFull, {
         paddingTop: insets.top,
         backgroundColor: colors.background,
         borderBottomLeftRadius: isTabScreen ? 16 : 0,
         borderBottomRightRadius: isTabScreen ? 16 : 0,
         borderWidth: isTabScreen ? 1 : 0,
         borderColor: colors.border,
-      }}
-      className="w-full"
+      }]}
     >
-      <View className="flex-row items-center justify-between px-5 py-3">
-        <View className="flex-row items-center">
+      <View style={[s.flexRow, s.itemsCenter, s.justifyBetween, s.px5, s.py3]}>
+        <View style={[s.flexRow, s.itemsCenter]}>
           {title ? (
-            <Text className="text-lg font-bold" style={{ color: colors.text }}>
+            <Text style={[s.textLg, s.fontBold, { color: colors.text }]}>
               {title}
             </Text>
           ) : (
             <>
-              <Text className="text-xl font-bold tracking-wider" style={{ color: colors.text }}>
+              <Text style={[s.textXl, s.fontBold, { color: colors.text }]}>
                 LUM
               </Text>
               <View
-                className="w-5 h-5 rounded-full items-center justify-center mx-0.5"
-                style={{ backgroundColor: colors.accent }}
+                style={[s.w5, s.h5, s.roundedFull, s.itemsCenter, s.justifyCenter, s.mx05, { backgroundColor: colors.accent }]}
               >
-                <Text className="text-[10px] font-bold" style={{ color: colors.background }}>
+                <Text style={[s.text10, s.fontBold, { color: colors.background }]}>
                   O
                 </Text>
               </View>
-              <Text className="text-xl font-bold tracking-wider" style={{ color: colors.text }}>
+              <Text style={[s.textXl, s.fontBold, { color: colors.text }]}>
                 RA
               </Text>
             </>
           )}
         </View>
 
-        <View className="flex-row items-center gap-2">
+        <View style={[s.flexRow, s.itemsCenter, s.gap2]}>
           {showSearch && (
             <Pressable
               onPress={() => router.push('/search')}
-              className="w-11 h-11 rounded-full items-center justify-center"
-              style={{
+              style={[s.w11, s.h11, s.roundedFull, s.itemsCenter, s.justifyCenter, {
                 backgroundColor: colors.surface,
                 elevation: 4,
                 shadowColor: '#000',
                 shadowOffset: { width: 0, height: 2 },
                 shadowOpacity: 0.25,
                 shadowRadius: 4,
-              }}
+              }]}
             >
               <Search size={20} color={colors.text} />
             </Pressable>
@@ -95,15 +93,14 @@ export function TopBar({ showSearch = true, showSettings = true, title }: TopBar
           {showSettings && (
             <Pressable
               onPress={() => router.push('/settings')}
-              className="w-11 h-11 rounded-full items-center justify-center"
-              style={{
+              style={[s.w11, s.h11, s.roundedFull, s.itemsCenter, s.justifyCenter, {
                 backgroundColor: colors.surface,
                 elevation: 4,
                 shadowColor: '#000',
                 shadowOffset: { width: 0, height: 2 },
                 shadowOpacity: 0.25,
                 shadowRadius: 4,
-              }}
+              }]}
             >
               <Settings size={20} color={colors.text} />
             </Pressable>
@@ -113,8 +110,7 @@ export function TopBar({ showSearch = true, showSettings = true, title }: TopBar
 
       {isTabScreen && (
         <View
-          className="flex-row items-center justify-center pb-2"
-          style={{ paddingHorizontal: 16 }}
+          style={[s.flexRow, s.itemsCenter, s.justifyCenter, s.pb2, { paddingHorizontal: 16 }]}
         >
           {NAV_ITEMS.map((item) => {
             const isActive = activeKey === item.key;
@@ -126,18 +122,16 @@ export function TopBar({ showSearch = true, showSettings = true, title }: TopBar
                 style={{ marginHorizontal: 8, alignItems: 'center' }}
               >
                 <View
-                  className="flex-row items-center rounded-full px-3 py-1.5"
-                  style={{
+                  style={[s.flexRow, s.itemsCenter, s.roundedFull, s.px3, s.py15, {
                     backgroundColor: isActive ? 'rgba(255,255,255,0.1)' : 'transparent',
-                  }}
+                  }]}
                 >
                   <Icon
                     size={18}
                     color={isActive ? colors.accent : colors.textMuted}
                   />
                   <Text
-                    className="text-xs font-semibold ml-1.5"
-                    style={{ color: isActive ? colors.accent : colors.textMuted }}
+                    style={[s.textXs, s.fontSemibold, s.ml15, { color: isActive ? colors.accent : colors.textMuted }]}
                   >
                     {item.label}
                   </Text>

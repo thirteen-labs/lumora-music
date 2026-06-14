@@ -1,4 +1,6 @@
 import { View, Text, ScrollView, Pressable, Alert } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { s } from '@/styles';
 import { useTheme } from '@/hooks/use-theme';
 import { useTranslation } from '@/hooks/use-translation';
 import type { TranslationKey } from '@/i18n/translations';
@@ -26,6 +28,7 @@ function formatFileSize(bytes: number): string {
 
 export default function RecentlyDeletedScreen() {
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
   const { t } = useTranslation();
   const items = useRecentlyDeletedStore((s) => s.items);
   const restoreItem = useRecentlyDeletedStore((s) => s.restoreItem);
@@ -57,23 +60,23 @@ export default function RecentlyDeletedScreen() {
   };
 
   return (
-    <View className="flex-1" style={{ backgroundColor: colors.background }}>
+    <View style={[s.flex1, { backgroundColor: colors.background }]}>
       <TopBar title={t('deleted.title')} showSettings={false} />
-      <ScrollView className="flex-1" contentContainerStyle={{ paddingBottom: 120 }}>
-        <View className="px-4 py-4 gap-6">
+      <ScrollView style={s.flex1} contentContainerStyle={{ paddingBottom: 120 + insets.bottom }}>
+        <View style={[s.px4, s.py4, s.gap6]}>
           {items.length === 0 ? (
-            <View className="items-center py-12">
+            <View style={[s.itemsCenter, s.py12]}>
               <Trash2 size={48} color={colors.textMuted} />
-              <Text className="text-sm mt-4" style={{ color: colors.textMuted }}>
+              <Text style={[s.textSm, s.mt4, { color: colors.textMuted }]}>
                 {t('deleted.none')}
               </Text>
             </View>
           ) : (
             <>
               {items.length > 0 && (
-                <View className="flex-row justify-end">
+                <View style={[s.flexRow, s.justifyEnd]}>
                   <Pressable onPress={handleClearAll}>
-                    <Text className="text-xs font-semibold" style={{ color: colors.accent }}>{t('deleted.clear.all')}</Text>
+                    <Text style={[s.textXs, s.fontSemibold, { color: colors.accent }]}>{t('deleted.clear.all')}</Text>
                   </Pressable>
                 </View>
               )}
@@ -81,33 +84,30 @@ export default function RecentlyDeletedScreen() {
               {songs.length > 0 && (
                 <View>
                   <SectionHeader title={t('deleted.songs', { count: songs.length })} />
-                  <View className="rounded-3xl overflow-hidden" style={{ backgroundColor: colors.surface }}>
+                  <View style={[s.rounded3xl, s.overflowHidden, { backgroundColor: colors.surface }]}>
                     {songs.map((item, i) => (
                       <View
                         key={item.id}
-                        className="flex-row items-center gap-3 p-4"
-                        style={{ borderBottomWidth: i < songs.length - 1 ? 1 : 0, borderBottomColor: colors.border }}
+                        style={[s.flexRow, s.itemsCenter, s.gap3, s.p4, { borderBottomWidth: i < songs.length - 1 ? 1 : 0, borderBottomColor: colors.border }]}
                       >
                         <Music size={18} color={colors.accent} />
-                        <View className="flex-1">
-                          <Text className="text-sm font-medium" style={{ color: colors.text }} numberOfLines={1}>
+                        <View style={s.flex1}>
+                          <Text style={[s.textSm, s.fontMedium, { color: colors.text }]} numberOfLines={1}>
                             {item.title}
                           </Text>
-                          <Text className="text-xs" style={{ color: colors.textMuted }}>
+                          <Text style={[s.textXs, { color: colors.textMuted }]}>
                             {item.artist || 'Unknown'} · {formatFileSize(item.fileSize)} · {formatTimeAgo(item.deletedAt, t)}
                           </Text>
                         </View>
                         <Pressable
                           onPress={() => handleRestore(item.id, item.title)}
-                          className="p-2 rounded-full"
-                          style={{ backgroundColor: colors.card }}
+                          style={[{ padding: 8, borderRadius: 9999, backgroundColor: colors.card }]}
                         >
                           <RotateCcw size={14} color={colors.accent} />
                         </Pressable>
                         <Pressable
                           onPress={() => handlePermanentDelete(item.id, item.title)}
-                          className="p-2 rounded-full"
-                          style={{ backgroundColor: colors.card }}
+                          style={[{ padding: 8, borderRadius: 9999, backgroundColor: colors.card }]}
                         >
                           <X size={14} color={'#ff4444'} />
                         </Pressable>
@@ -120,33 +120,30 @@ export default function RecentlyDeletedScreen() {
               {videos.length > 0 && (
                 <View>
                   <SectionHeader title={t('deleted.videos', { count: videos.length })} />
-                  <View className="rounded-3xl overflow-hidden" style={{ backgroundColor: colors.surface }}>
+                  <View style={[s.rounded3xl, s.overflowHidden, { backgroundColor: colors.surface }]}>
                     {videos.map((item, i) => (
                       <View
                         key={item.id}
-                        className="flex-row items-center gap-3 p-4"
-                        style={{ borderBottomWidth: i < videos.length - 1 ? 1 : 0, borderBottomColor: colors.border }}
+                        style={[s.flexRow, s.itemsCenter, s.gap3, s.p4, { borderBottomWidth: i < videos.length - 1 ? 1 : 0, borderBottomColor: colors.border }]}
                       >
                         <Film size={18} color={colors.accent} />
-                        <View className="flex-1">
-                          <Text className="text-sm font-medium" style={{ color: colors.text }} numberOfLines={1}>
+                        <View style={s.flex1}>
+                          <Text style={[s.textSm, s.fontMedium, { color: colors.text }]} numberOfLines={1}>
                             {item.title}
                           </Text>
-                          <Text className="text-xs" style={{ color: colors.textMuted }}>
+                          <Text style={[s.textXs, { color: colors.textMuted }]}>
                             {formatFileSize(item.fileSize)} · {formatTimeAgo(item.deletedAt, t)}
                           </Text>
                         </View>
                         <Pressable
                           onPress={() => handleRestore(item.id, item.title)}
-                          className="p-2 rounded-full"
-                          style={{ backgroundColor: colors.card }}
+                          style={[{ padding: 8, borderRadius: 9999, backgroundColor: colors.card }]}
                         >
                           <RotateCcw size={14} color={colors.accent} />
                         </Pressable>
                         <Pressable
                           onPress={() => handlePermanentDelete(item.id, item.title)}
-                          className="p-2 rounded-full"
-                          style={{ backgroundColor: colors.card }}
+                          style={[{ padding: 8, borderRadius: 9999, backgroundColor: colors.card }]}
                         >
                           <X size={14} color={'#ff4444'} />
                         </Pressable>

@@ -3,6 +3,8 @@ import { useTheme } from '@/hooks/use-theme';
 import { useThemeStore } from '@/store/theme-store';
 import { useRouter } from 'expo-router';
 import { ChevronLeft, Check, Paintbrush } from 'lucide-react-native';
+import { s } from '@/styles';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const THEMES = [
   { id: 'nebula', name: 'Nebula', colors: ['#7C3AED', '#3B82F6'] },
@@ -22,20 +24,21 @@ export default function ThemesScreen() {
   const { colors } = useTheme();
   const router = useRouter();
   const { currentThemeId, setTheme } = useThemeStore();
+  const insets = useSafeAreaInsets();
 
   return (
-    <View className="flex-1" style={{ backgroundColor: colors.background }}>
-      <View className="flex-row items-center gap-3 px-5 pt-14 pb-4">
-        <Pressable onPress={() => router.back()} className="w-11 h-11 rounded-full items-center justify-center" style={{ backgroundColor: colors.surface }}>
+    <View style={[s.flex1, { backgroundColor: colors.background }]}>
+      <View style={[s.flexRow, s.itemsCenter, s.gap3, s.px5, { paddingTop: insets.top + 12 }, s.pb4]}>
+        <Pressable onPress={() => router.back()} style={[s.w11, s.h11, s.roundedFull, s.itemsCenter, s.justifyCenter, { backgroundColor: colors.surface }]}>
           <ChevronLeft size={22} color={colors.text} />
         </Pressable>
-        <View className="w-10 h-10 rounded-xl items-center justify-center" style={{ backgroundColor: colors.accent + '20' }}>
+        <View style={[s.w10, s.h10, s.roundedXl, s.itemsCenter, s.justifyCenter, { backgroundColor: colors.accent + '20' }]}>
           <Paintbrush size={20} color={colors.accent} />
         </View>
-        <Text className="text-lg font-bold" style={{ color: colors.text }}>Theme</Text>
+        <Text style={[s.textLg, s.fontBold, { color: colors.text }]}>Theme</Text>
       </View>
-      <ScrollView contentContainerStyle={{ paddingBottom: 120, paddingTop: 8 }} showsVerticalScrollIndicator={false}>
-        <View className="px-5 flex-row flex-wrap" style={{ gap: GAP }}>
+      <ScrollView contentContainerStyle={{ paddingBottom: 120 + insets.bottom, paddingTop: 8 }} showsVerticalScrollIndicator={false}>
+        <View style={[s.px5, s.flexRow, s.flexWrap, { gap: GAP }]}>
           {THEMES.map((theme) => {
             const isActive = currentThemeId === theme.id;
             return (
@@ -44,14 +47,13 @@ export default function ThemesScreen() {
                 onPress={() => setTheme(theme.id)}
               >
                 <View
-                  className="items-center justify-center rounded-2xl"
-                  style={{
+                  style={[s.itemsCenter, s.justifyCenter, s.rounded2xl, {
                     width: ITEM_SIZE,
                     height: ITEM_SIZE,
                     backgroundColor: theme.colors[0],
                     borderWidth: isActive ? 3 : 0,
                     borderColor: isActive ? colors.accent : 'transparent',
-                  }}
+                  }]}
                 >
                   {isActive && <Check size={28} color="#fff" />}
                 </View>

@@ -1,5 +1,7 @@
 import { useState, useMemo, useRef } from 'react';
 import { View, Text, ScrollView, Pressable, Alert } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { s } from '@/styles';
 import { useTheme } from '@/hooks/use-theme';
 import { useTranslation } from '@/hooks/use-translation';
 import { TopBar } from '@/components/top-bar';
@@ -22,6 +24,7 @@ import {
 
 export default function BatchOperationsScreen() {
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
   const { t } = useTranslation();
   const router = useRouter();
   const songs = useMusicStore((s) => s.songs);
@@ -137,26 +140,26 @@ export default function BatchOperationsScreen() {
   );
 
   return (
-    <View className="flex-1" style={{ backgroundColor: colors.background }}>
+    <View style={[s.flex1, { backgroundColor: colors.background }]}>
       <TopBar
         title={t('batch.selected', { count: selected.size })}
         showSettings={false}
       />
-      <ScrollView className="flex-1" contentContainerStyle={{ paddingBottom: 120 }}>
-        <View className="px-4 py-4 gap-4">
-          <View className="flex-row gap-2">
-            <Pressable onPress={selectAll} className="flex-1 py-3 rounded-2xl items-center" style={{ backgroundColor: colors.card }}>
-              <Text className="text-xs font-semibold" style={{ color: colors.text }}>{t('batch.select.all')}</Text>
+      <ScrollView style={s.flex1} contentContainerStyle={{ paddingBottom: 120 + insets.bottom }}>
+        <View style={[s.px4, s.py4, s.gap4]}>
+          <View style={[s.flexRow, s.gap2]}>
+            <Pressable onPress={selectAll} style={[s.flex1, { paddingVertical: 12, borderRadius: 16, alignItems: 'center', backgroundColor: colors.card }]}>
+              <Text style={[s.textXs, s.fontSemibold, { color: colors.text }]}>{t('batch.select.all')}</Text>
             </Pressable>
-            <Pressable onPress={deselectAll} className="flex-1 py-3 rounded-2xl items-center" style={{ backgroundColor: colors.card }}>
-              <Text className="text-xs font-semibold" style={{ color: colors.text }}>{t('batch.deselect.all')}</Text>
+            <Pressable onPress={deselectAll} style={[s.flex1, { paddingVertical: 12, borderRadius: 16, alignItems: 'center', backgroundColor: colors.card }]}>
+              <Text style={[s.textXs, s.fontSemibold, { color: colors.text }]}>{t('batch.deselect.all')}</Text>
             </Pressable>
           </View>
 
           {selected.size > 0 && (
             <View>
               <SectionHeader title={t('batch.actions')} />
-              <View className="rounded-3xl overflow-hidden" style={{ backgroundColor: colors.surface }}>
+              <View style={[s.rounded3xl, s.overflowHidden, { backgroundColor: colors.surface }]}>
                 <ActionButton
                   icon={ListPlus} label={t('batch.add.queue')} count={selected.size}
                   onPress={handleAddToQueue} colors={colors}
@@ -193,28 +196,23 @@ export default function BatchOperationsScreen() {
 
           <View>
             <SectionHeader title={t('library.songs.count', { count: songs.length })} />
-            <View className="rounded-3xl overflow-hidden" style={{ backgroundColor: colors.surface }}>
+            <View style={[s.rounded3xl, s.overflowHidden, { backgroundColor: colors.surface }]}>
               {songs.map((song, i) => {
                 const isSelected = selected.has(song.id);
                 return (
                   <Pressable
                     key={song.id}
                     onPress={() => toggleSelect(song.id)}
-                    className="flex-row items-center gap-3 p-3"
-                    style={{
-                      borderBottomWidth: i < songs.length - 1 ? 1 : 0,
-                      borderBottomColor: colors.border,
-                      backgroundColor: isSelected ? colors.accent + '10' : 'transparent',
-                    }}
+                    style={[s.flexRow, s.itemsCenter, s.gap3, s.p3, { borderBottomWidth: i < songs.length - 1 ? 1 : 0, borderBottomColor: colors.border, backgroundColor: isSelected ? colors.accent + '10' : 'transparent' }]}
                   >
                     {isSelected ? (
                       <SquareCheck size={20} color={colors.accent} />
                     ) : (
                       <Square size={20} color={colors.textMuted} />
                     )}
-                    <View className="flex-1">
-                      <Text className="text-sm" style={{ color: colors.text }} numberOfLines={1}>{song.title}</Text>
-                      <Text className="text-xs" style={{ color: colors.textMuted }} numberOfLines={1}>{song.artist}</Text>
+                    <View style={s.flex1}>
+                      <Text style={[s.textSm, { color: colors.text }]} numberOfLines={1}>{song.title}</Text>
+                      <Text style={[s.textXs, { color: colors.textMuted }]} numberOfLines={1}>{song.artist}</Text>
                     </View>
                   </Pressable>
                 );
@@ -280,12 +278,11 @@ function ActionButton({
     <Pressable
       onPress={onPress}
       disabled={disabled}
-      className="flex-row items-center gap-3 p-4"
-      style={{ borderBottomWidth: 1, borderBottomColor: colors.border, opacity: disabled ? 0.5 : 1 }}
+      style={[s.flexRow, s.itemsCenter, s.gap3, s.p4, { borderBottomWidth: 1, borderBottomColor: colors.border, opacity: disabled ? 0.5 : 1 }]}
     >
       <Icon size={18} color={danger ? colors.notification : colors.accent} />
-      <Text className="flex-1 text-sm font-medium" style={{ color: danger ? colors.notification : colors.text }}>{label}</Text>
-      <Text className="text-xs" style={{ color: colors.textMuted }}>{count} items</Text>
+      <Text style={[s.flex1, s.textSm, s.fontMedium, { color: danger ? colors.notification : colors.text }]}>{label}</Text>
+      <Text style={[s.textXs, { color: colors.textMuted }]}>{count} items</Text>
     </Pressable>
   );
 }

@@ -1,5 +1,8 @@
 import { useState, useRef } from 'react';
-import { View, Text, FlatList, Pressable, Alert, TextInput } from 'react-native';
+import { View, Text, Pressable, Alert, TextInput } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { s } from '@/styles';
+import { FlashList } from '@shopify/flash-list';
 import { useTheme } from '@/hooks/use-theme';
 import { TopBar } from '@/components/top-bar';
 import { MiniPlayer } from '@/components/mini-player';
@@ -16,6 +19,7 @@ import {
 
 export default function PlaylistsScreen() {
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
   const router = useRouter();
   const { playlists, createPlaylist, deletePlaylist } = usePlaylistStore();
   const songs = useMusicStore((s) => s.songs);
@@ -54,67 +58,63 @@ export default function PlaylistsScreen() {
   );
 
   return (
-    <View className="flex-1" style={{ backgroundColor: colors.background }}>
+    <View style={[s.flex1, { backgroundColor: colors.background }]}>
       <TopBar
         title="Playlists"
         showSettings={false}
       />
-      <View className="px-4 py-2">
+      <View style={[s.px4, s.py2]}>
         <Pressable
           onPress={() => createSheetRef.current?.present()}
-          className="flex-row items-center justify-center gap-2 py-3 rounded-2xl"
-          style={{ backgroundColor: colors.accent }}
+          style={[s.flexRow, s.itemsCenter, s.justifyCenter, s.gap2, { paddingVertical: 12, borderRadius: 16, backgroundColor: colors.accent }]}
         >
           <Plus size={18} color={colors.background} />
-          <Text className="text-sm font-semibold" style={{ color: colors.background }}>New Playlist</Text>
+          <Text style={[s.textSm, s.fontSemibold, { color: colors.background }]}>New Playlist</Text>
         </Pressable>
       </View>
-      <FlatList
+      <FlashList
         data={playlists}
         keyExtractor={(item) => item.id}
-        contentContainerStyle={{ paddingBottom: 120 }}
+        contentContainerStyle={{ paddingBottom: 120 + insets.bottom }}
         renderItem={({ item }) => (
           <Pressable
             onPress={() => router.push({ pathname: '/playlist/[id]', params: { id: item.id } })}
-            className="flex-row items-center gap-3 px-4 py-3"
-            style={{ borderBottomWidth: 1, borderBottomColor: colors.border }}
+            style={[s.flexRow, s.itemsCenter, s.gap3, s.px4, s.py3, { borderBottomWidth: 1, borderBottomColor: colors.border }]}
           >
-            <View className="w-14 h-14 rounded-2xl items-center justify-center" style={{ backgroundColor: colors.surface }}>
+            <View style={[{ width: 56, height: 56, borderRadius: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surface }]}>
               <ListMusic size={24} color={colors.accent} />
             </View>
-            <View className="flex-1">
-              <Text className="text-sm font-medium" style={{ color: colors.text }} numberOfLines={1}>{item.name}</Text>
-              <Text className="text-xs" style={{ color: colors.textMuted }}>
+            <View style={s.flex1}>
+              <Text style={[s.textSm, s.fontMedium, { color: colors.text }]} numberOfLines={1}>{item.name}</Text>
+              <Text style={[s.textXs, { color: colors.textMuted }]}>
                 {item.songIds.length} {item.songIds.length === 1 ? 'song' : 'songs'}
               </Text>
             </View>
             {item.songIds.length > 0 && (
               <Pressable
                 onPress={() => handlePlayAll(item.id)}
-                className="w-11 h-11 rounded-full items-center justify-center"
-                style={{ backgroundColor: colors.accent }}
+                style={[s.w11, s.h11, s.roundedFull, s.itemsCenter, s.justifyCenter, { backgroundColor: colors.accent }]}
               >
                 <Play size={18} color={colors.background} fill={colors.background} />
               </Pressable>
             )}
             <Pressable
               onPress={() => handleDelete(item.id, item.name)}
-              className="w-11 h-11 items-center justify-center"
+              style={[s.w11, s.h11, s.itemsCenter, s.justifyCenter]}
             >
               <Trash2 size={18} color={colors.textMuted} />
             </Pressable>
           </Pressable>
         )}
         ListEmptyComponent={
-          <View className="items-center py-20">
+          <View style={[s.itemsCenter, s.py20]}>
             <ListMusic size={40} color={colors.textMuted} />
-            <Text className="mt-3" style={{ color: colors.textMuted }}>No playlists yet</Text>
+            <Text style={[s.mt3, { color: colors.textMuted }]}>No playlists yet</Text>
             <Pressable
               onPress={() => createSheetRef.current?.present()}
-              className="mt-4 py-2 px-6 rounded-2xl"
-              style={{ backgroundColor: colors.accent }}
+              style={[s.mt4, { paddingVertical: 8, paddingHorizontal: 24, borderRadius: 16, backgroundColor: colors.accent }]}
             >
-              <Text className="text-sm font-semibold" style={{ color: colors.background }}>Create Playlist</Text>
+              <Text style={[s.textSm, s.fontSemibold, { color: colors.background }]}>Create Playlist</Text>
             </Pressable>
           </View>
         }

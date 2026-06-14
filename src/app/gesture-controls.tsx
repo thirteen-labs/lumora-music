@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { View, Text, ScrollView, Pressable } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { s } from '@/styles';
 import { useTheme } from '@/hooks/use-theme';
 import { TopBar } from '@/components/top-bar';
 import { Hand } from 'lucide-react-native';
@@ -34,6 +36,7 @@ function saveGestureSettings(settings: GestureSettings): void {
 
 export default function GestureControlsScreen() {
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
   const { t } = useTranslation();
   const [settings, setSettings] = useState<GestureSettings>(loadGestureSettings);
 
@@ -54,47 +57,44 @@ export default function GestureControlsScreen() {
   ];
 
   return (
-    <View className="flex-1" style={{ backgroundColor: colors.background }}>
+    <View style={[s.flex1, { backgroundColor: colors.background }]}>
       <TopBar title={t('gesture.title')} showSettings={false} />
-      <ScrollView className="flex-1" contentContainerStyle={{ paddingBottom: 120 }}>
-        <View className="px-4 py-4 gap-4">
-          <View className="flex-row items-center gap-3 rounded-3xl p-4" style={{ backgroundColor: colors.surface }}>
-            <View className="rounded-full p-3" style={{ backgroundColor: colors.accent + '20' }}>
+      <ScrollView style={s.flex1} contentContainerStyle={{ paddingBottom: 120 + insets.bottom }}>
+        <View style={[s.px4, s.py4, s.gap4]}>
+          <View style={[s.flexRow, s.itemsCenter, s.gap3, s.rounded3xl, s.p4, { backgroundColor: colors.surface }]}>
+            <View style={[s.roundedFull, { padding: 12, backgroundColor: colors.accent + '20' }]}>
               <Hand size={24} color={colors.accent} />
             </View>
-            <View className="flex-1">
-              <Text className="text-sm font-semibold" style={{ color: colors.text }}>
+            <View style={s.flex1}>
+              <Text style={[s.textSm, s.fontSemibold, { color: colors.text }]}>
                 {t('gesture.title')}
               </Text>
-              <Text className="text-xs mt-0.5" style={{ color: colors.textMuted }}>
+              <Text style={[s.textXs, s.mt05, { color: colors.textMuted }]}>
                 {t('gesture.desc')}
               </Text>
             </View>
           </View>
 
           <View>
-            <Text className="text-xs font-semibold mb-2 px-1" style={{ color: colors.textMuted }}>
+            <Text style={[s.textXs, s.fontSemibold, s.mb2, s.px1, { color: colors.textMuted }]}>
               GESTURES
             </Text>
-            <View className="rounded-3xl overflow-hidden" style={{ backgroundColor: colors.surface }}>
+            <View style={[s.rounded3xl, s.overflowHidden, { backgroundColor: colors.surface }]}>
               {gestures.map((g, i) => (
                 <Pressable
                   key={g.gesture}
                   onPress={() => toggleSetting(g.key)}
-                  className="flex-row items-center gap-3 p-4"
-                  style={{ borderBottomWidth: i < gestures.length - 1 ? 1 : 0, borderBottomColor: colors.border }}
+                  style={[s.flexRow, s.itemsCenter, s.gap3, s.p4, { borderBottomWidth: i < gestures.length - 1 ? 1 : 0, borderBottomColor: colors.border }]}
                 >
-                  <View className="flex-1">
-                    <Text className="text-sm font-medium" style={{ color: colors.text }}>{g.gesture}</Text>
-                    <Text className="text-xs mt-0.5" style={{ color: colors.textMuted }}>{g.action}</Text>
+                  <View style={s.flex1}>
+                    <Text style={[s.textSm, s.fontMedium, { color: colors.text }]}>{g.gesture}</Text>
+                    <Text style={[s.textXs, s.mt05, { color: colors.textMuted }]}>{g.action}</Text>
                   </View>
                   <View
-                    className="w-12 h-7 rounded-full items-center justify-end px-1"
-                    style={{ backgroundColor: settings[g.key] ? colors.accent : colors.card }}
+                    style={[{ width: 48, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'flex-end', paddingHorizontal: 4, backgroundColor: settings[g.key] ? colors.accent : colors.card }]}
                   >
                     <View
-                      className="w-5 h-5 rounded-full"
-                      style={{ backgroundColor: '#fff', transform: [{ translateX: settings[g.key] ? 0 : -18 }] }}
+                      style={[{ width: 20, height: 20, borderRadius: 10, backgroundColor: '#fff', transform: [{ translateX: settings[g.key] ? 0 : -18 }] }]}
                     />
                   </View>
                 </Pressable>
@@ -102,8 +102,8 @@ export default function GestureControlsScreen() {
             </View>
           </View>
 
-          <View className="rounded-3xl p-4" style={{ backgroundColor: colors.surface }}>
-            <Text className="text-xs leading-5" style={{ color: colors.textMuted }}>
+          <View style={[s.rounded3xl, s.p4, { backgroundColor: colors.surface }]}>
+            <Text style={[s.textXs, { color: colors.textMuted, lineHeight: 20 }]}>
               {t('gesture.help')}
             </Text>
           </View>

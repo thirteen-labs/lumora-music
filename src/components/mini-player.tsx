@@ -1,5 +1,7 @@
 import { View, Text, Pressable } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { usePlayerStore } from '@/store/player-store';
+import { s } from '@/styles';
 import { useTheme } from '@/hooks/use-theme';
 import { Play, Pause, SkipForward } from 'lucide-react-native';
 import { formatDuration } from '@/utils/cn';
@@ -15,6 +17,7 @@ export function MiniPlayer() {
   const togglePlay = usePlayerStore((s) => s.togglePlay);
   const next = usePlayerStore((s) => s.next);
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
   const router = useRouter();
 
   if (!isMiniPlayerVisible || !currentTrack) return null;
@@ -22,34 +25,34 @@ export function MiniPlayer() {
   const progress = duration > 0 ? position / duration : 0;
 
   return (
-    <Pressable onPress={() => router.push('/player')} className="w-full">
-      <View style={{ backgroundColor: colors.surface }}>
-        <View className="w-full h-[2px]" style={{ backgroundColor: colors.border }}>
-          <View className="h-full" style={{ width: `${progress * 100}%`, backgroundColor: colors.accent }} />
+    <Pressable onPress={() => router.push('/player')} style={s.wFull}>
+      <View style={{ backgroundColor: colors.surface, paddingBottom: insets.bottom }}>
+        <View style={[s.wFull, s.h2px, { backgroundColor: colors.border }]}>
+          <View style={[s.hFull, { width: `${progress * 100}%`, backgroundColor: colors.accent }]} />
         </View>
-        <View className="flex-row items-center px-4 py-3 gap-3">
-          <View className="rounded-xl overflow-hidden" style={{ backgroundColor: colors.card }}>
+        <View style={[s.flexRow, s.itemsCenter, s.px4, s.py3, s.gap3]}>
+          <View style={[s.roundedXl, s.overflowHidden, { backgroundColor: colors.card }]}>
             <Artwork uri={currentTrack.artwork} size={44} borderRadius={10} iconSize={18} iconColor={colors.accent} backgroundColor="transparent" />
           </View>
-          <View className="flex-1">
-            <Text className="text-sm font-semibold" style={{ color: colors.text }} numberOfLines={1}>
+          <View style={s.flex1}>
+            <Text style={[s.textSm, s.fontSemibold, { color: colors.text }]} numberOfLines={1}>
               {currentTrack.title}
             </Text>
-            <Text className="text-xs mt-0.5" style={{ color: colors.textMuted }} numberOfLines={1}>
+            <Text style={[s.textXs, s.mt05, { color: colors.textMuted }]} numberOfLines={1}>
               {currentTrack.artist}
             </Text>
           </View>
-          <Text className="text-xs" style={{ color: colors.textMuted }}>
+          <Text style={[s.textXs, { color: colors.textMuted }]}>
             {formatDuration(position)}
           </Text>
-          <Pressable onPress={togglePlay} hitSlop={8} className="w-10 h-10 rounded-full items-center justify-center" style={{ backgroundColor: colors.card }}>
+          <Pressable onPress={togglePlay} hitSlop={8} style={[s.w10, s.h10, s.roundedFull, s.itemsCenter, s.justifyCenter, { backgroundColor: colors.card }]}>
             {isPlaying ? (
               <Pause size={18} color={colors.text} fill={colors.text} />
             ) : (
               <Play size={18} color={colors.accent} fill={colors.accent} />
             )}
           </Pressable>
-          <Pressable onPress={next} hitSlop={8} className="w-10 h-10 rounded-full items-center justify-center" style={{ backgroundColor: colors.card }}>
+          <Pressable onPress={next} hitSlop={8} style={[s.w10, s.h10, s.roundedFull, s.itemsCenter, s.justifyCenter, { backgroundColor: colors.card }]}>
             <SkipForward size={18} color={colors.text} fill={colors.text} />
           </Pressable>
         </View>

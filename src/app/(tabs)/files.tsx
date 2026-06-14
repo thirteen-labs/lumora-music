@@ -1,4 +1,5 @@
 import { View, Text, ScrollView, Pressable } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@/hooks/use-theme';
 import { TopBar } from '@/components/top-bar';
 import { MiniPlayer } from '@/components/mini-player';
@@ -14,6 +15,7 @@ import {
   Lock,
   ChevronRight,
 } from 'lucide-react-native';
+import { s } from '@/styles';
 
 const CATEGORIES = [
   { icon: Clock, label: 'Recently Played', subtitle: 'Your latest listens', route: '/recently-played' },
@@ -28,27 +30,27 @@ const CATEGORIES = [
 
 export default function FilesScreen() {
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
   const router = useRouter();
 
   return (
-    <View className="flex-1" style={{ backgroundColor: colors.background }}>
+    <View style={[s.flex1, { backgroundColor: colors.background }]}>
       <TopBar />
-      <ScrollView contentContainerStyle={{ paddingBottom: 120, paddingTop: 16 }} showsVerticalScrollIndicator={false}>
-        <View className="px-5">
+      <ScrollView contentContainerStyle={{ paddingBottom: 120 + insets.bottom, paddingTop: 16 }} showsVerticalScrollIndicator={false}>
+        <View style={[s.px5]}>
           <View style={{ backgroundColor: colors.surface, borderRadius: 16, overflow: 'hidden' }}>
             {CATEGORIES.map((cat, i) => (
               <Pressable
                 key={cat.label}
                 onPress={() => router.push(cat.route as any)}
-                className="flex-row items-center gap-4 p-4"
-                style={{ borderBottomWidth: i < CATEGORIES.length - 1 ? 1 : 0, borderBottomColor: colors.border + '20' }}
+                style={[s.flexRow, s.itemsCenter, s.gap4, s.p4, { borderBottomWidth: i < CATEGORIES.length - 1 ? 1 : 0, borderBottomColor: colors.border + '20' }]}
               >
-                <View className="w-10 h-10 rounded-xl items-center justify-center" style={{ backgroundColor: colors.accent + '15' }}>
+                <View style={[s.w10, s.h10, s.roundedXl, s.itemsCenter, s.justifyCenter, { backgroundColor: colors.accent + '15' }]}>
                   <cat.icon size={20} color={colors.accent} />
                 </View>
-                <View className="flex-1">
-                  <Text className="text-sm font-medium" style={{ color: colors.text }}>{cat.label}</Text>
-                  <Text className="text-xs mt-0.5" style={{ color: colors.textMuted }}>{cat.subtitle}</Text>
+                <View style={[s.flex1]}>
+                  <Text style={[s.textSm, s.fontMedium, { color: colors.text }]}>{cat.label}</Text>
+                  <Text style={[s.textXs, s.mt05, { color: colors.textMuted }]}>{cat.subtitle}</Text>
                 </View>
                 <ChevronRight size={16} color={colors.textMuted} />
               </Pressable>

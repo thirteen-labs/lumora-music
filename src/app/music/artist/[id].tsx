@@ -1,4 +1,6 @@
-import { View, Text, FlatList, Pressable } from 'react-native';
+import { View, Text, Pressable } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
+import { s } from '@/styles';
 import { useTheme } from '@/hooks/use-theme';
 import { useMusicStore } from '@/store/music-store';
 import { usePlayerStore } from '@/store/player-store';
@@ -27,20 +29,20 @@ export default function ArtistDetailScreen() {
   const artSize = artSizeMap[fileSizeTheme];
 
   return (
-    <View className="flex-1" style={{ backgroundColor: colors.background }}>
+    <View style={[s.flex1, { backgroundColor: colors.background }]}>
       <TopBar title={artist?.name ?? 'Artist'} />
-      <View className="px-4 py-4 flex-row items-center gap-4" style={{ backgroundColor: colors.surface }}>
+      <View style={[s.px4, s.py4, s.flexRowCenter, s.gap4, { backgroundColor: colors.surface }]}>
         <Artwork uri={artist?.artwork} size={80} borderRadius={40} iconSize={36} iconColor={colors.accent} backgroundColor={colors.card} />
-        <View className="flex-1">
-          <Text className="text-lg font-bold" style={{ color: colors.text }} numberOfLines={1}>
+        <View style={s.flex1}>
+          <Text style={[s.textLg, s.fontBold, { color: colors.text }]} numberOfLines={1}>
             {artist?.name ?? 'Unknown Artist'}
           </Text>
-          <Text className="text-sm" style={{ color: colors.textMuted }}>
+          <Text style={[s.textSm, { color: colors.textMuted }]}>
             {artistSongs.length} songs
           </Text>
         </View>
       </View>
-      <FlatList
+      <FlashList
         data={artistSongs}
         keyExtractor={(item) => item.id}
         contentContainerStyle={{ paddingBottom: 120 }}
@@ -48,26 +50,25 @@ export default function ArtistDetailScreen() {
           <Pressable
             onPress={() => usePlayerStore.getState().play(item, artistSongs)}
             onLongPress={() => present(item)}
-            className="flex-row items-center gap-3 px-4"
-            style={{ height: rowHeight, borderBottomWidth: 1, borderBottomColor: colors.border }}
+            style={[s.flexRowCenter, s.gap3, s.px4, { height: rowHeight, borderBottomWidth: 1, borderBottomColor: colors.border }]}
           >
-            <Text className="text-sm w-6 text-center" style={{ color: colors.textMuted }}>
+            <Text style={[s.textSm, s.textCenter, { width: 24, color: colors.textMuted }]}>
               {index + 1}
             </Text>
             <Artwork uri={item.artwork} size={artSize} borderRadius={artSize * 0.25} iconColor={colors.accent} backgroundColor={colors.surface} />
-            <View className="flex-1">
-              <Text className="text-sm font-medium" style={{ color: colors.text }} numberOfLines={1}>{item.title}</Text>
-              <Text className="text-xs" style={{ color: colors.textMuted }} numberOfLines={1}>
+            <View style={s.flex1}>
+              <Text style={[s.textSm, s.fontMedium, { color: colors.text }]} numberOfLines={1}>{item.title}</Text>
+              <Text style={[s.textXs, { color: colors.textMuted }]} numberOfLines={1}>
                 {item.album} {fileSizeTheme === 'big' ? `· ${formatFileSize(item.fileSize)}` : ''}
               </Text>
             </View>
-            <Text className="text-xs" style={{ color: colors.textMuted }}>{formatDuration(item.duration)}</Text>
+            <Text style={[s.textXs, { color: colors.textMuted }]}>{formatDuration(item.duration)}</Text>
           </Pressable>
         )}
         ListEmptyComponent={
-          <View className="items-center py-20">
+          <View style={[s.itemsCenter, s.py20]}>
             <Music size={40} color={colors.textMuted} />
-            <Text className="mt-3" style={{ color: colors.textMuted }}>No songs by this artist</Text>
+            <Text style={[s.mt3, { color: colors.textMuted }]}>No songs by this artist</Text>
           </View>
         }
       />

@@ -1,7 +1,9 @@
-import { View, Text, FlatList, Pressable, Dimensions } from 'react-native';
-import { useMemo, useCallback } from 'react';
-import type { ListRenderItemInfo } from 'react-native';
-import type { Song } from '@/types/media';
+import { View, Text, Pressable, Dimensions } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { FlashList } from '@shopify/flash-list';
+import { useMemo } from 'react';
+
+import { s } from '@/styles';
 import { useTheme } from '@/hooks/use-theme';
 import { useMusicStore } from '@/store/music-store';
 import { usePlayerStore } from '@/store/player-store';
@@ -14,7 +16,7 @@ import { SongContextMenu, useSongContextMenu } from '@/components/song-context-m
 import { Music, LayoutGrid, List } from 'lucide-react-native';
 import { Artwork } from '@/components/artwork';
 import { formatDuration, formatFileSize } from '@/utils/cn';
-import { SORT_OPTIONS, type SortField, type SortOrder } from '@/types/media';
+import { SORT_OPTIONS, type SortField, type SortOrder, type Song } from '@/types/media';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -54,6 +56,7 @@ function LyricsBadge({ colors }: { colors: any }) {
 
 export default function SongsScreen() {
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
   const songs = useMusicStore((s) => s.songs);
   const sortField = useMusicStore((s) => s.sortField);
   const sortOrder = useMusicStore((s) => s.sortOrder);
@@ -81,7 +84,7 @@ export default function SongsScreen() {
   const artSize = listArtSizeMap[fileSizeTheme];
 
   return (
-    <View className="flex-1" style={{ backgroundColor: colors.background }}>
+    <View style={[s.flex1, { backgroundColor: colors.background }]}>
       <TopBar title="Songs" />
       <SortMenu
         options={SORT_OPTIONS}
@@ -103,13 +106,12 @@ export default function SongsScreen() {
         </Pressable>
       </View>
       {isGrid ? (
-        <FlatList
+        <FlashList
           data={sortedSongs}
           keyExtractor={(item) => item.id}
           numColumns={GRID_COLUMNS}
-          contentContainerStyle={{ paddingBottom: 120, paddingHorizontal: 16 }}
-          columnWrapperStyle={{ gap: 12 }}
-          renderItem={useCallback(({ item }: ListRenderItemInfo<Song>) => (
+          contentContainerStyle={{ paddingBottom: 120 + insets.bottom, paddingHorizontal: 16 }}
+          renderItem={({ item }: { item: Song }) => (
             <Pressable
               onPress={() => usePlayerStore.getState().play(item, sortedSongs)}
               onLongPress={() => present(item)}
@@ -155,48 +157,47 @@ export default function SongsScreen() {
                 </>
               )}
             </Pressable>
-          ), [sortedSongs, present, colors, fileSizeTheme, GRID_ITEM_WIDTH, gridConfig])}
+          )}
           ListEmptyComponent={
-            <View className="items-center py-20">
+            <View style={[s.itemsCenter, s.py20]}>
               <Music size={40} color={colors.textMuted} />
-              <Text className="mt-3" style={{ color: colors.textMuted }}>No songs found</Text>
+              <Text style={[s.mt3, { color: colors.textMuted }]}>No songs found</Text>
             </View>
           }
         />
       ) : (
-        <FlatList
+        <FlashList
           data={sortedSongs}
           keyExtractor={(item) => item.id}
-          contentContainerStyle={{ paddingBottom: 120 }}
-          renderItem={useCallback(({ item }: ListRenderItemInfo<Song>) => (
+          contentContainerStyle={{ paddingBottom: 120 + insets.bottom }}
+          renderItem={({ item }: { item: Song }) => (
             <Pressable
               onPress={() => usePlayerStore.getState().play(item, sortedSongs)}
               onLongPress={() => present(item)}
-              className="flex-row items-center gap-3 px-4"
-              style={{ height: rowHeight, borderBottomWidth: 1, borderBottomColor: colors.border }}
+              style={[s.flexRowCenter, s.gap3, s.px4, { height: rowHeight, borderBottomWidth: 1, borderBottomColor: colors.border }]}
             >
               <Artwork uri={item.artwork} size={artSize} borderRadius={artSize * 0.25} iconColor={colors.accent} backgroundColor={colors.surface} />
-              <View className="flex-1">
-                <Text className="text-sm font-medium" style={{ color: colors.text }} numberOfLines={1}>{item.title}</Text>
+              <View style={s.flex1}>
+                <Text style={[s.textSm, s.fontMedium, { color: colors.text }]} numberOfLines={1}>{item.title}</Text>
                 <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 2 }}>
-                  <Text className="text-xs" style={{ color: colors.textMuted }} numberOfLines={1}>
+                  <Text style={[s.textXs, { color: colors.textMuted }]} numberOfLines={1}>
                     {item.artist}
                   </Text>
                   <LyricsBadge colors={colors} />
                   {fileSizeTheme === 'big' && (
-                    <Text className="text-xs" style={{ color: colors.textMuted, marginLeft: 6 }}>
+                    <Text style={[s.textXs, { color: colors.textMuted, marginLeft: 6 }]}>
                       {formatFileSize(item.fileSize)}
                     </Text>
                   )}
                 </View>
               </View>
-              <Text className="text-xs" style={{ color: colors.textMuted }}>{formatDuration(item.duration)}</Text>
+              <Text style={[s.textXs, { color: colors.textMuted }]}>{formatDuration(item.duration)}</Text>
             </Pressable>
-          ), [sortedSongs, present, colors, fileSizeTheme, rowHeight, artSize])}
+          )}
           ListEmptyComponent={
-            <View className="items-center py-20">
+            <View style={[s.itemsCenter, s.py20]}>
               <Music size={40} color={colors.textMuted} />
-              <Text className="mt-3" style={{ color: colors.textMuted }}>No songs found</Text>
+              <Text style={[s.mt3, { color: colors.textMuted }]}>No songs found</Text>
             </View>
           }
         />

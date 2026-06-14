@@ -15,7 +15,7 @@ interface MusicState {
   sortField: SortField;
   sortOrder: SortOrder;
   backgroundScanEnabled: boolean;
-  scan: () => Promise<void>;
+  scan: (force?: boolean) => Promise<void>;
   setSort: (field: SortField, order: SortOrder) => void;
   getSortedSongs: () => Song[];
   setBackgroundScanEnabled: (enabled: boolean) => void;
@@ -33,17 +33,19 @@ export const useMusicStore = create<MusicState>()(
     sortOrder: 'asc',
     backgroundScanEnabled: isBackgroundScanEnabled(),
 
-    scan: async () => {
-      const cached = getCachedSongs();
-      if (cached.length > 0) {
-        set((state) => {
-          state.songs = cached;
-          state.albums = getCachedAlbums();
-          state.artists = getCachedArtists();
-          state.genres = getCachedGenres();
-          state.scanStatus = 'complete';
-        });
-        return;
+    scan: async (force?: boolean) => {
+      if (!force) {
+        const cached = getCachedSongs();
+        if (cached.length > 0) {
+          set((state) => {
+            state.songs = cached;
+            state.albums = getCachedAlbums();
+            state.artists = getCachedArtists();
+            state.genres = getCachedGenres();
+            state.scanStatus = 'complete';
+          });
+          return;
+        }
       }
 
       const result = await scanMediaLibrary((status) => {

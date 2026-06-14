@@ -1,4 +1,5 @@
 import { Text } from 'react-native';
+import { s } from '@/styles';
 import { useTheme } from '@/hooks/use-theme';
 
 interface SectionHeaderProps {
@@ -9,8 +10,7 @@ export function SectionHeader({ title }: SectionHeaderProps) {
   const { colors } = useTheme();
   return (
     <Text
-      className="text-xs font-bold uppercase tracking-wider mb-2 px-1"
-      style={{ color: colors.accent }}
+      style={[s.textXs, s.fontBold, s.uppercase, s.mb2, s.px1, { color: colors.accent }]}
     >
       {title}
     </Text>

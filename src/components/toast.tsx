@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { View, Text, Animated } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { s } from '@/styles';
 import { useTheme } from '@/hooks/use-theme';
 import { useToastStore } from '@/store/toast-store';
 import { Check, Heart, ListPlus, Music } from 'lucide-react-native';
@@ -75,7 +76,7 @@ export function Toast() {
         borderColor: colors.border,
       }}>
         {IconComponent && <IconComponent size={16} color={colors.accent} />}
-        <Text className="text-sm font-medium" style={{ color: colors.text }}>{toast.message}</Text>
+        <Text style={[s.textSm, s.fontMedium, { color: colors.text }]}>{toast.message}</Text>
       </View>
     </Animated.View>
   );

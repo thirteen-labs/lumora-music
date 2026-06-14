@@ -1,4 +1,7 @@
-import { View, Text, FlatList, Pressable } from 'react-native';
+import { View, Text, Pressable } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { FlashList } from '@shopify/flash-list';
+import { s } from '@/styles';
 import { useTheme } from '@/hooks/use-theme';
 import { useMusicStore } from '@/store/music-store';
 import { TopBar } from '@/components/top-bar';
@@ -9,37 +12,36 @@ import { useRouter } from 'expo-router';
 
 export default function AlbumsScreen() {
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
   const { albums } = useMusicStore();
   const router = useRouter();
 
   return (
-    <View className="flex-1" style={{ backgroundColor: colors.background }}>
+    <View style={[s.flex1, { backgroundColor: colors.background }]}>
       <TopBar title="Albums" />
-      <FlatList
+      <FlashList
         data={albums}
         numColumns={2}
         keyExtractor={(item) => item.id}
-        contentContainerStyle={{ padding: 12, paddingBottom: 120 }}
-        columnWrapperStyle={{ gap: 12, marginBottom: 12 }}
+        contentContainerStyle={{ padding: 6, paddingBottom: 120 + insets.bottom }}
         renderItem={({ item }) => (
           <Pressable
             onPress={() => router.push({ pathname: '/music/album/[id]', params: { id: item.id } })}
-            className="flex-1 rounded-3xl overflow-hidden"
-            style={{ backgroundColor: colors.surface }}
+            style={[s.flex1, s.rounded3xl, s.overflowHidden, { backgroundColor: colors.surface, margin: 6, marginBottom: 12 }]}
           >
-            <View className="aspect-square items-center justify-center overflow-hidden" style={{ backgroundColor: colors.card }}>
+            <View style={[s.aspectSquare, s.center, s.overflowHidden, { backgroundColor: colors.card }]}>
               <Artwork uri={item.artwork} size={200} borderRadius={0} iconSize={40} iconColor={colors.accent} backgroundColor="transparent" />
             </View>
-            <View className="p-3">
-              <Text className="text-sm font-semibold" style={{ color: colors.text }} numberOfLines={1}>{item.title}</Text>
-              <Text className="text-xs" style={{ color: colors.textMuted }}>{item.songCount} songs</Text>
+            <View style={s.p3}>
+              <Text style={[s.textSm, s.fontSemibold, { color: colors.text }]} numberOfLines={1}>{item.title}</Text>
+              <Text style={[s.textXs, { color: colors.textMuted }]}>{item.songCount} songs</Text>
             </View>
           </Pressable>
         )}
         ListEmptyComponent={
-          <View className="items-center py-20">
+          <View style={[s.itemsCenter, s.py20]}>
             <Disc3 size={40} color={colors.textMuted} />
-            <Text className="mt-3" style={{ color: colors.textMuted }}>No albums found</Text>
+            <Text style={[s.mt3, { color: colors.textMuted }]}>No albums found</Text>
           </View>
         }
       />

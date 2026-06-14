@@ -344,6 +344,14 @@ const en = {
 
   // Online Subtitles
   'subtitles.title': 'Subtitle Downloader',
+
+  // Lyrics Editor
+  'lyrics.title': 'Lyrics Editor',
+  'lyrics.search': 'Search Lyrics',
+  'lyrics.saved': 'Lyrics saved successfully.',
+  'lyrics.no.song': 'No song selected',
+  'lyrics.play.song': 'Play a song to edit its lyrics',
+  'lyrics.edit': 'Edit Lyrics',
 };
 
 export const translations: Record<string, TranslationDict> = {

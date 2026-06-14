@@ -1,4 +1,5 @@
 import { View, Text, Pressable, Dimensions } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@/hooks/use-theme';
 import { usePlayerStore } from '@/store/player-store';
 import { useFavoritesStore } from '@/store/favorites-store';
@@ -15,6 +16,7 @@ import { useRouter } from 'expo-router';
 import { useTranslation } from '@/hooks/use-translation';
 import { ScrollView } from 'react-native-gesture-handler';
 import { useEffect } from 'react';
+import { s } from '@/styles';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 const CARD_W = (SCREEN_W - 40) / 2.2;
@@ -28,6 +30,7 @@ function getGreeting(): string {
 
 export default function HomeScreen() {
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
   const { t } = useTranslation();
   const { songs } = useMusicStore();
   const { favoriteSongIds, hydrateFavorites } = useFavoritesStore();
@@ -56,35 +59,35 @@ export default function HomeScreen() {
   const hasContent = recentlyPlayed.length > 0 || recentSongs.length > 0 || favSongs.length > 0;
 
   return (
-    <View className="flex-1" style={{ backgroundColor: colors.background }}>
+    <View style={[s.flex1, { backgroundColor: colors.background }]}>
       <TopBar />
-      <View className="flex-1">
+      <View style={[s.flex1]}>
         {!hasContent ? (
-          <View className="flex-1 items-center justify-center px-8">
+          <View style={[s.flex1, s.itemsCenter, s.justifyCenter, s.px8]}>
             <Music size={56} color={colors.textMuted} strokeWidth={1.5} />
-            <Text className="text-lg font-semibold mt-6" style={{ color: colors.text }}>
+            <Text style={[s.textLg, s.fontSemibold, s.mt6, { color: colors.text }]}>
               {t('home.no.songs')}
             </Text>
-            <Text className="text-sm mt-2 text-center" style={{ color: colors.textMuted }}>
+            <Text style={[s.textSm, s.mt2, s.textCenter, { color: colors.textMuted }]}>
               {t('home.no.songs.desc')}
             </Text>
           </View>
         ) : (
           <ScrollView
-            className="flex-1"
-            contentContainerStyle={{ paddingBottom: 120, paddingTop: 16 }}
+            style={[s.flex1]}
+            contentContainerStyle={{ paddingBottom: 120 + insets.bottom, paddingTop: 16 }}
             showsVerticalScrollIndicator={false}
           >
             {/* Greeting & Stats */}
-            <View className="px-5 pt-2 pb-5 flex-row items-center gap-4">
-              <View className="w-14 h-14 rounded-2xl items-center justify-center" style={{ backgroundColor: colors.accent + '20' }}>
+            <View style={[s.px5, s.pt2, s.pb5, s.flexRow, s.itemsCenter, s.gap4]}>
+              <View style={[s.w14, s.h14, s.rounded2xl, s.itemsCenter, s.justifyCenter, { backgroundColor: colors.accent + '20' }]}>
                 <Sparkles size={28} color={colors.accent} />
               </View>
-              <View className="flex-1">
-                <Text className="text-3xl font-bold" style={{ color: colors.text }}>
+              <View style={[s.flex1]}>
+                <Text style={[s.text3xl, s.fontBold, { color: colors.text }]}>
                   {getGreeting()}
                 </Text>
-                <Text className="text-sm mt-1" style={{ color: colors.textMuted }}>
+                <Text style={[s.textSm, s.mt1, { color: colors.textMuted }]}>
                   {songs.length} songs · {favoriteSongIds.length} favorites
                 </Text>
               </View>
@@ -92,23 +95,22 @@ export default function HomeScreen() {
 
             {/* Now Playing Card */}
             {currentTrack && (
-              <View className="px-5 mb-6">
-                <Text className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: colors.accent }}>
+              <View style={[s.px5, s.mb6]}>
+                <Text style={[s.textXs, s.fontBold, s.uppercase, { letterSpacing: 1, color: colors.accent }]}>
                   Now Playing
                 </Text>
                 <Pressable
                   onPress={() => router.push('/player')}
-                  className="flex-row items-center gap-4 p-4 rounded-2xl"
-                  style={{ backgroundColor: colors.surface }}
+                  style={[s.cardRow, s.rounded2xl, { backgroundColor: colors.surface }]}
                 >
-                  <View className="rounded-xl overflow-hidden" style={{ backgroundColor: colors.card }}>
+                  <View style={[s.roundedXl, s.overflowHidden, { backgroundColor: colors.card }]}>
                     <Artwork uri={currentTrack.artwork} size={52} borderRadius={10} iconSize={22} iconColor={colors.accent} backgroundColor="transparent" />
                   </View>
-                  <View className="flex-1">
-                    <Text className="font-semibold text-base" style={{ color: colors.text }} numberOfLines={1}>
+                  <View style={[s.flex1]}>
+                    <Text style={[s.fontSemibold, s.textBase, { color: colors.text }]} numberOfLines={1}>
                       {currentTrack.title}
                     </Text>
-                    <Text className="text-sm mt-0.5" style={{ color: colors.textMuted }} numberOfLines={1}>
+                    <Text style={[s.textSm, s.mt05, { color: colors.textMuted }]} numberOfLines={1}>
                       {currentTrack.artist}
                     </Text>
                   </View>
@@ -119,18 +121,18 @@ export default function HomeScreen() {
 
             {/* Recently Played */}
             {recentlyPlayed.length > 0 && (
-              <View className="mb-6">
-                <View className="flex-row items-center justify-between px-5 mb-3">
-                  <Text className="text-xs font-bold uppercase tracking-widest" style={{ color: colors.textMuted }}>
+              <View style={[s.mb6]}>
+                <View style={[s.flexRow, s.itemsCenter, s.justifyBetween, s.px5, s.mb3]}>
+                  <Text style={[s.textXs, s.fontBold, s.uppercase, { letterSpacing: 1, color: colors.textMuted }]}>
                     Recently Played
                   </Text>
                   <Pressable onPress={() => router.push('/(tabs)/music')}>
-                    <Text className="text-xs font-semibold" style={{ color: colors.accent }}>
+                    <Text style={[s.textXs, s.fontSemibold, { color: colors.accent }]}>
                       See All
                     </Text>
                   </Pressable>
                 </View>
-                <Text className="text-lg font-bold px-5 mb-3" style={{ color: colors.text }}>
+                <Text style={[s.textLg, s.fontBold, s.px5, s.mb3, { color: colors.text }]}>
                   Pick Up Where You Left Off
                 </Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, gap: 12 }}>
@@ -141,13 +143,13 @@ export default function HomeScreen() {
                       onLongPress={() => present(song)}
                       style={{ width: CARD_W }}
                     >
-                      <View className="rounded-2xl overflow-hidden mb-2" style={{ backgroundColor: colors.surface, width: CARD_W, height: CARD_W }}>
+                      <View style={[s.rounded2xl, s.overflowHidden, s.mb2, { backgroundColor: colors.surface, width: CARD_W, height: CARD_W }]}>
                         <Artwork uri={song.artwork} size={CARD_W} borderRadius={16} iconSize={40} iconColor={colors.accent} backgroundColor="transparent" />
                       </View>
-                      <Text className="text-sm font-semibold" style={{ color: colors.text }} numberOfLines={1}>
+                      <Text style={[s.textSm, s.fontSemibold, { color: colors.text }]} numberOfLines={1}>
                         {song.title}
                       </Text>
-                      <Text className="text-xs mt-0.5" style={{ color: colors.textMuted }} numberOfLines={1}>
+                      <Text style={[s.textXs, s.mt05, { color: colors.textMuted }]} numberOfLines={1}>
                         {song.artist} · {formatDuration(song.duration)}
                       </Text>
                     </Pressable>
@@ -158,18 +160,18 @@ export default function HomeScreen() {
 
             {/* Recent Additions */}
             {recentSongs.length > 0 && (
-              <View className="mb-6">
-                <View className="flex-row items-center justify-between px-5 mb-3">
-                  <Text className="text-xs font-bold uppercase tracking-widest" style={{ color: colors.textMuted }}>
+              <View style={[s.mb6]}>
+                <View style={[s.flexRow, s.itemsCenter, s.justifyBetween, s.px5, s.mb3]}>
+                  <Text style={[s.textXs, s.fontBold, s.uppercase, { letterSpacing: 1, color: colors.textMuted }]}>
                     Recent Additions
                   </Text>
                   <Pressable onPress={() => router.push('/(tabs)/music')}>
-                    <Text className="text-xs font-semibold" style={{ color: colors.accent }}>
+                    <Text style={[s.textXs, s.fontSemibold, { color: colors.accent }]}>
                       See All
                     </Text>
                   </Pressable>
                 </View>
-                <Text className="text-lg font-bold px-5 mb-3" style={{ color: colors.text }}>
+                <Text style={[s.textLg, s.fontBold, s.px5, s.mb3, { color: colors.text }]}>
                   New in your Library
                 </Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, gap: 12 }}>
@@ -180,13 +182,13 @@ export default function HomeScreen() {
                       onLongPress={() => present(song)}
                       style={{ width: CARD_W }}
                     >
-                      <View className="rounded-2xl overflow-hidden mb-2" style={{ backgroundColor: colors.surface, width: CARD_W, height: CARD_W }}>
+                      <View style={[s.rounded2xl, s.overflowHidden, s.mb2, { backgroundColor: colors.surface, width: CARD_W, height: CARD_W }]}>
                         <Artwork uri={song.artwork} size={CARD_W} borderRadius={16} iconSize={40} iconColor={colors.accent} backgroundColor="transparent" />
                       </View>
-                      <Text className="text-sm font-semibold" style={{ color: colors.text }} numberOfLines={1}>
+                      <Text style={[s.textSm, s.fontSemibold, { color: colors.text }]} numberOfLines={1}>
                         {song.title}
                       </Text>
-                      <Text className="text-xs mt-0.5" style={{ color: colors.textMuted }} numberOfLines={1}>
+                      <Text style={[s.textXs, s.mt05, { color: colors.textMuted }]} numberOfLines={1}>
                         {song.artist} · {formatDuration(song.duration)}
                       </Text>
                     </Pressable>
@@ -197,34 +199,33 @@ export default function HomeScreen() {
 
             {/* Favorites */}
             {favSongs.length > 0 && (
-              <View className="mb-6">
-                <Text className="text-xs font-bold uppercase tracking-widest px-5 mb-3" style={{ color: colors.textMuted }}>
+              <View style={[s.mb6]}>
+                <Text style={[s.textXs, s.fontBold, s.uppercase, { letterSpacing: 1, color: colors.textMuted }, s.px5, s.mb3]}>
                   Your Favorites
                 </Text>
-                <Text className="text-lg font-bold px-5 mb-3" style={{ color: colors.text }}>
+                <Text style={[s.textLg, s.fontBold, s.px5, s.mb3, { color: colors.text }]}>
                   Liked Songs
                 </Text>
-                <View className="px-5">
+                <View style={[s.px5]}>
                   {favSongs.map((song) => (
                     <Pressable
                       key={song.id}
                       onPress={() => usePlayerStore.getState().play(song, favSongs)}
                       onLongPress={() => present(song)}
-                      className="flex-row items-center gap-3 py-3"
-                      style={{ borderBottomWidth: 1, borderBottomColor: colors.border }}
+                      style={[s.flexRow, s.itemsCenter, s.gap3, s.py3, { borderBottomWidth: 1, borderBottomColor: colors.border }]}
                     >
-                      <View className="w-12 h-12 rounded-xl overflow-hidden" style={{ backgroundColor: colors.surface }}>
+                      <View style={[s.w12, s.h12, s.roundedXl, s.overflowHidden, { backgroundColor: colors.surface }]}>
                         <Artwork uri={song.artwork} size={48} borderRadius={12} iconSize={20} iconColor={colors.accent} backgroundColor="transparent" />
                       </View>
-                      <View className="flex-1">
-                        <Text className="text-sm font-semibold" style={{ color: colors.text }} numberOfLines={1}>
+                      <View style={[s.flex1]}>
+                        <Text style={[s.textSm, s.fontSemibold, { color: colors.text }]} numberOfLines={1}>
                           {song.title}
                         </Text>
-                        <Text className="text-xs mt-0.5" style={{ color: colors.textMuted }} numberOfLines={1}>
+                        <Text style={[s.textXs, s.mt05, { color: colors.textMuted }]} numberOfLines={1}>
                           {song.artist}
                         </Text>
                       </View>
-                      <Text className="text-xs" style={{ color: colors.textMuted }}>
+                      <Text style={[s.textXs, { color: colors.textMuted }]}>
                         {formatDuration(song.duration)}
                       </Text>
                     </Pressable>

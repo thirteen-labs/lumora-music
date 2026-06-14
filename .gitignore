@@ -27,7 +27,7 @@ CLAUDE.md
 .claude
 # Metro
 .metro-health-check*
-
+.zed*
 # debug
 npm-debug.*
 yarn-debug.*

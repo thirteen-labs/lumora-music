@@ -1,5 +1,7 @@
 import { useState, useMemo, useCallback } from 'react';
 import { View, Text, ScrollView, Pressable, Alert, TextInput } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { s } from '@/styles';
 import { useTheme } from '@/hooks/use-theme';
 import { TopBar } from '@/components/top-bar';
 import { SectionHeader } from '@/components/section-header';
@@ -20,6 +22,7 @@ const ICONS: Record<string, any> = {
 
 export default function SmartPlaylistsScreen() {
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
   const router = useRouter();
   const songs = useMusicStore((s) => s.songs);
   const trackStats = useStatsStore((s) => s.trackStats);
@@ -60,26 +63,25 @@ export default function SmartPlaylistsScreen() {
   };
 
   return (
-    <View className="flex-1" style={{ backgroundColor: colors.background }}>
+    <View style={[s.flex1, { backgroundColor: colors.background }]}>
       <TopBar title="Smart Playlists" showSettings={false} />
-      <ScrollView className="flex-1" contentContainerStyle={{ paddingBottom: 120 }}>
-        <View className="px-4 py-4 gap-6">
+      <ScrollView style={s.flex1} contentContainerStyle={{ paddingBottom: 120 + insets.bottom }}>
+        <View style={[s.px4, s.py4, s.gap6]}>
           <View>
             <SectionHeader title="Automatic Playlists" />
-            <View className="rounded-3xl overflow-hidden" style={{ backgroundColor: colors.surface }}>
+            <View style={[s.rounded3xl, s.overflowHidden, { backgroundColor: colors.surface }]}>
               {BUILT_IN_PLAYLISTS.map((playlist, i) => {
                 const count = builtInCounts[playlist.id] ?? 0;
                 return (
                   <Pressable
                     key={playlist.id}
                     onPress={() => handlePlayPlaylist(playlist)}
-                    className="flex-row items-center gap-3 p-4"
-                    style={{ borderBottomWidth: i < BUILT_IN_PLAYLISTS.length - 1 ? 1 : 0, borderBottomColor: colors.border }}
+                    style={[s.flexRow, s.itemsCenter, s.gap3, s.p4, { borderBottomWidth: i < BUILT_IN_PLAYLISTS.length - 1 ? 1 : 0, borderBottomColor: colors.border }]}
                   >
                     {builtInIcon(playlist.icon)}
-                    <View className="flex-1">
-                      <Text className="text-sm font-medium" style={{ color: colors.text }}>{playlist.name}</Text>
-                      <Text className="text-xs" style={{ color: colors.textMuted }}>{count} songs</Text>
+                    <View style={s.flex1}>
+                      <Text style={[s.textSm, s.fontMedium, { color: colors.text }]}>{playlist.name}</Text>
+                      <Text style={[s.textXs, { color: colors.textMuted }]}>{count} songs</Text>
                     </View>
                     <ChevronRight size={16} color={colors.textMuted} />
                   </Pressable>
@@ -91,25 +93,24 @@ export default function SmartPlaylistsScreen() {
           <View>
             <SectionHeader title="Your Smart Playlists" />
             {customPlaylists.length === 0 ? (
-              <View className="rounded-3xl p-8 items-center" style={{ backgroundColor: colors.surface }}>
+              <View style={[s.rounded3xl, { padding: 32, alignItems: 'center', backgroundColor: colors.surface }]}>
                 <Zap size={32} color={colors.textMuted} />
-                <Text className="text-sm mt-2" style={{ color: colors.textMuted }}>No custom playlists yet</Text>
-                <Text className="text-xs mt-1" style={{ color: colors.textMuted }}>Create rules-based playlists</Text>
+                <Text style={[s.textSm, s.mt2, { color: colors.textMuted }]}>No custom playlists yet</Text>
+                <Text style={[s.textXs, s.mt1, { color: colors.textMuted }]}>Create rules-based playlists</Text>
               </View>
             ) : (
-              <View className="rounded-3xl overflow-hidden" style={{ backgroundColor: colors.surface }}>
+              <View style={[s.rounded3xl, s.overflowHidden, { backgroundColor: colors.surface }]}>
                 {customPlaylists.map((playlist, i) => {
                   const count = customCounts[playlist.id] ?? 0;
                   return (
                     <View
                       key={playlist.id}
-                      className="flex-row items-center gap-3 p-4"
-                      style={{ borderBottomWidth: i < customPlaylists.length - 1 ? 1 : 0, borderBottomColor: colors.border }}
+                      style={[s.flexRow, s.itemsCenter, s.gap3, s.p4, { borderBottomWidth: i < customPlaylists.length - 1 ? 1 : 0, borderBottomColor: colors.border }]}
                     >
                       <Zap size={20} color={colors.accent} />
-                      <Pressable className="flex-1" onPress={() => handlePlayPlaylist(playlist)}>
-                        <Text className="text-sm font-medium" style={{ color: colors.text }}>{playlist.name}</Text>
-                        <Text className="text-xs" style={{ color: colors.textMuted }}>
+                      <Pressable style={s.flex1} onPress={() => handlePlayPlaylist(playlist)}>
+                        <Text style={[s.textSm, s.fontMedium, { color: colors.text }]}>{playlist.name}</Text>
+                        <Text style={[s.textXs, { color: colors.textMuted }]}>
                           {playlist.rules.length} rules • {count} songs
                         </Text>
                       </Pressable>
@@ -133,11 +134,10 @@ export default function SmartPlaylistsScreen() {
 
           <Pressable
             onPress={() => setShowCreate(!showCreate)}
-            className="flex-row items-center justify-center gap-2 py-4 rounded-3xl"
-            style={{ backgroundColor: colors.accent }}
+            style={[s.flexRow, s.itemsCenter, s.justifyCenter, s.gap2, { paddingVertical: 16, borderRadius: 24, backgroundColor: colors.accent }]}
           >
             <Plus size={18} color={colors.background} />
-            <Text className="text-sm font-semibold" style={{ color: colors.background }}>Create Smart Playlist</Text>
+            <Text style={[s.textSm, s.fontSemibold, { color: colors.background }]}>Create Smart Playlist</Text>
           </Pressable>
 
           {showCreate && (
@@ -189,48 +189,45 @@ function CreateSmartPlaylist({ onClose }: { onClose: () => void }) {
   };
 
   return (
-    <View className="rounded-3xl p-4 gap-4" style={{ backgroundColor: colors.surface }}>
-      <Text className="text-sm font-semibold" style={{ color: colors.text }}>New Smart Playlist</Text>
+    <View style={[s.rounded3xl, s.p4, s.gap4, { backgroundColor: colors.surface }]}>
+      <Text style={[s.textSm, s.fontSemibold, { color: colors.text }]}>New Smart Playlist</Text>
       <TextInput
         value={name}
         onChangeText={setName}
         placeholder="Playlist name"
         placeholderTextColor={colors.textMuted}
-        className="px-4 py-3 rounded-2xl text-sm"
-        style={{ backgroundColor: colors.card, color: colors.text }}
+        style={[{ paddingHorizontal: 16, paddingVertical: 12, borderRadius: 16, fontSize: 14, backgroundColor: colors.card, color: colors.text }]}
         accessibilityLabel="Playlist name"
       />
 
       {rules.map((rule, i) => (
-        <View key={i} className="flex-row items-center gap-2">
-          <View className="flex-1 rounded-xl px-3 py-2" style={{ backgroundColor: colors.card }}>
-            <Text className="text-xs" style={{ color: colors.textMuted }}>Field</Text>
+        <View key={i} style={[s.flexRow, s.itemsCenter, s.gap2]}>
+          <View style={[s.flex1, { borderRadius: 12, paddingHorizontal: 12, paddingVertical: 8, backgroundColor: colors.card }]}>
+            <Text style={[s.textXs, { color: colors.textMuted }]}>Field</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
               {(['genre', 'artist', 'album', 'duration', 'playCount', 'dateAdded'] as const).map((f) => (
                 <Pressable
                   key={f}
                   onPress={() => updateRule(i, { field: f })}
-                  className="px-2 py-1 rounded-lg mr-1 mt-1"
-                  style={{ backgroundColor: rule.field === f ? colors.accent + '30' : 'transparent' }}
+                  style={[{ paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, marginRight: 4, marginTop: 4, backgroundColor: rule.field === f ? colors.accent + '30' : 'transparent' }]}
                 >
-                  <Text className="text-[10px]" style={{ color: rule.field === f ? colors.accent : colors.textMuted }}>
+                  <Text style={[s.text10, { color: rule.field === f ? colors.accent : colors.textMuted }]}>
                     {f}
                   </Text>
                 </Pressable>
               ))}
             </ScrollView>
           </View>
-          <View className="flex-1 rounded-xl px-3 py-2" style={{ backgroundColor: colors.card }}>
-            <Text className="text-xs" style={{ color: colors.textMuted }}>Operator</Text>
+          <View style={[s.flex1, { borderRadius: 12, paddingHorizontal: 12, paddingVertical: 8, backgroundColor: colors.card }]}>
+            <Text style={[s.textXs, { color: colors.textMuted }]}>Operator</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
               {(['equals', 'contains', 'greater_than', 'less_than'] as const).map((op) => (
                 <Pressable
                   key={op}
                   onPress={() => updateRule(i, { operator: op })}
-                  className="px-2 py-1 rounded-lg mr-1 mt-1"
-                  style={{ backgroundColor: rule.operator === op ? colors.accent + '30' : 'transparent' }}
+                  style={[{ paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, marginRight: 4, marginTop: 4, backgroundColor: rule.operator === op ? colors.accent + '30' : 'transparent' }]}
                 >
-                  <Text className="text-[10px]" style={{ color: rule.operator === op ? colors.accent : colors.textMuted }}>
+                  <Text style={[s.text10, { color: rule.operator === op ? colors.accent : colors.textMuted }]}>
                     {op.replace('_', ' ')}
                   </Text>
                 </Pressable>
@@ -243,12 +240,12 @@ function CreateSmartPlaylist({ onClose }: { onClose: () => void }) {
         </View>
       ))}
 
-      <View className="flex-row gap-2">
-        <Pressable onPress={addRule} className="flex-1 py-3 rounded-2xl items-center" style={{ backgroundColor: colors.card }}>
-          <Text className="text-xs font-semibold" style={{ color: colors.accent }}>+ Add Rule</Text>
+      <View style={[s.flexRow, s.gap2]}>
+        <Pressable onPress={addRule} style={[s.flex1, { paddingVertical: 12, borderRadius: 16, alignItems: 'center', backgroundColor: colors.card }]}>
+          <Text style={[s.textXs, s.fontSemibold, { color: colors.accent }]}>+ Add Rule</Text>
         </Pressable>
-        <Pressable onPress={save} className="flex-1 py-3 rounded-2xl items-center" style={{ backgroundColor: colors.accent }}>
-          <Text className="text-xs font-semibold" style={{ color: colors.background }}>Save</Text>
+        <Pressable onPress={save} style={[s.flex1, { paddingVertical: 12, borderRadius: 16, alignItems: 'center', backgroundColor: colors.accent }]}>
+          <Text style={[s.textXs, s.fontSemibold, { color: colors.background }]}>Save</Text>
         </Pressable>
       </View>
     </View>

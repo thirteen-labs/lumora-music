@@ -1,4 +1,6 @@
 import { View, Text, ScrollView } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { s } from '@/styles';
 import { useTheme } from '@/hooks/use-theme';
 import { TopBar } from '@/components/top-bar';
 import { SectionHeader } from '@/components/section-header';
@@ -19,6 +21,7 @@ function formatDuration(seconds: number): string {
 
 export default function PlayTimeScreen() {
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
   const songs = useMusicStore((s) => s.songs);
   const getListeningStats = useStatsStore((s) => s.getListeningStats);
   const getTotalPlayCount = useStatsStore((s) => s.getTotalPlayCount);
@@ -37,38 +40,38 @@ export default function PlayTimeScreen() {
   const maxMinutes = Math.max(...listeningStats.weeklyMinutes, 1);
 
   return (
-    <View className="flex-1" style={{ backgroundColor: colors.background }}>
+    <View style={[s.flex1, { backgroundColor: colors.background }]}>
       <TopBar title="Play Time" showSettings={false} />
-      <ScrollView className="flex-1" contentContainerStyle={{ paddingBottom: 120 }}>
-        <View className="px-4 py-4 gap-6">
+      <ScrollView style={s.flex1} contentContainerStyle={{ paddingBottom: 120 + insets.bottom }}>
+        <View style={[s.px4, s.py4, s.gap6]}>
           <View>
             <SectionHeader title="Overview" />
-            <View className="flex-row gap-3">
-              <View className="flex-1 rounded-3xl p-4 items-center" style={{ backgroundColor: colors.surface }}>
+            <View style={[s.flexRow, s.gap3]}>
+              <View style={[s.flex1, s.rounded3xl, s.p4, s.itemsCenter, { backgroundColor: colors.surface }]}>
                 <Clock size={24} color={colors.accent} />
-                <Text className="text-xl font-bold mt-2" style={{ color: colors.text }}>
+                <Text style={[s.textXl, s.fontBold, s.mt2, { color: colors.text }]}>
                   {formatDuration(totalListenTime)}
                 </Text>
-                <Text className="text-xs mt-1" style={{ color: colors.textMuted }}>Total Play Time</Text>
+                <Text style={[s.textXs, s.mt1, { color: colors.textMuted }]}>Total Play Time</Text>
               </View>
-              <View className="flex-1 rounded-3xl p-4 items-center" style={{ backgroundColor: colors.surface }}>
+              <View style={[s.flex1, s.rounded3xl, s.p4, s.itemsCenter, { backgroundColor: colors.surface }]}>
                 <Music size={24} color={colors.accent} />
-                <Text className="text-xl font-bold mt-2" style={{ color: colors.text }}>{totalPlayCount}</Text>
-                <Text className="text-xs mt-1" style={{ color: colors.textMuted }}>Total Plays</Text>
+                <Text style={[s.textXl, s.fontBold, s.mt2, { color: colors.text }]}>{totalPlayCount}</Text>
+                <Text style={[s.textXs, s.mt1, { color: colors.textMuted }]}>Total Plays</Text>
               </View>
             </View>
           </View>
 
           <View>
             <SectionHeader title="Daily Average" />
-            <View className="rounded-3xl p-4" style={{ backgroundColor: colors.surface }}>
-              <View className="flex-row items-center gap-3">
+            <View style={[s.rounded3xl, s.p4, { backgroundColor: colors.surface }]}>
+              <View style={[s.flexRow, s.itemsCenter, s.gap3]}>
                 <Calendar size={20} color={colors.accent} />
                 <View>
-                  <Text className="text-lg font-bold" style={{ color: colors.text }}>
+                  <Text style={[s.textLg, s.fontBold, { color: colors.text }]}>
                     {formatDuration(avgPerDay * 60)}
                   </Text>
-                  <Text className="text-xs" style={{ color: colors.textMuted }}>Average per day (last 7 days)</Text>
+                  <Text style={[s.textXs, { color: colors.textMuted }]}>Average per day (last 7 days)</Text>
                 </View>
               </View>
             </View>
@@ -76,23 +79,19 @@ export default function PlayTimeScreen() {
 
           <View>
             <SectionHeader title="Weekly Activity" />
-            <View className="rounded-3xl p-4" style={{ backgroundColor: colors.surface }}>
-              <View className="flex-row items-end justify-between" style={{ height: 100 }}>
+            <View style={[s.rounded3xl, s.p4, { backgroundColor: colors.surface }]}>
+              <View style={[s.flexRow, s.itemsEnd, s.justifyBetween, { height: 100 }]}>
                 {listeningStats.weeklyMinutes.map((minutes, i) => (
-                  <View key={i} className="items-center gap-1">
+                  <View key={i} style={[s.itemsCenter, s.gap1]}>
                     <View
-                      className="w-8 rounded-t-lg"
-                      style={{
-                        height: Math.max((minutes / maxMinutes) * 80, 2),
-                        backgroundColor: colors.accent,
-                      }}
+                      style={[{ width: 32, borderTopLeftRadius: 8, borderTopRightRadius: 8, height: Math.max((minutes / maxMinutes) * 80, 2), backgroundColor: colors.accent }]}
                     />
-                    <Text className="text-[10px]" style={{ color: colors.textMuted }}>{dayLabels[i]}</Text>
+                    <Text style={[s.text10, { color: colors.textMuted }]}>{dayLabels[i]}</Text>
                   </View>
                 ))}
               </View>
-              <View className="flex-row justify-between mt-2">
-                <Text className="text-xs" style={{ color: colors.textMuted }}>
+              <View style={[s.flexRow, s.justifyBetween, s.mt2]}>
+                <Text style={[s.textXs, { color: colors.textMuted }]}>
                   This week: {listeningStats.weeklyMinutes.reduce((a, b) => a + b, 0)} min
                 </Text>
               </View>
@@ -102,25 +101,24 @@ export default function PlayTimeScreen() {
           {topSongs.length > 0 && (
             <View>
               <SectionHeader title="Most Played Songs" />
-              <View className="rounded-3xl overflow-hidden" style={{ backgroundColor: colors.surface }}>
+              <View style={[s.rounded3xl, s.overflowHidden, { backgroundColor: colors.surface }]}>
                 {topSongs.map(({ song, count }, i) => (
                   <View
                     key={song.id}
-                    className="flex-row items-center gap-3 p-4"
-                    style={{ borderBottomWidth: i < topSongs.length - 1 ? 1 : 0, borderBottomColor: colors.border }}
+                    style={[s.flexRow, s.itemsCenter, s.gap3, s.p4, { borderBottomWidth: i < topSongs.length - 1 ? 1 : 0, borderBottomColor: colors.border }]}
                   >
-                    <Text className="text-sm font-bold w-6 text-center" style={{ color: colors.accent }}>
+                    <Text style={[s.textSm, s.fontBold, { width: 24, textAlign: 'center', color: colors.accent }]}>
                       {i + 1}
                     </Text>
-                    <View className="flex-1">
-                      <Text className="text-sm font-medium" style={{ color: colors.text }} numberOfLines={1}>
+                    <View style={s.flex1}>
+                      <Text style={[s.textSm, s.fontMedium, { color: colors.text }]} numberOfLines={1}>
                         {song.title}
                       </Text>
-                      <Text className="text-xs" style={{ color: colors.textMuted }} numberOfLines={1}>
+                      <Text style={[s.textXs, { color: colors.textMuted }]} numberOfLines={1}>
                         {song.artist}
                       </Text>
                     </View>
-                    <Text className="text-xs font-semibold" style={{ color: colors.accent }}>
+                    <Text style={[s.textXs, s.fontSemibold, { color: colors.accent }]}>
                       {count} plays
                     </Text>
                   </View>
