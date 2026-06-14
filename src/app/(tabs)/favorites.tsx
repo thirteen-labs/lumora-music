@@ -44,7 +44,12 @@ export default function FavoritesScreen() {
             onLongPress={() => present(item)}
             style={[s.flexRow, s.itemsCenter, s.gap3, s.px4, s.py3, { borderBottomWidth: 1, borderBottomColor: colors.border }]}
           >
-            <Artwork uri={item.artwork} size={44} borderRadius={16} iconSize={18} iconColor={colors.accent} backgroundColor={colors.surface} />
+            <Artwork uri={item.artwork}
+             size={44} 
+             borderRadius={16} 
+             iconSize={18} 
+             iconColor={colors.accent} 
+             backgroundColor={colors.surface} />
             <View style={[s.flex1]}>
               <Text style={[s.textSm, s.fontMedium, { color: colors.text }]} numberOfLines={1}>{item.title}</Text>
               <Text style={[s.textXs, { color: colors.textMuted }]}>{item.artist}</Text>

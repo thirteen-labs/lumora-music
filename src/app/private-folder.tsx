@@ -28,7 +28,7 @@ export default function PrivateFolderScreen() {
             Protect your private files with a lock.{'\n'}This folder is secured and only accessible to you.
           </Text>
           <Pressable style={[s.mt6, { paddingHorizontal: 24, paddingVertical: 12, borderRadius: 16, backgroundColor: colors.accent }]}>
-            <Text style={[s.textSm, s.fontSemibold, { color: '#fff' }]}>Set Up Lock</Text>
+            <Text style={[s.textSm, s.fontSemibold, { color: colors.background }]}>Set Up Lock</Text>
           </Pressable>
         </View>
       </ScrollView>

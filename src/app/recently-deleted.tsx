@@ -109,7 +109,7 @@ export default function RecentlyDeletedScreen() {
                           onPress={() => handlePermanentDelete(item.id, item.title)}
                           style={[{ padding: 8, borderRadius: 9999, backgroundColor: colors.card }]}
                         >
-                          <X size={14} color={'#ff4444'} />
+                          <X size={14} color={colors.notification} />
                         </Pressable>
                       </View>
                     ))}
@@ -145,7 +145,7 @@ export default function RecentlyDeletedScreen() {
                           onPress={() => handlePermanentDelete(item.id, item.title)}
                           style={[{ padding: 8, borderRadius: 9999, backgroundColor: colors.card }]}
                         >
-                          <X size={14} color={'#ff4444'} />
+                          <X size={14} color={colors.notification} />
                         </Pressable>
                       </View>
                     ))}

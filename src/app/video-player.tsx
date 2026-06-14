@@ -21,7 +21,6 @@ import { formatDuration } from '@/utils/cn';
 import {
   Gesture,
   GestureDetector,
-  GestureHandlerRootView,
 } from 'react-native-gesture-handler';
 import Animated, {
   useSharedValue,
@@ -549,7 +548,7 @@ export default function VideoPlayerScreen() {
 
   if (!uri) {
     return (
-      <View style={[s.flex1, s.itemsCenter, s.justifyCenter, { backgroundColor: '#000' }]}>
+      <View style={[s.flex1, s.itemsCenter, s.justifyCenter, { backgroundColor: colors.background }]}>
         <Text style={{ color: colors.textMuted }}>No video URI provided</Text>
         <Pressable onPress={() => router.back()} style={s.mt4}>
           <Text style={{ color: colors.accent }}>Go back</Text>
@@ -560,7 +559,7 @@ export default function VideoPlayerScreen() {
 
   if (isFullscreen) {
     return (
-      <GestureHandlerRootView style={{ flex: 1 }}>
+      <View style={{ flex: 1 }}>
         <View style={styles.fullscreenContainer}>
           <GestureDetector gesture={composedGestures}>
             <View style={{ flex: 1 }}>
@@ -619,12 +618,12 @@ export default function VideoPlayerScreen() {
             </View>
           </View>
         </View>
-      </GestureHandlerRootView>
+      </View>
     );
   }
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
+    <View style={{ flex: 1 }}>
       <View style={[s.flex1, { backgroundColor: colors.background }]}>
         <View style={[s.flexRow, s.itemsCenter, s.gap3, s.px4, s.pb4, { paddingTop: insets.top + 4 }]}>
           <Pressable onPress={() => router.back()} style={[s.w11, s.h11, s.itemsCenter, s.justifyCenter]}>
@@ -957,7 +956,7 @@ export default function VideoPlayerScreen() {
           </View>
         </BottomSheetModal>
       </View>
-    </GestureHandlerRootView>
+    </View>
   );
 }
 

@@ -36,7 +36,8 @@ export default function FilesScreen() {
   return (
     <View style={[s.flex1, { backgroundColor: colors.background }]}>
       <TopBar />
-      <ScrollView contentContainerStyle={{ paddingBottom: 120 + insets.bottom, paddingTop: 16 }} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={{ paddingBottom: 120 + insets.bottom, paddingTop: 16 }} 
+      showsVerticalScrollIndicator={false}>
         <View style={[s.px5]}>
           <View style={{ backgroundColor: colors.surface, borderRadius: 16, overflow: 'hidden' }}>
             {CATEGORIES.map((cat, i) => (

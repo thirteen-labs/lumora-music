@@ -1,3 +1,6 @@
+import '../../global.css';
+
+import { View } from 'react-native';
 import { Stack } from 'expo-router';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -15,7 +18,7 @@ function RootStack() {
   const { colors } = useTheme();
 
   return (
-    <>
+    <View style={{ flex: 1 }}>
       <StatusBar style="light" />
       <Stack
         screenOptions={{
@@ -197,7 +200,7 @@ function RootStack() {
           options={{ animation: 'slide_from_right' }}
         />
       </Stack>
-    </>
+    </View>
   );
 }
 

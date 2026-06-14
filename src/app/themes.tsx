@@ -55,7 +55,7 @@ export default function ThemesScreen() {
                     borderColor: isActive ? colors.accent : 'transparent',
                   }]}
                 >
-                  {isActive && <Check size={28} color="#fff" />}
+                  {isActive && <Check size={28} color={colors.background} />}
                 </View>
               </Pressable>
             );

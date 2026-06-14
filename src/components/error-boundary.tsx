@@ -52,7 +52,7 @@ export class ErrorBoundary extends Component<Props, State> {
             flex: 1,
             justifyContent: 'center',
             alignItems: 'center',
-            backgroundColor: '#0A0A0F',
+            backgroundColor: '#000',
             padding: 24,
           }}
         >
@@ -68,7 +68,7 @@ export class ErrorBoundary extends Component<Props, State> {
             </Text>
             <Text
               style={{
-                color: '#ccc',
+                color: 'rgba(255,255,255,0.7)',
                 fontSize: 13,
                 textAlign: 'center',
                 marginBottom: 8,
@@ -81,7 +81,7 @@ export class ErrorBoundary extends Component<Props, State> {
             {this.state.error?.name && (
               <Text
                 style={{
-                  color: '#666',
+                  color: 'rgba(255,255,255,0.4)',
                   fontSize: 11,
                   textAlign: 'center',
                   marginBottom: 24,
@@ -94,13 +94,13 @@ export class ErrorBoundary extends Component<Props, State> {
             <Pressable
               onPress={this.handleRetry}
               style={{
-                backgroundColor: '#8B5CF6',
+                backgroundColor: '#00E5FF',
                 paddingHorizontal: 24,
                 paddingVertical: 12,
                 borderRadius: 12,
               }}
             >
-              <Text style={{ color: '#fff', fontWeight: '600' }}>Try Again</Text>
+              <Text style={{ color: '#000', fontWeight: '600' }}>Try Again</Text>
             </Pressable>
           </ScrollView>
         </View>

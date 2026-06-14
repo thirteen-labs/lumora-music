@@ -128,9 +128,9 @@ export default function PlaylistDetailScreen() {
             {selectedIds.size > 0 && (
               <Pressable
                 onPress={handleRemoveSelected}
-                style={[{ paddingVertical: 12, borderRadius: 16, alignItems: 'center', marginBottom: 16, backgroundColor: '#EF444420' }]}
+                style={[{ paddingVertical: 12, borderRadius: 16, alignItems: 'center', marginBottom: 16, backgroundColor: colors.notification + '20' }]}
               >
-                <Text style={[s.textSm, s.fontSemibold, { color: '#EF4444' }]}>
+                <Text style={[s.textSm, s.fontSemibold, { color: colors.notification }]}>
                   Remove {selectedIds.size} Selected
                 </Text>
               </Pressable>

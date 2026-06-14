@@ -123,7 +123,7 @@ export function TopBar({ showSearch = true, showSettings = true, title }: TopBar
               >
                 <View
                   style={[s.flexRow, s.itemsCenter, s.roundedFull, s.px3, s.py15, {
-                    backgroundColor: isActive ? 'rgba(255,255,255,0.1)' : 'transparent',
+                    backgroundColor: isActive ? colors.accent + '18' : 'transparent',
                   }]}
                 >
                   <Icon

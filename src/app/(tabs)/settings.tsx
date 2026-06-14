@@ -147,7 +147,7 @@ export default function SettingsScreen() {
                     justifyContent: 'center',
                   }}
                 >
-                  <Pencil size={16} color="#fff" />
+                  <Pencil size={16} color={colors.background} />
                 </View>
               </View>
               <Text style={[s.textSm, s.fontMedium, s.mt2, { color: colors.text }]}>Background Image</Text>
