@@ -4,6 +4,14 @@ import type { Song, Album, Artist, Genre, MediaScanStatus, SortField, SortOrder 
 import { scanMediaLibrary, getCachedSongs, getCachedAlbums, getCachedArtists, getCachedGenres } from '@/services/scanner';
 import { useStatsStore } from '@/store/stats-store';
 import { isBackgroundScanEnabled, setBackgroundScanEnabled } from '@/services/background-scanner';
+import {
+  findMissingFiles,
+  findRemovedFiles,
+  updateKnownFiles,
+  getKnownFiles,
+  saveScanHistory,
+  getScanHistory,
+} from '@/scanner/enhanced-scanner';
 
 interface MusicState {
   songs: Song[];
@@ -11,7 +19,10 @@ interface MusicState {
   artists: Artist[];
   genres: Genre[];
   scanStatus: MediaScanStatus;
+  scanProgress: { processed: number; total: number } | null;
   lastScanTime: number;
+  newSongsCount: number;
+  removedSongsCount: number;
   sortField: SortField;
   sortOrder: SortOrder;
   backgroundScanEnabled: boolean;
@@ -28,7 +39,10 @@ export const useMusicStore = create<MusicState>()(
     artists: [],
     genres: [],
     scanStatus: 'idle',
+    scanProgress: null,
     lastScanTime: 0,
+    newSongsCount: 0,
+    removedSongsCount: 0,
     sortField: 'title',
     sortOrder: 'asc',
     backgroundScanEnabled: isBackgroundScanEnabled(),
@@ -43,13 +57,30 @@ export const useMusicStore = create<MusicState>()(
             state.artists = getCachedArtists();
             state.genres = getCachedGenres();
             state.scanStatus = 'complete';
+            state.scanProgress = null;
           });
           return;
         }
       }
 
-      const result = await scanMediaLibrary((status) => {
-        set((state) => { state.scanStatus = status; });
+      const result = await scanMediaLibrary(
+        (status) => {
+          set((state) => { state.scanStatus = status; });
+        },
+        (processed, total) => {
+          set((state) => { state.scanProgress = { processed, total }; });
+        },
+        { video: false },
+      );
+
+      const knownUris = new Set(Object.keys(getKnownFiles()));
+      const newSongs = findMissingFiles(result.songs, knownUris);
+      const removedUris = findRemovedFiles(result.songs.map((s) => s.uri));
+      updateKnownFiles(result.songs);
+      saveScanHistory({
+        lastFullScan: force ? Date.now() : getScanHistory().lastFullScan,
+        lastIncrementalScan: Date.now(),
+        fileCount: result.songs.length,
       });
 
       set((state) => {
@@ -58,6 +89,9 @@ export const useMusicStore = create<MusicState>()(
         state.artists = result.artists;
         state.genres = result.genres;
         state.lastScanTime = Date.now();
+        state.newSongsCount = newSongs.length;
+        state.removedSongsCount = removedUris.length;
+        state.scanProgress = null;
       });
     },
 

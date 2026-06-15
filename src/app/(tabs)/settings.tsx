@@ -24,6 +24,7 @@ import {
   FolderOpen,
   RefreshCw,
   Database,
+  EyeOff,
   Shield,
   HelpCircle,
   Info,
@@ -48,6 +49,8 @@ export default function SettingsScreen() {
   const setColorAware = useSettingsStore((s) => s.setColorAware);
   const backgroundImage = useSettingsStore((s) => s.backgroundImage);
   const setBackgroundImage = useSettingsStore((s) => s.setBackgroundImage);
+  const showSystemHiddenFiles = useSettingsStore((s) => s.showSystemHiddenFiles);
+  const setShowSystemHiddenFiles = useSettingsStore((s) => s.setShowSystemHiddenFiles);
   const currentThemeId = useThemeStore((s) => s.currentThemeId);
   const currentTheme = getThemeById(currentThemeId);
   const accentOverride = useSettingsStore((s) => s.accentOverride);
@@ -269,6 +272,23 @@ export default function SettingsScreen() {
               onPress={() => router.push('/storage' as any)}
               colors={colors}
             />
+            <SettingRow
+              icon={EyeOff}
+              label={t('settings.hidden.files')}
+              subtitle={t('settings.hidden.files.desc')}
+              onPress={() => router.push('/hidden-files' as any)}
+              colors={colors}
+            />
+            <View style={[s.flexRow, s.itemsCenter, s.gap4, s.p4, { borderBottomWidth: 1, borderBottomColor: colors.border + '20' }]}>
+              <View style={[s.w10, s.h10, s.roundedXl, s.itemsCenter, s.justifyCenter, { backgroundColor: colors.accent + '15' }]}>
+                <EyeOff size={20} color={colors.accent} />
+              </View>
+              <View style={[s.flex1]}>
+                <Text style={[s.textSm, s.fontMedium, { color: colors.text }]}>{t('settings.system.hidden.files')}</Text>
+                <Text style={[s.textXs, s.mt05, { color: colors.textMuted }]}>{t('settings.system.hidden.files.desc')}</Text>
+              </View>
+              <Switch value={showSystemHiddenFiles} onValueChange={setShowSystemHiddenFiles} trackColor={{ false: colors.card, true: colors.accent + '80' }} thumbColor="#fff" />
+            </View>
           </Section>
 
           <Section title="GENERAL" colors={colors}>

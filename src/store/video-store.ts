@@ -1,13 +1,14 @@
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
-import type { Video, SortField, SortOrder } from '@/types/media';
+import type { Video, SortField, SortOrder, MediaScanStatus } from '@/types/media';
 import { scanMediaLibrary, getCachedVideos } from '@/services/scanner';
 
 interface VideoState {
   videos: Video[];
+  scanStatus: MediaScanStatus;
+  scanProgress: { processed: number; total: number } | null;
   sortField: SortField;
   sortOrder: SortOrder;
-  loadVideos: () => void;
   scanVideos: (force?: boolean) => Promise<void>;
   setSort: (field: SortField, order: SortOrder) => void;
   getSortedVideos: () => Video[];
@@ -16,24 +17,37 @@ interface VideoState {
 export const useVideoStore = create<VideoState>()(
   immer((set, get) => ({
     videos: [],
+    scanStatus: 'idle',
+    scanProgress: null,
     sortField: 'dateAdded',
     sortOrder: 'desc',
-
-    loadVideos: () => {
-      const cached = getCachedVideos();
-      set((s) => { s.videos = cached; });
-    },
 
     scanVideos: async (force?: boolean) => {
       if (!force) {
         const cached = getCachedVideos();
         if (cached.length > 0) {
-          set((s) => { s.videos = cached; });
+          set((s) => {
+            s.videos = cached;
+            s.scanStatus = 'complete';
+            s.scanProgress = null;
+          });
           return;
         }
       }
-      const result = await scanMediaLibrary();
-      set((s) => { s.videos = result.videos; });
+      const result = await scanMediaLibrary(
+        (status) => {
+          set((s) => { s.scanStatus = status; });
+        },
+        (processed, total) => {
+          set((s) => { s.scanProgress = { processed, total }; });
+        },
+        { audio: false },
+      );
+      set((s) => {
+        s.videos = result.videos;
+        s.scanStatus = 'complete';
+        s.scanProgress = null;
+      });
     },
 
     setSort: (field, order) => {

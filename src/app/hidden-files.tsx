@@ -1,5 +1,6 @@
 import { View, Text, ScrollView, Pressable, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
 import { s } from '@/styles';
 import { useTheme } from '@/hooks/use-theme';
 import { useTranslation } from '@/hooks/use-translation';
@@ -8,12 +9,13 @@ import { SectionHeader } from '@/components/section-header';
 import { useHiddenFilesStore } from '@/store/hidden-files-store';
 import { useMusicStore } from '@/store/music-store';
 import { useVideoStore } from '@/store/video-store';
-import { EyeOff, Music, Film, Trash2 } from 'lucide-react-native';
+import { EyeOff, Music, Film, Trash2, ScanEye, ChevronRight } from 'lucide-react-native';
 
 export default function HiddenFilesScreen() {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const { t } = useTranslation();
+  const router = useRouter();
   const songs = useMusicStore((s) => s.songs);
   const videos = useVideoStore((s) => s.videos);
   const hiddenSongIds = useHiddenFilesStore((s) => s.hiddenSongIds);
@@ -43,6 +45,20 @@ export default function HiddenFilesScreen() {
       <TopBar title={t('hidden.title')} showSettings={false} />
       <ScrollView style={s.flex1} contentContainerStyle={{ paddingBottom: 120 + insets.bottom }}>
         <View style={[s.px4, s.py4, s.gap6]}>
+          <Pressable
+            onPress={() => router.push('/system-hidden-files' as any)}
+            style={[s.flexRow, s.itemsCenter, s.gap3, s.p4, { backgroundColor: colors.accent + '12', borderRadius: 16 }]}
+          >
+            <View style={[s.w11, s.h11, s.roundedXl, s.itemsCenter, s.justifyCenter, { backgroundColor: colors.accent + '25' }]}>
+              <ScanEye size={22} color={colors.accent} />
+            </View>
+            <View style={s.flex1}>
+              <Text style={[s.textSm, s.fontSemibold, { color: colors.text }]}>{t('hidden.system.open')}</Text>
+              <Text style={[s.textXs, s.mt05, { color: colors.textMuted }]}>{t('hidden.system.desc')}</Text>
+            </View>
+            <ChevronRight size={18} color={colors.textMuted} />
+          </Pressable>
+
           {hiddenSongs.length === 0 && hiddenVideos.length === 0 ? (
             <View style={[s.itemsCenter, s.py12]}>
               <EyeOff size={48} color={colors.textMuted} />

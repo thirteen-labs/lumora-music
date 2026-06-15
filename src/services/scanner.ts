@@ -140,7 +140,9 @@ async function parseAudioMetadata(uri: string): Promise<{
   }
 }
 
-async function fetchSongs(): Promise<Song[]> {
+async function fetchSongs(
+  onProgress?: (batchCount: number) => void,
+): Promise<Song[]> {
   if (!MediaLibrary) return [];
   const batch = 500;
   const allSongs: Song[] = [];
@@ -180,7 +182,7 @@ async function fetchSongs(): Promise<Song[]> {
           duration: info.duration ?? 0,
           fileSize,
           dateAdded: info.creationTime ?? 0,
-          artwork: meta.artwork ?? uri ?? asset.uri,
+          artwork: meta.artwork,
           genre: meta.genre,
           bitrate: meta.bitrate,
           sampleRate: meta.sampleRate,
@@ -189,6 +191,7 @@ async function fetchSongs(): Promise<Song[]> {
     );
 
     allSongs.push(...resolved);
+    onProgress?.(resolved.length);
     hasMore = result.hasNextPage;
     cursor = result.endCursor;
   }
@@ -196,7 +199,9 @@ async function fetchSongs(): Promise<Song[]> {
   return allSongs;
 }
 
-async function fetchVideos(): Promise<Video[]> {
+async function fetchVideos(
+  onProgress?: (batchCount: number) => void,
+): Promise<Video[]> {
   if (!MediaLibrary) return [];
   const batch = 500;
   const allVideos: Video[] = [];
@@ -233,7 +238,7 @@ async function fetchVideos(): Promise<Video[]> {
           duration: info.duration ?? asset.duration ?? 0,
           fileSize,
           dateAdded: info.creationTime ?? asset.creationTime ?? 0,
-          thumbnail: uri ?? asset.uri,
+          thumbnail: info.thumbnail ?? null,
           width: info.width ?? asset.width,
           height: info.height ?? asset.height,
         };
@@ -241,6 +246,7 @@ async function fetchVideos(): Promise<Video[]> {
     );
 
     allVideos.push(...resolved);
+    onProgress?.(resolved.length);
     hasMore = result.hasNextPage;
     cursor = result.endCursor;
   }
@@ -250,8 +256,14 @@ async function fetchVideos(): Promise<Video[]> {
 
 export async function scanMediaLibrary(
   onStatusChange?: (status: MediaScanStatus) => void,
+  onProgress?: (processed: number, total: number) => void,
+  options?: { audio?: boolean; video?: boolean },
 ): Promise<{ songs: Song[]; albums: LumoraAlbum[]; artists: Artist[]; genres: Genre[]; videos: Video[] }> {
+  const scanAudio = options?.audio !== false;
+  const scanVideo = options?.video !== false;
+
   onStatusChange?.('scanning');
+  onProgress?.(0, 1);
 
   const loaded = await ensureModulesLoaded();
   if (!loaded) {
@@ -267,10 +279,42 @@ export async function scanMediaLibrary(
       return { songs: [], albums: [], artists: [], genres: [], videos: [] };
     }
 
-    const [songs, videos] = await Promise.all([
-      fetchSongs(),
-      fetchVideos(),
-    ]);
+    const MediaType = MediaLibrary.MediaType;
+    const countPromises: Promise<any>[] = [];
+    if (scanAudio) countPromises.push(MediaLibrary.getAssetsAsync({ first: 1, mediaType: MediaType.audio }));
+    if (scanVideo) countPromises.push(MediaLibrary.getAssetsAsync({ first: 1, mediaType: MediaType.video }));
+    const counts = await Promise.all(countPromises);
+    const totalItems = counts.reduce((sum, c) => sum + (c.totalCount ?? 0), 0);
+
+    let songsProcessed = 0;
+    let videosProcessed = 0;
+
+    type SongsResult = { songs: Song[] };
+    type VideosResult = { videos: Video[] };
+    const scanPromises: Promise<SongsResult | VideosResult>[] = [];
+    if (scanAudio) {
+      scanPromises.push(
+        fetchSongs((count) => {
+          songsProcessed += count;
+          onProgress?.(songsProcessed + videosProcessed, totalItems);
+        }).then((songs) => ({ songs }) as SongsResult),
+      );
+    }
+    if (scanVideo) {
+      scanPromises.push(
+        fetchVideos((count) => {
+          videosProcessed += count;
+          onProgress?.(songsProcessed + videosProcessed, totalItems);
+        }).then((videos) => ({ videos }) as VideosResult),
+      );
+    }
+    const results = await Promise.all(scanPromises);
+    const songs: Song[] = [];
+    const videos: Video[] = [];
+    for (const r of results) {
+      if ('songs' in r) songs.push(...r.songs);
+      if ('videos' in r) videos.push(...r.videos);
+    }
 
     const albumMap = new Map<string, LumoraAlbum>();
     for (const song of songs) {
@@ -329,6 +373,7 @@ export async function scanMediaLibrary(
     cachedGenres = genres;
     cachedVideos = videos;
 
+    onProgress?.(totalItems, totalItems);
     onStatusChange?.('complete');
     return { songs, albums, artists, genres, videos };
   } catch (error) {

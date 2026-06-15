@@ -13,7 +13,7 @@ import { updateKnownFiles } from '@/scanner/enhanced-scanner';
 export function useScanManager() {
   const scan = useMusicStore((s) => s.scan);
   const songs = useMusicStore((s) => s.songs);
-  const loadVideos = useVideoStore((s) => s.loadVideos);
+  const scanVideos = useVideoStore((s) => s.scanVideos);
 
   useEffect(() => {
     const setup = async () => {
@@ -33,19 +33,19 @@ export function useScanManager() {
         const result = await scanMediaLibrary();
         if (result.songs.length > 0) {
           updateKnownFiles(result.songs);
-          loadVideos();
+          scanVideos();
         }
       }
     };
 
     const subscription = AppState.addEventListener('change', handleAppState);
     return () => subscription?.remove();
-  }, [loadVideos]);
+  }, [scanVideos]);
 
   const manualScan = useCallback(async () => {
     await scan();
-    loadVideos();
-  }, [scan, loadVideos]);
+    scanVideos();
+  }, [scan, scanVideos]);
 
   return {
     manualScan,

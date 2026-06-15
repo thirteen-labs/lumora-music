@@ -1,4 +1,5 @@
 import { Paths, File, Directory } from 'expo-file-system';
+import { useSettingsStore } from '@/store/settings-store';
 
 export interface FileItem {
   name: string;
@@ -35,10 +36,11 @@ export async function listDirectory(uri: string): Promise<FileItem[]> {
     const dir = new Directory(uri);
     const entries = await dir.list();
     const results: FileItem[] = [];
+    const showHidden = useSettingsStore.getState().showSystemHiddenFiles;
 
     for (const entry of entries) {
       const name = entry.name;
-      if (name.startsWith('.')) continue;
+      if (!showHidden && name.startsWith('.')) continue;
 
       try {
         if (entry instanceof Directory) {
@@ -56,7 +58,7 @@ export async function listDirectory(uri: string): Promise<FileItem[]> {
             uri: entry.uri,
             isDirectory: false,
             size: info.size ?? 0,
-            modificationTime: (info as any).modificationTime ?? 0,
+            modificationTime: 'modificationTime' in info ? (info as any).modificationTime ?? 0 : 0,
           });
         }
       } catch {

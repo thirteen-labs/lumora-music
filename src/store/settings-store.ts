@@ -49,6 +49,7 @@ const SETTINGS_KEYS = {
   fontFamily: "lumora-setting-font-family",
   adsRemoved: "lumora-setting-ads-removed",
   accentOverride: "lumora-setting-accent-override",
+  showSystemHiddenFiles: "lumora-setting-show-system-hidden",
 } as const;
 
 function loadBool(key: string, fallback: boolean): boolean {
@@ -78,6 +79,8 @@ interface SettingsState {
   fontFamily: FontFamily;
   adsRemoved: boolean;
   accentOverride: string | null;
+  showSystemHiddenFiles: boolean;
+  setShowSystemHiddenFiles: (v: boolean) => void;
   setDefaultShuffle: (v: boolean) => void;
   setDefaultRepeat: (v: RepeatMode) => void;
   setCrossfade: (v: boolean) => void;
@@ -120,7 +123,12 @@ export const useSettingsStore = create<SettingsState>()(
     language: (loadString(SETTINGS_KEYS.language, "en") as AppLanguage) || "en",
     fontFamily: (loadString(SETTINGS_KEYS.fontFamily, "system") as FontFamily) || "system",
     adsRemoved: loadBool(SETTINGS_KEYS.adsRemoved, false),
+    showSystemHiddenFiles: loadBool(SETTINGS_KEYS.showSystemHiddenFiles, false),
 
+    setShowSystemHiddenFiles: (v) => {
+      set((s) => { s.showSystemHiddenFiles = v; });
+      try { storage.set(SETTINGS_KEYS.showSystemHiddenFiles, v); } catch {}
+    },
     setDefaultShuffle: (v) => {
       set((s) => {
         s.defaultShuffle = v;
