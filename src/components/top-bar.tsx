@@ -1,10 +1,12 @@
-import { View, Text, Pressable } from 'react-native';
+import { useEffect, useRef, useCallback } from 'react';
+import { View, Text, Pressable, type LayoutChangeEvent } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Search, Settings, Music, Video, Folder, ListMusic } from 'lucide-react-native';
 import { useRouter, usePathname } from 'expo-router';
 import { s } from '@/styles';
 import { useTheme } from '@/hooks/use-theme';
 import { useTranslation } from '@/hooks/use-translation';
+import Animated, { useSharedValue, useAnimatedStyle, withTiming } from 'react-native-reanimated';
 
 interface TopBarProps {
   showSearch?: boolean;
@@ -39,6 +41,41 @@ export function TopBar({ showSearch = true, showSettings = true, title }: TopBar
   };
 
   const activeKey = getActiveKey();
+
+  const itemLayouts = useRef<Record<string, { x: number; width: number }>>({});
+  const activeKeyRef = useRef(activeKey);
+  const sliderX = useSharedValue(0);
+  const sliderW = useSharedValue(0);
+
+  useEffect(() => { activeKeyRef.current = activeKey; }, [activeKey]);
+
+  const handleLayout = useCallback((key: string, e: LayoutChangeEvent) => {
+    const { x, width } = e.nativeEvent.layout;
+    itemLayouts.current[key] = { x, width };
+    if (key === activeKeyRef.current) {
+      /* eslint-disable react-hooks/immutability */
+      sliderX.value = withTiming(x, { duration: 300 });
+      sliderW.value = withTiming(width, { duration: 300 });
+      /* eslint-enable react-hooks/immutability */
+    }
+  }, [sliderX, sliderW]);
+
+  useEffect(() => {
+    if (activeKey) {
+      const pos = itemLayouts.current[activeKey];
+      if (pos) {
+        /* eslint-disable react-hooks/immutability */
+        sliderX.value = withTiming(pos.x, { duration: 300 });
+        sliderW.value = withTiming(pos.width, { duration: 300 });
+        /* eslint-enable react-hooks/immutability */
+      }
+    }
+  }, [activeKey, sliderX, sliderW]);
+
+  const sliderAnimatedStyle = useAnimatedStyle(() => ({
+    width: sliderW.value,
+    transform: [{ translateX: sliderX.value }],
+  }));
 
   return (
     <View
@@ -114,6 +151,15 @@ export function TopBar({ showSearch = true, showSettings = true, title }: TopBar
         <View
           style={[s.flexRow, s.itemsCenter, s.justifyCenter, s.pb2, { paddingHorizontal: 16 }]}
         >
+          <Animated.View
+            style={[{
+              position: 'absolute',
+              bottom: 6,
+              height: 2,
+              backgroundColor: colors.accent,
+              borderRadius: 1,
+            }, sliderAnimatedStyle]}
+          />
           {NAV_ITEMS.map((item) => {
             const isActive = activeKey === item.key;
             const Icon = item.icon;
@@ -121,6 +167,7 @@ export function TopBar({ showSearch = true, showSettings = true, title }: TopBar
               <Pressable
                 key={item.key}
                 onPress={() => router.push(item.route as any)}
+                onLayout={(e) => handleLayout(item.key, e)}
                 style={{ marginHorizontal: 8, alignItems: 'center' }}
               >
                 <View
@@ -138,17 +185,6 @@ export function TopBar({ showSearch = true, showSettings = true, title }: TopBar
                     {t(item.labelKey as any)}
                   </Text>
                 </View>
-                {isActive && (
-                  <View
-                    style={{
-                      width: '70%',
-                      height: 2,
-                      backgroundColor: colors.accent,
-                      borderRadius: 1,
-                      marginTop: 4,
-                    }}
-                  />
-                )}
               </Pressable>
             );
           })}
