@@ -72,6 +72,21 @@ function makeTheme(
 
 export const themes: Theme[] = [
   makeTheme('obsidian', 'Obsidian', '#080A0F', '#0F1117', '#F0F2F8', '#7C82F8', true),
+  makeTheme('nebula', 'Nebula', '#0B0719', '#16112A', '#F0EEFF', '#7C3AED', true),
+  makeTheme('aurora', 'Aurora', '#051410', '#0A1F19', '#EEFFF8', '#10B981', true),
+  makeTheme('sunset', 'Sunset', '#1A0E08', '#2A1810', '#FFF5EE', '#F97316', true),
+  makeTheme('rose', 'Rose', '#1A0814', '#2A1020', '#FFF0F8', '#EC4899', true),
+  makeTheme('ocean', 'Ocean', '#05101A', '#0A1A2A', '#EEF5FF', '#06B6D4', true),
+  makeTheme('midnight', 'Midnight', '#070714', '#0F0F24', '#EEEEFF', '#6366F1', true),
+  makeTheme('forest', 'Forest', '#081408', '#0E200E', '#EEFFEE', '#22C55E', true),
+  makeTheme('lavender', 'Lavender', '#0F0A1A', '#1A1428', '#F5EEFF', '#A78BFA', true),
+  makeTheme('crimson', 'Crimson', '#1A0808', '#2A1010', '#FFF0F0', '#EF4444', true),
+  makeTheme('slate', 'Slate', '#0A0A0C', '#14141A', '#F0F0F4', '#94A3B8', true),
+  makeTheme('amber', 'Amber', '#141006', '#241C0E', '#FFF8EE', '#EAB308', true),
+  makeTheme('teal', 'Teal', '#061412', '#0C221E', '#EFFFFC', '#14B8A6', true),
+  makeTheme('plum', 'Plum', '#140A14', '#201020', '#FFF0FF', '#D946EF', true),
+  makeTheme('coral', 'Coral', '#1A0E0E', '#2A1818', '#FFF5F0', '#FB923C', true),
+  makeTheme('ice', 'Ice', '#080C16', '#0F1628', '#F0F4FF', '#38BDF8', true),
 ];
 
 export const DEFAULT_THEME_ID = 'obsidian';

@@ -42,7 +42,7 @@ export default function LibraryToolsScreen() {
   };
 
   const checkIncrementalScan = () => {
-    const currentUris = songs.map((s) => s.id);
+    const currentUris = songs.map((s) => s.uri);
     const newFiles = findNewFiles(currentUris);
     const removedFiles = findRemovedFiles(currentUris);
     setScanInfo({ newFiles: newFiles.length, removedFiles: removedFiles.length });

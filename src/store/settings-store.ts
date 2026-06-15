@@ -5,7 +5,7 @@ import type { RepeatMode } from "@/types/player";
 
 export type NowPlayingLayout = "classic" | "modern" | "minimal";
 export type AppLanguage = "en" | "es" | "fr" | "de" | "ja" | "zh" | "pt" | "ru" | "it" | "ko" | "ar" | "tr";
-export type FontFamily = "system" | "serif" | "rounded" | "mono";
+export type FontFamily = "system" | "serif" | "rounded" | "mono" | "poppins" | "inter" | "monr" | "socide" | "epsor" | "roba" | "hago" | "preospe";
 
 export const LANGUAGE_OPTIONS: { code: AppLanguage; label: string; native: string }[] = [
   { code: "en", label: "English", native: "English" },
@@ -24,9 +24,17 @@ export const LANGUAGE_OPTIONS: { code: AppLanguage; label: string; native: strin
 
 export const FONT_OPTIONS: { key: FontFamily; label: string }[] = [
   { key: "system", label: "System" },
+  { key: "inter", label: "Inter" },
+  { key: "poppins", label: "Poppins" },
   { key: "serif", label: "Serif" },
   { key: "rounded", label: "Rounded" },
   { key: "mono", label: "Monospace" },
+  { key: "monr", label: "Monr" },
+  { key: "socide", label: "Socide" },
+  { key: "epsor", label: "Epsor" },
+  { key: "roba", label: "Roba" },
+  { key: "hago", label: "Hago" },
+  { key: "preospe", label: "Preospe" },
 ];
 
 const SETTINGS_KEYS = {
@@ -40,6 +48,7 @@ const SETTINGS_KEYS = {
   language: "lumora-setting-language",
   fontFamily: "lumora-setting-font-family",
   adsRemoved: "lumora-setting-ads-removed",
+  accentOverride: "lumora-setting-accent-override",
 } as const;
 
 function loadBool(key: string, fallback: boolean): boolean {
@@ -68,6 +77,7 @@ interface SettingsState {
   language: AppLanguage;
   fontFamily: FontFamily;
   adsRemoved: boolean;
+  accentOverride: string | null;
   setDefaultShuffle: (v: boolean) => void;
   setDefaultRepeat: (v: RepeatMode) => void;
   setCrossfade: (v: boolean) => void;
@@ -78,6 +88,7 @@ interface SettingsState {
   setLanguage: (lang: AppLanguage) => void;
   setFontFamily: (font: FontFamily) => void;
   setAdsRemoved: (v: boolean) => void;
+  setAccentOverride: (color: string | null) => void;
 }
 
 export const useSettingsStore = create<SettingsState>()(
@@ -93,6 +104,10 @@ export const useSettingsStore = create<SettingsState>()(
       }
     })(),
     colorAware: loadBool(SETTINGS_KEYS.colorAware, false),
+    accentOverride: (() => {
+      const v = loadString(SETTINGS_KEYS.accentOverride, "");
+      return v || null;
+    })(),
     backgroundImage: (() => {
       const v = loadString(SETTINGS_KEYS.backgroundImage, "");
       return v || null;
@@ -174,6 +189,13 @@ export const useSettingsStore = create<SettingsState>()(
     setAdsRemoved: (v) => {
       set((s) => { s.adsRemoved = v; });
       try { storage.set(SETTINGS_KEYS.adsRemoved, v); } catch {}
+    },
+    setAccentOverride: (color) => {
+      set((s) => { s.accentOverride = color; });
+      try {
+        if (color) storage.set(SETTINGS_KEYS.accentOverride, color);
+        else storage.set(SETTINGS_KEYS.accentOverride, '');
+      } catch {}
     },
   })),
 );

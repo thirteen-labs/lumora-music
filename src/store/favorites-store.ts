@@ -30,6 +30,9 @@ interface FavoritesState {
   setVideos: (videos: Video[]) => void;
   hydrateFavorites: (allSongs: Song[], allVideos: Video[]) => void;
   refreshFavoriteVideos: (allVideos: Video[]) => void;
+  clearSongFavorites: () => void;
+  clearVideoFavorites: () => void;
+  clearAllFavorites: () => void;
 }
 
 export const useFavoritesStore = create<FavoritesState>()(
@@ -83,6 +86,33 @@ export const useFavoritesStore = create<FavoritesState>()(
     refreshFavoriteVideos: (allVideos) => {
       set((s) => {
         s.videos = allVideos.filter((video) => s.favoriteVideoIds.includes(video.id));
+      });
+    },
+
+    clearSongFavorites: () => {
+      set((s) => {
+        s.favoriteSongIds = [];
+        s.songs = [];
+        saveIds(FAV_SONGS_KEY, []);
+      });
+    },
+
+    clearVideoFavorites: () => {
+      set((s) => {
+        s.favoriteVideoIds = [];
+        s.videos = [];
+        saveIds(FAV_VIDEOS_KEY, []);
+      });
+    },
+
+    clearAllFavorites: () => {
+      set((s) => {
+        s.favoriteSongIds = [];
+        s.favoriteVideoIds = [];
+        s.songs = [];
+        s.videos = [];
+        saveIds(FAV_SONGS_KEY, []);
+        saveIds(FAV_VIDEOS_KEY, []);
       });
     },
   })),

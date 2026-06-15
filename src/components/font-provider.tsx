@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import * as Font from 'expo-font';
-import { View, ActivityIndicator } from 'react-native';
+import { View, ActivityIndicator, Text } from 'react-native';
 import { useSettingsStore } from '@/store/settings-store';
 
 const FONT_MAP: Record<string, () => Promise<void>> = {
@@ -26,6 +26,24 @@ const FONT_MAP: Record<string, () => Promise<void>> = {
       'Inter-Bold': require('../../assets/fonts/Inter-Bold.ttf'),
     });
   },
+  monr: async () => {
+    await Font.loadAsync({ 'Monr': require('../../assets/fonts/monr.otf') });
+  },
+  socide: async () => {
+    await Font.loadAsync({ 'Socide': require('../../assets/fonts/socide.otf') });
+  },
+  epsor: async () => {
+    await Font.loadAsync({ 'Epsor': require('../../assets/fonts/epsor.otf') });
+  },
+  roba: async () => {
+    await Font.loadAsync({ 'Roba': require('../../assets/fonts/roba-4n2zl.ttf') });
+  },
+  hago: async () => {
+    await Font.loadAsync({ 'Hago': require('../../assets/fonts/Hago DEMO.otf') });
+  },
+  preospe: async () => {
+    await Font.loadAsync({ 'Preospe': require('../../assets/fonts/preospe.otf') });
+  },
 };
 
 export const FONT_FAMILY_MAP: Record<string, string | undefined> = {
@@ -35,6 +53,12 @@ export const FONT_FAMILY_MAP: Record<string, string | undefined> = {
   mono: 'JetBrainsMono',
   poppins: 'Poppins',
   inter: 'Inter',
+  monr: 'Monr',
+  socide: 'Socide',
+  epsor: 'Epsor',
+  roba: 'Roba',
+  hago: 'Hago',
+  preospe: 'Preospe',
 };
 
 interface FontProviderProps {
@@ -61,6 +85,14 @@ export function FontProvider({ children }: FontProviderProps) {
       }
       if (!cancelled) {
         setLoadedFont(fontFamily);
+        const fontName = FONT_FAMILY_MAP[fontFamily];
+        const TextWithDefaults = Text as any;
+        const existingStyle = TextWithDefaults.defaultProps?.style;
+        if (fontName) {
+          TextWithDefaults.defaultProps = { ...TextWithDefaults.defaultProps, style: [{ fontFamily: fontName }, existingStyle].flat() };
+        } else {
+          TextWithDefaults.defaultProps = { ...TextWithDefaults.defaultProps, style: Array.isArray(existingStyle) ? existingStyle.filter(Boolean) : existingStyle };
+        }
       }
     }
 

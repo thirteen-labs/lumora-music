@@ -15,9 +15,11 @@ import { useCallback } from 'react';
 import { useFocusEffect } from 'expo-router';
 import type { Song } from '@/types/media';
 import { s } from '@/styles';
+import { useTranslation } from '@/hooks/use-translation';
 
 export default function FavoritesScreen() {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const { songs, hydrateFavorites } = useFavoritesStore();
   const { bottomSheetRef, present, song } = useSongContextMenu();
@@ -60,8 +62,8 @@ export default function FavoritesScreen() {
         ListEmptyComponent={
           <View style={[s.itemsCenter, s.py20]}>
             <Heart size={40} color={colors.textMuted} />
-            <Text style={[s.mt3, { color: colors.textMuted }]}>No favorite songs yet</Text>
-            <Text style={[s.textXs, s.mt1, { color: colors.textMuted }]}>Tap the heart icon in the player</Text>
+            <Text style={[s.mt3, { color: colors.textMuted }]}>{t('playlist.no.songs')}</Text>
+            <Text style={[s.textXs, s.mt1, { color: colors.textMuted }]}>{t('playlist.add.to')}</Text>
           </View>
         }
       />

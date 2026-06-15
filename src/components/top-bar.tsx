@@ -1,9 +1,10 @@
 import { View, Text, Pressable } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Search, Settings, Music, Video, Folder, Heart } from 'lucide-react-native';
+import { Search, Settings, Music, Video, Folder, ListMusic } from 'lucide-react-native';
 import { useRouter, usePathname } from 'expo-router';
 import { s } from '@/styles';
 import { useTheme } from '@/hooks/use-theme';
+import { useTranslation } from '@/hooks/use-translation';
 
 interface TopBarProps {
   showSearch?: boolean;
@@ -12,27 +13,28 @@ interface TopBarProps {
 }
 
 const NAV_ITEMS = [
-  { key: 'music', label: 'Music', icon: Music, route: '/(tabs)/music' },
-  { key: 'videos', label: 'Videos', icon: Video, route: '/(tabs)/videos' },
-  { key: 'files', label: 'Folders', icon: Folder, route: '/(tabs)/files' },
-  { key: 'favorites', label: 'Favorites', icon: Heart, route: '/(tabs)/favorites' },
+  { key: 'music', labelKey: 'nav.music', icon: Music, route: '/(tabs)/music' },
+  { key: 'videos', labelKey: 'nav.videos', icon: Video, route: '/(tabs)/videos' },
+  { key: 'files', labelKey: 'nav.folders', icon: Folder, route: '/(tabs)/files' },
+  { key: 'playlists', labelKey: 'nav.playlists', icon: ListMusic, route: '/playlists' },
 ] as const;
 
-const TAB_KEYS = ['music', 'videos', 'files', 'favorites', 'settings'] as const;
+const TAB_KEYS = ['music', 'videos', 'files', 'playlists', 'settings'] as const;
 
 export function TopBar({ showSearch = true, showSettings = true, title }: TopBarProps) {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const pathname = usePathname();
   const { colors } = useTheme();
+  const { t } = useTranslation();
 
-  const isTabScreen = TAB_KEYS.some((key) => pathname.startsWith(`/(tabs)/${key}`)) || pathname === '/(tabs)';
+  const isTabScreen = TAB_KEYS.some((key) => pathname.startsWith(`/(tabs)/${key}`)) || pathname === '/(tabs)' || pathname === '/playlists' || pathname.startsWith('/playlist/');
 
   const getActiveKey = () => {
     if (pathname.startsWith('/(tabs)/music')) return 'music';
     if (pathname.startsWith('/(tabs)/videos')) return 'videos';
     if (pathname.startsWith('/(tabs)/files')) return 'files';
-    if (pathname.startsWith('/(tabs)/favorites')) return 'favorites';
+    if (pathname === '/playlists' || pathname.startsWith('/playlist/')) return 'playlists';
     return null;
   };
 
@@ -133,7 +135,7 @@ export function TopBar({ showSearch = true, showSettings = true, title }: TopBar
                   <Text
                     style={[s.textXs, s.fontSemibold, s.ml15, { color: isActive ? colors.accent : colors.textMuted }]}
                   >
-                    {item.label}
+                    {t(item.labelKey as any)}
                   </Text>
                 </View>
                 {isActive && (

@@ -1,19 +1,11 @@
 import { View, Text, ScrollView, Pressable, Dimensions } from 'react-native';
 import { useTheme } from '@/hooks/use-theme';
 import { useThemeStore } from '@/store/theme-store';
+import { themes } from '@/theme/themes';
 import { useRouter } from 'expo-router';
 import { ChevronLeft, Check, Paintbrush } from 'lucide-react-native';
 import { s } from '@/styles';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-
-const THEMES = [
-  { id: 'nebula', name: 'Nebula', colors: ['#7C3AED', '#3B82F6'] },
-  { id: 'aurora', name: 'Aurora', colors: ['#10B981', '#3B82F6'] },
-  { id: 'sunset', name: 'Sunset', colors: ['#F59E0B', '#EF4444'] },
-  { id: 'rose', name: 'Rose', colors: ['#EC4899', '#8B5CF6'] },
-  { id: 'ocean', name: 'Ocean', colors: ['#06B6D4', '#3B82F6'] },
-  { id: 'midnight', name: 'Midnight', colors: ['#1E1B4B', '#312E81'] },
-];
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const PADDING = 40;
@@ -39,7 +31,7 @@ export default function ThemesScreen() {
       </View>
       <ScrollView contentContainerStyle={{ paddingBottom: 120 + insets.bottom, paddingTop: 8 }} showsVerticalScrollIndicator={false}>
         <View style={[s.px5, s.flexRow, s.flexWrap, { gap: GAP }]}>
-          {THEMES.map((theme) => {
+          {themes.map((theme) => {
             const isActive = currentThemeId === theme.id;
             return (
               <Pressable
@@ -50,12 +42,23 @@ export default function ThemesScreen() {
                   style={[s.itemsCenter, s.justifyCenter, s.rounded2xl, {
                     width: ITEM_SIZE,
                     height: ITEM_SIZE,
-                    backgroundColor: theme.colors[0],
+                    backgroundColor: theme.colors.background,
                     borderWidth: isActive ? 3 : 0,
                     borderColor: isActive ? colors.accent : 'transparent',
                   }]}
                 >
+                  <View
+                    style={[s.absolute, {
+                      width: 28, height: 28, borderRadius: 14,
+                      backgroundColor: theme.colors.accent,
+                      top: 8, left: 8,
+                    }]}
+                  />
                   {isActive && <Check size={28} color={colors.background} />}
+                  <Text style={[s.absolute, s.text10, s.fontMedium, {
+                    color: theme.colors.text,
+                    bottom: 8, left: 8, right: 8,
+                  }]} numberOfLines={1}>{theme.name}</Text>
                 </View>
               </Pressable>
             );

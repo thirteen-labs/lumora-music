@@ -19,6 +19,7 @@ interface LyricsState {
   lyricsMap: Record<string, string>;
   getLyrics: (songId: string) => string | undefined;
   saveLyrics: (songId: string, text: string) => void;
+  deleteLyrics: (songId: string) => void;
 }
 
 export const useLyricsStore = create<LyricsState>()(
@@ -30,6 +31,13 @@ export const useLyricsStore = create<LyricsState>()(
     saveLyrics: (songId, text) => {
       set((state) => {
         state.lyricsMap[songId] = text;
+      });
+      saveLyricsMap(get().lyricsMap);
+    },
+
+    deleteLyrics: (songId) => {
+      set((state) => {
+        delete state.lyricsMap[songId];
       });
       saveLyricsMap(get().lyricsMap);
     },

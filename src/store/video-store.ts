@@ -1,13 +1,14 @@
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 import type { Video, SortField, SortOrder } from '@/types/media';
-import { getCachedVideos } from '@/services/scanner';
+import { scanMediaLibrary, getCachedVideos } from '@/services/scanner';
 
 interface VideoState {
   videos: Video[];
   sortField: SortField;
   sortOrder: SortOrder;
   loadVideos: () => void;
+  scanVideos: (force?: boolean) => Promise<void>;
   setSort: (field: SortField, order: SortOrder) => void;
   getSortedVideos: () => Video[];
 }
@@ -21,6 +22,18 @@ export const useVideoStore = create<VideoState>()(
     loadVideos: () => {
       const cached = getCachedVideos();
       set((s) => { s.videos = cached; });
+    },
+
+    scanVideos: async (force?: boolean) => {
+      if (!force) {
+        const cached = getCachedVideos();
+        if (cached.length > 0) {
+          set((s) => { s.videos = cached; });
+          return;
+        }
+      }
+      const result = await scanMediaLibrary();
+      set((s) => { s.videos = result.videos; });
     },
 
     setSort: (field, order) => {

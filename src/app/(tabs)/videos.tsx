@@ -3,7 +3,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FlashList } from '@shopify/flash-list';
 import { useTheme } from '@/hooks/use-theme';
 import { useVideoStore } from '@/store/video-store';
-import { useMusicStore } from '@/store/music-store';
 import { useLayoutStore } from '@/store/layout-store';
 import { TopBar } from '@/components/top-bar';
 import { MiniPlayer } from '@/components/mini-player';
@@ -14,6 +13,7 @@ import { useEffect, useMemo } from 'react';
 import { SORT_OPTIONS, type SortField, type SortOrder } from '@/types/media';
 import { useRouter } from 'expo-router';
 import { s } from '@/styles';
+import { useTranslation } from '@/hooks/use-translation';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -53,19 +53,19 @@ function VideoThumb({ uri, width, height, borderRadius, colors }: { uri: string 
 export default function VideosScreen() {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
   const videos = useVideoStore((s) => s.videos);
   const sortField = useVideoStore((s) => s.sortField);
   const sortOrder = useVideoStore((s) => s.sortOrder);
   const setSort = useVideoStore((s) => s.setSort);
-  const loadVideos = useVideoStore((s) => s.loadVideos);
+  const scanVideos = useVideoStore((s) => s.scanVideos);
   const { fileSizeTheme } = useLayoutStore();
-  const { scan } = useMusicStore();
   const sortedVideos = useMemo(() => sortVideos(videos, sortField, sortOrder), [videos, sortField, sortOrder]);
   const activeSort = SORT_OPTIONS.find((o) => o.field === sortField && o.order === sortOrder) ?? SORT_OPTIONS[0];
   const router = useRouter();
 
   useEffect(() => {
-    scan().then(() => loadVideos());
+    scanVideos();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -98,7 +98,7 @@ export default function VideosScreen() {
           ListEmptyComponent={
             <View style={[s.itemsCenter, s.py20]}>
               <VideoIcon size={40} color={colors.textMuted} />
-              <Text style={[s.mt3, { color: colors.textMuted }]}>No videos found</Text>
+              <Text style={[s.mt3, { color: colors.textMuted }]}>{t('common.no.results')}</Text>
             </View>
           }
         />
@@ -137,7 +137,7 @@ export default function VideosScreen() {
           ListEmptyComponent={
             <View style={[s.itemsCenter, s.py20]}>
               <VideoIcon size={40} color={colors.textMuted} />
-              <Text style={[s.mt3, { color: colors.textMuted }]}>No videos found</Text>
+              <Text style={[s.mt3, { color: colors.textMuted }]}>{t('common.no.results')}</Text>
             </View>
           }
         />
@@ -177,7 +177,7 @@ export default function VideosScreen() {
         ListEmptyComponent={
           <View style={[s.itemsCenter, s.py20]}>
             <VideoIcon size={40} color={colors.textMuted} />
-            <Text style={[s.mt3, { color: colors.textMuted }]}>No videos found</Text>
+            <Text style={[s.mt3, { color: colors.textMuted }]}>{t('common.no.results')}</Text>
           </View>
         }
       />

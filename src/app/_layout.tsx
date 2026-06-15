@@ -144,6 +144,10 @@ function RootStack() {
           options={{ animation: 'slide_from_right' }}
         />
         <Stack.Screen
+          name="font-settings"
+          options={{ animation: 'slide_from_right' }}
+        />
+        <Stack.Screen
           name="audio-quality"
           options={{ animation: 'slide_from_right' }}
         />

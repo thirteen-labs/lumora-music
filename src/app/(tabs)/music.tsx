@@ -13,11 +13,13 @@ import { formatDuration } from '@/utils/cn';
 import { useStatsStore } from '@/store/stats-store';
 import type { Song } from '@/types/media';
 import { s } from '@/styles';
+import { useTranslation } from '@/hooks/use-translation';
 
 export default function MusicScreen() {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { t } = useTranslation();
   const { songs, albums, artists, genres, scan } = useMusicStore();
 
   // Auto-scan if empty
@@ -51,10 +53,10 @@ export default function MusicScreen() {
           <Text style={[s.text2xl, s.fontBold, s.mb4, { color: colors.text }]}>Browse</Text>
           <View style={[s.gap3]}>
             {[
-              { icon: List, label: 'Songs', count: songs.length, route: '/music/songs' },
-              { icon: Disc3, label: 'Albums', count: albums.length, route: '/music/albums' },
-              { icon: User, label: 'Artists', count: artists.length, route: '/music/artists' },
-              { icon: Tag, label: 'Genres', count: genres.length, route: '/music/genres' },
+              { icon: List, label: t('library.songs'), count: songs.length, route: '/music/songs' },
+              { icon: Disc3, label: t('library.albums'), count: albums.length, route: '/music/albums' },
+              { icon: User, label: t('library.artists'), count: artists.length, route: '/music/artists' },
+              { icon: Tag, label: t('library.genres'), count: genres.length, route: '/music/genres' },
             ].map(({ icon: Icon, label, count, route }) => (
               <Pressable
                 key={label}
@@ -77,10 +79,10 @@ export default function MusicScreen() {
         {/* Top Songs */}
         <View style={[s.px5, s.mb6]}>
           <Text style={[s.textXs, s.fontBold, s.uppercase, { letterSpacing: 1, color: colors.textMuted }, s.mb3]}>
-            Top Songs
+            {t('stats.most.played')}
           </Text>
           <Text style={[s.textLg, s.fontBold, s.mb3, { color: colors.text }]}>
-            Most Played
+            {t('library.most.played')}
           </Text>
           <View style={{ backgroundColor: colors.surface, borderRadius: 14, overflow: 'hidden' }}>
             {topSongs.map((song, i) => song && (
@@ -102,7 +104,7 @@ export default function MusicScreen() {
             {topSongs.length === 0 && (
               <View style={[s.py6, s.itemsCenter]}>
                 <Music size={32} color={colors.textMuted} />
-                <Text style={[s.textSm, s.mt2, { color: colors.textMuted }]}>No play history yet</Text>
+                <Text style={[s.textSm, s.mt2, { color: colors.textMuted }]}>{t('stats.no.plays')}</Text>
               </View>
             )}
           </View>
@@ -112,9 +114,8 @@ export default function MusicScreen() {
         {recentlyPlayed.length > 0 && (
           <View style={[s.px5, s.mb6]}>
             <Text style={[s.textXs, s.fontBold, s.uppercase, { letterSpacing: 1, color: colors.textMuted }, s.mb3]}>
-              Recently Played
+              {t('library.recently.played')}
             </Text>
-            <Text style={[s.textLg, s.fontBold, s.mb3, { color: colors.text }]}>Quick Replay</Text>
             <View style={{ backgroundColor: colors.surface, borderRadius: 14, overflow: 'hidden' }}>
               {recentlyPlayed.map((song, i) => (
                 <Pressable

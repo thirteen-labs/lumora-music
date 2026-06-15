@@ -2,8 +2,10 @@ import { useMemo } from 'react';
 import { View, Text, ScrollView, Pressable, Switch, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@/hooks/use-theme';
-import { useSettingsStore } from '@/store/settings-store';
+import { useSettingsStore, FONT_OPTIONS } from '@/store/settings-store';
 import { useMusicStore } from '@/store/music-store';
+import { useThemeStore } from '@/store/theme-store';
+import { getThemeById } from '@/theme/themes';
 import { useRouter } from 'expo-router';
 import { useTranslation } from '@/hooks/use-translation';
 import { Image } from 'expo-image';
@@ -14,6 +16,7 @@ import {
   Palette,
   Sun,
   Languages,
+  Type,
   Music,
   Play,
   SlidersHorizontal,
@@ -45,6 +48,17 @@ export default function SettingsScreen() {
   const setColorAware = useSettingsStore((s) => s.setColorAware);
   const backgroundImage = useSettingsStore((s) => s.backgroundImage);
   const setBackgroundImage = useSettingsStore((s) => s.setBackgroundImage);
+  const currentThemeId = useThemeStore((s) => s.currentThemeId);
+  const currentTheme = getThemeById(currentThemeId);
+  const accentOverride = useSettingsStore((s) => s.accentOverride);
+  const fontFamily = useSettingsStore((s) => s.fontFamily);
+  const fontLabel = FONT_OPTIONS.find((f) => f.key === fontFamily)?.label ?? 'System';
+
+  const accentLabel: Record<string, string> = {
+    '#7C3AED': 'Purple', '#3B82F6': 'Blue', '#10B981': 'Green',
+    '#EF4444': 'Red', '#F59E0B': 'Orange', '#EC4899': 'Pink',
+    '#06B6D4': 'Cyan', '#14B8A6': 'Teal',
+  };
 
   const handleBackgroundImagePress = () => {
     const options = ['Choose from Gallery'];
@@ -95,7 +109,7 @@ export default function SettingsScreen() {
 
   return (
     <View style={[s.flex1, { backgroundColor: colors.background }]}>
-      <ScrollView contentContainerStyle={{ paddingBottom: 120 + insets.bottom, paddingTop: 16 }} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={{ paddingBottom: 120 + insets.bottom, paddingTop: insets.top + 20 }} showsVerticalScrollIndicator={false}>
         <View style={[s.px5]}>
 
           <View style={[s.flexRow, s.itemsCenter, s.gap3, s.mb8]}>
@@ -116,7 +130,7 @@ export default function SettingsScreen() {
               <View
                 style={{
                   width: '100%',
-                  aspectRatio: 1,
+                  height: 160,
                   borderRadius: 16,
                   overflow: 'hidden',
                   backgroundColor: colors.card,
@@ -165,14 +179,14 @@ export default function SettingsScreen() {
             <SettingRow
               icon={Paintbrush}
               label="Theme"
-              subtitle="Nebula"
+              subtitle={currentTheme.name}
               onPress={() => router.push('/themes' as any)}
               colors={colors}
             />
             <SettingRow
               icon={Palette}
               label="Accent Color"
-              subtitle="Purple"
+              subtitle={accentOverride ? (accentLabel[accentOverride] ?? accentOverride) : 'Default'}
               onPress={() => router.push('/accent-color' as any)}
               colors={colors}
             />
@@ -191,6 +205,13 @@ export default function SettingsScreen() {
               label="Language"
               subtitle={languageLabel[language] || 'English'}
               onPress={() => router.push('/language-settings' as any)}
+              colors={colors}
+            />
+            <SettingRow
+              icon={Type}
+              label="Font"
+              subtitle={fontLabel}
+              onPress={() => router.push('/font-settings' as any)}
               colors={colors}
             />
           </Section>

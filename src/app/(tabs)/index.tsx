@@ -88,7 +88,7 @@ export default function HomeScreen() {
                   {getGreeting()}
                 </Text>
                 <Text style={[s.textSm, s.mt1, { color: colors.textMuted }]}>
-                  {songs.length} songs · {favoriteSongIds.length} favorites
+                  {t('home.songs.favorites', { songs: songs.length, favorites: favoriteSongIds.length })}
                 </Text>
               </View>
             </View>
@@ -97,7 +97,7 @@ export default function HomeScreen() {
             {currentTrack && (
               <View style={[s.px5, s.mb6]}>
                 <Text style={[s.textXs, s.fontBold, s.uppercase, { letterSpacing: 1, color: colors.accent }]}>
-                  Now Playing
+                  {t('player.now.playing')}
                 </Text>
                 <Pressable
                   onPress={() => router.push('/player')}
@@ -124,7 +124,7 @@ export default function HomeScreen() {
               <View style={[s.mb6]}>
                 <View style={[s.flexRow, s.itemsCenter, s.justifyBetween, s.px5, s.mb3]}>
                   <Text style={[s.textXs, s.fontBold, s.uppercase, { letterSpacing: 1, color: colors.textMuted }]}>
-                    Recently Played
+                    {t('library.recently.played')}
                   </Text>
                   <Pressable onPress={() => router.push('/(tabs)/music')}>
                     <Text style={[s.textXs, s.fontSemibold, { color: colors.accent }]}>
@@ -163,7 +163,7 @@ export default function HomeScreen() {
               <View style={[s.mb6]}>
                 <View style={[s.flexRow, s.itemsCenter, s.justifyBetween, s.px5, s.mb3]}>
                   <Text style={[s.textXs, s.fontBold, s.uppercase, { letterSpacing: 1, color: colors.textMuted }]}>
-                    Recent Additions
+                    {t('library.recently.added')}
                   </Text>
                   <Pressable onPress={() => router.push('/(tabs)/music')}>
                     <Text style={[s.textXs, s.fontSemibold, { color: colors.accent }]}>

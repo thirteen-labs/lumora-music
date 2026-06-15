@@ -72,7 +72,7 @@ export function findDuplicateSongs(songs: Song[]): { song: Song; duplicates: Son
 }
 
 export function findMissingFiles(songs: Song[], knownUris: Set<string>): Song[] {
-  return songs.filter((song) => !knownUris.has(song.id));
+  return songs.filter((song) => !knownUris.has(song.uri));
 }
 
 export function calculateStorageInfo(songs: Song[], videos: { fileSize: number; title: string }[]) {

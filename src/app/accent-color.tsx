@@ -2,7 +2,8 @@ import { View, Text, ScrollView, Pressable } from 'react-native';
 import { s } from '@/styles';
 import { useTheme } from '@/hooks/use-theme';
 import { useRouter } from 'expo-router';
-import { ChevronLeft, Check, Palette } from 'lucide-react-native';
+import { useSettingsStore } from '@/store/settings-store';
+import { ChevronLeft, Check, Palette, X } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const ACCENT_COLORS = [
@@ -19,8 +20,9 @@ const ACCENT_COLORS = [
 export default function AccentColorScreen() {
   const { colors } = useTheme();
   const router = useRouter();
-  const currentColor = 'purple';
   const insets = useSafeAreaInsets();
+  const accentOverride = useSettingsStore((s) => s.accentOverride);
+  const setAccentOverride = useSettingsStore((s) => s.setAccentOverride);
 
   return (
     <View style={[s.flex1, { backgroundColor: colors.background }]}>
@@ -35,15 +37,25 @@ export default function AccentColorScreen() {
       </View>
       <ScrollView contentContainerStyle={{ paddingBottom: 120 + insets.bottom, paddingTop: 8 }} showsVerticalScrollIndicator={false}>
         <View style={s.px5}>
+          {accentOverride && (
+            <Pressable
+              onPress={() => setAccentOverride(null)}
+              style={[s.flexRow, s.itemsCenter, s.gap3, s.mb4, s.py3, s.px4, s.roundedXl, { backgroundColor: colors.surface }]}
+            >
+              <X size={16} color={colors.textMuted} />
+              <Text style={[s.textSm, s.fontMedium, { color: colors.textMuted }]}>Reset to theme default</Text>
+            </Pressable>
+          )}
           <View style={{ backgroundColor: colors.surface, borderRadius: 16, overflow: 'hidden' }}>
             {ACCENT_COLORS.map((c, i) => (
               <Pressable
                 key={c.id}
+                onPress={() => setAccentOverride(c.color)}
                 style={[s.flexRow, s.itemsCenter, s.gap4, s.p4, { borderBottomWidth: i < ACCENT_COLORS.length - 1 ? 1 : 0, borderBottomColor: colors.border + '20' }]}
               >
                 <View style={[s.w10, s.h10, s.roundedFull, { backgroundColor: c.color }]} />
                 <Text style={[s.flex1, s.textSm, s.fontMedium, { color: colors.text }]}>{c.label}</Text>
-                {currentColor === c.id && <Check size={18} color={colors.accent} />}
+                {accentOverride === c.color && <Check size={18} color={colors.accent} />}
               </Pressable>
             ))}
           </View>

@@ -1,4 +1,4 @@
-import { View, Text, ScrollView, Pressable, Alert } from 'react-native';
+import { View, Text, ScrollView, Pressable, Alert, Switch } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { s } from '@/styles';
 import { useTheme } from '@/hooks/use-theme';
@@ -37,14 +37,12 @@ export default function AudioFeaturesScreen() {
                   <AudioLines size={18} color={colors.accent} />
                   <Text style={[s.textSm, s.fontSemibold, { color: colors.text }]}>{t('audio.equalizer.10band')}</Text>
                 </View>
-                <Pressable
-                  onPress={() => eq.setEnabled(!eq.enabled)}
-                  style={[{ width: 56, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'flex-end', paddingHorizontal: 4, backgroundColor: eq.enabled ? colors.accent : colors.card }]}
-                >
-                  <View
-                    style={[{ width: 24, height: 24, borderRadius: 12, backgroundColor: '#fff', transform: [{ translateX: eq.enabled ? 0 : -22 }] }]}
-                  />
-                </Pressable>
+                <Switch
+                  value={eq.enabled}
+                  onValueChange={eq.setEnabled}
+                  trackColor={{ false: colors.card, true: colors.accent }}
+                  thumbColor="#fff"
+                />
               </View>
 
               {eq.enabled && (
@@ -173,14 +171,12 @@ export default function AudioFeaturesScreen() {
                     {t('audio.pitch.desc')}
                   </Text>
                 </View>
-                <Pressable
-                  onPress={() => speed.togglePitchCorrection()}
-                  style={[{ width: 56, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'flex-end', paddingHorizontal: 4, backgroundColor: speed.pitchCorrection ? colors.accent : colors.card }]}
-                >
-                  <View
-                    style={[{ width: 24, height: 24, borderRadius: 12, backgroundColor: '#fff', transform: [{ translateX: speed.pitchCorrection ? 0 : -22 }] }]}
-                  />
-                </Pressable>
+                <Switch
+                  value={speed.pitchCorrection}
+                  onValueChange={() => speed.togglePitchCorrection()}
+                  trackColor={{ false: colors.card, true: colors.accent }}
+                  thumbColor="#fff"
+                />
               </View>
             </View>
           </View>
@@ -194,14 +190,12 @@ export default function AudioFeaturesScreen() {
                   <Music size={18} color={colors.accent} />
                   <Text style={[s.textSm, s.fontSemibold, { color: colors.text }]}>{t('audio.replaygain')}</Text>
                 </View>
-                <Pressable
-                  onPress={() => rg.setEnabled(!rg.enabled)}
-                  style={[{ width: 56, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'flex-end', paddingHorizontal: 4, backgroundColor: rg.enabled ? colors.accent : colors.card }]}
-                >
-                  <View
-                    style={[{ width: 24, height: 24, borderRadius: 12, backgroundColor: '#fff', transform: [{ translateX: rg.enabled ? 0 : -22 }] }]}
-                  />
-                </Pressable>
+                <Switch
+                  value={rg.enabled}
+                  onValueChange={rg.setEnabled}
+                  trackColor={{ false: colors.card, true: colors.accent }}
+                  thumbColor="#fff"
+                />
               </View>
 
               {rg.enabled && (
@@ -253,14 +247,12 @@ export default function AudioFeaturesScreen() {
                   <Volume size={18} color={colors.accent} />
                   <Text style={[s.textSm, s.fontSemibold, { color: colors.text }]}>{t('audio.loudness')}</Text>
                 </View>
-                <Pressable
-                  onPress={() => { le.setEnabled(!le.enabled); }}
-                  style={[{ width: 56, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'flex-end', paddingHorizontal: 4, backgroundColor: le.enabled ? colors.accent : colors.card }]}
-                >
-                  <View
-                    style={[{ width: 24, height: 24, borderRadius: 12, backgroundColor: '#fff', transform: [{ translateX: le.enabled ? 0 : -22 }] }]}
-                  />
-                </Pressable>
+                <Switch
+                  value={le.enabled}
+                  onValueChange={le.setEnabled}
+                  trackColor={{ false: colors.card, true: colors.accent }}
+                  thumbColor="#fff"
+                />
               </View>
               {le.enabled && (
                 <>
