@@ -19,7 +19,7 @@ const NAV_ITEMS = [
   { key: 'playlists', labelKey: 'nav.playlists', icon: ListMusic, route: '/playlists' },
 ] as const;
 
-const TAB_KEYS = ['music', 'videos', 'files', 'playlists', 'settings'] as const;
+const TAB_KEYS = ['music', 'videos', 'files', 'playlists', 'favorites', 'settings'] as const;
 
 export function TopBar({ showSearch = true, showSettings = true, title }: TopBarProps) {
   const insets = useSafeAreaInsets();
@@ -28,12 +28,12 @@ export function TopBar({ showSearch = true, showSettings = true, title }: TopBar
   const { colors } = useTheme();
   const { t } = useTranslation();
 
-  const isTabScreen = TAB_KEYS.some((key) => pathname.startsWith(`/(tabs)/${key}`)) || pathname === '/(tabs)' || pathname === '/playlists' || pathname.startsWith('/playlist/');
+  const isTabScreen = pathname === '/' || TAB_KEYS.some((key) => pathname === `/${key}` || pathname.startsWith(`/${key}/`)) || pathname === '/playlists' || pathname.startsWith('/playlist/');
 
   const getActiveKey = () => {
-    if (pathname.startsWith('/(tabs)/music')) return 'music';
-    if (pathname.startsWith('/(tabs)/videos')) return 'videos';
-    if (pathname.startsWith('/(tabs)/files')) return 'files';
+    if (pathname.startsWith('/music')) return 'music';
+    if (pathname.startsWith('/videos')) return 'videos';
+    if (pathname.startsWith('/files')) return 'files';
     if (pathname === '/playlists' || pathname.startsWith('/playlist/')) return 'playlists';
     return null;
   };
@@ -42,7 +42,7 @@ export function TopBar({ showSearch = true, showSettings = true, title }: TopBar
 
   return (
     <View
-      style={[s.wFull, {
+      style={[s.wFull, s.overflowHidden, {
         paddingTop: insets.top,
         backgroundColor: colors.background,
         borderBottomLeftRadius: isTabScreen ? 16 : 0,

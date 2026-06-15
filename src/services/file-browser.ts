@@ -1,3 +1,4 @@
+import { Platform } from 'react-native';
 import { Paths, File, Directory } from 'expo-file-system';
 import { useSettingsStore } from '@/store/settings-store';
 
@@ -78,6 +79,9 @@ export async function listDirectory(uri: string): Promise<FileItem[]> {
 }
 
 export function getRootPath(): string {
+  if (Platform.OS === 'android') {
+    return '/storage/emulated/0/';
+  }
   return Paths.document.uri ?? Paths.cache.uri ?? '/';
 }
 
