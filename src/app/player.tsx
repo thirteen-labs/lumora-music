@@ -500,6 +500,7 @@ function ClassicLayout(props: LayoutProps) {
           style={{ width: '100%', height: 40 }} />
         <View style={[s.flexRow, s.justifyBetween, s.px1, s.wFull]}>
           <Text style={[s.textXs, { color: colors.textMuted }]}>{formatDuration(props.position)}</Text>
+          <Text style={[s.textXs, s.fontMedium, { color: colors.accent }]}>{Math.round(progress * 100)}%</Text>
           <Text style={[s.textXs, { color: colors.textMuted }]}>{formatDuration(duration)}</Text>
         </View>
 
@@ -600,6 +601,7 @@ function ModernLayout(props: LayoutProps) {
               style={{ width: '100%', height: 40 }} />
             <View style={[s.flexRow, s.justifyBetween, s.px1]}>
               <Text style={[s.textXs, { color: m.textMuted }]}>{formatDuration(props.position)}</Text>
+              <Text style={[s.textXs, s.fontMedium, { color: m.text }]}>{Math.round(progress * 100)}%</Text>
               <Text style={[s.textXs, { color: m.textMuted }]}>{formatDuration(duration)}</Text>
             </View>
           </View>
@@ -685,6 +687,7 @@ function MinimalLayout(props: LayoutProps) {
           style={{ width: '100%', height: 32 }} />
         <View style={[s.flexRow, s.justifyBetween, s.px1]}>
           <Text style={[s.textXs, { color: colors.textMuted }]}>{formatDuration(props.position)}</Text>
+          <Text style={[s.textXs, s.fontMedium, { color: colors.accent }]}>{Math.round(progress * 100)}%</Text>
           <Text style={[s.textXs, { color: colors.textMuted }]}>{formatDuration(duration)}</Text>
         </View>
 

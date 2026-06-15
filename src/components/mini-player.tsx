@@ -45,6 +45,9 @@ export function MiniPlayer() {
           <Text style={[s.textXs, { color: colors.textMuted }]}>
             {formatDuration(position)}
           </Text>
+          <Text style={[s.textXs, s.fontMedium, { color: colors.accent }]}>
+            {Math.round(progress * 100)}%
+          </Text>
           <Pressable onPress={togglePlay} hitSlop={8} style={[s.w10, s.h10, s.roundedFull, s.itemsCenter, s.justifyCenter, { backgroundColor: colors.card }]}>
             {isPlaying ? (
               <Pause size={18} color={colors.text} fill={colors.text} />
