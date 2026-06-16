@@ -31,6 +31,13 @@ import {
   ChevronRight,
   ImageIcon,
   Pencil,
+  FileText,
+  Clock,
+  Moon,
+  Bell,
+  HardDrive,
+  Headphones,
+  Disc3,
 } from 'lucide-react-native';
 import { s } from '@/styles';
 
@@ -47,6 +54,8 @@ export default function SettingsScreen() {
   const lastScanTime = useMusicStore((s) => s.lastScanTime);
   const colorAware = useSettingsStore((s) => s.colorAware);
   const setColorAware = useSettingsStore((s) => s.setColorAware);
+  const adsRemoved = useSettingsStore((s) => s.adsRemoved);
+  const setAdsRemoved = useSettingsStore((s) => s.setAdsRemoved);
   const backgroundImage = useSettingsStore((s) => s.backgroundImage);
   const setBackgroundImage = useSettingsStore((s) => s.setBackgroundImage);
   const showSystemHiddenFiles = useSettingsStore((s) => s.showSystemHiddenFiles);
@@ -56,6 +65,10 @@ export default function SettingsScreen() {
   const accentOverride = useSettingsStore((s) => s.accentOverride);
   const fontFamily = useSettingsStore((s) => s.fontFamily);
   const fontLabel = FONT_OPTIONS.find((f) => f.key === fontFamily)?.label ?? 'System';
+  const gaplessPlayback = useSettingsStore((s) => s.gaplessPlayback);
+  const setGaplessPlayback = useSettingsStore((s) => s.setGaplessPlayback);
+  const playTogether = useSettingsStore((s) => s.playTogether);
+  const setPlayTogether = useSettingsStore((s) => s.setPlayTogether);
 
   const accentLabel: Record<string, string> = {
     '#7C3AED': 'Purple', '#3B82F6': 'Blue', '#10B981': 'Green',
@@ -248,6 +261,33 @@ export default function SettingsScreen() {
               onPress={() => router.push('/crossfade-settings' as any)}
               colors={colors}
             />
+            <View style={[s.flexRow, s.itemsCenter, s.gap4, s.p4, { borderBottomWidth: 1, borderBottomColor: colors.border + '20' }]}>
+              <View style={[s.w10, s.h10, s.roundedXl, s.itemsCenter, s.justifyCenter, { backgroundColor: colors.accent + '15' }]}>
+                <Disc3 size={20} color={colors.accent} />
+              </View>
+              <View style={[s.flex1]}>
+                <Text style={[s.textSm, s.fontMedium, { color: colors.text }]}>Gapless Playback</Text>
+                <Text style={[s.textXs, s.mt05, { color: colors.textMuted }]}>Remove gaps between tracks</Text>
+              </View>
+              <Switch value={gaplessPlayback} onValueChange={setGaplessPlayback} trackColor={{ false: colors.card, true: colors.accent + '80' }} thumbColor="#fff" />
+            </View>
+            <View style={[s.flexRow, s.itemsCenter, s.gap4, s.p4, { borderBottomWidth: 1, borderBottomColor: colors.border + '20' }]}>
+              <View style={[s.w10, s.h10, s.roundedXl, s.itemsCenter, s.justifyCenter, { backgroundColor: colors.accent + '15' }]}>
+                <Headphones size={20} color={colors.accent} />
+              </View>
+              <View style={[s.flex1]}>
+                <Text style={[s.textSm, s.fontMedium, { color: colors.text }]}>Play Together</Text>
+                <Text style={[s.textXs, s.mt05, { color: colors.textMuted }]}>Play audio together with other apps</Text>
+              </View>
+              <Switch value={playTogether} onValueChange={setPlayTogether} trackColor={{ false: colors.card, true: colors.accent + '80' }} thumbColor="#fff" />
+            </View>
+            <SettingRow
+              icon={Moon}
+              label="Sleep Timer"
+              subtitle="Set a timer to stop playback"
+              onPress={() => router.push('/sleep-timer' as any)}
+              colors={colors}
+            />
           </Section>
 
           <Section title="LIBRARY" colors={colors}>
@@ -256,6 +296,13 @@ export default function SettingsScreen() {
               label="Scan Locations"
               subtitle="2 folders"
               onPress={() => router.push('/scan-locations' as any)}
+              colors={colors}
+            />
+            <SettingRow
+              icon={FileText}
+              label={t('settings.document.reader')}
+              subtitle={t('settings.document.reader.desc')}
+              onPress={() => router.push('/document-reader' as any)}
               colors={colors}
             />
             <SettingRow
@@ -293,12 +340,36 @@ export default function SettingsScreen() {
 
           <Section title="GENERAL" colors={colors}>
             <SettingRow
+              icon={Clock}
+              label="Play Time"
+              subtitle="View total listening stats"
+              onPress={() => router.push('/play-time' as any)}
+              colors={colors}
+            />
+            <SettingRow
+              icon={Bell}
+              label="Notifications"
+              subtitle="Media & push notification settings"
+              onPress={() => router.push('/notification-settings' as any)}
+              colors={colors}
+            />
+            <SettingRow
               icon={Shield}
               label="Privacy"
               subtitle="Offline & Local Only"
               onPress={() => router.push('/privacy' as any)}
               colors={colors}
             />
+            <View style={[s.flexRow, s.itemsCenter, s.gap4, s.p4, { borderBottomWidth: 1, borderBottomColor: colors.border + '20' }]}>
+              <View style={[s.w10, s.h10, s.roundedXl, s.itemsCenter, s.justifyCenter, { backgroundColor: colors.accent + '15' }]}>
+                <Shield size={20} color={colors.accent} />
+              </View>
+              <View style={[s.flex1]}>
+                <Text style={[s.textSm, s.fontMedium, { color: colors.text }]}>{t('settings.remove.ads')}</Text>
+                <Text style={[s.textXs, s.mt05, { color: colors.textMuted }]}>{t('settings.remove.ads.desc')}</Text>
+              </View>
+              <Switch value={adsRemoved} onValueChange={setAdsRemoved} trackColor={{ false: colors.card, true: colors.accent + '80' }} thumbColor="#fff" />
+            </View>
             <SettingRow
               icon={HelpCircle}
               label="Help & Support"
@@ -311,6 +382,13 @@ export default function SettingsScreen() {
               label="About Lumora"
               subtitle={t('settings.version')}
               onPress={() => router.push('/about' as any)}
+              colors={colors}
+            />
+            <SettingRow
+              icon={HardDrive}
+              label="Backup & Restore"
+              subtitle="Coming soon"
+              onPress={() => router.push('/backup-restore' as any)}
               colors={colors}
             />
           </Section>

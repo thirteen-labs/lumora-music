@@ -50,6 +50,12 @@ const SETTINGS_KEYS = {
   adsRemoved: "lumora-setting-ads-removed",
   accentOverride: "lumora-setting-accent-override",
   showSystemHiddenFiles: "lumora-setting-show-system-hidden",
+  audioQuality: "lumora-setting-audio-quality",
+  videoQuality: "lumora-setting-video-quality",
+  gaplessPlayback: "lumora-setting-gapless",
+  playTogether: "lumora-setting-play-together",
+  newMediaNotification: "lumora-setting-new-media-notif",
+  pushNotification: "lumora-setting-push-notif",
 } as const;
 
 function loadBool(key: string, fallback: boolean): boolean {
@@ -80,6 +86,12 @@ interface SettingsState {
   adsRemoved: boolean;
   accentOverride: string | null;
   showSystemHiddenFiles: boolean;
+  audioQuality: string;
+  videoQuality: string;
+  gaplessPlayback: boolean;
+  playTogether: boolean;
+  newMediaNotification: boolean;
+  pushNotification: boolean;
   setShowSystemHiddenFiles: (v: boolean) => void;
   setDefaultShuffle: (v: boolean) => void;
   setDefaultRepeat: (v: RepeatMode) => void;
@@ -92,6 +104,12 @@ interface SettingsState {
   setFontFamily: (font: FontFamily) => void;
   setAdsRemoved: (v: boolean) => void;
   setAccentOverride: (color: string | null) => void;
+  setAudioQuality: (v: string) => void;
+  setVideoQuality: (v: string) => void;
+  setGaplessPlayback: (v: boolean) => void;
+  setPlayTogether: (v: boolean) => void;
+  setNewMediaNotification: (v: boolean) => void;
+  setPushNotification: (v: boolean) => void;
 }
 
 export const useSettingsStore = create<SettingsState>()(
@@ -124,6 +142,12 @@ export const useSettingsStore = create<SettingsState>()(
     fontFamily: (loadString(SETTINGS_KEYS.fontFamily, "system") as FontFamily) || "system",
     adsRemoved: loadBool(SETTINGS_KEYS.adsRemoved, false),
     showSystemHiddenFiles: loadBool(SETTINGS_KEYS.showSystemHiddenFiles, false),
+    audioQuality: loadString(SETTINGS_KEYS.audioQuality, 'high'),
+    videoQuality: loadString(SETTINGS_KEYS.videoQuality, '1080p'),
+    gaplessPlayback: loadBool(SETTINGS_KEYS.gaplessPlayback, true),
+    playTogether: loadBool(SETTINGS_KEYS.playTogether, false),
+    newMediaNotification: loadBool(SETTINGS_KEYS.newMediaNotification, true),
+    pushNotification: loadBool(SETTINGS_KEYS.pushNotification, true),
 
     setShowSystemHiddenFiles: (v) => {
       set((s) => { s.showSystemHiddenFiles = v; });
@@ -204,6 +228,30 @@ export const useSettingsStore = create<SettingsState>()(
         if (color) storage.set(SETTINGS_KEYS.accentOverride, color);
         else storage.set(SETTINGS_KEYS.accentOverride, '');
       } catch {}
+    },
+    setAudioQuality: (v) => {
+      set((s) => { s.audioQuality = v; });
+      try { storage.set(SETTINGS_KEYS.audioQuality, v); } catch {}
+    },
+    setVideoQuality: (v) => {
+      set((s) => { s.videoQuality = v; });
+      try { storage.set(SETTINGS_KEYS.videoQuality, v); } catch {}
+    },
+    setGaplessPlayback: (v) => {
+      set((s) => { s.gaplessPlayback = v; });
+      try { storage.set(SETTINGS_KEYS.gaplessPlayback, v); } catch {}
+    },
+    setPlayTogether: (v) => {
+      set((s) => { s.playTogether = v; });
+      try { storage.set(SETTINGS_KEYS.playTogether, v); } catch {}
+    },
+    setNewMediaNotification: (v) => {
+      set((s) => { s.newMediaNotification = v; });
+      try { storage.set(SETTINGS_KEYS.newMediaNotification, v); } catch {}
+    },
+    setPushNotification: (v) => {
+      set((s) => { s.pushNotification = v; });
+      try { storage.set(SETTINGS_KEYS.pushNotification, v); } catch {}
     },
   })),
 );

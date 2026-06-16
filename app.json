@@ -25,7 +25,13 @@
         "FOREGROUND_SERVICE_SPECIAL_USE",
         "POST_NOTIFICATIONS",
         "WAKE_LOCK",
-        "SYSTEM_ALERT_WINDOW"
+        "SYSTEM_ALERT_WINDOW",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE",
+        "READ_MEDIA_AUDIO",
+        "READ_MEDIA_VIDEO",
+        "READ_MEDIA_IMAGES",
+        "MANAGE_EXTERNAL_STORAGE"
       ]
     },
     "web": {
@@ -40,15 +46,15 @@
         "expo-splash-screen",
         {
           "backgroundColor": "#020008",
-          "image": "./assets/name-v2.png",
-          "resizeMode": "contain",
+          "image": "./assets/splash.png",
+          "resizeMode": "cover",
           "android": {
-            "image": "./assets/name-v2.png",
-            "resizeMode": "contain"
+            "image": "./assets/splash.png",
+            "resizeMode": "cover"
           },
           "ios": {
-            "image": "./assets/name-v2.png",
-            "resizeMode": "contain"
+            "image": "./assets/splash.png",
+            "resizeMode": "cover"
           }
         }
       ],

@@ -5,20 +5,31 @@ let MetadataRetriever: any = null;
 let FileSystem: any = null;
 
 async function loadModules(): Promise<boolean> {
+  let hasMediaLibrary = false;
   try {
-    const [ml, mr, fs] = await Promise.all([
-      import('expo-media-library/legacy').catch(() => import('expo-media-library')),
-      import('@missingcore/react-native-metadata-retriever'),
-      import('expo-file-system'),
-    ]);
+    const ml = await import('expo-media-library/legacy').catch(() => import('expo-media-library'));
     MediaLibrary = ml;
-    MetadataRetriever = mr;
-    FileSystem = fs;
-    return true;
+    hasMediaLibrary = true;
   } catch (e) {
-    console.warn('Failed to load media scanner modules:', e);
+    console.warn('Failed to load expo-media-library:', e);
+  }
+  try {
+    const mr = await import('@missingcore/react-native-metadata-retriever');
+    MetadataRetriever = mr;
+  } catch (e) {
+    console.warn('Failed to load metadata retriever (metadata parsing disabled):', e);
+  }
+  try {
+    const fs = await import('expo-file-system');
+    FileSystem = fs;
+  } catch (e) {
+    console.warn('Failed to load expo-file-system:', e);
+  }
+  if (!hasMediaLibrary) {
+    console.warn('Media library module is required but failed to load');
     return false;
   }
+  return true;
 }
 
 let modulesLoaded = false;

@@ -9,10 +9,11 @@ import { TopBar } from '@/components/top-bar';
 import { MiniPlayer } from '@/components/mini-player';
 import { usePlaylistStore } from '@/store/playlist-store';
 import { useMusicStore } from '@/store/music-store';
+import { useFavoritesStore } from '@/store/favorites-store';
 import { usePlayerStore } from '@/store/player-store';
 import { useRouter } from 'expo-router';
 import {
-  Plus, ListMusic, Trash2, Play, Tag, Users, Mic2, Clock, TrendingUp, ChevronRight,
+  Heart, Plus, ListMusic, Trash2, Play, Tag, Users, Mic2, Clock, TrendingUp, ChevronRight,
 } from 'lucide-react-native';
 import {
   BottomSheetModal,
@@ -26,6 +27,7 @@ const PREDEFINED_SECTIONS = [
   { icon: Mic2, labelKey: 'library.with.lyrics', route: '/with-lyrics' },
   { icon: Clock, labelKey: 'library.recently.played', route: '/recently-played' },
   { icon: TrendingUp, labelKey: 'library.most.played', route: '/statistics' },
+  { icon: Heart, labelKey: 'library.favorites', route: '/(tabs)/favorites' },
 ];
 
 export default function PlaylistsScreen() {
@@ -36,6 +38,7 @@ export default function PlaylistsScreen() {
   const { playlists, createPlaylist, deletePlaylist } = usePlaylistStore();
   const songs = useMusicStore((s) => s.songs);
   const play = usePlayerStore((s) => s.play);
+  const favoriteCount = useFavoritesStore((s) => s.favoriteSongIds.length);
   const [newName, setNewName] = useState('');
   const createSheetRef = useRef<BottomSheetModal>(null);
 
@@ -85,9 +88,16 @@ export default function PlaylistsScreen() {
                 <View style={[s.w10, s.h10, s.roundedXl, s.itemsCenter, s.justifyCenter, { backgroundColor: colors.accent + '15' }]}>
                   <Icon size={20} color={colors.accent} />
                 </View>
-                <Text style={[s.flex1, s.textSm, s.fontMedium, { color: colors.text }]}>
-                  {t(section.labelKey as any)}
-                </Text>
+                <View style={s.flex1}>
+                  <Text style={[s.textSm, s.fontMedium, { color: colors.text }]}>
+                    {t(section.labelKey as any)}
+                  </Text>
+                  {section.labelKey === 'library.favorites' && (
+                    <Text style={[s.textXs, { color: colors.textMuted, marginTop: 2 }]}>
+                      {favoriteCount} {favoriteCount === 1 ? t('library.song') : t('library.tracks')}
+                    </Text>
+                  )}
+                </View>
                 <ChevronRight size={16} color={colors.textMuted} />
               </Pressable>
             );

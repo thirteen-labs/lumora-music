@@ -1,4 +1,4 @@
-import { View, Text, ScrollView, Pressable, Alert } from 'react-native';
+import { View, Text, ScrollView, Pressable, Alert, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { s } from '@/styles';
 import { useTheme } from '@/hooks/use-theme';
@@ -13,10 +13,12 @@ import {
   findRemovedFiles,
   getScanHistory,
   updateKnownFiles,
+  keepBestAndRemoveDuplicates,
 } from '@/scanner/enhanced-scanner';
 import { useMusicStore } from '@/store/music-store';
-import { TriangleAlert, CircleCheck, Music, Trash2, Search, RefreshCw } from 'lucide-react-native';
-import { useState } from 'react';
+import { deleteFiles } from '@/services/file-operations';
+import { TriangleAlert, CircleCheck, Music, Trash2, Search, RefreshCw, Check } from 'lucide-react-native';
+import { useState, useCallback } from 'react';
 
 export default function LibraryToolsScreen() {
   const { colors } = useTheme();
@@ -25,9 +27,57 @@ export default function LibraryToolsScreen() {
   const songs = useMusicStore((s) => s.songs);
   const [missingCount, setMissingCount] = useState<number | null>(null);
   const [scanInfo, setScanInfo] = useState<{ newFiles: number; removedFiles: number } | null>(null);
+  const [removingGroups, setRemovingGroups] = useState<Set<number>>(new Set());
+  const [batchDeleting, setBatchDeleting] = useState(false);
 
   const duplicates = findDuplicateSongs(songs);
   const scanHistory = getScanHistory();
+
+  const handleKeepBest = useCallback(async (groupIndex: number) => {
+    const group = duplicates[groupIndex];
+    if (!group) return;
+    setRemovingGroups((prev) => new Set(prev).add(groupIndex));
+    try {
+      const { kept, removed } = keepBestAndRemoveDuplicates(group);
+      await deleteFiles(removed.map((s) => s.uri));
+      Alert.alert('Done', `Kept "${kept.title}" and removed ${removed.length} duplicate(s).`);
+    } catch (e: any) {
+      Alert.alert('Error', e?.message ?? 'Failed to delete duplicates');
+    } finally {
+      setRemovingGroups((prev) => {
+        const next = new Set(prev);
+        next.delete(groupIndex);
+        return next;
+      });
+    }
+  }, [duplicates]);
+
+  const handleDeleteAllDuplicates = useCallback(() => {
+    Alert.alert(
+      'Delete All Duplicates',
+      `This will keep the best copy of each group and delete ${duplicates.reduce((sum, g) => sum + g.duplicates.length, 0)} duplicate file(s). Continue?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete All',
+          style: 'destructive',
+          onPress: async () => {
+            setBatchDeleting(true);
+            let deleted = 0;
+            let errors = 0;
+            for (const group of duplicates) {
+const { removed } = keepBestAndRemoveDuplicates(group);
+              const result = await deleteFiles(removed.map((s) => s.uri));
+              if (result.success) deleted += removed.length;
+              else errors += removed.length;
+            }
+            setBatchDeleting(false);
+            Alert.alert('Complete', `Deleted ${deleted} duplicate(s).${errors > 0 ? ` ${errors} failed.` : ''}`);
+          },
+        },
+      ],
+    );
+  }, [duplicates]);
 
   const checkMissingFiles = () => {
     const knownUris = new Set(Object.keys(getKnownFiles()));
@@ -100,11 +150,11 @@ export default function LibraryToolsScreen() {
           {duplicates.length > 0 && (
             <View>
               <SectionHeader title={t('tools.duplicates')} />
-              <View style={[s.rounded3xl, s.overflowHidden, { backgroundColor: colors.surface }]}>
+              <View style={[s.rounded3xl, s.overflowHidden, s.mb3, { backgroundColor: colors.surface }]}>
                 {duplicates.slice(0, 20).map((group, i) => (
                   <View
                     key={i}
-                    style={[s.p4, { borderBottomWidth: i < duplicates.length - 1 ? 1 : 0, borderBottomColor: colors.border }]}
+                    style={[s.p4, { borderBottomWidth: i < Math.min(duplicates.length, 20) - 1 ? 1 : 0, borderBottomColor: colors.border }]}
                   >
                     <View style={[s.flexRow, s.itemsCenter, s.gap2, s.mb2]}>
                       <Music size={14} color={colors.accent} />
@@ -115,12 +165,42 @@ export default function LibraryToolsScreen() {
                         {t('tools.copy', { count: group.duplicates.length + 1 })}
                       </Text>
                     </View>
-                    <Text style={[s.textXs, { color: colors.textMuted }]}>
+                    <Text style={[s.textXs, { color: colors.textMuted }, s.mb2]}>
                       by {group.song.artist} · {group.song.album}
                     </Text>
+                    <Pressable
+                      onPress={() => handleKeepBest(i)}
+                      disabled={removingGroups.has(i)}
+                      style={[s.flexRow, s.itemsCenter, s.justifyCenter, s.gap2, { paddingVertical: 8, borderRadius: 12, backgroundColor: colors.accent + '20' }]}
+                    >
+                      {removingGroups.has(i) ? (
+                        <ActivityIndicator size="small" color={colors.accent} />
+                      ) : (
+                        <>
+                          <Check size={14} color={colors.accent} />
+                          <Text style={[s.textXs, s.fontSemibold, { color: colors.accent }]}>Keep Best & Delete Others</Text>
+                        </>
+                      )}
+                    </Pressable>
                   </View>
                 ))}
               </View>
+              <Pressable
+                onPress={handleDeleteAllDuplicates}
+                disabled={batchDeleting}
+                style={[s.flexRow, s.itemsCenter, s.justifyCenter, s.gap2, { paddingVertical: 12, borderRadius: 16, backgroundColor: colors.accent }]}
+              >
+                {batchDeleting ? (
+                  <ActivityIndicator size="small" color={colors.background} />
+                ) : (
+                  <>
+                    <Trash2 size={16} color={colors.background} />
+                    <Text style={[s.textSm, s.fontSemibold, { color: colors.background }]}>
+                      Delete All Duplicates ({duplicates.reduce((sum, g) => sum + g.duplicates.length, 0)} files)
+                    </Text>
+                  </>
+                )}
+              </Pressable>
             </View>
           )}
 

@@ -71,6 +71,33 @@ export function findDuplicateSongs(songs: Song[]): { song: Song; duplicates: Son
   return duplicates;
 }
 
+export function pickBestSong(songs: Song[]): Song {
+  return songs.reduce((best, s) => {
+    const bestScore = (best.bitrate ?? 0) + (best.fileSize / 1048576);
+    const sScore = (s.bitrate ?? 0) + (s.fileSize / 1048576);
+    return sScore > bestScore ? s : best;
+  });
+}
+
+export function removeDuplicateGroup(
+  group: { song: Song; duplicates: Song[] },
+  keepIndex: number
+): { kept: Song; removed: Song[] } {
+  const all = [group.song, ...group.duplicates];
+  const kept = all[keepIndex] ?? group.song;
+  const removed = all.filter((_, i) => i !== keepIndex);
+  return { kept, removed };
+}
+
+export function keepBestAndRemoveDuplicates(
+  group: { song: Song; duplicates: Song[] }
+): { kept: Song; removed: Song[] } {
+  const all = [group.song, ...group.duplicates];
+  const best = pickBestSong(all);
+  const removed = all.filter((s) => s !== best);
+  return { kept: best, removed };
+}
+
 export function findMissingFiles(songs: Song[], knownUris: Set<string>): Song[] {
   return songs.filter((song) => !knownUris.has(song.uri));
 }

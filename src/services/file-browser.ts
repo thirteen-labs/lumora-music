@@ -85,6 +85,20 @@ export function getRootPath(): string {
   return Paths.document.uri ?? Paths.cache.uri ?? '/';
 }
 
+export async function getAccessibleRootPath(): Promise<string> {
+  if (Platform.OS === 'android') {
+    const storagePath = '/storage/emulated/0/';
+    try {
+      const dir = new Directory(storagePath);
+      const entries = await dir.list();
+      if (entries.length > 0) return storagePath;
+    } catch {}
+    const docUri = Paths.document.uri;
+    if (docUri) return docUri;
+  }
+  return getRootPath();
+}
+
 export function getParentPath(uri: string): string | null {
   const cleaned = uri.replace(/\/$/, '');
   const lastSlash = cleaned.lastIndexOf('/');

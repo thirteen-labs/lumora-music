@@ -90,6 +90,7 @@ export default function SongsScreen() {
         options={SORT_OPTIONS}
         active={activeSort}
         onSelect={(opt) => setSort(opt.field, opt.order)}
+        count={sortedSongs.length}
       />
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', paddingHorizontal: 16, paddingBottom: 8, gap: 8 }}>
         <Pressable

@@ -21,6 +21,7 @@ export const s = StyleSheet.create({
   justifyStart: { justifyContent: 'flex-start' },
   selfCenter: { alignSelf: 'center' },
   selfStart: { alignSelf: 'flex-start' },
+  selfEnd: { alignSelf: 'flex-end' },
   selfStretch: { alignSelf: 'stretch' },
 
   // ── Position ──
@@ -38,8 +39,10 @@ export const s = StyleSheet.create({
   w11: { width: 44 },
   w12: { width: 48 },
   w14: { width: 56 },
+  w16: { width: 64 },
   w5: { width: 20 },
   w3: { width: 12 },
+  h16: { height: 64 },
   h10: { height: 40 },
   h11: { height: 44 },
   h12: { height: 48 },

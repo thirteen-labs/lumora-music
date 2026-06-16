@@ -32,7 +32,7 @@ export default function HomeScreen() {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const { t } = useTranslation();
-  const { songs } = useMusicStore();
+  const { songs, scan } = useMusicStore();
   const { favoriteSongIds, hydrateFavorites } = useFavoritesStore();
   const { currentTrack } = usePlayerStore();
   const router = useRouter();
@@ -41,8 +41,12 @@ export default function HomeScreen() {
 
   useEffect(() => {
     const init = async () => {
-      const allSongs = useMusicStore.getState().songs;
+      let allSongs = useMusicStore.getState().songs;
       const allVideos = useVideoStore.getState().videos;
+      if (allSongs.length === 0) {
+        await scan();
+        allSongs = useMusicStore.getState().songs;
+      }
       hydrateFavorites(allSongs, allVideos);
     };
     init();

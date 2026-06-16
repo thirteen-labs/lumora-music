@@ -42,6 +42,7 @@ class AudioEngine {
   private _currentTime = 0;
   private _duration = 0;
   private _speed = 1.0;
+  private _pitchCorrection = false;
   private _volume = 1.0;
   private _startOffset = 0;
   private _startContextTime = 0;
@@ -221,7 +222,7 @@ class AudioEngine {
     }
 
     this.stopCurrentSource();
-    this.currentSource = this.createSource(this.currentBuffer, false);
+    this.currentSource = this.createSource(this.currentBuffer, this._pitchCorrection);
     this._startContextTime = this.context.currentTime;
     this._startOffset = this._currentTime;
     this.currentSource.onEnded = () => {
@@ -289,7 +290,7 @@ class AudioEngine {
 
     if (wasPlaying && this.currentBuffer) {
       this.stopCurrentSource();
-      this.currentSource = this.createSource(this.currentBuffer, false);
+      this.currentSource = this.createSource(this.currentBuffer, this._pitchCorrection);
       this.currentSource.onEnded = () => {
         if (this._playing && !this._seeking) {
           this._playing = false;
@@ -322,6 +323,10 @@ class AudioEngine {
         this.context?.currentTime ?? 0
       );
     }
+  }
+
+  setPitchCorrection(enabled: boolean): void {
+    this._pitchCorrection = enabled;
   }
 
   setEqEnabled(enabled: boolean): void {
@@ -446,7 +451,7 @@ class AudioEngine {
       this.currentSource.connect(oldGain);
       oldGain.connect(this.eqFilters[0]);
 
-      const crossfadeSource = this.context.createBufferSource({ pitchCorrection: false });
+      const crossfadeSource = this.context.createBufferSource({ pitchCorrection: this._pitchCorrection });
       crossfadeSource.buffer = newBuffer;
       crossfadeSource.playbackRate.value = this._speed;
       crossfadeSource.connect(newGain);

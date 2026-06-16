@@ -13,9 +13,11 @@ import { ErrorBoundary } from '@/components/error-boundary';
 import { Toast } from '@/components/toast';
 import { StatusBar } from 'expo-status-bar';
 import { useTheme } from '@/hooks/use-theme';
+import { useScanManager } from '@/hooks/use-scan-manager';
 
 function RootStack() {
   const { colors } = useTheme();
+  useScanManager();
 
   return (
     <View style={{ flex: 1 }}>
@@ -157,6 +159,14 @@ function RootStack() {
         />
         <Stack.Screen
           name="crossfade-settings"
+          options={{ animation: 'slide_from_right' }}
+        />
+        <Stack.Screen
+          name="notification-settings"
+          options={{ animation: 'slide_from_right' }}
+        />
+        <Stack.Screen
+          name="backup-restore"
           options={{ animation: 'slide_from_right' }}
         />
         <Stack.Screen

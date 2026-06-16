@@ -1,7 +1,9 @@
+import { useMemo } from 'react';
 import { View, Text, ScrollView, Pressable } from 'react-native';
 import { s } from '@/styles';
 import { useTheme } from '@/hooks/use-theme';
 import { useMusicStore } from '@/store/music-store';
+import { useStatsStore } from '@/store/stats-store';
 import { usePlayerStore } from '@/store/player-store';
 import { useRouter } from 'expo-router';
 import { ChevronLeft, Play, Clock } from 'lucide-react-native';
@@ -11,7 +13,8 @@ export default function RecentlyPlayedScreen() {
   const { colors } = useTheme();
   const router = useRouter();
   const songs = useMusicStore((s) => s.songs);
-  const recentlyPlayed = songs.slice(0, 20);
+  const getRecentlyPlayed = useStatsStore((s) => s.getRecentlyPlayed);
+  const recentlyPlayed = useMemo(() => getRecentlyPlayed(songs, 20), [songs, getRecentlyPlayed]);
   const insets = useSafeAreaInsets();
 
   return (

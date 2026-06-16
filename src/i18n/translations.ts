@@ -135,6 +135,8 @@ const en = {
   'settings.subtitles.desc': 'Download subtitles online',
   'settings.ai': 'AI Features',
   'settings.ai.desc': 'Smart playlists, mood detection',
+  'settings.document.reader': 'Document Reader',
+  'settings.document.reader.desc': 'Browse and read documents on device',
   'settings.cloud.backup': 'Cloud Backup',
   'settings.cloud.backup.desc': 'Backup playlists, favorites & settings',
   'settings.cloud.restore': 'Cloud Restore',
@@ -229,6 +231,11 @@ const en = {
   'video.pip': 'Picture in Picture',
   'video.resume': 'Resume from {position}',
   'video.start.over': 'Start Over',
+  'video.screenshot': 'Screenshot',
+  'video.screenshot.captured': 'Captured!',
+  'video.audio.track': 'Audio Track',
+  'video.audio.track.title': 'Audio Track',
+  'video.screenshot.share': 'Share Screenshot',
 
   // Statistics
   'stats.title': 'Statistics',

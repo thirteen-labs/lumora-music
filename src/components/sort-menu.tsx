@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useRef } from 'react';
-import { Pressable, Text } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import {
   BottomSheetModal,
   BottomSheetView,
@@ -14,9 +14,10 @@ interface SortMenuProps {
   options: SortOption[];
   active: SortOption;
   onSelect: (option: SortOption) => void;
+  count?: number;
 }
 
-export function SortMenu({ options, active, onSelect }: SortMenuProps) {
+export function SortMenu({ options, active, onSelect, count }: SortMenuProps) {
   const { colors } = useTheme();
   const bottomSheetRef = useRef<BottomSheetModal>(null);
 
@@ -35,11 +36,18 @@ export function SortMenu({ options, active, onSelect }: SortMenuProps) {
 
   return (
     <>
-      <Pressable onPress={handlePresent} style={[s.px4, s.py2]}>
-        <Text style={[s.textXs, { color: colors.accent }]}>
-          {active.label} ▼
-        </Text>
-      </Pressable>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 4 }}>
+        {count !== undefined && (
+          <Text style={[s.textXs, { color: colors.textMuted }]}>
+            {count}
+          </Text>
+        )}
+        <Pressable onPress={handlePresent} style={[s.py1]}>
+          <Text style={[s.textXs, { color: colors.accent }]}>
+            {active.label} ▼
+          </Text>
+        </Pressable>
+      </View>
 
       <BottomSheetModal
         ref={bottomSheetRef}

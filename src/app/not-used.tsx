@@ -1,7 +1,9 @@
+import { useMemo } from 'react';
 import { View, Text, ScrollView, Pressable } from 'react-native';
 import { s } from '@/styles';
 import { useTheme } from '@/hooks/use-theme';
 import { useMusicStore } from '@/store/music-store';
+import { useStatsStore } from '@/store/stats-store';
 import { usePlayerStore } from '@/store/player-store';
 import { useRouter } from 'expo-router';
 import { ChevronLeft, Play, Archive } from 'lucide-react-native';
@@ -11,7 +13,8 @@ export default function NotUsedScreen() {
   const { colors } = useTheme();
   const router = useRouter();
   const songs = useMusicStore((s) => s.songs);
-  const notUsed = songs.slice(-10).reverse();
+  const getNeverPlayed = useStatsStore((s) => s.getNeverPlayed);
+  const notUsed = useMemo(() => getNeverPlayed(songs), [songs, getNeverPlayed]);
   const insets = useSafeAreaInsets();
 
   return (

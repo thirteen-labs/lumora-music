@@ -7,8 +7,6 @@ import {
   isBackgroundScanRegistered,
   isBackgroundScanEnabled,
 } from '@/services/background-scanner';
-import { scanMediaLibrary } from '@/services/scanner';
-import { updateKnownFiles } from '@/scanner/enhanced-scanner';
 
 export function useScanManager() {
   const scan = useMusicStore((s) => s.scan);
@@ -30,17 +28,20 @@ export function useScanManager() {
   useEffect(() => {
     const handleAppState = async (nextState: AppStateStatus) => {
       if (nextState === 'active') {
-        const result = await scanMediaLibrary();
-        if (result.songs.length > 0) {
-          updateKnownFiles(result.songs);
-          scanVideos();
-        }
+        await scan();
+        await scanVideos();
       }
     };
-
     const subscription = AppState.addEventListener('change', handleAppState);
     return () => subscription?.remove();
-  }, [scanVideos]);
+  }, [scan, scanVideos]);
+
+  useEffect(() => {
+    if (songs.length === 0) {
+      scan();
+      scanVideos();
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const manualScan = useCallback(async () => {
     await scan();

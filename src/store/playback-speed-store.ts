@@ -56,6 +56,7 @@ try {
   usePlaybackSpeedStore.subscribe((state) => {
     try {
       audioEngine.setSpeed(state.speed);
+      audioEngine.setPitchCorrection(state.pitchCorrection);
     } catch {}
   });
 } catch {}

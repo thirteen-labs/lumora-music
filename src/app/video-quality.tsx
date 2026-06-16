@@ -4,6 +4,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { useRouter } from 'expo-router';
 import { ChevronLeft, Check } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useSettingsStore } from '@/store/settings-store';
 
 const QUALITY_OPTIONS = [
   { id: '480p', label: '480p', desc: 'Saves storage space' },
@@ -15,7 +16,8 @@ const QUALITY_OPTIONS = [
 export default function VideoQualityScreen() {
   const { colors } = useTheme();
   const router = useRouter();
-  const current = '1080p';
+  const current = useSettingsStore((s) => s.videoQuality);
+  const setVideoQuality = useSettingsStore((s) => s.setVideoQuality);
   const insets = useSafeAreaInsets();
 
   return (
@@ -32,6 +34,7 @@ export default function VideoQualityScreen() {
             {QUALITY_OPTIONS.map((opt, i) => (
               <Pressable
                 key={opt.id}
+                onPress={() => setVideoQuality(opt.id)}
                 style={[s.flexRow, s.itemsCenter, s.gap4, s.p4, { borderBottomWidth: i < QUALITY_OPTIONS.length - 1 ? 1 : 0, borderBottomColor: colors.border + '20' }]}
               >
                 <View style={s.flex1}>

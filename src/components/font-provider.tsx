@@ -87,11 +87,16 @@ export function FontProvider({ children }: FontProviderProps) {
         setLoadedFont(fontFamily);
         const fontName = FONT_FAMILY_MAP[fontFamily];
         const TextWithDefaults = Text as any;
-        const existingStyle = TextWithDefaults.defaultProps?.style;
         if (fontName) {
-          TextWithDefaults.defaultProps = { ...TextWithDefaults.defaultProps, style: [{ fontFamily: fontName }, existingStyle].flat() };
+          TextWithDefaults.defaultProps = {
+            ...TextWithDefaults.defaultProps,
+            style: { fontFamily: fontName },
+          };
         } else {
-          TextWithDefaults.defaultProps = { ...TextWithDefaults.defaultProps, style: Array.isArray(existingStyle) ? existingStyle.filter(Boolean) : existingStyle };
+          TextWithDefaults.defaultProps = {
+            ...TextWithDefaults.defaultProps,
+            style: undefined,
+          };
         }
       }
     }

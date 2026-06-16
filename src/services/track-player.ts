@@ -122,9 +122,9 @@ export async function loadTrack(track: Song): Promise<void> {
   }
 
   await audioEngine.loadTrack(track.uri);
-  audioEngine.setSpeed(
-    (await import('@/store/playback-speed-store')).usePlaybackSpeedStore.getState().speed
-  );
+  const speedState = (await import('@/store/playback-speed-store')).usePlaybackSpeedStore.getState();
+  audioEngine.setSpeed(speedState.speed);
+  audioEngine.setPitchCorrection(speedState.pitchCorrection);
   audioEngine.play();
   audioEngine.setVolume(1);
   currentVolume = 1;

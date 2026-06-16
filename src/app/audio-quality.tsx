@@ -4,6 +4,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { useRouter } from 'expo-router';
 import { ChevronLeft, Check } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useSettingsStore } from '@/store/settings-store';
 
 const QUALITY_OPTIONS = [
   { id: 'low', label: 'Low (128 kbps)', desc: 'Saves storage space' },
@@ -15,7 +16,8 @@ const QUALITY_OPTIONS = [
 export default function AudioQualityScreen() {
   const { colors } = useTheme();
   const router = useRouter();
-  const current = 'high';
+  const current = useSettingsStore((s) => s.audioQuality);
+  const setAudioQuality = useSettingsStore((s) => s.setAudioQuality);
   const insets = useSafeAreaInsets();
 
   return (
@@ -32,6 +34,7 @@ export default function AudioQualityScreen() {
             {QUALITY_OPTIONS.map((opt, i) => (
               <Pressable
                 key={opt.id}
+                onPress={() => setAudioQuality(opt.id)}
                 style={[s.flexRow, s.itemsCenter, s.gap4, s.p4, { borderBottomWidth: i < QUALITY_OPTIONS.length - 1 ? 1 : 0, borderBottomColor: colors.border + '20' }]}
               >
                 <View style={s.flex1}>

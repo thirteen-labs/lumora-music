@@ -1,7 +1,9 @@
+import { useMemo } from 'react';
 import { View, Text, ScrollView, Pressable } from 'react-native';
 import { s } from '@/styles';
 import { useTheme } from '@/hooks/use-theme';
 import { useMusicStore } from '@/store/music-store';
+import { useLyricsStore } from '@/store/lyrics-store';
 import { usePlayerStore } from '@/store/player-store';
 import { useRouter } from 'expo-router';
 import { ChevronLeft, Play, Mic2 } from 'lucide-react-native';
@@ -11,7 +13,8 @@ export default function WithLyricsScreen() {
   const { colors } = useTheme();
   const router = useRouter();
   const songs = useMusicStore((s) => s.songs);
-  const withLyrics = songs;
+  const lyricsMap = useLyricsStore((s) => s.lyricsMap);
+  const withLyrics = useMemo(() => songs.filter((s) => lyricsMap[s.id]), [songs, lyricsMap]);
   const insets = useSafeAreaInsets();
 
   return (

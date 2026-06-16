@@ -74,18 +74,16 @@ export function TopBar({ showSearch = true, showSettings = true, title }: TopBar
 
   const sliderAnimatedStyle = useAnimatedStyle(() => ({
     width: sliderW.value,
-    transform: [{ translateX: sliderX.value }],
+    left: sliderX.value,
   }));
 
   return (
     <View
-      style={[s.wFull, s.overflowHidden, {
+      style={[s.wFull, s.overflowHidden, s.pb2, {
         paddingTop: insets.top,
         backgroundColor: colors.background,
         borderBottomLeftRadius: isTabScreen ? 16 : 0,
         borderBottomRightRadius: isTabScreen ? 16 : 0,
-        borderWidth: isTabScreen ? 1 : 0,
-        borderColor: colors.border,
       }]}
     >
       <View style={[s.flexRow, s.itemsCenter, s.justifyBetween, s.px5, s.py3]}>
@@ -99,13 +97,9 @@ export function TopBar({ showSearch = true, showSettings = true, title }: TopBar
               <Text style={[s.textXl, s.fontBold, { color: colors.text }]}>
                 LUM
               </Text>
-              <View
-                style={[s.w5, s.h5, s.roundedFull, s.itemsCenter, s.justifyCenter, s.mx05, { backgroundColor: colors.accent }]}
-              >
-                <Text style={[s.text10, s.fontBold, { color: colors.background }]}>
-                  O
-                </Text>
-              </View>
+              <Text style={[{ color: colors.accent, marginHorizontal: 2 }, s.textXl, s.fontBold]}>
+                O
+              </Text>
               <Text style={[s.textXl, s.fontBold, { color: colors.text }]}>
                 RA
               </Text>
@@ -149,7 +143,7 @@ export function TopBar({ showSearch = true, showSettings = true, title }: TopBar
 
       {isTabScreen && (
         <View
-          style={[s.flexRow, s.itemsCenter, s.justifyCenter, s.pb2, { paddingHorizontal: 16 }]}
+          style={[s.flexRow, s.itemsCenter, s.justifyCenter, s.pb2, { paddingHorizontal: 32 }]}
         >
           <Animated.View
             style={[{

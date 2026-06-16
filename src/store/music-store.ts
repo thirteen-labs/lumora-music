@@ -48,6 +48,11 @@ export const useMusicStore = create<MusicState>()(
     backgroundScanEnabled: isBackgroundScanEnabled(),
 
     scan: async (force?: boolean) => {
+      const currentStatus = get().scanStatus;
+      if (currentStatus === 'scanning') {
+        return;
+      }
+
       if (!force) {
         const cached = getCachedSongs();
         if (cached.length > 0) {

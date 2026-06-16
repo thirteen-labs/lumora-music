@@ -23,6 +23,11 @@ export const useVideoStore = create<VideoState>()(
     sortOrder: 'desc',
 
     scanVideos: async (force?: boolean) => {
+      const currentStatus = get().scanStatus;
+      if (currentStatus === 'scanning') {
+        return;
+      }
+
       if (!force) {
         const cached = getCachedVideos();
         if (cached.length > 0) {

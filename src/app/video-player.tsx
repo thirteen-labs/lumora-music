@@ -6,7 +6,7 @@ import { useTheme } from '@/hooks/use-theme';
 import {
   ChevronLeft, Maximize2, Minimize2, Captions, Gauge, X, Play,
   SkipBack, SkipForward, Lock, Unlock, RotateCcw, RotateCw,
-  Scaling, MonitorPlay,
+  Scaling, MonitorPlay, Camera, AudioLines,
 } from 'lucide-react-native';
 import { useVideoPlayer, VideoView, type VideoPlayer, isPictureInPictureSupported } from 'expo-video';
 import { useState, useCallback, useRef, useEffect } from 'react';
@@ -32,6 +32,8 @@ import Animated, {
 import { useVideoProgressStore } from '@/store/video-progress-store';
 import * as ScreenOrientation from 'expo-screen-orientation';
 import { useTranslation } from '@/hooks/use-translation';
+import { captureRef } from 'react-native-view-shot';
+import * as Sharing from 'expo-sharing';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -216,6 +218,10 @@ export default function VideoPlayerScreen() {
   });
   const [isPiPActive, setIsPiPActive] = useState(false);
   const [videoResolution, setVideoResolution] = useState<{ width: number; height: number } | null>(null);
+  const [audioTracks, setAudioTracks] = useState<any[]>([]);
+  const [activeAudioTrack, setActiveAudioTrack] = useState<string | null>(null);
+  const audioTrackSheetRef = useRef<BottomSheetModal>(null);
+  const [screenshotTaken, setScreenshotTaken] = useState(false);
 
   const player = useVideoPlayer(uri ?? '', (p: VideoPlayer) => {
     p.loop = true;
@@ -230,10 +236,10 @@ export default function VideoPlayerScreen() {
 
   useEffect(() => {
     if (!player) return;
-    const sub = player.addListener('sourceLoad', (event) => {
-      const tracks = event.availableVideoTracks;
-      if (tracks && tracks.length > 0) {
-        const best = tracks.reduce((a, b) => {
+    const sub = player.addListener('sourceLoad', (event: any) => {
+      const videoTracks = event.availableVideoTracks;
+      if (videoTracks && videoTracks.length > 0) {
+        const best = videoTracks.reduce((a: any, b: any) => {
           const aPixels = (a.size?.width ?? 0) * (a.size?.height ?? 0);
           const bPixels = (b.size?.width ?? 0) * (b.size?.height ?? 0);
           return bPixels > aPixels ? b : a;
@@ -241,6 +247,19 @@ export default function VideoPlayerScreen() {
         if (best.size) {
           setVideoResolution({ width: best.size.width, height: best.size.height });
         }
+      }
+
+      const audioTracksList = event.availableAudioTracks;
+      if (audioTracksList && audioTracksList.length > 1) {
+        setAudioTracks(audioTracksList);
+        const current = audioTracksList.find((t: any) => t.selected);
+        if (current) {
+          setActiveAudioTrack(current.id);
+        } else if (audioTracksList[0]) {
+          setActiveAudioTrack(audioTracksList[0].id);
+        }
+      } else {
+        setAudioTracks([]);
       }
     });
     return () => sub.remove();
@@ -357,6 +376,41 @@ export default function VideoPlayerScreen() {
       console.warn('PiP toggle failed:', e);
     }
   }, [isPiPActive]);
+
+  const handleScreenshot = useCallback(async () => {
+    if (!videoViewRef.current) return;
+    try {
+      const uri = await captureRef(videoViewRef, {
+        format: 'jpg',
+        quality: 0.9,
+        result: 'tmpfile',
+      });
+      if (uri) {
+        setScreenshotTaken(true);
+        setTimeout(() => setScreenshotTaken(false), 2000);
+        const isSharingAvailable = await Sharing.isAvailableAsync();
+        if (isSharingAvailable) {
+          await Sharing.shareAsync(uri, {
+            mimeType: 'image/jpeg',
+            dialogTitle: t('video.screenshot.share'),
+          });
+        }
+      }
+    } catch (e) {
+      console.warn('Screenshot failed:', e);
+    }
+  }, [t]);
+
+  const handleAudioTrackChange = useCallback((trackId: string) => {
+    if (!playerRef.current) return;
+    try {
+      (playerRef.current as any).audioTrack = trackId;
+      setActiveAudioTrack(trackId);
+    } catch (e) {
+      console.warn('Audio track switch failed:', e);
+    }
+    audioTrackSheetRef.current?.dismiss();
+  }, []);
 
   const pickSubtitleFile = useCallback(async () => {
     try {
@@ -612,6 +666,14 @@ export default function VideoPlayerScreen() {
                   <MonitorPlay size={22} color={isPiPActive ? colors.warning : '#fff'} />
                 </Pressable>
               )}
+              <Pressable onPress={handleScreenshot} style={styles.fullscreenButton}>
+                <Camera size={22} color={screenshotTaken ? colors.warning : '#fff'} />
+              </Pressable>
+              {audioTracks.length > 1 && (
+                <Pressable onPress={() => audioTrackSheetRef.current?.present()} style={styles.fullscreenButton}>
+                  <AudioLines size={22} color="#fff" />
+                </Pressable>
+              )}
               <Pressable onPress={() => router.back()} style={styles.backButton}>
                 <ChevronLeft size={28} color="#fff" />
               </Pressable>
@@ -786,6 +848,28 @@ export default function VideoPlayerScreen() {
               </Pressable>
             )}
 
+            <Pressable
+              onPress={handleScreenshot}
+              style={[s.flexRow, s.itemsCenter, { gap: 6, paddingVertical: 8, paddingHorizontal: 12, borderRadius: 16, backgroundColor: screenshotTaken ? colors.accent + '30' : colors.surface }]}
+            >
+              <Camera size={14} color={screenshotTaken ? colors.accent : colors.textMuted} />
+              <Text style={[s.textXs, s.fontMedium, { color: screenshotTaken ? colors.accent : colors.text }]}>
+                {screenshotTaken ? t('video.screenshot.captured') : t('video.screenshot')}
+              </Text>
+            </Pressable>
+
+            {audioTracks.length > 1 && (
+              <Pressable
+                onPress={() => audioTrackSheetRef.current?.present()}
+                style={[s.flexRow, s.itemsCenter, { gap: 6, paddingVertical: 8, paddingHorizontal: 12, borderRadius: 16, backgroundColor: colors.surface }]}
+              >
+                <AudioLines size={14} color={colors.accent} />
+                <Text style={[s.textXs, s.fontMedium, { color: colors.text }]}>
+                  {t('video.audio.track')}
+                </Text>
+              </Pressable>
+            )}
+
             <View style={s.flex1} />
 
             <Pressable
@@ -953,6 +1037,57 @@ export default function VideoPlayerScreen() {
                 Reset (100%)
               </Text>
             </Pressable>
+          </View>
+        </BottomSheetModal>
+
+        {/* Audio Track Sheet */}
+        <BottomSheetModal
+          ref={audioTrackSheetRef}
+          snapPoints={['30%']}
+          backdropComponent={renderBackdrop}
+          backgroundStyle={{ backgroundColor: colors.surface }}
+          handleIndicatorStyle={{ backgroundColor: colors.textMuted }}
+        >
+          <View style={{ padding: 20 }}>
+            <Text style={{ fontSize: 17, fontWeight: '600', color: colors.text, marginBottom: 16 }}>
+              {t('video.audio.track.title')}
+            </Text>
+            {audioTracks.map((track: any) => (
+              <Pressable
+                key={track.id}
+                onPress={() => handleAudioTrackChange(track.id)}
+                style={[s.flexRow, s.itemsCenter, s.justifyBetween, {
+                  paddingVertical: 12,
+                  paddingHorizontal: 16,
+                  borderRadius: 12,
+                  marginBottom: 6,
+                  backgroundColor: activeAudioTrack === track.id ? colors.accent + '20' : colors.card,
+                }]}
+              >
+                <View style={s.flex1}>
+                  <Text style={{
+                    fontSize: 14,
+                    fontWeight: '600',
+                    color: activeAudioTrack === track.id ? colors.accent : colors.text,
+                  }}>
+                    {track.label || `Track ${track.id}`}
+                  </Text>
+                  {track.language && (
+                    <Text style={{ fontSize: 12, color: colors.textMuted, marginTop: 2 }}>
+                      {track.language.toUpperCase()}
+                    </Text>
+                  )}
+                </View>
+                {activeAudioTrack === track.id && (
+                  <View style={{
+                    width: 8,
+                    height: 8,
+                    borderRadius: 4,
+                    backgroundColor: colors.accent,
+                  }} />
+                )}
+              </Pressable>
+            ))}
           </View>
         </BottomSheetModal>
       </View>

@@ -5,7 +5,7 @@ import { s } from '@/styles';
 import { useTheme } from '@/hooks/use-theme';
 import { TopBar } from '@/components/top-bar';
 import { MiniPlayer } from '@/components/mini-player';
-import { listDirectory, getRootPath, getParentPath, getMediaType, type FileItem } from '@/services/file-browser';
+import { listDirectory, getAccessibleRootPath, getParentPath, getMediaType, type FileItem } from '@/services/file-browser';
 import { Folder, FileAudio, FileVideo, ChevronRight, ChevronLeft, HardDrive } from 'lucide-react-native';
 
 export default function FilesScreen() {
@@ -20,7 +20,7 @@ export default function FilesScreen() {
   useEffect(() => {
     mountedRef.current = true;
     (async () => {
-      const path = getRootPath();
+      const path = await getAccessibleRootPath();
       const entries = await listDirectory(path);
       if (mountedRef.current) {
         setItems(entries);
@@ -34,7 +34,7 @@ export default function FilesScreen() {
 
   const loadDirectory = async (uri: string | null) => {
     setLoading(true);
-    const path = uri ?? getRootPath();
+    const path = uri ?? await getAccessibleRootPath();
     const entries = await listDirectory(path);
     if (!mountedRef.current) return;
     setItems(entries);

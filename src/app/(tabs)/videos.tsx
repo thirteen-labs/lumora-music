@@ -81,6 +81,7 @@ export default function VideosScreen() {
           options={SORT_OPTIONS.filter((o) => o.field !== 'artist')}
           active={activeSort}
           onSelect={(opt) => setSort(opt.field, opt.order)}
+          count={sortedVideos.length}
         />
         <FlashList
           data={sortedVideos}
@@ -115,6 +116,7 @@ export default function VideosScreen() {
           options={SORT_OPTIONS.filter((o) => o.field !== 'artist')}
           active={activeSort}
           onSelect={(opt) => setSort(opt.field, opt.order)}
+          count={sortedVideos.length}
         />
         <FlashList
           data={sortedVideos}
@@ -153,6 +155,7 @@ export default function VideosScreen() {
         options={SORT_OPTIONS.filter((o) => o.field !== 'artist')}
         active={activeSort}
         onSelect={(opt) => setSort(opt.field, opt.order)}
+        count={sortedVideos.length}
       />
       <FlashList
         data={sortedVideos}
