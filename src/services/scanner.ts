@@ -1,3 +1,4 @@
+import { Platform, PermissionsAndroid } from 'react-native';
 import type { Song, Album as LumoraAlbum, Artist, Genre, Video, MediaScanStatus } from '@/types/media';
 
 let MediaLibrary: any = null;
@@ -11,22 +12,22 @@ async function loadModules(): Promise<boolean> {
     MediaLibrary = ml;
     hasMediaLibrary = true;
   } catch (e) {
-    console.warn('Failed to load expo-media-library:', e);
+    console.warn('[Scanner] Failed to load expo-media-library:', e);
   }
   try {
     const mr = await import('@missingcore/react-native-metadata-retriever');
     MetadataRetriever = mr;
   } catch (e) {
-    console.warn('Failed to load metadata retriever (metadata parsing disabled):', e);
+    console.warn('[Scanner] Failed to load metadata retriever (metadata parsing disabled):', e);
   }
   try {
     const fs = await import('expo-file-system');
     FileSystem = fs;
   } catch (e) {
-    console.warn('Failed to load expo-file-system:', e);
+    console.warn('[Scanner] Failed to load expo-file-system:', e);
   }
   if (!hasMediaLibrary) {
-    console.warn('Media library module is required but failed to load');
+    console.warn('[Scanner] Media library module is required but failed to load');
     return false;
   }
   return true;
@@ -59,9 +60,42 @@ export function getCachedVideos(): Video[] { return cachedVideos; }
 export async function requestPermissions(): Promise<boolean> {
   if (!MediaLibrary) return false;
   try {
-    const { status } = await MediaLibrary.requestPermissionsAsync();
-    return status === 'granted';
-  } catch {
+    const { status, accessPrivileges } = await MediaLibrary.requestPermissionsAsync();
+    console.log('[Scanner] MediaLibrary permission status:', status, 'accessPrivileges:', accessPrivileges);
+    let mediaLibraryGranted = status === 'granted';
+
+    if (Platform.OS === 'android' && Platform.Version >= 33) {
+      try {
+        const audioResult = await PermissionsAndroid.request(
+          'android.permission.READ_MEDIA_AUDIO' as any,
+        );
+        const videoResult = await PermissionsAndroid.request(
+          'android.permission.READ_MEDIA_VIDEO' as any,
+        );
+        console.log('[Scanner] Android 13+ permissions - audio:', audioResult, 'video:', videoResult);
+        if (audioResult !== 'granted' || videoResult !== 'granted') {
+          console.warn('[Scanner] Some Android 13+ media permissions were denied');
+        }
+      } catch (permError) {
+        console.error('[Scanner] Failed to request Android 13+ permissions:', permError);
+      }
+    } else if (Platform.OS === 'android' && Platform.Version < 33) {
+      try {
+        const storageResult = await PermissionsAndroid.request(
+          'android.permission.READ_EXTERNAL_STORAGE' as any,
+        );
+        console.log('[Scanner] Legacy storage permission:', storageResult);
+        if (storageResult !== 'granted') {
+          console.warn('[Scanner] READ_EXTERNAL_STORAGE was denied');
+        }
+      } catch (permError) {
+        console.error('[Scanner] Failed to request legacy storage permission:', permError);
+      }
+    }
+
+    return mediaLibraryGranted;
+  } catch (error) {
+    console.error('[Scanner] Permission request failed:', error);
     return false;
   }
 }
@@ -73,7 +107,9 @@ async function getFileSize(uri: string): Promise<number> {
     if (info.exists && 'size' in info) {
       return info.size;
     }
-  } catch {}
+  } catch (error) {
+    console.warn('[Scanner] getFileSize failed for:', uri, error);
+  }
   return 0;
 }
 
@@ -96,7 +132,9 @@ async function getAssetFileSize(
         if (size > 0) return size;
       }
     }
-  } catch {}
+    } catch (error) {
+      console.warn('[Scanner] getAssetFileSize.getAssetInfoAsync failed:', assetUri, error);
+    }
   const fsSize = await getFileSize(assetUri);
   if (fsSize > 0) return fsSize;
   return 0;
@@ -146,7 +184,8 @@ async function parseAudioMetadata(uri: string): Promise<{
       bitrate: meta.bitrate ?? null,
       sampleRate: meta.sampleRate ?? null,
     };
-  } catch {
+  } catch (error) {
+    console.warn('[Scanner] parseAudioMetadata failed for:', uri, error);
     return { title: null, artist: null, album: null, genre: null, artwork: null, bitrate: null, sampleRate: null };
   }
 }
@@ -172,34 +211,42 @@ async function fetchSongs(
 
     if (result.assets.length === 0) break;
 
-    const resolved = await Promise.all(
-      result.assets.map(async (asset: any) => {
-        const info = await MediaLibrary.getAssetInfoAsync(asset.id);
-        const uri = info.uri ?? asset.uri;
-        const meta = await parseAudioMetadata(uri);
-        let fileSize = await getAssetFileSize(uri, asset.id, info);
+    const resolved = (
+      await Promise.allSettled(
+        result.assets.map(async (asset: any) => {
+          const info = await MediaLibrary.getAssetInfoAsync(asset.id);
+          const uri = info.uri ?? asset.uri;
+          const meta = await parseAudioMetadata(uri);
+          let fileSize = await getAssetFileSize(uri, asset.id, info);
 
-        if (fileSize <= 0) {
-          fileSize = estimateFileSizeFromBitrate(meta.bitrate, meta.sampleRate, info.duration ?? asset.duration ?? 0);
-        }
+          if (fileSize <= 0) {
+            fileSize = estimateFileSizeFromBitrate(meta.bitrate, meta.sampleRate, info.duration ?? asset.duration ?? 0);
+          }
 
-        return {
-          id: info.id,
-          uri,
-          title: meta.title ?? asset.filename.replace(/\.[^/.]+$/, ''),
-          artist: meta.artist ?? 'Unknown Artist',
-          album: meta.album ?? 'Unknown Album',
-          albumId: info.id,
-          duration: info.duration ?? 0,
-          fileSize,
-          dateAdded: info.creationTime ?? 0,
-          artwork: meta.artwork,
-          genre: meta.genre,
-          bitrate: meta.bitrate,
-          sampleRate: meta.sampleRate,
-        };
-      }),
-    );
+          return {
+            id: info.id,
+            uri,
+            title: meta.title ?? asset.filename.replace(/\.[^/.]+$/, ''),
+            artist: meta.artist ?? 'Unknown Artist',
+            album: meta.album ?? 'Unknown Album',
+            albumId: info.id,
+            duration: info.duration ?? 0,
+            fileSize,
+            dateAdded: info.creationTime ?? 0,
+            artwork: meta.artwork,
+            genre: meta.genre,
+            bitrate: meta.bitrate,
+            sampleRate: meta.sampleRate,
+          };
+        }),
+      )
+    ).filter((r): r is PromiseFulfilledResult<Song> => {
+      if (r.status === 'rejected') {
+        console.warn('[Scanner] Failed to process audio asset:', r.reason);
+        return false;
+      }
+      return true;
+    }).map((r) => r.value);
 
     allSongs.push(...resolved);
     onProgress?.(resolved.length);
@@ -231,30 +278,38 @@ async function fetchVideos(
 
     if (result.assets.length === 0) break;
 
-    const resolved = await Promise.all(
-      result.assets.map(async (asset: any) => {
-        const info = await MediaLibrary.getAssetInfoAsync(asset.id);
-        const uri = info.uri ?? asset.uri;
-        let fileSize = await getAssetFileSize(uri, asset.id, info);
+    const resolved = (
+      await Promise.allSettled(
+        result.assets.map(async (asset: any) => {
+          const info = await MediaLibrary.getAssetInfoAsync(asset.id);
+          const uri = info.uri ?? asset.uri;
+          let fileSize = await getAssetFileSize(uri, asset.id, info);
 
-        if (fileSize <= 0 && info.duration && info.width && info.height) {
-          const bitrateEstimate = (info.width ?? 1920) * (info.height ?? 1080) * 3 * 8;
-          fileSize = estimateFileSizeFromBitrate(bitrateEstimate, null, info.duration ?? asset.duration ?? 0);
-        }
+          if (fileSize <= 0 && info.duration && info.width && info.height) {
+            const bitrateEstimate = (info.width ?? 1920) * (info.height ?? 1080) * 3 * 8;
+            fileSize = estimateFileSizeFromBitrate(bitrateEstimate, null, info.duration ?? asset.duration ?? 0);
+          }
 
-        return {
-          id: info.id,
-          uri,
-          title: info.filename?.replace(/\.[^/.]+$/, '') ?? asset.filename.replace(/\.[^/.]+$/, ''),
-          duration: info.duration ?? asset.duration ?? 0,
-          fileSize,
-          dateAdded: info.creationTime ?? asset.creationTime ?? 0,
-          thumbnail: info.thumbnail ?? null,
-          width: info.width ?? asset.width,
-          height: info.height ?? asset.height,
-        };
-      }),
-    );
+          return {
+            id: info.id,
+            uri,
+            title: info.filename?.replace(/\.[^/.]+$/, '') ?? asset.filename.replace(/\.[^/.]+$/, ''),
+            duration: info.duration ?? asset.duration ?? 0,
+            fileSize,
+            dateAdded: info.creationTime ?? asset.creationTime ?? 0,
+            thumbnail: info.thumbnail ?? null,
+            width: info.width ?? asset.width,
+            height: info.height ?? asset.height,
+          };
+        }),
+      )
+    ).filter((r): r is PromiseFulfilledResult<Video> => {
+      if (r.status === 'rejected') {
+        console.warn('[Scanner] Failed to process video asset:', r.reason);
+        return false;
+      }
+      return true;
+    }).map((r) => r.value);
 
     allVideos.push(...resolved);
     onProgress?.(resolved.length);

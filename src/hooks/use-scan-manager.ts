@@ -37,11 +37,15 @@ export function useScanManager() {
   }, [scan, scanVideos]);
 
   useEffect(() => {
-    if (songs.length === 0) {
-      scan();
-      scanVideos();
-    }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    let cancelled = false;
+    (async () => {
+      if (songs.length === 0 && !cancelled) {
+        await Promise.all([scan(), scanVideos()]);
+      }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const manualScan = useCallback(async () => {
     await scan();

@@ -71,7 +71,9 @@
         {
           "photosPermission": "Allow $(PRODUCT_NAME) to access your photos for album artwork.",
           "savePhotosPermission": "Allow $(PRODUCT_NAME) to save photos.",
-          "isAccessMediaLocationEnabled": true
+          "isAccessMediaLocationEnabled": true,
+          "audioPermission": "Allow $(PRODUCT_NAME) to access your music files.",
+          "videoPermission": "Allow $(PRODUCT_NAME) to access your video files."
         }
       ],
       [

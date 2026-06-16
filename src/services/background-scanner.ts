@@ -24,9 +24,12 @@ function ensureTaskDefined(): void {
           return BackgroundFetch.BackgroundFetchResult.NoData;
         }
 
+        console.log('[BackgroundScanner] Starting background scan');
         const result = await scanMediaLibrary();
+        console.log('[BackgroundScanner] Scan complete:', result.songs.length, 'songs,', result.videos.length, 'videos');
 
-        if (result.songs.length === 0) {
+        if (result.songs.length === 0 && result.videos.length === 0) {
+          console.log('[BackgroundScanner] No new data found');
           return BackgroundFetch.BackgroundFetchResult.NoData;
         }
 
@@ -34,7 +37,8 @@ function ensureTaskDefined(): void {
         storage.set(LAST_BG_SCAN_KEY, Date.now());
 
         return BackgroundFetch.BackgroundFetchResult.NewData;
-      } catch {
+      } catch (error) {
+        console.error('[BackgroundScanner] Background scan failed:', error);
         return BackgroundFetch.BackgroundFetchResult.Failed;
       }
     });
@@ -54,7 +58,10 @@ export async function registerBackgroundScan(): Promise<void> {
       startOnBoot: true,
       enableWakeLock: true,
     });
-  } catch {}
+    console.log('[BackgroundScanner] Registered successfully');
+  } catch (error) {
+    console.error('[BackgroundScanner] Failed to register background scan:', error);
+  }
 }
 
 export async function unregisterBackgroundScan(): Promise<void> {
@@ -62,7 +69,10 @@ export async function unregisterBackgroundScan(): Promise<void> {
   try {
     const BackgroundFetch = require('expo-background-fetch');
     await BackgroundFetch.unregisterTaskAsync(BACKGROUND_SCAN_TASK);
-  } catch {}
+    console.log('[BackgroundScanner] Unregistered successfully');
+  } catch (error) {
+    console.error('[BackgroundScanner] Failed to unregister background scan:', error);
+  }
 }
 
 export async function isBackgroundScanRegistered(): Promise<boolean> {

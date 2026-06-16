@@ -46,6 +46,8 @@ const SYSTEM_PATHS: string[] = [
   '/storage/emulated/0/',
 ];
 
+// NOTE: This uses direct filesystem paths which will fail on Android 11+ (Scoped Storage).
+// For Android 11+, use SAF (StorageAccessFramework) or MediaStore queries instead.
 async function scanDirectoryRecursive(dirUri: string, depth: number, seen: Set<string>): Promise<ScannedFile[]> {
   if (depth > MAX_DEPTH || seen.has(dirUri)) return [];
   seen.add(dirUri);

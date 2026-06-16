@@ -1,5 +1,6 @@
 import { Platform } from 'react-native';
 import { Paths, File, Directory } from 'expo-file-system';
+import { StorageAccessFramework, getInfoAsync } from 'expo-file-system/legacy';
 import { useSettingsStore } from '@/store/settings-store';
 
 export interface FileItem {
@@ -33,11 +34,72 @@ export function getMediaType(name: string): 'audio' | 'video' | null {
 }
 
 export async function listDirectory(uri: string): Promise<FileItem[]> {
+  const showHidden = useSettingsStore.getState().showSystemHiddenFiles;
+
+  if (uri.startsWith('content://')) {
+    return listDirectorySAF(uri, showHidden);
+  }
+
+  return listDirectoryLegacy(uri, showHidden);
+}
+
+async function listDirectorySAF(uri: string, showHidden: boolean): Promise<FileItem[]> {
+  try {
+    const entries = await StorageAccessFramework.readDirectoryAsync(uri);
+    const results: FileItem[] = [];
+
+    for (const entry of entries) {
+      try {
+        const info = await getInfoAsync(entry);
+        if (!info.exists) continue;
+
+        let name = entry.split('/').pop()?.split('%2F').pop()?.split('/').pop() ?? '';
+        if (!name) {
+          const lastSegment = entry.split('%2F').pop() ?? entry.split('/').pop() ?? '';
+          name = decodeURIComponent(lastSegment);
+        }
+
+        if (!showHidden && name.startsWith('.')) continue;
+
+        if (info.isDirectory) {
+          results.push({
+            name,
+            uri: entry,
+            isDirectory: true,
+            size: 0,
+            modificationTime: info.modificationTime ?? 0,
+          });
+        } else {
+          results.push({
+            name,
+            uri: entry,
+            isDirectory: false,
+            size: info.size ?? 0,
+            modificationTime: info.modificationTime ?? 0,
+          });
+        }
+      } catch {
+        continue;
+      }
+    }
+
+    results.sort((a, b) => {
+      if (a.isDirectory !== b.isDirectory) return a.isDirectory ? -1 : 1;
+      return a.name.localeCompare(b.name);
+    });
+
+    return results;
+  } catch (error) {
+    console.warn('[FileBrowser] SAF listDirectory failed:', uri, error);
+    return [];
+  }
+}
+
+async function listDirectoryLegacy(uri: string, showHidden: boolean): Promise<FileItem[]> {
   try {
     const dir = new Directory(uri);
     const entries = await dir.list();
     const results: FileItem[] = [];
-    const showHidden = useSettingsStore.getState().showSystemHiddenFiles;
 
     for (const entry of entries) {
       const name = entry.name;
@@ -73,7 +135,8 @@ export async function listDirectory(uri: string): Promise<FileItem[]> {
     });
 
     return results;
-  } catch {
+  } catch (error) {
+    console.warn('[FileBrowser] Legacy listDirectory failed:', uri, error);
     return [];
   }
 }
@@ -92,7 +155,17 @@ export async function getAccessibleRootPath(): Promise<string> {
       const dir = new Directory(storagePath);
       const entries = await dir.list();
       if (entries.length > 0) return storagePath;
-    } catch {}
+    } catch {
+      // Fall through to SAF
+    }
+    try {
+      const result = await StorageAccessFramework.requestDirectoryPermissionsAsync();
+      if (result.granted) {
+        return result.directoryUri;
+      }
+    } catch (error) {
+      console.warn('[FileBrowser] SAF fallback also failed:', error);
+    }
     const docUri = Paths.document.uri;
     if (docUri) return docUri;
   }

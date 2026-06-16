@@ -7,11 +7,11 @@ import { TopBar } from '@/components/top-bar';
 import { useRouter } from 'expo-router';
 import {
   FileText, Table, Presentation, BookOpen, File,
-  FileArchive, ChevronRight, FolderOpen,
+  FileArchive, ChevronRight,
 } from 'lucide-react-native';
 import {
   DOC_CATEGORIES, type DocCategory, type DocFile,
-  scanDocuments, openDocument, getRootDocPaths, formatFileSize,
+  scanDocumentsFromSAF, openDocument, requestDocumentDirectoryPermission, formatFileSize,
 } from '@/services/document-scanner';
 
 const CATEGORY_ICONS: Record<string, typeof FileText> = {
@@ -31,28 +31,43 @@ export default function DocumentReaderScreen() {
   const [selectedCategory, setSelectedCategory] = useState<DocCategory | null>(null);
   const [documents, setDocuments] = useState<DocFile[]>([]);
   const [scanning, setScanning] = useState(false);
-  const scanPaths = getRootDocPaths();
-
   const handleCategoryPress = useCallback(async (category: DocCategory) => {
     setSelectedCategory(category);
     setScanning(true);
     setDocuments([]);
 
     const allDocs: DocFile[] = [];
-    for (const path of scanPaths) {
-      try {
-        const docs = await scanDocuments(path);
+    const { getPersistedDocumentUris } = await import('@/services/document-scanner');
+    const safUris = getPersistedDocumentUris();
+
+    if (safUris.length === 0) {
+      const firstUri = await requestDocumentDirectoryPermission();
+      if (firstUri) {
+        const docs = await scanDocumentsFromSAF(firstUri);
         const filtered = docs.filter((d) => {
           const ext = d.name.substring(d.name.lastIndexOf('.')).toLowerCase();
           return category.extensions.includes(ext);
         });
         allDocs.push(...filtered);
-      } catch {}
+      }
+    } else {
+      for (const safUri of safUris) {
+        try {
+          const docs = await scanDocumentsFromSAF(safUri);
+          const filtered = docs.filter((d) => {
+            const ext = d.name.substring(d.name.lastIndexOf('.')).toLowerCase();
+            return category.extensions.includes(ext);
+          });
+          allDocs.push(...filtered);
+        } catch (error) {
+          console.warn('[DocReader] Failed to scan SAF URI:', safUri, error);
+        }
+      }
     }
 
     setDocuments(allDocs);
     setScanning(false);
-  }, [scanPaths]);
+  }, []);
 
   const handleDocPress = useCallback(async (doc: DocFile) => {
     const ext = doc.name.substring(doc.name.lastIndexOf('.')).toLowerCase();
@@ -138,16 +153,8 @@ export default function DocumentReaderScreen() {
               </View>
 
               <Text style={[s.textXs, s.fontBold, s.uppercase, s.mt4, s.mb3, { letterSpacing: 1, color: colors.textMuted }]}>
-                Scan Locations
+                Select a category above to browse documents
               </Text>
-              <View style={{ backgroundColor: colors.surface, borderRadius: 16, overflow: 'hidden' }}>
-                {scanPaths.map((path, i) => (
-                  <View key={i} style={[s.flexRow, s.itemsCenter, s.gap3, s.p4, i < scanPaths.length - 1 ? { borderBottomWidth: 1, borderBottomColor: colors.border + '20' } : undefined]}>
-                    <FolderOpen size={18} color={colors.accent} />
-                    <Text style={[s.textXs, s.flex1, { color: colors.textMuted }]}>{path}</Text>
-                  </View>
-                ))}
-              </View>
             </>
           ) : (
             <>

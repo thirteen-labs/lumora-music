@@ -1,11 +1,15 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { View, Text, ScrollView, Pressable, TextInput, Modal, Alert } from 'react-native';
 import { s } from '@/styles';
 import { useTheme } from '@/hooks/use-theme';
 import { useRouter } from 'expo-router';
-import { ChevronLeft, Folder, Plus, Trash2 } from 'lucide-react-native';
+import { ChevronLeft, Folder, Plus, Trash2, FolderOpen } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { storage } from '@/services/mmkv';
+import {
+  requestDocumentDirectoryPermission,
+  setPersistedDocumentUris,
+} from '@/services/document-scanner';
 
 const STORAGE_KEY = 'lumora-scan-locations';
 
@@ -17,14 +21,22 @@ interface ScanFolder {
 function loadFolders(): ScanFolder[] {
   try {
     const raw = storage.getString(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : [{ name: 'Internal Music', path: '/storage/emulated/0/Music' }];
+    return raw ? JSON.parse(raw) : [];
   } catch {
-    return [{ name: 'Internal Music', path: '/storage/emulated/0/Music' }];
+    return [];
   }
 }
 
 function saveFolders(folders: ScanFolder[]) {
-  try { storage.set(STORAGE_KEY, JSON.stringify(folders)); } catch {}
+  try {
+    storage.set(STORAGE_KEY, JSON.stringify(folders));
+    setPersistedDocumentUris(folders.map((f) => f.path));
+  } catch {}
+}
+
+export async function getScanLocationPaths(): Promise<string[]> {
+  const folders = loadFolders();
+  return folders.map((f) => f.path);
 }
 
 export default function ScanLocationsScreen() {
@@ -34,6 +46,10 @@ export default function ScanLocationsScreen() {
   const [folders, setFolders] = useState<ScanFolder[]>(loadFolders);
   const [showModal, setShowModal] = useState(false);
   const [newPath, setNewPath] = useState('');
+
+  useEffect(() => {
+    setPersistedDocumentUris(folders.map((f) => f.path));
+  }, [folders]);
 
   const removeFolder = useCallback((path: string) => {
     const next = folders.filter((f) => f.path !== path);
@@ -56,6 +72,20 @@ export default function ScanLocationsScreen() {
     setShowModal(false);
   }, [folders, newPath]);
 
+  const addSAFFolder = useCallback(async () => {
+    const uri = await requestDocumentDirectoryPermission();
+    if (uri) {
+      if (folders.some((f) => f.path === uri)) {
+        Alert.alert('Duplicate', 'This folder is already in the list.');
+        return;
+      }
+      const name = decodeURIComponent(uri.split('%2F').pop() ?? uri.split('/').pop() ?? 'Documents');
+      const next = [...folders, { name, path: uri }];
+      setFolders(next);
+      saveFolders(next);
+    }
+  }, [folders]);
+
   return (
     <View style={[s.flex1, { backgroundColor: colors.background }]}>
       <View style={[s.flexRow, s.itemsCenter, s.gap3, s.px5, { paddingTop: insets.top + 12 }, s.pb4]}>
@@ -70,6 +100,9 @@ export default function ScanLocationsScreen() {
             <View style={[s.itemsCenter, s.py16]}>
               <Folder size={36} color={colors.textMuted} />
               <Text style={[s.mt3, s.textSm, { color: colors.textMuted }]}>No scan folders added</Text>
+              <Text style={[s.mt1, s.textXs, { color: colors.textMuted }, { textAlign: 'center' }]}>
+                Add folders to scan for documents.{'\n'}Use SAF folder picker for best results.
+              </Text>
             </View>
           ) : (
             <View style={{ backgroundColor: colors.surface, borderRadius: 16, overflow: 'hidden' }}>
@@ -83,7 +116,7 @@ export default function ScanLocationsScreen() {
                   </View>
                   <View style={s.flex1}>
                     <Text style={[s.textSm, s.fontMedium, { color: colors.text }]}>{folder.name}</Text>
-                    <Text style={[s.textXs, s.mt05, { color: colors.textMuted }]}>{folder.path}</Text>
+                    <Text style={[s.textXs, s.mt05, { color: colors.textMuted }]} numberOfLines={1}>{folder.path}</Text>
                   </View>
                   <Pressable
                     onPress={() => removeFolder(folder.path)}
@@ -96,12 +129,21 @@ export default function ScanLocationsScreen() {
               ))}
             </View>
           )}
+
           <Pressable
-            onPress={() => setShowModal(true)}
+            onPress={addSAFFolder}
             style={[s.flexRow, s.itemsCenter, s.justifyCenter, s.gap2, s.mt4, { paddingVertical: 12, borderRadius: 16, backgroundColor: colors.accent + '20' }]}
           >
-            <Plus size={18} color={colors.accent} />
-            <Text style={[s.textSm, s.fontSemibold, { color: colors.accent }]}>Add Folder</Text>
+            <FolderOpen size={18} color={colors.accent} />
+            <Text style={[s.textSm, s.fontSemibold, { color: colors.accent }]}>Pick Folder (SAF)</Text>
+          </Pressable>
+
+          <Pressable
+            onPress={() => setShowModal(true)}
+            style={[s.flexRow, s.itemsCenter, s.justifyCenter, s.gap2, s.mt2, { paddingVertical: 12, borderRadius: 16, backgroundColor: colors.card }]}
+          >
+            <Plus size={18} color={colors.textMuted} />
+            <Text style={[s.textSm, s.fontSemibold, { color: colors.textMuted }]}>Add Path Manually</Text>
           </Pressable>
         </View>
       </ScrollView>
@@ -109,11 +151,11 @@ export default function ScanLocationsScreen() {
       <Modal visible={showModal} transparent animationType="fade" onRequestClose={() => setShowModal(false)}>
         <View style={[s.flex1, s.itemsCenter, s.justifyCenter, { backgroundColor: 'rgba(0,0,0,0.5)' }]}>
           <View style={{ width: '85%', backgroundColor: colors.surface, borderRadius: 20, padding: 24 }}>
-            <Text style={[s.textLg, s.fontBold, s.mb4, { color: colors.text }]}>Add Folder</Text>
+            <Text style={[s.textLg, s.fontBold, s.mb4, { color: colors.text }]}>Add Folder Path</Text>
             <TextInput
               value={newPath}
               onChangeText={setNewPath}
-              placeholder="/storage/emulated/0/Music"
+              placeholder="content://com.android.externalstorage.documents..."
               placeholderTextColor={colors.textMuted}
               autoCapitalize="none"
               autoCorrect={false}

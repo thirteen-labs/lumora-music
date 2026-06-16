@@ -14,24 +14,36 @@ export function getScanHistory(): ScanHistory {
   try {
     const raw = storage.getString(SCAN_HISTORY_KEY);
     if (raw) return JSON.parse(raw);
-  } catch {}
+  } catch (error) {
+    console.warn('[EnhancedScanner] Failed to parse scan history:', error);
+  }
   return { lastFullScan: 0, lastIncrementalScan: 0, fileCount: 0 };
 }
 
 export function saveScanHistory(history: ScanHistory): void {
-  try { storage.set(SCAN_HISTORY_KEY, JSON.stringify(history)); } catch {}
+  try {
+    storage.set(SCAN_HISTORY_KEY, JSON.stringify(history));
+  } catch (error) {
+    console.warn('[EnhancedScanner] Failed to save scan history:', error);
+  }
 }
 
 export function getKnownFiles(): Record<string, number> {
   try {
     const raw = storage.getString(KNOWN_FILES_KEY);
     if (raw) return JSON.parse(raw);
-  } catch {}
+  } catch (error) {
+    console.warn('[EnhancedScanner] Failed to parse known files:', error);
+  }
   return {};
 }
 
 export function saveKnownFiles(files: Record<string, number>): void {
-  try { storage.set(KNOWN_FILES_KEY, JSON.stringify(files)); } catch {}
+  try {
+    storage.set(KNOWN_FILES_KEY, JSON.stringify(files));
+  } catch (error) {
+    console.warn('[EnhancedScanner] Failed to save known files:', error);
+  }
 }
 
 export function findNewFiles(currentUris: string[]): string[] {

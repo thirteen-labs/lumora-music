@@ -143,7 +143,7 @@ export function TopBar({ showSearch = true, showSettings = true, title }: TopBar
 
       {isTabScreen && (
         <View
-          style={[s.flexRow, s.itemsCenter, s.justifyCenter, s.pb2, { paddingHorizontal: 32 }]}
+          style={[s.flexRow, s.itemsCenter, s.pb2, { paddingHorizontal: 8, justifyContent: 'space-evenly' }]}
         >
           <Animated.View
             style={[{
@@ -165,9 +165,7 @@ export function TopBar({ showSearch = true, showSettings = true, title }: TopBar
                 style={{ marginHorizontal: 8, alignItems: 'center' }}
               >
                 <View
-                  style={[s.flexRow, s.itemsCenter, s.roundedFull, s.px3, s.py15, {
-                    backgroundColor: isActive ? colors.accent + '18' : 'transparent',
-                  }]}
+                  style={[s.flexRow, s.itemsCenter, s.roundedFull, s.px3, s.py15, { backgroundColor: 'transparent' }]}
                 >
                   <Icon
                     size={18}
