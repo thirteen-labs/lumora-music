@@ -175,3 +175,7 @@ export function getPlayerState() {
 export function destroyPlayer(): void {
   audioEngine.destroy();
 }
+
+export async function ensurePlayerAlive(): Promise<boolean> {
+  return audioEngine.ensureAlive();
+}

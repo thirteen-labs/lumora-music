@@ -1,6 +1,6 @@
-import { useEffect, useState, ReactNode } from 'react';
-import { View, ActivityIndicator, Platform } from 'react-native';
-import { setupPlayer, setCrossfadeEnabled, setCrossfadeDuration } from '@/services/track-player';
+import { useEffect, useState, useRef, ReactNode } from 'react';
+import { View, ActivityIndicator, Platform, AppState } from 'react-native';
+import { setupPlayer, setCrossfadeEnabled, setCrossfadeDuration, loadTrack, pausePlayback, seekTo as serviceSeekTo, ensurePlayerAlive } from '@/services/track-player';
 import { useTrackPlayerSync } from '@/hooks/use-track-player-sync';
 import { useSettingsStore } from '@/store/settings-store';
 import { usePlayerStore } from '@/store/player-store';
@@ -22,6 +22,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(false);
   const crossfade = useSettingsStore((s) => s.crossfade);
   const crossfadeDuration = useSettingsStore((s) => s.crossfadeDuration);
+  const restoreAttemptedRef = useRef(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -48,26 +49,8 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         console.warn('Notification setup failed:', e);
       }
 
-      // Restore queue from persistence
       try {
-        const persisted = useQueuePersistStore.getState().loadQueue();
-        if (persisted && persisted.currentTrackId) {
-          const allSongs = useMusicStore.getState().songs;
-          if (allSongs.length > 0) {
-            const { track, queue, queueIndex } = reconstructQueue(persisted, allSongs);
-            if (track && queue.length > 0) {
-              usePlayerStore.setState({
-                currentTrack: track,
-                queue,
-                queueIndex,
-                shuffle: persisted.shuffle,
-                repeat: persisted.repeat as any,
-                isMiniPlayerVisible: true,
-                position: persisted.position,
-              });
-            }
-          }
-        }
+        await restoreQueue();
       } catch (e) {
         console.warn('Queue restore failed:', e);
       }
@@ -80,6 +63,83 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     init();
 
     return () => { cancelled = true; };
+  }, []);
+
+  // Retry queue restore when songs become available
+  useEffect(() => {
+    if (restoreAttemptedRef.current) return;
+    if (!ready) return;
+
+    const songs = useMusicStore.getState().songs;
+    const currentTrack = usePlayerStore.getState().currentTrack;
+    if (songs.length > 0 && !currentTrack) {
+      restoreQueue();
+    }
+  }, [ready]);
+
+  async function restoreQueue() {
+    const persisted = useQueuePersistStore.getState().loadQueue();
+    if (!persisted || !persisted.currentTrackId) {
+      restoreAttemptedRef.current = true;
+      return;
+    }
+
+    const allSongs = useMusicStore.getState().songs;
+    if (allSongs.length === 0) {
+      // Songs not loaded yet - will retry via the songs watcher
+      return;
+    }
+
+    const { track, queue, queueIndex } = reconstructQueue(persisted, allSongs);
+    if (!track || queue.length === 0) {
+      restoreAttemptedRef.current = true;
+      return;
+    }
+
+    usePlayerStore.setState({
+      currentTrack: track,
+      queue,
+      queueIndex,
+      shuffle: persisted.shuffle,
+      repeat: persisted.repeat as any,
+      isMiniPlayerVisible: true,
+      position: persisted.position,
+      isPlaying: false,
+    });
+
+    // Load track into engine and seek to persisted position (stays paused)
+    try {
+      await loadTrack(track);
+      if (persisted.position > 0) {
+        await serviceSeekTo(persisted.position);
+      }
+      await pausePlayback();
+    } catch (e) {
+      console.warn('Failed to restore track position:', e);
+    }
+
+    restoreAttemptedRef.current = true;
+  }
+
+  // Ensure audio engine survives app background/foreground
+  useEffect(() => {
+    const handleAppState = async (nextState: string) => {
+      if (nextState === 'active') {
+        await ensurePlayerAlive();
+      }
+    };
+    const sub = AppState.addEventListener('change', handleAppState);
+    return () => sub.remove();
+  }, []);
+
+  // Re-check when music store songs change
+  useEffect(() => {
+    const unsub = useMusicStore.subscribe((state, prev) => {
+      if (!restoreAttemptedRef.current && state.songs.length > 0 && prev.songs.length === 0) {
+        restoreQueue();
+      }
+    });
+    return unsub;
   }, []);
 
   useEffect(() => {

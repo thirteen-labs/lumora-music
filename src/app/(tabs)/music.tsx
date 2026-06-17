@@ -6,7 +6,7 @@ import { usePlayerStore } from '@/store/player-store';
 import { TopBar } from '@/components/top-bar';
 import { MiniPlayer } from '@/components/mini-player';
 import { useEffect, useMemo } from 'react';
-import { Music, List, Disc3, User, Tag, Play, ArrowRight } from 'lucide-react-native';
+import { Music, List, Play, ArrowRight } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { Artwork } from '@/components/artwork';
 import { formatDuration } from '@/utils/cn';
@@ -20,7 +20,7 @@ export default function MusicScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { t } = useTranslation();
-  const { songs, albums, artists, genres, scan } = useMusicStore();
+  const { songs, scan } = useMusicStore();
 
   // Auto-scan if empty
   useEffect(() => {
@@ -48,32 +48,22 @@ export default function MusicScreen() {
     <View style={[s.flex1, { backgroundColor: colors.background }]}>
       <TopBar />
       <ScrollView contentContainerStyle={{ paddingBottom: 120 + insets.bottom, paddingTop: 16 }} showsVerticalScrollIndicator={false}>
-        {/* Category Grid */}
+        {/* Songs Library */}
         <View style={[s.px5, s.mb6]}>
-          <Text style={[s.text2xl, s.fontBold, s.mb4, { color: colors.text }]}>Browse</Text>
-          <View style={[s.gap3]}>
-            {[
-              { icon: List, label: t('library.songs'), count: songs.length, route: '/music/songs' },
-              { icon: Disc3, label: t('library.albums'), count: albums.length, route: '/music/albums' },
-              { icon: User, label: t('library.artists'), count: artists.length, route: '/music/artists' },
-              { icon: Tag, label: t('library.genres'), count: genres.length, route: '/music/genres' },
-            ].map(({ icon: Icon, label, count, route }) => (
-              <Pressable
-                key={label}
-                onPress={() => router.push(route as any)}
-                style={[s.flexRow, s.itemsCenter, s.gap4, s.p4, s.rounded2xl, { backgroundColor: colors.surface }]}
-              >
-                <View style={[s.w12, s.h12, s.roundedXl, s.itemsCenter, s.justifyCenter, { backgroundColor: colors.card }]}>
-                  <Icon size={24} color={colors.accent} />
-                </View>
-                <View style={[s.flex1]}>
-                  <Text style={[s.textBase, s.fontSemibold, { color: colors.text }]}>{label}</Text>
-                  <Text style={[s.textSm, s.mt05, { color: colors.textMuted }]}>{count} items</Text>
-                </View>
-                <ArrowRight size={18} color={colors.textMuted} />
-              </Pressable>
-            ))}
-          </View>
+          <Text style={[s.text2xl, s.fontBold, s.mb4, { color: colors.text }]}>{t('library.songs')}</Text>
+          <Pressable
+            onPress={() => router.push('/music/songs')}
+            style={[s.flexRow, s.itemsCenter, s.gap4, s.p4, s.rounded2xl, { backgroundColor: colors.surface }]}
+          >
+            <View style={[s.w12, s.h12, s.roundedXl, s.itemsCenter, s.justifyCenter, { backgroundColor: colors.card }]}>
+              <List size={24} color={colors.accent} />
+            </View>
+            <View style={[s.flex1]}>
+              <Text style={[s.textBase, s.fontSemibold, { color: colors.text }]}>{t('library.songs')}</Text>
+              <Text style={[s.textSm, s.mt05, { color: colors.textMuted }]}>{songs.length} {t('library.tracks')}</Text>
+            </View>
+            <ArrowRight size={18} color={colors.textMuted} />
+          </Pressable>
         </View>
 
         {/* Top Songs */}

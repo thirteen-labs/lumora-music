@@ -450,11 +450,15 @@ export async function scanMediaLibrary(
     }
     const genres = Array.from(genreMap.values());
 
-    cachedSongs = songs;
-    cachedAlbums = albums;
-    cachedArtists = artists;
-    cachedGenres = genres;
-    cachedVideos = videos;
+    if (scanAudio) {
+      cachedSongs = songs;
+      cachedAlbums = albums;
+      cachedArtists = artists;
+      cachedGenres = genres;
+    }
+    if (scanVideo) {
+      cachedVideos = videos;
+    }
 
     onProgress?.(totalItems, totalItems);
     onStatusChange?.('complete');

@@ -517,6 +517,35 @@ class AudioEngine {
     return this._crossfading;
   }
 
+  /** Ensure audio context is alive. Re-initializes if destroyed by the OS. */
+  async ensureAlive(): Promise<boolean> {
+    try {
+      if (this.context) {
+        try {
+          await this.context.resume();
+          this.startPositionTracking();
+          return true;
+        } catch {
+          // Context is dead, will re-create below
+          this.context = null;
+          this.currentBuffer = null;
+          this.currentSource = null;
+        }
+      }
+      await this.init();
+      if (this._currentTrackUri) {
+        await this.loadTrack(this._currentTrackUri);
+        if (this._playing || this._paused) {
+          this._currentTime = this._startOffset;
+          this.play();
+        }
+      }
+      return this.context !== null;
+    } catch {
+      return false;
+    }
+  }
+
   destroy(): void {
     this.stopCurrentSource();
     this.stopPositionTracking();

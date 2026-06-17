@@ -4,7 +4,7 @@ import { s } from '@/styles';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useTheme } from '@/hooks/use-theme';
 import {
-  ChevronLeft, Maximize2, Minimize2, Captions, Gauge, X, Play,
+  ChevronLeft, Maximize2, Minimize2, Captions, Gauge, X, Play, Pause,
   SkipBack, SkipForward, Lock, Unlock, RotateCcw, RotateCw,
   Scaling, MonitorPlay, Camera, AudioLines,
 } from 'lucide-react-native';
@@ -30,6 +30,9 @@ import Animated, {
   runOnJS,
 } from 'react-native-reanimated';
 import { useVideoProgressStore } from '@/store/video-progress-store';
+import { usePlayerStore } from '@/store/player-store';
+import { useVideoStore } from '@/store/video-store';
+import type { Song } from '@/types/media';
 import * as ScreenOrientation from 'expo-screen-orientation';
 import { useTranslation } from '@/hooks/use-translation';
 import { captureRef } from 'react-native-view-shot';
@@ -222,6 +225,68 @@ export default function VideoPlayerScreen() {
   const [activeAudioTrack, setActiveAudioTrack] = useState<string | null>(null);
   const audioTrackSheetRef = useRef<BottomSheetModal>(null);
   const [screenshotTaken, setScreenshotTaken] = useState(false);
+  const [controlsVisible, setControlsVisible] = useState(false);
+  const controlsTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const headerTranslateY = useSharedValue(0);
+
+  const playVideoAsAudio = useCallback(() => {
+    if (playerRef.current) {
+      playerRef.current.pause();
+    }
+    const videos = useVideoStore.getState().videos;
+    const video = videos.find((v) => v.uri === uri);
+    const song: Song = {
+      id: video?.id ?? `video-${uri}`,
+      uri: uri ?? '',
+      title: title ?? 'Video',
+      artist: 'Video',
+      album: 'Videos',
+      albumId: 'videos',
+      duration: video?.duration ?? playerRef.current?.duration ?? 0,
+      fileSize: video?.fileSize ?? 0,
+      dateAdded: video?.dateAdded ?? Date.now(),
+      artwork: video?.thumbnail ?? null,
+      genre: null,
+      bitrate: null,
+      sampleRate: null,
+    };
+    usePlayerStore.getState().play(song, [song]);
+    router.back();
+  }, [uri, title, router]);
+
+  const headerPanGesture = Gesture.Pan()
+    .onUpdate((e) => {
+      if (e.translationY > 0) {
+        headerTranslateY.value = e.translationY * 0.4;
+      }
+    })
+    .onEnd((e) => { // eslint-disable-line react-hooks/refs
+      if (e.translationY > 120) {
+        runOnJS(playVideoAsAudio)();
+      }
+      headerTranslateY.value = withSpring(0, { damping: 20, stiffness: 200 });
+    });
+
+  const headerAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: headerTranslateY.value }],
+  }));
+
+  const showControls = useCallback(() => {
+    setControlsVisible(true);
+    if (controlsTimerRef.current) clearTimeout(controlsTimerRef.current);
+    controlsTimerRef.current = setTimeout(() => setControlsVisible(false), 3000);
+  }, []);
+
+  const handlePlayPause = useCallback(() => {
+    if (!playerRef.current) return;
+    if (playerRef.current.playing) {
+      playerRef.current.pause();
+    } else {
+      playerRef.current.play();
+    }
+    showControls();
+  }, [showControls]);
 
   const player = useVideoPlayer(uri ?? '', (p: VideoPlayer) => {
     p.loop = true;
@@ -495,7 +560,17 @@ export default function VideoPlayerScreen() {
   }, [activeSubtitle]);
 
   useEffect(() => {
+    const { isPlaying, pause } = usePlayerStore.getState();
+    if (isPlaying) {
+      pause();
+    }
+  }, []);
+
+  useEffect(() => {
     return () => {
+      if (playerRef.current) {
+        playerRef.current.pause();
+      }
       ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT).catch(() => {});
     };
   }, []);
@@ -590,6 +665,8 @@ export default function VideoPlayerScreen() {
         runOnJS(handleDoubleTap)('left');
       } else if (x > screenWidth * 0.7) {
         runOnJS(handleDoubleTap)('right');
+      } else {
+        runOnJS(handlePlayPause)();
       }
     });
 
@@ -646,6 +723,29 @@ export default function VideoPlayerScreen() {
             </View>
           )}
 
+          {!isLocked && (
+            <>
+              <Pressable onPress={handlePlayPause} style={styles.fsAlwaysVisiblePlayButton}>
+                {player.playing ? (
+                  <Pause size={18} color="#fff" />
+                ) : (
+                  <Play size={18} color="#fff" fill="#fff" />
+                )}
+              </Pressable>
+              {controlsVisible && (
+                <Pressable onPress={handlePlayPause} style={styles.controlsOverlayFullscreen}>
+                  <View style={styles.playButtonLarge}>
+                    {player.playing ? (
+                      <Pause size={32} color="#fff" />
+                    ) : (
+                      <Play size={32} color="#fff" fill="#fff" />
+                    )}
+                  </View>
+                </Pressable>
+              )}
+            </>
+          )}
+
           <View style={[styles.fullscreenControls, { paddingTop: insets.top + 4 }]}>
             <Pressable onPress={toggleFullscreen} style={styles.fullscreenButton}>
               <Minimize2 size={24} color="#fff" />
@@ -674,7 +774,7 @@ export default function VideoPlayerScreen() {
                   <AudioLines size={22} color="#fff" />
                 </Pressable>
               )}
-              <Pressable onPress={() => router.back()} style={styles.backButton}>
+              <Pressable onPress={playVideoAsAudio} style={styles.backButton}>
                 <ChevronLeft size={28} color="#fff" />
               </Pressable>
             </View>
@@ -687,8 +787,9 @@ export default function VideoPlayerScreen() {
   return (
     <View style={{ flex: 1 }}>
       <View style={[s.flex1, { backgroundColor: colors.background }]}>
-        <View style={[s.flexRow, s.itemsCenter, s.gap3, s.px4, s.pb4, { paddingTop: insets.top + 4 }]}>
-          <Pressable onPress={() => router.back()} style={[s.w11, s.h11, s.itemsCenter, s.justifyCenter]}>
+        <GestureDetector gesture={headerPanGesture}>
+        <Animated.View style={[s.flexRow, s.itemsCenter, s.gap3, s.px4, s.pb4, { paddingTop: insets.top + 4 }, headerAnimatedStyle]}>
+          <Pressable onPress={playVideoAsAudio} style={[s.w11, s.h11, s.itemsCenter, s.justifyCenter]}>
             <ChevronLeft size={28} color={colors.text} />
           </Pressable>
           <Text style={[s.textBase, s.fontSemibold, s.flex1, { color: colors.text }]} numberOfLines={1}>
@@ -704,7 +805,8 @@ export default function VideoPlayerScreen() {
           <Pressable onPress={toggleFullscreen} style={[s.w11, s.h11, s.itemsCenter, s.justifyCenter]}>
             <Maximize2 size={22} color={colors.text} />
           </Pressable>
-        </View>
+        </Animated.View>
+        </GestureDetector>
 
         <View style={[s.flex1, s.itemsCenter, s.justifyCenter, s.px4]}>
           <View>
@@ -762,6 +864,28 @@ export default function VideoPlayerScreen() {
                 )}
               </View>
             </GestureDetector>
+            {!isLocked && !showResume && (
+              <>
+                <Pressable onPress={handlePlayPause} style={styles.alwaysVisiblePlayButton}>
+                  {player.playing ? (
+                    <Pause size={18} color="#fff" />
+                  ) : (
+                    <Play size={18} color="#fff" fill="#fff" />
+                  )}
+                </Pressable>
+                {controlsVisible && (
+                  <Pressable onPress={handlePlayPause} style={styles.controlsOverlay}>
+                    <View style={styles.playButtonLarge}>
+                      {player.playing ? (
+                        <Pause size={32} color="#fff" />
+                      ) : (
+                        <Play size={32} color="#fff" fill="#fff" />
+                      )}
+                    </View>
+                  </Pressable>
+                )}
+              </>
+            )}
           </View>
         </View>
 
@@ -1185,5 +1309,56 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.5)',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  controlsOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 14,
+  },
+  controlsOverlayFullscreen: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  playButtonLarge: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  alwaysVisiblePlayButton: {
+    position: 'absolute',
+    bottom: 12,
+    right: 12,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10,
+  },
+  fsAlwaysVisiblePlayButton: {
+    position: 'absolute',
+    bottom: 60,
+    right: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10,
   },
 });

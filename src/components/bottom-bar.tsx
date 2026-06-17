@@ -43,24 +43,28 @@ export function BottomBar() {
 
   useEffect(() => { activeKeyRef.current = activeKey; }, [activeKey]);
 
+  const applySlider = useCallback((x: number, width: number) => {
+    sliderX.value = withTiming(x, { duration: 300 });
+    sliderW.value = withTiming(width, { duration: 300 });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const handleLayout = useCallback((key: string, e: LayoutChangeEvent) => {
     const { x, width } = e.nativeEvent.layout;
     itemLayouts.current[key] = { x, width };
     if (key === activeKeyRef.current) {
-      sliderX.value = withTiming(x, { duration: 300 });
-      sliderW.value = withTiming(width, { duration: 300 });
+      applySlider(x, width);
     }
-  }, [sliderX, sliderW]);
+  }, [applySlider]);
 
   useEffect(() => {
     if (activeKey) {
       const pos = itemLayouts.current[activeKey];
       if (pos) {
-        sliderX.value = withTiming(pos.x, { duration: 300 });
-        sliderW.value = withTiming(pos.width, { duration: 300 });
+        applySlider(pos.x, pos.width);
       }
     }
-  }, [activeKey, sliderX, sliderW]);
+  }, [activeKey, applySlider]);
 
   const sliderAnimatedStyle = useAnimatedStyle(() => ({
     width: sliderW.value,

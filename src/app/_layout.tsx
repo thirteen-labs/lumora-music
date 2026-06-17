@@ -26,13 +26,14 @@ function RootStack() {
   return (
     <View style={{ flex: 1 }}>
       <StatusBar style="light" />
-      <Stack
-        screenOptions={{
-          headerShown: false,
-          contentStyle: { backgroundColor: colors.background },
-        }}
-      >
-        <Stack.Screen name="(tabs)" />
+      <View style={{ flex: 1 }}>
+        <Stack
+          screenOptions={{
+            headerShown: false,
+            contentStyle: { backgroundColor: colors.background },
+          }}
+        >
+          <Stack.Screen name="(tabs)" />
         <Stack.Screen
           name="music/songs"
           options={{ animation: 'slide_from_right' }}
@@ -217,7 +218,8 @@ function RootStack() {
           name="lyrics-editor"
           options={{ animation: 'slide_from_right' }}
         />
-      </Stack>
+        </Stack>
+      </View>
       {isTabScreen && <BottomBar />}
     </View>
   );

@@ -24,6 +24,16 @@ import {
   ChevronDown as ChevronDownIcon,
   PenLine,
 } from 'lucide-react-native';
+import {
+  Gesture,
+  GestureDetector,
+} from 'react-native-gesture-handler';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  runOnJS,
+} from 'react-native-reanimated';
 import { formatDuration } from '@/utils/cn';
 import Slider from '@react-native-community/slider';
 import { useRouter } from 'expo-router';
@@ -210,6 +220,31 @@ export default function PlayerScreen() {
     setNowPlayingLayout(layouts[(idx + 1) % layouts.length]);
   };
 
+  const translateY = useSharedValue(0);
+  const isSwipingDown = useSharedValue(false);
+
+  const panGesture = Gesture.Pan()
+    .onStart(() => {
+      isSwipingDown.value = true;
+    })
+    .onUpdate((e) => {
+      if (e.translationY > 0) {
+        translateY.value = e.translationY * 0.5;
+      }
+    })
+    .onEnd((e) => {
+      if (e.translationY > 150) {
+        runOnJS(hideFullPlayer)();
+        runOnJS(router.back)();
+      }
+      translateY.value = withSpring(0, { damping: 20, stiffness: 200 });
+      isSwipingDown.value = false;
+    });
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: translateY.value }],
+  }));
+
   if (!currentTrack) {
     return (
       <View style={[s.flex1, s.itemsCenter, s.justifyCenter, { backgroundColor: colors.background }]}>
@@ -224,6 +259,8 @@ export default function PlayerScreen() {
 
   return (
     <View style={[s.flex1, { backgroundColor: colors.background }]}>
+      <GestureDetector gesture={panGesture}>
+        <Animated.View style={[s.flex1, animatedStyle]}>
       {nowPlayingLayout === 'modern' ? (
         <ModernLayout
           currentTrack={currentTrack}
@@ -294,6 +331,9 @@ export default function PlayerScreen() {
           onLyricsPress={() => lyricsSheetRef.current?.present()}
         />
       )}
+
+      </Animated.View>
+      </GestureDetector>
 
       {/* Queue Bottom Sheet */}
       <BottomSheetModal

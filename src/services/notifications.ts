@@ -1,5 +1,6 @@
 import { Platform } from 'react-native';
 import type { Song } from '@/types/media';
+import { usePlayerStore } from '@/store/player-store';
 
 let Notifications: any = null;
 
@@ -26,6 +27,7 @@ async function ensureNotificationsLoaded(): Promise<boolean> {
 
 const NOTIFICATION_CHANNEL_ID = 'lumora-playback';
 const NOTIFICATION_ID = 'lumora-now-playing';
+const PLAYBACK_CATEGORY_ID = 'playback';
 
 let notificationInitialized = false;
 
@@ -39,12 +41,31 @@ export async function initializeNotifications(): Promise<void> {
     if (Platform.OS === 'android') {
       await Notifications.setNotificationChannelAsync(NOTIFICATION_CHANNEL_ID, {
         name: 'Now Playing',
-        importance: Notifications.AndroidImportance.LOW,
+        importance: Notifications.AndroidImportance.HIGH,
         showBadge: false,
         sound: undefined,
         vibrationPattern: undefined,
+        enableVibrate: false,
       });
     }
+
+    await Notifications.setNotificationCategoryAsync(PLAYBACK_CATEGORY_ID, [
+      {
+        identifier: 'previous',
+        buttonTitle: 'Previous',
+        options: { opensAppToForeground: false },
+      },
+      {
+        identifier: 'play-pause',
+        buttonTitle: 'Play',
+        options: { opensAppToForeground: false },
+      },
+      {
+        identifier: 'next',
+        buttonTitle: 'Next',
+        options: { opensAppToForeground: false },
+      },
+    ]);
 
     Notifications.setNotificationHandler({
       handleNotification: async () => ({
@@ -57,20 +78,13 @@ export async function initializeNotifications(): Promise<void> {
     });
 
     Notifications.addNotificationResponseReceivedListener((response: any) => {
-      const action = response.notification.request.content.data?.action
-        ?? response.actionIdentifier;
+      const action = response.actionIdentifier;
       if (action === 'play-pause') {
-        import('@/store/player-store').then(({ usePlayerStore }) => {
-          usePlayerStore.getState().togglePlay();
-        });
+        usePlayerStore.getState().togglePlay();
       } else if (action === 'next') {
-        import('@/store/player-store').then(({ usePlayerStore }) => {
-          usePlayerStore.getState().next();
-        });
+        usePlayerStore.getState().next();
       } else if (action === 'previous') {
-        import('@/store/player-store').then(({ usePlayerStore }) => {
-          usePlayerStore.getState().previous();
-        });
+        usePlayerStore.getState().previous();
       }
     });
 
@@ -88,16 +102,18 @@ function resolveArtworkUri(artwork: string | null): string | null {
   return `file://${artwork}`;
 }
 
-export async function showNowPlayingNotification(track: Song, isPlaying: boolean): Promise<void> {
+async function scheduleNowPlaying(track: Song, isPlaying: boolean): Promise<void> {
   if (Platform.OS !== 'android' || !Notifications) return;
 
   try {
-    const notificationContent: any = {
+    const artworkUri = resolveArtworkUri(track.artwork);
+    const content: any = {
       title: track.title,
-      subtitle: track.artist,
+      body: track.artist ?? '',
       data: { action: '' },
-      autoDismiss: false,
       sticky: true,
+      autoDismiss: false,
+      categoryIdentifier: PLAYBACK_CATEGORY_ID,
       ...(Platform.OS === 'android' ? { channelId: NOTIFICATION_CHANNEL_ID } : {}),
       ...(Platform.OS === 'android'
         ? {
@@ -110,52 +126,25 @@ export async function showNowPlayingNotification(track: Song, isPlaying: boolean
         : {}),
     };
 
-    const artworkUri = resolveArtworkUri(track.artwork);
     if (artworkUri) {
-      notificationContent.image = artworkUri;
+      content.image = artworkUri;
     }
 
     await Notifications.scheduleNotificationAsync({
-      content: notificationContent,
+      content,
       trigger: null,
       identifier: NOTIFICATION_ID,
     });
   } catch {}
 }
 
+export async function showNowPlayingNotification(track: Song, isPlaying: boolean): Promise<void> {
+  await scheduleNowPlaying(track, isPlaying);
+}
+
 export async function updateNotificationPlaybackState(isPlaying: boolean, track: Song | null): Promise<void> {
-  if (Platform.OS !== 'android' || !track || !Notifications) return;
-
-  try {
-    const notificationContent: any = {
-      title: track.title,
-      subtitle: track.artist,
-      data: { action: '' },
-      autoDismiss: false,
-      sticky: true,
-      ...(Platform.OS === 'android' ? { channelId: NOTIFICATION_CHANNEL_ID } : {}),
-      ...(Platform.OS === 'android'
-        ? {
-            actions: [
-              { identifier: 'previous', title: 'Previous' },
-              { identifier: 'play-pause', title: isPlaying ? 'Pause' : 'Play' },
-              { identifier: 'next', title: 'Next' },
-            ],
-          }
-        : {}),
-    };
-
-    const artworkUri = resolveArtworkUri(track.artwork);
-    if (artworkUri) {
-      notificationContent.image = artworkUri;
-    }
-
-    await Notifications.scheduleNotificationAsync({
-      content: notificationContent,
-      trigger: null,
-      identifier: NOTIFICATION_ID,
-    });
-  } catch {}
+  if (!track) return;
+  await scheduleNowPlaying(track, isPlaying);
 }
 
 export async function dismissNowPlayingNotification(): Promise<void> {

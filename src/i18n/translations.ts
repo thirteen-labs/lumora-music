@@ -71,6 +71,7 @@ const en = {
   'library.tracks': 'tracks',
   'library.favorites': 'Favorites',
   'library.hidden': 'Hidden',
+  'library.with.lyrics': 'With Lyrics',
 
   // Settings
   'settings.title': 'Settings',
@@ -443,6 +444,7 @@ export const translations: Record<string, TranslationDict> = {
     'library.tracks': 'pistas',
     'library.favorites': 'Favoritos',
     'library.hidden': 'Ocultos',
+    'library.with.lyrics': 'Con Letras',
     'settings.title': 'Ajustes',
     'settings.file.size.theme': 'Tama\u00f1o de Archivo',
     'settings.image.background': 'Fondo de Imagen',
@@ -749,6 +751,7 @@ export const translations: Record<string, TranslationDict> = {
     'library.tracks': 'pistes',
     'library.favorites': 'Favoris',
     'library.hidden': 'Cach\u00e9s',
+    'library.with.lyrics': 'Avec Paroles',
     'settings.title': 'Param\u00e8tres',
     'settings.file.size.theme': 'Th\u00e8me de Taille de Fichier',
     'settings.image.background': 'Fond d\'Image',
@@ -1055,6 +1058,7 @@ export const translations: Record<string, TranslationDict> = {
     'library.tracks': 'Titel',
     'library.favorites': 'Favoriten',
     'library.hidden': 'Ausgeblendet',
+    'library.with.lyrics': 'Mit Liedtexten',
     'settings.title': 'Einstellungen',
     'settings.file.size.theme': 'Dateigr\u00f6\u00dfen-Theme',
     'settings.image.background': 'Bildhintergrund',
