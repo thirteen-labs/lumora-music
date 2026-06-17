@@ -93,6 +93,7 @@ export const useMusicStore = create<MusicState>()(
         state.albums = result.albums;
         state.artists = result.artists;
         state.genres = result.genres;
+        state.scanStatus = result.songs.length > 0 || result.videos.length > 0 ? 'complete' : 'error';
         state.lastScanTime = Date.now();
         state.newSongsCount = newSongs.length;
         state.removedSongsCount = removedUris.length;

@@ -1,8 +1,9 @@
 import '../../global.css';
 
 import { View } from 'react-native';
-import { Stack } from 'expo-router';
+import { Stack, usePathname } from 'expo-router';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { BottomBar } from '@/components/bottom-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { ThemeProvider } from '@/theme/provider';
@@ -17,7 +18,10 @@ import { useScanManager } from '@/hooks/use-scan-manager';
 
 function RootStack() {
   const { colors } = useTheme();
+  const pathname = usePathname();
   useScanManager();
+
+  const isTabScreen = pathname === '/' || ['music', 'videos', 'files', 'playlists', 'favorites', 'settings'].some((key) => pathname === `/${key}` || pathname.startsWith(`/${key}/`)) || pathname === '/playlists' || pathname.startsWith('/playlist/');
 
   return (
     <View style={{ flex: 1 }}>
@@ -214,6 +218,7 @@ function RootStack() {
           options={{ animation: 'slide_from_right' }}
         />
       </Stack>
+      {isTabScreen && <BottomBar />}
     </View>
   );
 }

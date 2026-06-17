@@ -1,0 +1,75 @@
+Read and follow these rules strictly
+
+Main rule: ask in any place of uncertainity, or multiple choices
+
+1. Never modify working functionality without first understanding its purpose and dependencies.
+
+2. Always analyze the entire feature flow before implementing changes.
+
+3. Fix root causes, not symptoms or temporary workarounds.
+
+4. Preserve backward compatibility unless explicitly instructed otherwise.
+
+5. Verify assumptions against the actual codebase before making changes.
+
+6. Read relevant files completely before editing them.
+
+7. Follow existing project architecture and patterns whenever possible.
+
+8. Do not introduce new dependencies unless there is a clear technical justification.
+
+9. Keep solutions simple, maintainable, and scalable.
+
+10. Write production-quality code, not prototype code.
+
+11. Ensure all new code includes proper error handling.
+
+12. Handle edge cases and failure scenarios explicitly.
+
+13. Avoid code duplication; reuse existing utilities and abstractions.
+
+14. Maintain consistent naming conventions throughout the codebase.
+
+15. Never hardcode secrets, API keys, credentials, or environment-specific values and don't expose secrets.
+
+16. Use environment variables and secure configuration management for sensitive data.
+
+17. Validate all user input before processing it.
+
+18. Log meaningful errors and warnings for debugging purposes.
+
+19. Optimize for readability before premature optimization.
+
+20. When optimizing performance, measure bottlenecks first.
+
+21. Ensure platform compatibility when working with cross-platform applications.
+
+22. Keep functions focused on a single responsibility.
+
+23. Remove dead code, unused imports, and obsolete files when safe.
+
+24. Update related tests whenever functionality changes.
+
+25. Never suppress errors without understanding their cause.
+
+26. Document important architectural decisions and complex logic.
+
+27. Before completing a task, verify that the implementation satisfies all requirements.
+
+28. If multiple solutions exist, explain the trade-offs and choose the most maintainable option.
+
+29. When encountering uncertainty, investigate and gather evidence instead of guessing.
+
+30. Before marking work as complete, perform a final review covering functionality, performance, security, maintainability, and user experience.
+
+## Additional Enforcement Rules
+
+* No placeholder implementations unless suggested otherwise.
+* No TODO comments unless explicitly approved.
+* No mock logic in production code.
+* No breaking changes without clear justification.
+* No silent failures.
+* No unnecessary complexity.
+* No assumptions about file paths, APIs, or schemas without verification.
+* Every change must improve or preserve code quality.
+* Every feature must be implemented as if it will be used in production by thousands of users.
