@@ -1,3 +1,4 @@
+import { Directory, File } from 'expo-file-system';
 import { StorageAccessFramework, getInfoAsync } from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { Platform } from 'react-native';
@@ -42,12 +43,15 @@ function getExtension(name: string): string {
   return dot >= 0 ? name.substring(dot).toLowerCase() : '';
 }
 
-export function getDocCategory(name: string): DocCategory | null {
-  const ext = getExtension(name);
-  for (const cat of DOC_CATEGORIES) {
-    if (cat.extensions.includes(ext)) return cat;
+const extToCategory = new Map<string, DocCategory>();
+for (const cat of DOC_CATEGORIES) {
+  for (const ext of cat.extensions) {
+    extToCategory.set(ext, cat);
   }
-  return null;
+}
+
+export function getDocCategory(name: string): DocCategory | null {
+  return extToCategory.get(getExtension(name)) ?? null;
 }
 
 export async function scanDocumentsFromSAF(dirUri: string): Promise<DocFile[]> {
@@ -132,9 +136,137 @@ export async function openDocument(uri: string): Promise<void> {
 
 export function getRootDocPaths(): string[] {
   if (Platform.OS === 'android') {
-    return ['/storage/emulated/0/Download', '/storage/emulated/0/Documents', '/storage/emulated/0'];
+    return [
+      '/storage/emulated/0/Download',
+      '/storage/emulated/0/Documents',
+      '/storage/emulated/0/DCIM',
+      '/storage/emulated/0/Android/media',
+    ];
   }
   return [];
+}
+
+const FILE_BATCH_SIZE = 20;
+
+async function scanDirRecursive(dirUri: string, maxDepth = 3): Promise<DocFile[]> {
+  if (maxDepth <= 0) return [];
+  try {
+    const dir = new Directory(dirUri);
+    const entries = await dir.list();
+    if (entries.length === 0) return [];
+
+    const dirs: Directory[] = [];
+    const docFiles: File[] = [];
+
+    for (const entry of entries) {
+      if (entry instanceof Directory) {
+        dirs.push(entry);
+      } else if (entry instanceof File) {
+        const ext = getExtension(entry.name);
+        if (DOC_CATEGORIES.some((cat) => cat.extensions.includes(ext))) {
+          docFiles.push(entry);
+        }
+      }
+    }
+
+    const [nestedResults, fileResults] = await Promise.all([
+      Promise.all(dirs.map((d) => scanDirRecursive(d.uri, maxDepth - 1))),
+      batchFileInfo(docFiles),
+    ]);
+
+    const results: DocFile[] = fileResults;
+    for (const nr of nestedResults) {
+      results.push(...nr);
+    }
+    return results;
+  } catch {
+    return [];
+  }
+}
+
+async function batchFileInfo(files: File[]): Promise<DocFile[]> {
+  const results: DocFile[] = [];
+  for (let i = 0; i < files.length; i += FILE_BATCH_SIZE) {
+    const batch = files.slice(i, i + FILE_BATCH_SIZE);
+    const items = await Promise.all(
+      batch.map(async (file) => {
+        try {
+          const info = await file.info();
+          return {
+            name: file.name,
+            uri: file.uri,
+            size: info.size ?? 0,
+            modificationTime: (info as any).modificationTime ?? 0,
+          } as DocFile;
+        } catch {
+          return null;
+        }
+      })
+    );
+    for (const item of items) {
+      if (item) results.push(item);
+    }
+  }
+  return results;
+}
+
+export async function scanRootDirectories(): Promise<DocFile[]> {
+  const paths = getRootDocPaths();
+  const results = await Promise.all(
+    paths.map(async (rootPath) => {
+      try {
+        return await scanDirRecursive(rootPath);
+      } catch (error) {
+        console.warn('[DocScanner] Failed to scan root path:', rootPath, error);
+        return [] as DocFile[];
+      }
+    })
+  );
+  const seen = new Set<string>();
+  const unique: DocFile[] = [];
+  for (const docs of results) {
+    for (const doc of docs) {
+      if (!seen.has(doc.uri)) {
+        seen.add(doc.uri);
+        unique.push(doc);
+      }
+    }
+  }
+  unique.sort((a, b) => a.name.localeCompare(b.name));
+  return unique;
+}
+
+export function categorizeDocuments(docs: DocFile[]): Record<string, DocFile[]> {
+  const categorized: Record<string, DocFile[]> = {};
+  for (const cat of DOC_CATEGORIES) {
+    categorized[cat.id] = [];
+  }
+  for (const doc of docs) {
+    const cat = getDocCategory(doc.name);
+    if (cat) {
+      categorized[cat.id].push(doc);
+    } else {
+      if (!categorized.other) categorized.other = [];
+      categorized.other.push(doc);
+    }
+  }
+  return categorized;
+}
+
+export function getCategoryCounts(docs: DocFile[]): Record<string, number> {
+  const counts: Record<string, number> = {};
+  for (const cat of DOC_CATEGORIES) {
+    counts[cat.id] = 0;
+  }
+  for (const doc of docs) {
+    const cat = getDocCategory(doc.name);
+    if (cat) {
+      counts[cat.id] = (counts[cat.id] ?? 0) + 1;
+    } else {
+      counts.other = (counts.other ?? 0) + 1;
+    }
+  }
+  return counts;
 }
 
 export function formatFileSize(bytes: number): string {

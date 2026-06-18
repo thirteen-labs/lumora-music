@@ -102,20 +102,22 @@ export function BottomBar() {
             key={item.key}
             onPress={() => router.push(item.route as any)}
             onLayout={(e) => handleLayout(item.key, e)}
-            style={{ marginHorizontal: 8, alignItems: 'center' }}
+            style={{ marginHorizontal: 6, alignItems: 'center' }}
           >
             <View
-              style={[s.flexRow, s.itemsCenter, s.roundedFull, s.px3, s.py15, { backgroundColor: 'transparent' }]}
+              style={[s.flexRow, s.itemsCenter, s.roundedFull, isActive ? s.px3 : s.px2, s.py1, { backgroundColor: 'transparent' }]}
             >
               <Icon
-                size={18}
+                size={14}
                 color={isActive ? colors.accent : colors.textMuted}
               />
-              <Text
-                style={[s.textXs, s.fontSemibold, s.ml15, { color: isActive ? colors.accent : colors.textMuted }]}
-              >
-                {t(item.labelKey as any)}
-              </Text>
+              {isActive && (
+                <Text
+                  style={[s.text10, s.fontBold, s.ml1, { color: colors.accent }]}
+                >
+                  {t(item.labelKey as any)}
+                </Text>
+              )}
             </View>
           </Pressable>
         );

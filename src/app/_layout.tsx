@@ -218,6 +218,14 @@ function RootStack() {
           name="lyrics-editor"
           options={{ animation: 'slide_from_right' }}
         />
+        <Stack.Screen
+          name="document-reader"
+          options={{ animation: 'slide_from_right' }}
+        />
+        <Stack.Screen
+          name="document-viewer"
+          options={{ animation: 'slide_from_right' }}
+        />
         </Stack>
       </View>
       {isTabScreen && <BottomBar />}
