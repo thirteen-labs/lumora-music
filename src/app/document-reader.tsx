@@ -7,13 +7,17 @@ import { TopBar } from '@/components/top-bar';
 import { useRouter } from 'expo-router';
 import {
   FileText, Table, Presentation, BookOpen, File,
-  FileArchive, ChevronRight, Files,
+  FileArchive, ChevronRight, Files, RefreshCw,
 } from 'lucide-react-native';
 import {
   DOC_CATEGORIES, type DocCategory, type DocFile,
-  scanRootDirectories, categorizeDocuments, getCategoryCounts,
-  formatFileSize,
+  scanRootDirectories, categorizeAndCount, getDocCategory,
+  type CategorizedResult, formatFileSize,
 } from '@/services/document-scanner';
+import { storage } from '@/services/mmkv';
+
+const DOC_CACHE_KEY = 'lumora-documents';
+const DOC_CACHE_TIME_KEY = 'lumora-documents-time';
 
 const CATEGORY_ICONS: Record<string, typeof FileText> = {
   pdf: FileText,
@@ -40,10 +44,20 @@ export default function DocumentReaderScreen() {
   useEffect(() => {
     let cancelled = false;
     async function load() {
-      setScanning(true);
-      setScanError(null);
+      const cached = storage.getString(DOC_CACHE_KEY);
+      if (cached) {
+        try {
+          const docs: DocFile[] = JSON.parse(cached);
+          if (!cancelled) setAllDocuments(docs);
+        } catch {}
+        if (!cancelled) setScanning(false);
+        return;
+      }
+      if (!cancelled) setScanning(true);
       try {
         const docs = await scanRootDirectories();
+        storage.set(DOC_CACHE_KEY, JSON.stringify(docs));
+        storage.set(DOC_CACHE_TIME_KEY, new Date().toISOString());
         if (!cancelled) setAllDocuments(docs);
       } catch (e: any) {
         if (!cancelled) setScanError(e?.message || 'Failed to scan documents');
@@ -55,8 +69,24 @@ export default function DocumentReaderScreen() {
     return () => { cancelled = true; };
   }, []);
 
-  const categorized = useMemo(() => categorizeDocuments(allDocuments), [allDocuments]);
-  const categoryCounts = useMemo(() => getCategoryCounts(allDocuments), [allDocuments]);
+  const handleRefresh = useCallback(async () => {
+    setScanning(true);
+    setScanError(null);
+    try {
+      const docs = await scanRootDirectories();
+      storage.set(DOC_CACHE_KEY, JSON.stringify(docs));
+      storage.set(DOC_CACHE_TIME_KEY, new Date().toISOString());
+      setAllDocuments(docs);
+    } catch (e: any) {
+      setScanError(e?.message || 'Failed to scan documents');
+    } finally {
+      setScanning(false);
+    }
+  }, []);
+
+  const { categorized, counts: categoryCounts } = useMemo<CategorizedResult>(
+    () => categorizeAndCount(allDocuments), [allDocuments]
+  );
 
   const handleCategoryPress = useCallback((category: DocCategory) => {
     setSelectedCategory(category);
@@ -115,6 +145,11 @@ export default function DocumentReaderScreen() {
                   </Text>
                 </View>
                 {scanning && <ActivityIndicator size="small" color={colors.accent} />}
+                {!scanning && (
+                  <Pressable onPress={handleRefresh} style={{ padding: 6, borderRadius: 6 }}>
+                    <RefreshCw size={18} color={colors.textMuted} />
+                  </Pressable>
+                )}
               </View>
 
               {scanError && (
@@ -220,7 +255,7 @@ export default function DocumentReaderScreen() {
               ) : (
                 <View style={{ backgroundColor: colors.surface, borderRadius: 16, overflow: 'hidden', marginTop: 8 }}>
                   {currentDocs.map((doc, i) => {
-                    const cat = DOC_CATEGORIES.find((c) => c.extensions.some((ext) => doc.name.toLowerCase().endsWith(ext)));
+                    const cat = getDocCategory(doc.name);
                     const Icon = cat ? (CATEGORY_ICONS[cat.id] || File) : File;
                     const catColor = cat?.color || colors.textMuted;
                     return (

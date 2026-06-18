@@ -672,6 +672,13 @@ export default function VideoPlayerScreen() {
 
   const composedGestures = Gesture.Simultaneous(panGesture, tapGesture);
 
+  const videoAspectRatio = videoResolution
+    ? videoResolution.width / videoResolution.height
+    : 16 / 9;
+
+  const videoWidth = SCREEN_WIDTH - 32;
+  const videoHeight = videoWidth / videoAspectRatio;
+
   const videoTransform = [
     { scale },
     { rotate: `${rotation}deg` },
@@ -774,7 +781,7 @@ export default function VideoPlayerScreen() {
                   <AudioLines size={22} color="#fff" />
                 </Pressable>
               )}
-              <Pressable onPress={playVideoAsAudio} style={styles.backButton}>
+              <Pressable onPress={() => router.back()} style={styles.backButton}>
                 <ChevronLeft size={28} color="#fff" />
               </Pressable>
             </View>
@@ -789,7 +796,7 @@ export default function VideoPlayerScreen() {
       <View style={[s.flex1, { backgroundColor: colors.background }]}>
         <GestureDetector gesture={headerPanGesture}>
         <Animated.View style={[s.flexRow, s.itemsCenter, s.gap3, s.px4, s.pb4, { paddingTop: insets.top + 4 }, headerAnimatedStyle]}>
-          <Pressable onPress={playVideoAsAudio} style={[s.w11, s.h11, s.itemsCenter, s.justifyCenter]}>
+          <Pressable onPress={() => router.back()} style={[s.w11, s.h11, s.itemsCenter, s.justifyCenter]}>
             <ChevronLeft size={28} color={colors.text} />
           </Pressable>
           <Text style={[s.textBase, s.fontSemibold, s.flex1, { color: colors.text }]} numberOfLines={1}>
@@ -814,7 +821,7 @@ export default function VideoPlayerScreen() {
               <View>
                 <VideoView
                   ref={videoViewRef}
-                  style={[styles.video, { transform: videoTransform }]}
+                  style={[styles.video, { height: videoHeight }, { transform: videoTransform }]}
                   player={player}
                   allowsPictureInPicture
                   startsPictureInPictureAutomatically={false}
@@ -1222,7 +1229,6 @@ export default function VideoPlayerScreen() {
 const styles = StyleSheet.create({
   video: {
     width: SCREEN_WIDTH - 32,
-    height: (SCREEN_WIDTH - 32) * 0.5625,
     borderRadius: 14,
     overflow: 'hidden',
   },

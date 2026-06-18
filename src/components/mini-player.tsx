@@ -4,6 +4,7 @@ import { usePlayerStore } from '@/store/player-store';
 import { s } from '@/styles';
 import { useTheme } from '@/hooks/use-theme';
 import { Play, Pause, SkipForward } from 'lucide-react-native';
+import Svg, { Circle, G } from 'react-native-svg';
 import { formatDuration } from '@/utils/cn';
 import { useRouter } from 'expo-router';
 import { Artwork } from '@/components/artwork';
@@ -49,6 +50,18 @@ export function MiniPlayer() {
             {Math.round(progress * 100)}%
           </Text>
           <Pressable onPress={togglePlay} hitSlop={8} style={[s.w10, s.h10, s.roundedFull, s.itemsCenter, s.justifyCenter, { backgroundColor: colors.card }]}>
+            <Svg width={40} height={40} style={{ position: 'absolute' }}>
+              <Circle cx={20} cy={20} r={17} stroke={colors.border} strokeWidth={3} fill="none" />
+              <G transform={`rotate(-90, 20, 20)`}>
+                <Circle
+                  cx={20} cy={20} r={17}
+                  stroke={colors.accent} strokeWidth={3} fill="none"
+                  strokeDasharray={106.814}
+                  strokeDashoffset={106.814 * (1 - progress)}
+                  strokeLinecap="round"
+                />
+              </G>
+            </Svg>
             {isPlaying ? (
               <Pause size={18} color={colors.text} fill={colors.text} />
             ) : (

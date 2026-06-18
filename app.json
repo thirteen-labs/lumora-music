@@ -47,14 +47,14 @@
         {
           "backgroundColor": "#020008",
           "image": "./assets/splash.png",
-          "resizeMode": "cover",
+          "resizeMode": "contain",
           "android": {
             "image": "./assets/splash.png",
-            "resizeMode": "cover"
+            "resizeMode": "contain"
           },
           "ios": {
             "image": "./assets/splash.png",
-            "resizeMode": "cover"
+            "resizeMode": "contain"
           }
         }
       ],

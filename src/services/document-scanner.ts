@@ -163,7 +163,7 @@ async function scanDirRecursive(dirUri: string, maxDepth = 3): Promise<DocFile[]
         dirs.push(entry);
       } else if (entry instanceof File) {
         const ext = getExtension(entry.name);
-        if (DOC_CATEGORIES.some((cat) => cat.extensions.includes(ext))) {
+        if (extToCategory.has(ext)) {
           docFiles.push(entry);
         }
       }
@@ -236,37 +236,26 @@ export async function scanRootDirectories(): Promise<DocFile[]> {
   return unique;
 }
 
-export function categorizeDocuments(docs: DocFile[]): Record<string, DocFile[]> {
-  const categorized: Record<string, DocFile[]> = {};
-  for (const cat of DOC_CATEGORIES) {
-    categorized[cat.id] = [];
-  }
-  for (const doc of docs) {
-    const cat = getDocCategory(doc.name);
-    if (cat) {
-      categorized[cat.id].push(doc);
-    } else {
-      if (!categorized.other) categorized.other = [];
-      categorized.other.push(doc);
-    }
-  }
-  return categorized;
+export interface CategorizedResult {
+  categorized: Record<string, DocFile[]>;
+  counts: Record<string, number>;
 }
 
-export function getCategoryCounts(docs: DocFile[]): Record<string, number> {
+export function categorizeAndCount(docs: DocFile[]): CategorizedResult {
+  const categorized: Record<string, DocFile[]> = {};
   const counts: Record<string, number> = {};
   for (const cat of DOC_CATEGORIES) {
+    categorized[cat.id] = [];
     counts[cat.id] = 0;
   }
   for (const doc of docs) {
     const cat = getDocCategory(doc.name);
-    if (cat) {
-      counts[cat.id] = (counts[cat.id] ?? 0) + 1;
-    } else {
-      counts.other = (counts.other ?? 0) + 1;
-    }
+    const id = cat?.id ?? 'other';
+    if (!categorized[id]) categorized[id] = [];
+    categorized[id].push(doc);
+    counts[id] = (counts[id] ?? 0) + 1;
   }
-  return counts;
+  return { categorized, counts };
 }
 
 export function formatFileSize(bytes: number): string {

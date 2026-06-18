@@ -1,5 +1,6 @@
 import { Platform, PermissionsAndroid } from 'react-native';
 import type { Song, Album as LumoraAlbum, Artist, Genre, Video, MediaScanStatus } from '@/types/media';
+import { generateThumbnail } from '@/services/video-thumbnails';
 
 let MediaLibrary: any = null;
 let MetadataRetriever: any = null;
@@ -68,8 +69,10 @@ export function getCachedArtists(): Artist[] { return cachedArtists; }
 export function getCachedGenres(): Genre[] { return cachedGenres; }
 export function getCachedVideos(): Video[] { return cachedVideos; }
 
-export async function requestPermissions(): Promise<boolean> {
+export async function requestPermissions(options?: { audio?: boolean; video?: boolean }): Promise<boolean> {
   if (!MediaLibrary) return false;
+  const needAudio = options?.audio !== false;
+  const needVideo = options?.video !== false;
   try {
     const { status, accessPrivileges } = await MediaLibrary.requestPermissionsAsync();
     console.log('[Scanner] MediaLibrary permission status:', status, 'accessPrivileges:', accessPrivileges);
@@ -77,30 +80,34 @@ export async function requestPermissions(): Promise<boolean> {
 
     if (Platform.OS === 'android' && Platform.Version >= 33) {
       try {
-        const audioResult = await PermissionsAndroid.request(
-          'android.permission.READ_MEDIA_AUDIO' as any,
-        );
-        const videoResult = await PermissionsAndroid.request(
-          'android.permission.READ_MEDIA_VIDEO' as any,
-        );
-        console.log('[Scanner] Android 13+ permissions - audio:', audioResult, 'video:', videoResult);
-        if (audioResult !== 'granted' || videoResult !== 'granted') {
+        const permPromises: Promise<string>[] = [];
+        if (needAudio) {
+          permPromises.push(PermissionsAndroid.request('android.permission.READ_MEDIA_AUDIO' as any));
+        }
+        if (needVideo) {
+          permPromises.push(PermissionsAndroid.request('android.permission.READ_MEDIA_VIDEO' as any));
+        }
+        const results = await Promise.all(permPromises);
+        const allGranted = results.every((r) => r === 'granted');
+        if (!allGranted) {
           console.warn('[Scanner] Some Android 13+ media permissions were denied');
         }
       } catch (permError) {
         console.error('[Scanner] Failed to request Android 13+ permissions:', permError);
       }
     } else if (Platform.OS === 'android' && Platform.Version < 33) {
-      try {
-        const storageResult = await PermissionsAndroid.request(
-          'android.permission.READ_EXTERNAL_STORAGE' as any,
-        );
-        console.log('[Scanner] Legacy storage permission:', storageResult);
-        if (storageResult !== 'granted') {
-          console.warn('[Scanner] READ_EXTERNAL_STORAGE was denied');
+      if (needAudio || needVideo) {
+        try {
+          const storageResult = await PermissionsAndroid.request(
+            'android.permission.READ_EXTERNAL_STORAGE' as any,
+          );
+          console.log('[Scanner] Legacy storage permission:', storageResult);
+          if (storageResult !== 'granted') {
+            console.warn('[Scanner] READ_EXTERNAL_STORAGE was denied');
+          }
+        } catch (permError) {
+          console.error('[Scanner] Failed to request legacy storage permission:', permError);
         }
-      } catch (permError) {
-        console.error('[Scanner] Failed to request legacy storage permission:', permError);
       }
     }
 
@@ -207,6 +214,62 @@ async function parseAudioMetadata(uri: string): Promise<{
   }
 }
 
+async function processAsset(asset: any): Promise<Song | null> {
+  try {
+    const uri = asset.uri;
+    if (!uri) return null;
+
+    const meta = await parseAudioMetadata(uri);
+    let fileSize = asset.fileSize ?? asset.size ?? 0;
+
+    if (fileSize <= 0) {
+      fileSize = await getAssetFileSize(uri, asset.id);
+    }
+    if (fileSize <= 0) {
+      fileSize = estimateFileSizeFromBitrate(meta.bitrate, meta.sampleRate, asset.duration ?? 0);
+    }
+
+    return {
+      id: asset.id,
+      uri,
+      title: meta.title ?? asset.filename?.replace(/\.[^/.]+$/, '') ?? 'Unknown',
+      artist: meta.artist ?? 'Unknown Artist',
+      album: meta.album ?? 'Unknown Album',
+      albumId: asset.albumId ?? asset.id,
+      duration: asset.duration ?? 0,
+      fileSize,
+      dateAdded: asset.creationTime ?? 0,
+      artwork: meta.artwork,
+      genre: meta.genre,
+      bitrate: meta.bitrate,
+      sampleRate: meta.sampleRate,
+    };
+  } catch (error) {
+    console.warn('[Scanner] Failed to process audio asset:', asset?.id, error);
+    return null;
+  }
+}
+
+async function processBatch(assets: any[], concurrency = 10): Promise<Song[]> {
+  const results: Song[] = [];
+  const queue = [...assets];
+
+  async function worker(): Promise<void> {
+    while (queue.length > 0) {
+      const asset = queue.shift()!;
+      const song = await processAsset(asset);
+      if (song) results.push(song);
+    }
+  }
+
+  const workers = Array(Math.min(concurrency, assets.length))
+    .fill(0)
+    .map(() => worker());
+
+  await Promise.all(workers);
+  return results;
+}
+
 async function fetchSongs(
   onProgress?: (batchCount: number) => void,
 ): Promise<Song[]> {
@@ -228,50 +291,73 @@ async function fetchSongs(
 
     if (result.assets.length === 0) break;
 
-    const resolved = (
-      await Promise.allSettled(
-        result.assets.map(async (asset: any) => {
-          const info = await MediaLibrary.getAssetInfoAsync(asset.id);
-          const uri = info.uri ?? asset.uri;
-          const meta = await parseAudioMetadata(uri);
-          let fileSize = await getAssetFileSize(uri, asset.id, info);
-
-          if (fileSize <= 0) {
-            fileSize = estimateFileSizeFromBitrate(meta.bitrate, meta.sampleRate, info.duration ?? asset.duration ?? 0);
-          }
-
-          return {
-            id: info.id,
-            uri,
-            title: meta.title ?? asset.filename.replace(/\.[^/.]+$/, ''),
-            artist: meta.artist ?? 'Unknown Artist',
-            album: meta.album ?? 'Unknown Album',
-            albumId: info.albumId ?? info.id,
-            duration: info.duration ?? 0,
-            fileSize,
-            dateAdded: info.creationTime ?? 0,
-            artwork: meta.artwork,
-            genre: meta.genre,
-            bitrate: meta.bitrate,
-            sampleRate: meta.sampleRate,
-          };
-        }),
-      )
-    ).filter((r): r is PromiseFulfilledResult<Song> => {
-      if (r.status === 'rejected') {
-        console.warn('[Scanner] Failed to process audio asset:', r.reason);
-        return false;
-      }
-      return true;
-    }).map((r) => r.value);
-
-    allSongs.push(...resolved);
-    onProgress?.(resolved.length);
+    const songs = await processBatch(result.assets, 10);
+    allSongs.push(...songs);
+    onProgress?.(songs.length);
     hasMore = result.hasNextPage;
     cursor = result.endCursor;
   }
 
   return allSongs;
+}
+
+async function processVideoAsset(asset: any): Promise<Video | null> {
+  try {
+    const uri = asset.uri;
+    if (!uri) return null;
+
+    let fileSize = asset.fileSize ?? asset.size ?? 0;
+    if (fileSize <= 0) {
+      fileSize = await getAssetFileSize(uri, asset.id);
+    }
+    if (fileSize <= 0 && asset.duration && asset.width && asset.height) {
+      const bitrateEstimate = (asset.width ?? 1920) * (asset.height ?? 1080) * 3 * 8;
+      fileSize = estimateFileSizeFromBitrate(bitrateEstimate, null, asset.duration ?? 0);
+    }
+
+    let thumbnail: string | null = null;
+    try {
+      const thumb = await generateThumbnail(uri);
+      if (thumb?.uri) thumbnail = thumb.uri;
+    } catch {
+      console.warn('[Scanner] Thumbnail generation failed for:', uri);
+    }
+
+    return {
+      id: asset.id,
+      uri,
+      title: asset.filename?.replace(/\.[^/.]+$/, '') ?? 'Unknown',
+      duration: asset.duration ?? 0,
+      fileSize,
+      dateAdded: asset.creationTime ?? 0,
+      thumbnail,
+      width: asset.width ?? 0,
+      height: asset.height ?? 0,
+    };
+  } catch (error) {
+    console.warn('[Scanner] Failed to process video asset:', asset?.id, error);
+    return null;
+  }
+}
+
+async function processVideoBatch(assets: any[], concurrency = 10): Promise<Video[]> {
+  const results: Video[] = [];
+  const queue = [...assets];
+
+  async function worker(): Promise<void> {
+    while (queue.length > 0) {
+      const asset = queue.shift()!;
+      const video = await processVideoAsset(asset);
+      if (video) results.push(video);
+    }
+  }
+
+  const workers = Array(Math.min(concurrency, assets.length))
+    .fill(0)
+    .map(() => worker());
+
+  await Promise.all(workers);
+  return results;
 }
 
 async function fetchVideos(
@@ -295,41 +381,9 @@ async function fetchVideos(
 
     if (result.assets.length === 0) break;
 
-    const resolved = (
-      await Promise.allSettled(
-        result.assets.map(async (asset: any) => {
-          const info = await MediaLibrary.getAssetInfoAsync(asset.id);
-          const uri = info.uri ?? asset.uri;
-          let fileSize = await getAssetFileSize(uri, asset.id, info);
-
-          if (fileSize <= 0 && info.duration && info.width && info.height) {
-            const bitrateEstimate = (info.width ?? 1920) * (info.height ?? 1080) * 3 * 8;
-            fileSize = estimateFileSizeFromBitrate(bitrateEstimate, null, info.duration ?? asset.duration ?? 0);
-          }
-
-          return {
-            id: info.id,
-            uri,
-            title: info.filename?.replace(/\.[^/.]+$/, '') ?? asset.filename.replace(/\.[^/.]+$/, ''),
-            duration: info.duration ?? asset.duration ?? 0,
-            fileSize,
-            dateAdded: info.creationTime ?? asset.creationTime ?? 0,
-            thumbnail: info.thumbnail ?? null,
-            width: info.width ?? asset.width,
-            height: info.height ?? asset.height,
-          };
-        }),
-      )
-    ).filter((r): r is PromiseFulfilledResult<Video> => {
-      if (r.status === 'rejected') {
-        console.warn('[Scanner] Failed to process video asset:', r.reason);
-        return false;
-      }
-      return true;
-    }).map((r) => r.value);
-
-    allVideos.push(...resolved);
-    onProgress?.(resolved.length);
+    const videos = await processVideoBatch(result.assets, 10);
+    allVideos.push(...videos);
+    onProgress?.(videos.length);
     hasMore = result.hasNextPage;
     cursor = result.endCursor;
   }
@@ -356,7 +410,7 @@ export async function scanMediaLibrary(
   }
 
   try {
-    const hasPermission = await requestPermissions();
+    const hasPermission = await requestPermissions({ audio: scanAudio, video: scanVideo });
     if (!hasPermission) {
       onStatusChange?.('error');
       return { songs: [], albums: [], artists: [], genres: [], videos: [] };

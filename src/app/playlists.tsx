@@ -1,5 +1,5 @@
 import { useState, useRef, useMemo } from 'react';
-import { View, Text, Pressable, Alert, TextInput, useWindowDimensions } from 'react-native';
+import { View, Text, Pressable, Alert, TextInput, ScrollView, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { s } from '@/styles';
 import { FlashList } from '@shopify/flash-list';
@@ -177,6 +177,7 @@ export default function PlaylistsScreen() {
           keyExtractor={(item) => item.id}
           ListHeaderComponent={renderListHeader}
           contentContainerStyle={{ paddingBottom: 120 + insets.bottom }}
+          showsVerticalScrollIndicator={false}
           renderItem={({ item }) => (
             <Pressable
               onPress={() => router.push({ pathname: '/playlist/[id]', params: { id: item.id } })}
@@ -223,7 +224,9 @@ export default function PlaylistsScreen() {
           )}
         />
       ) : (
-        renderListHeader()
+        <ScrollView contentContainerStyle={{ paddingBottom: 120 + insets.bottom }} showsVerticalScrollIndicator={false}>
+          {renderListHeader()}
+        </ScrollView>
       )}
       <MiniPlayer />
 

@@ -9,6 +9,7 @@ import { useMusicStore } from '@/store/music-store';
 import { usePlayerStore } from '@/store/player-store';
 import { useLayoutStore } from '@/store/layout-store';
 import { useStatsStore } from '@/store/stats-store';
+import { useLyricsStore } from '@/store/lyrics-store';
 import { TopBar } from '@/components/top-bar';
 import { MiniPlayer } from '@/components/mini-player';
 import { SortMenu } from '@/components/sort-menu';
@@ -38,7 +39,8 @@ function sortSongs(songs: any[], sortField: SortField, sortOrder: SortOrder, sta
   return sorted;
 }
 
-function LyricsBadge({ colors }: { colors: any }) {
+function LyricsBadge({ colors, show }: { colors: any; show?: boolean }) {
+  if (!show) return null;
   return (
     <View
       style={{
@@ -62,6 +64,7 @@ export default function SongsScreen() {
   const sortOrder = useMusicStore((s) => s.sortOrder);
   const setSort = useMusicStore((s) => s.setSort);
   const trackStats = useStatsStore((s) => s.trackStats);
+  const lyricsMap = useLyricsStore((s) => s.lyricsMap);
   const { fileSizeTheme, libraryViewMode, setLibraryViewMode } = useLayoutStore();
   const sortedSongs = useMemo(() => sortSongs(songs, sortField, sortOrder, trackStats), [songs, sortField, sortOrder, trackStats]);
   const { bottomSheetRef, present, song } = useSongContextMenu();
@@ -134,7 +137,7 @@ export default function SongsScreen() {
                   <Text style={{ fontSize: 13, fontWeight: '600', color: colors.text, marginTop: 8 }} numberOfLines={1}>{item.title}</Text>
                   <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 3 }}>
                     <Text style={{ fontSize: 11, color: colors.textMuted }} numberOfLines={1}>{item.artist}</Text>
-                    <LyricsBadge colors={colors} />
+                    <LyricsBadge colors={colors} show={!!lyricsMap[item.id]} />
                   </View>
                 </>
               ) : (
@@ -153,7 +156,7 @@ export default function SongsScreen() {
                   <Text style={{ fontSize: 12, fontWeight: '500', color: colors.text, marginTop: 8 }} numberOfLines={1}>{item.title}</Text>
                   <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 2 }}>
                     <Text style={{ fontSize: 11, color: colors.textMuted }} numberOfLines={1}>{item.artist}</Text>
-                    <LyricsBadge colors={colors} />
+                    <LyricsBadge colors={colors} show={!!lyricsMap[item.id]} />
                   </View>
                 </>
               )}
@@ -184,7 +187,7 @@ export default function SongsScreen() {
                   <Text style={[s.textXs, { color: colors.textMuted }]} numberOfLines={1}>
                     {item.artist}
                   </Text>
-                  <LyricsBadge colors={colors} />
+                  <LyricsBadge colors={colors} show={!!lyricsMap[item.id]} />
                   {fileSizeTheme === 'big' && (
                     <Text style={[s.textXs, { color: colors.textMuted, marginLeft: 6 }]}>
                       {formatFileSize(item.fileSize)}
