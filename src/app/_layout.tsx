@@ -1,27 +1,33 @@
-import '../../global.css';
+import "../../global.css";
 
-import { View } from 'react-native';
-import { Stack, usePathname } from 'expo-router';
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { BottomBar } from '@/components/bottom-bar';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
-import { ThemeProvider } from '@/theme/provider';
-import { FontProvider } from '@/components/font-provider';
-import { ColorAwareProvider } from '@/components/color-aware-provider';
-import { PlayerProvider } from '@/components/player-provider';
-import { ErrorBoundary } from '@/components/error-boundary';
-import { Toast } from '@/components/toast';
-import { StatusBar } from 'expo-status-bar';
-import { useTheme } from '@/hooks/use-theme';
-import { useScanManager } from '@/hooks/use-scan-manager';
+import { View } from "react-native";
+import { Stack, usePathname } from "expo-router";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { BottomBar } from "@/components/bottom-bar";
+import { SafeAreaProvider } from "react-native-safe-area-context";
+import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
+import { ThemeProvider } from "@/theme/provider";
+import { FontProvider } from "@/components/font-provider";
+import { ColorAwareProvider } from "@/components/color-aware-provider";
+import { PlayerProvider } from "@/components/player-provider";
+import { ErrorBoundary } from "@/components/error-boundary";
+import { Toast } from "@/components/toast";
+import { StatusBar } from "expo-status-bar";
+import { useTheme } from "@/hooks/use-theme";
+import { useScanManager } from "@/hooks/use-scan-manager";
 
 function RootStack() {
   const { colors } = useTheme();
   const pathname = usePathname();
   useScanManager();
 
-  const isTabScreen = pathname === '/' || ['music', 'videos', 'files', 'playlists', 'favorites', 'settings'].some((key) => pathname === `/${key}` || pathname.startsWith(`/${key}/`)) || pathname === '/playlists' || pathname.startsWith('/playlist/');
+  const isTabScreen =
+    pathname === "/" ||
+    ["music", "videos", "files", "playlists", "favorites", "settings"].some(
+      (key) => pathname === `/${key}` || pathname.startsWith(`/${key}/`),
+    ) ||
+    pathname === "/playlists" ||
+    pathname.startsWith("/playlist/");
 
   return (
     <View style={{ flex: 1 }}>
@@ -34,198 +40,194 @@ function RootStack() {
           }}
         >
           <Stack.Screen name="(tabs)" />
-        <Stack.Screen
-          name="music/songs"
-          options={{ animation: 'slide_from_right' }}
-        />
-        <Stack.Screen
-          name="music/albums"
-          options={{ animation: 'slide_from_right' }}
-        />
-        <Stack.Screen
-          name="music/artists"
-          options={{ animation: 'slide_from_right' }}
-        />
-        <Stack.Screen
-          name="music/genres"
-          options={{ animation: 'slide_from_right' }}
-        />
-        <Stack.Screen
-          name="music/album/[id]"
-          options={{ animation: 'slide_from_right' }}
-        />
-        <Stack.Screen
-          name="music/artist/[id]"
-          options={{ animation: 'slide_from_right' }}
-        />
-        <Stack.Screen
-          name="music/genre/[id]"
-          options={{ animation: 'slide_from_right' }}
-        />
-        <Stack.Screen
-          name="files"
-          options={{ animation: 'slide_from_right' }}
-        />
-        <Stack.Screen
-          name="search"
-          options={{ animation: 'slide_from_right' }}
-        />
-        <Stack.Screen
-          name="player"
-          options={{ animation: 'slide_from_bottom' }}
-        />
-        <Stack.Screen
-          name="video-player"
-          options={{ animation: 'slide_from_bottom' }}
-        />
-        <Stack.Screen
-          name="audio-features"
-          options={{ animation: 'slide_from_right' }}
-        />
-        <Stack.Screen
-          name="sleep-timer"
-          options={{ animation: 'slide_from_right' }}
-        />
-        <Stack.Screen
-          name="statistics"
-          options={{ animation: 'slide_from_right' }}
-        />
-        <Stack.Screen
-          name="smart-playlists"
-          options={{ animation: 'slide_from_right' }}
-        />
-        <Stack.Screen
-          name="tag-edit"
-          options={{ animation: 'slide_from_right' }}
-        />
-        <Stack.Screen
-          name="storage"
-          options={{ animation: 'slide_from_right' }}
-        />
-        <Stack.Screen
-          name="batch-operations"
-          options={{ animation: 'slide_from_right' }}
-        />
-        <Stack.Screen
-          name="library-tools"
-          options={{ animation: 'slide_from_right' }}
-        />
-        <Stack.Screen
-          name="online-subtitles"
-          options={{ animation: 'slide_from_right' }}
-        />
-        <Stack.Screen
-          name="ai-features"
-          options={{ animation: 'slide_from_right' }}
-        />
-        <Stack.Screen
-          name="cloud-sync"
-          options={{ animation: 'slide_from_right' }}
-        />
-        <Stack.Screen
-          name="gesture-controls"
-          options={{ animation: 'slide_from_right' }}
-        />
-        <Stack.Screen
-          name="hidden-files"
-          options={{ animation: 'slide_from_right' }}
-        />
-        <Stack.Screen
-          name="play-time"
-          options={{ animation: 'slide_from_right' }}
-        />
-        <Stack.Screen
-          name="recently-deleted"
-          options={{ animation: 'slide_from_right' }}
-        />
-        <Stack.Screen
-          name="themes"
-          options={{ animation: 'slide_from_right' }}
-        />
-        <Stack.Screen
-          name="accent-color"
-          options={{ animation: 'slide_from_right' }}
-        />
-        <Stack.Screen
-          name="language-settings"
-          options={{ animation: 'slide_from_right' }}
-        />
-        <Stack.Screen
-          name="font-settings"
-          options={{ animation: 'slide_from_right' }}
-        />
-        <Stack.Screen
-          name="audio-quality"
-          options={{ animation: 'slide_from_right' }}
-        />
-        <Stack.Screen
-          name="video-quality"
-          options={{ animation: 'slide_from_right' }}
-        />
-        <Stack.Screen
-          name="crossfade-settings"
-          options={{ animation: 'slide_from_right' }}
-        />
-        <Stack.Screen
-          name="notification-settings"
-          options={{ animation: 'slide_from_right' }}
-        />
-        <Stack.Screen
-          name="backup-restore"
-          options={{ animation: 'slide_from_right' }}
-        />
-        <Stack.Screen
-          name="scan-locations"
-          options={{ animation: 'slide_from_right' }}
-        />
-        <Stack.Screen
-          name="privacy"
-          options={{ animation: 'slide_from_right' }}
-        />
-        <Stack.Screen
-          name="help-support"
-          options={{ animation: 'slide_from_right' }}
-        />
-        <Stack.Screen
-          name="about"
-          options={{ animation: 'slide_from_right' }}
-        />
-        <Stack.Screen
-          name="recently-played"
-          options={{ animation: 'slide_from_right' }}
-        />
-        <Stack.Screen
-          name="with-lyrics"
-          options={{ animation: 'slide_from_right' }}
-        />
-        <Stack.Screen
-          name="not-used"
-          options={{ animation: 'slide_from_right' }}
-        />
-        <Stack.Screen
-          name="private-folder"
-          options={{ animation: 'slide_from_right' }}
-        />
-        <Stack.Screen
-          name="playlists"
-          options={{ animation: 'slide_from_right' }}
-        />
-        <Stack.Screen
-          name="playlist/[id]"
-          options={{ animation: 'slide_from_right' }}
-        />
-        <Stack.Screen
-          name="lyrics-editor"
-          options={{ animation: 'slide_from_right' }}
-        />
-        <Stack.Screen
-          name="document-reader"
-          options={{ animation: 'slide_from_right' }}
-        />
-        <Stack.Screen
-          name="document-viewer"
-          options={{ animation: 'slide_from_right' }}
-        />
+          <Stack.Screen
+            name="music/songs"
+            options={{ animation: "slide_from_right" }}
+          />
+          <Stack.Screen
+            name="music/albums"
+            options={{ animation: "slide_from_right" }}
+          />
+          <Stack.Screen
+            name="music/artists"
+            options={{ animation: "slide_from_right" }}
+          />
+          <Stack.Screen
+            name="music/genres"
+            options={{ animation: "slide_from_right" }}
+          />
+          <Stack.Screen
+            name="music/album/[id]"
+            options={{ animation: "slide_from_right" }}
+          />
+          <Stack.Screen
+            name="music/artist/[id]"
+            options={{ animation: "slide_from_right" }}
+          />
+          <Stack.Screen
+            name="music/genre/[id]"
+            options={{ animation: "slide_from_right" }}
+          />
+          <Stack.Screen
+            name="files"
+            options={{ animation: "slide_from_right" }}
+          />
+          <Stack.Screen
+            name="search"
+            options={{ animation: "slide_from_right" }}
+          />
+          <Stack.Screen
+            name="player"
+            options={{ animation: "slide_from_bottom" }}
+          />
+          <Stack.Screen
+            name="video-player"
+            options={{ animation: "slide_from_bottom" }}
+          />
+          <Stack.Screen
+            name="audio-features"
+            options={{ animation: "slide_from_right" }}
+          />
+          <Stack.Screen
+            name="sleep-timer"
+            options={{ animation: "slide_from_right" }}
+          />
+          <Stack.Screen
+            name="statistics"
+            options={{ animation: "slide_from_right" }}
+          />
+          <Stack.Screen
+            name="smart-playlists"
+            options={{ animation: "slide_from_right" }}
+          />
+          <Stack.Screen
+            name="tag-edit"
+            options={{ animation: "slide_from_right" }}
+          />
+          <Stack.Screen
+            name="storage"
+            options={{ animation: "slide_from_right" }}
+          />
+          <Stack.Screen
+            name="batch-operations"
+            options={{ animation: "slide_from_right" }}
+          />
+          <Stack.Screen
+            name="library-tools"
+            options={{ animation: "slide_from_right" }}
+          />
+          <Stack.Screen
+            name="online-subtitles"
+            options={{ animation: "slide_from_right" }}
+          />
+          <Stack.Screen
+            name="ai-features"
+            options={{ animation: "slide_from_right" }}
+          />
+          <Stack.Screen
+            name="cloud-sync"
+            options={{ animation: "slide_from_right" }}
+          />
+          <Stack.Screen
+            name="gesture-controls"
+            options={{ animation: "slide_from_right" }}
+          />
+          <Stack.Screen
+            name="hidden-files"
+            options={{ animation: "slide_from_right" }}
+          />
+          <Stack.Screen
+            name="play-time"
+            options={{ animation: "slide_from_right" }}
+          />
+          <Stack.Screen
+            name="recently-deleted"
+            options={{ animation: "slide_from_right" }}
+          />
+          <Stack.Screen
+            name="themes"
+            options={{ animation: "slide_from_right" }}
+          />
+          <Stack.Screen
+            name="accent-color"
+            options={{ animation: "slide_from_right" }}
+          />
+          <Stack.Screen
+            name="language-settings"
+            options={{ animation: "slide_from_right" }}
+          />
+          <Stack.Screen
+            name="font-settings"
+            options={{ animation: "slide_from_right" }}
+          />
+          <Stack.Screen
+            name="audio-quality"
+            options={{ animation: "slide_from_right" }}
+          />
+          <Stack.Screen
+            name="video-quality"
+            options={{ animation: "slide_from_right" }}
+          />
+          <Stack.Screen
+            name="crossfade-settings"
+            options={{ animation: "slide_from_right" }}
+          />
+          <Stack.Screen
+            name="notification-settings"
+            options={{ animation: "slide_from_right" }}
+          />
+          <Stack.Screen
+            name="backup-restore"
+            options={{ animation: "slide_from_right" }}
+          />
+          <Stack.Screen
+            name="scan-locations"
+            options={{ animation: "slide_from_right" }}
+          />
+          <Stack.Screen
+            name="privacy"
+            options={{ animation: "slide_from_right" }}
+          />
+          <Stack.Screen
+            name="help-support"
+            options={{ animation: "slide_from_right" }}
+          />
+          <Stack.Screen
+            name="about"
+            options={{ animation: "slide_from_right" }}
+          />
+          <Stack.Screen
+            name="recently-played"
+            options={{ animation: "slide_from_right" }}
+          />
+          <Stack.Screen
+            name="with-lyrics"
+            options={{ animation: "slide_from_right" }}
+          />
+          <Stack.Screen
+            name="private-folder"
+            options={{ animation: "slide_from_right" }}
+          />
+          <Stack.Screen
+            name="playlists"
+            options={{ animation: "slide_from_right" }}
+          />
+          <Stack.Screen
+            name="playlist/[id]"
+            options={{ animation: "slide_from_right" }}
+          />
+          <Stack.Screen
+            name="lyrics-editor"
+            options={{ animation: "slide_from_right" }}
+          />
+          <Stack.Screen
+            name="document-reader"
+            options={{ animation: "slide_from_right" }}
+          />
+          <Stack.Screen
+            name="document-viewer"
+            options={{ animation: "slide_from_right" }}
+          />
         </Stack>
       </View>
       {isTabScreen && <BottomBar />}

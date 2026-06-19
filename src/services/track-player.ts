@@ -1,10 +1,10 @@
-import type { Song } from '@/types/media';
-import { audioEngine } from '@/services/audio-engine';
-import { setAudioModeAsync } from 'expo-audio';
+import type { Song } from "@/types/media";
+import { audioEngine } from "@/services/audio-engine";
+import { setAudioModeAsync } from "expo-audio";
 import {
   showNowPlayingNotification,
   dismissNowPlayingNotification,
-} from '@/services/notifications';
+} from "@/services/notifications";
 
 let crossfadeEnabled = false;
 let crossfadeDuration = 5;
@@ -54,12 +54,25 @@ const playerAdapter = {
   remove() {
     audioEngine.stop();
   },
-  setActiveForLockScreen(active: boolean, meta: { title?: string; artist?: string; artwork?: string } | null) {
+  setActiveForLockScreen(
+    active: boolean,
+    meta: { title?: string; artist?: string; artwork?: string } | null,
+  ) {
     if (active && meta) {
       const fakeTrack: Song = {
-        id: 'lockscreen', title: meta.title ?? '', artist: meta.artist ?? '',
-        artwork: meta.artwork ?? null, uri: '', duration: 0, album: '', albumId: '',
-        fileSize: 0, dateAdded: 0, genre: null, bitrate: null, sampleRate: null,
+        id: "lockscreen",
+        title: meta.title ?? "",
+        artist: meta.artist ?? "",
+        artwork: meta.artwork ?? null,
+        uri: "",
+        duration: 0,
+        album: "",
+        albumId: "",
+        fileSize: 0,
+        dateAdded: 0,
+        genre: null,
+        bitrate: null,
+        sampleRate: null,
       };
       showNowPlayingNotification(fakeTrack, audioEngine.getState().playing);
     } else {
@@ -73,10 +86,6 @@ const playerAdapter = {
 
 export function getPlayer() {
   return playerAdapter;
-}
-
-export function getCrossfadePlayer() {
-  return null;
 }
 
 export function setCrossfadeEnabled(enabled: boolean): void {
@@ -103,14 +112,14 @@ export async function setupPlayer(): Promise<void> {
   try {
     await audioEngine.init();
   } catch (e) {
-    console.warn('Audio engine init failed:', e);
+    console.warn("Audio engine init failed:", e);
   }
 
   try {
     await setAudioModeAsync({
       playsInSilentMode: true,
       shouldPlayInBackground: true,
-      interruptionMode: 'doNotMix',
+      interruptionMode: "doNotMix",
     });
   } catch {}
 }
@@ -122,7 +131,9 @@ export async function loadTrack(track: Song): Promise<void> {
   }
 
   await audioEngine.loadTrack(track.uri);
-  const speedState = (await import('@/store/playback-speed-store')).usePlaybackSpeedStore.getState();
+  const speedState = (
+    await import("@/store/playback-speed-store")
+  ).usePlaybackSpeedStore.getState();
   audioEngine.setSpeed(speedState.speed);
   audioEngine.setPitchCorrection(speedState.pitchCorrection);
   audioEngine.play();

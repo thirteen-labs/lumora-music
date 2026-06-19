@@ -1,16 +1,16 @@
-import { create } from 'zustand';
-import { immer } from 'zustand/middleware/immer';
-import type { Song } from '@/types/media';
-import type { RepeatMode } from '@/types/player';
+import { create } from "zustand";
+import { immer } from "zustand/middleware/immer";
+import type { Song } from "@/types/media";
+import type { RepeatMode } from "@/types/player";
 import {
   loadTrack,
   pausePlayback,
   resumePlayback,
   seekTo as serviceSeekTo,
   getPlayer,
-} from '@/services/track-player';
-import { useStatsStore } from '@/store/stats-store';
-import { useQueuePersistStore } from '@/store/queue-persist-store';
+} from "@/services/track-player";
+import { useStatsStore } from "@/store/stats-store";
+import { useQueuePersistStore } from "@/store/queue-persist-store";
 
 function shuffleArray(length: number): number[] {
   const arr = Array.from({ length }, (_, i) => i);
@@ -63,7 +63,7 @@ export const usePlayerStore = create<PlayerState>()(
     position: 0,
     duration: 0,
     shuffle: false,
-    repeat: 'off',
+    repeat: "off",
     isMiniPlayerVisible: false,
     isFullPlayerVisible: false,
     shuffledOrder: [],
@@ -83,18 +83,31 @@ export const usePlayerStore = create<PlayerState>()(
 
       useStatsStore.getState().recordPlay(track.id);
       const state = get();
-      useQueuePersistStore.getState().saveQueue(track, state.queue, state.queueIndex, state.shuffle, state.repeat, 0);
+      useQueuePersistStore
+        .getState()
+        .saveQueue(
+          track,
+          state.queue,
+          state.queueIndex,
+          state.shuffle,
+          state.repeat,
+          0,
+        );
 
       await loadTrack(track);
     },
 
     pause: async () => {
-      set((s) => { s.isPlaying = false; });
+      set((s) => {
+        s.isPlaying = false;
+      });
       await pausePlayback();
     },
 
     resume: async () => {
-      set((s) => { s.isPlaying = true; });
+      set((s) => {
+        s.isPlaying = true;
+      });
       await resumePlayback();
     },
 
@@ -123,12 +136,16 @@ export const usePlayerStore = create<PlayerState>()(
         const nextShuffledIdx = currentShuffledIdx + 1;
 
         if (nextShuffledIdx >= shuffledOrder.length) {
-          if (repeat === 'all') {
+          if (repeat === "all") {
             const newOrder = shuffleArray(queue.length);
-            set((s) => { s.shuffledOrder = newOrder; });
+            set((s) => {
+              s.shuffledOrder = newOrder;
+            });
             nextOriginalIndex = newOrder[0];
           } else {
-            set((s) => { s.isPlaying = false; });
+            set((s) => {
+              s.isPlaying = false;
+            });
             return;
           }
         } else {
@@ -138,10 +155,12 @@ export const usePlayerStore = create<PlayerState>()(
         nextOriginalIndex = get().queueIndex + 1;
 
         if (nextOriginalIndex >= queue.length) {
-          if (repeat === 'all') {
+          if (repeat === "all") {
             nextOriginalIndex = 0;
           } else {
-            set((s) => { s.isPlaying = false; });
+            set((s) => {
+              s.isPlaying = false;
+            });
             return;
           }
         }
@@ -149,10 +168,23 @@ export const usePlayerStore = create<PlayerState>()(
 
       const nextTrack = queue[nextOriginalIndex];
       if (nextTrack) {
-        set((s) => { s.queueIndex = nextOriginalIndex; });
+        set((s) => {
+          s.queueIndex = nextOriginalIndex;
+          s.currentTrack = nextTrack;
+          s.isPlaying = true;
+        });
         await loadTrack(nextTrack);
         const s = get();
-        useQueuePersistStore.getState().saveQueue(nextTrack, s.queue, nextOriginalIndex, s.shuffle, s.repeat, 0);
+        useQueuePersistStore
+          .getState()
+          .saveQueue(
+            nextTrack,
+            s.queue,
+            nextOriginalIndex,
+            s.shuffle,
+            s.repeat,
+            0,
+          );
       }
     },
 
@@ -162,7 +194,9 @@ export const usePlayerStore = create<PlayerState>()(
 
       if (position > 3) {
         await serviceSeekTo(0);
-        set((s) => { s.position = 0; });
+        set((s) => {
+          s.position = 0;
+        });
         return;
       }
 
@@ -186,20 +220,37 @@ export const usePlayerStore = create<PlayerState>()(
 
       const prevTrack = queue[prevOriginalIndex];
       if (prevTrack) {
-        set((s) => { s.queueIndex = prevOriginalIndex; });
+        set((s) => {
+          s.queueIndex = prevOriginalIndex;
+          s.currentTrack = prevTrack;
+          s.isPlaying = true;
+        });
         await loadTrack(prevTrack);
         const s = get();
-        useQueuePersistStore.getState().saveQueue(prevTrack, s.queue, prevOriginalIndex, s.shuffle, s.repeat, 0);
+        useQueuePersistStore
+          .getState()
+          .saveQueue(
+            prevTrack,
+            s.queue,
+            prevOriginalIndex,
+            s.shuffle,
+            s.repeat,
+            0,
+          );
       }
     },
 
     seekTo: async (position) => {
-      set((s) => { s.position = position; });
+      set((s) => {
+        s.position = position;
+      });
       await serviceSeekTo(position);
     },
 
     setShuffle: (shuffle) => {
-      set((s) => { s.shuffle = shuffle; });
+      set((s) => {
+        s.shuffle = shuffle;
+      });
 
       const state = get();
       if (!state.currentTrack || state.queue.length === 0) return;
@@ -218,19 +269,27 @@ export const usePlayerStore = create<PlayerState>()(
           s.queueIndex = order[0];
         });
       } else {
-        set((s) => { s.shuffledOrder = []; });
+        set((s) => {
+          s.shuffledOrder = [];
+        });
       }
     },
 
     setRepeat: (mode) => {
-      set((s) => { s.repeat = mode; });
+      set((s) => {
+        s.repeat = mode;
+      });
     },
 
     addToQueue: async (track) => {
-      set((s) => { s.queue.push(track); });
+      set((s) => {
+        s.queue.push(track);
+      });
     },
 
     removeFromQueue: (index) => {
+      const wasCurrent = index === get().queueIndex;
+
       set((state) => {
         state.queue.splice(index, 1);
         if (index < state.queueIndex) {
@@ -252,6 +311,16 @@ export const usePlayerStore = create<PlayerState>()(
             .map((i) => (i > index ? i - 1 : i));
         }
       });
+
+      // If the currently playing track was removed, sync the audio engine
+      if (wasCurrent) {
+        const newState = get();
+        if (newState.currentTrack) {
+          loadTrack(newState.currentTrack);
+        } else {
+          pausePlayback();
+        }
+      }
     },
 
     reorderQueue: (fromIndex, toIndex) => {
@@ -260,28 +329,60 @@ export const usePlayerStore = create<PlayerState>()(
         state.queue.splice(toIndex, 0, item);
         if (fromIndex === state.queueIndex) {
           state.queueIndex = toIndex;
-        } else if (fromIndex < state.queueIndex && toIndex >= state.queueIndex) {
+        } else if (
+          fromIndex < state.queueIndex &&
+          toIndex >= state.queueIndex
+        ) {
           state.queueIndex--;
-        } else if (fromIndex > state.queueIndex && toIndex <= state.queueIndex) {
+        } else if (
+          fromIndex > state.queueIndex &&
+          toIndex <= state.queueIndex
+        ) {
           state.queueIndex++;
         }
         if (state.shuffle) {
           state.shuffledOrder = state.shuffledOrder.map((i) => {
             if (i === fromIndex) return toIndex;
-            if (fromIndex < toIndex && i > fromIndex && i <= toIndex) return i - 1;
-            if (fromIndex > toIndex && i >= toIndex && i < fromIndex) return i + 1;
+            if (fromIndex < toIndex && i > fromIndex && i <= toIndex)
+              return i - 1;
+            if (fromIndex > toIndex && i >= toIndex && i < fromIndex)
+              return i + 1;
             return i;
           });
         }
       });
     },
 
-    showMiniPlayer: () => { set((s) => { s.isMiniPlayerVisible = true; }); },
-    hideMiniPlayer: () => { set((s) => { s.isMiniPlayerVisible = false; }); },
-    showFullPlayer: () => { set((s) => { s.isFullPlayerVisible = true; }); },
-    hideFullPlayer: () => { set((s) => { s.isFullPlayerVisible = false; }); },
-    setPosition: (position) => { set((s) => { s.position = position; }); },
-    setDuration: (duration) => { set((s) => { s.duration = duration; }); },
+    showMiniPlayer: () => {
+      set((s) => {
+        s.isMiniPlayerVisible = true;
+      });
+    },
+    hideMiniPlayer: () => {
+      set((s) => {
+        s.isMiniPlayerVisible = false;
+      });
+    },
+    showFullPlayer: () => {
+      set((s) => {
+        s.isFullPlayerVisible = true;
+      });
+    },
+    hideFullPlayer: () => {
+      set((s) => {
+        s.isFullPlayerVisible = false;
+      });
+    },
+    setPosition: (position) => {
+      set((s) => {
+        s.position = position;
+      });
+    },
+    setDuration: (duration) => {
+      set((s) => {
+        s.duration = duration;
+      });
+    },
 
     syncFromPlayer: () => {
       const playerState = getPlayerState();
@@ -298,7 +399,13 @@ export const usePlayerStore = create<PlayerState>()(
 function getPlayerState() {
   const player = getPlayer();
   if (!player) {
-    return { playing: false, currentTime: 0, duration: 0, isBuffering: false, isLoaded: false };
+    return {
+      playing: false,
+      currentTime: 0,
+      duration: 0,
+      isBuffering: false,
+      isLoaded: false,
+    };
   }
   return {
     playing: player.playing,

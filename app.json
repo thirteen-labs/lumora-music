@@ -15,7 +15,6 @@
       "adaptiveIcon": {
         "backgroundColor": "#020008",
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundImage": "./assets/adaptive-icon.png",
         "monochromeImage": "./assets/adaptive-icon.png"
       },
       "predictiveBackGestureEnabled": false,
@@ -101,9 +100,7 @@
             "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"
           ],
           "androidForegroundService": true,
-          "androidFSTypes": [
-            "mediaPlayback"
-          ]
+          "androidFSTypes": ["mediaPlayback"]
         }
       ],
       "expo-task-manager",

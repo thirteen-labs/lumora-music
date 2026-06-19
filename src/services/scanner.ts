@@ -1,6 +1,6 @@
 import { Platform, PermissionsAndroid } from 'react-native';
 import type { Song, Album as LumoraAlbum, Artist, Genre, Video, MediaScanStatus } from '@/types/media';
-import { generateThumbnail } from '@/services/video-thumbnails';
+import { getVideoThumbnailUri } from '@/services/video-thumbnails';
 
 let MediaLibrary: any = null;
 let MetadataRetriever: any = null;
@@ -315,13 +315,7 @@ async function processVideoAsset(asset: any): Promise<Video | null> {
       fileSize = estimateFileSizeFromBitrate(bitrateEstimate, null, asset.duration ?? 0);
     }
 
-    let thumbnail: string | null = null;
-    try {
-      const thumb = await generateThumbnail(uri);
-      if (thumb?.uri) thumbnail = thumb.uri;
-    } catch {
-      console.warn('[Scanner] Thumbnail generation failed for:', uri);
-    }
+    const thumbnail = getVideoThumbnailUri(uri, asset.id);
 
     return {
       id: asset.id,

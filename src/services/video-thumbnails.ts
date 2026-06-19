@@ -1,24 +1,25 @@
-import { createVideoPlayer } from 'expo-video';
-import type { VideoThumbnail } from 'expo-video';
-import { Paths, Directory } from 'expo-file-system';
+const thumbCache = new Map<string, string>();
 
-const THUMB_DIR = new Directory(Paths.cache, 'video-thumbnails');
+export function setThumbnailUri(mediaId: string, uri: string): void {
+  thumbCache.set(mediaId, uri);
+}
 
-export async function generateThumbnail(
+export function getCachedThumbnailUri(mediaId: string): string | null {
+  return thumbCache.get(mediaId) ?? null;
+}
+
+export function getVideoThumbnailUri(
   videoUri: string,
-  timeMs: number = 1000,
-): Promise<VideoThumbnail | null> {
+  mediaId: string,
+): string | null {
   try {
-    try {
-      THUMB_DIR.create({ intermediates: true });
-    } catch {}
-    const player = createVideoPlayer({ uri: videoUri });
-    const thumbnails = await player.generateThumbnailsAsync(timeMs / 1000, {
-      maxWidth: 640,
-    });
-    return thumbnails.length > 0 ? thumbnails[0] : null;
-  } catch (e) {
-    console.warn('Thumbnail generation failed:', e);
+    if (videoUri.startsWith('content://')) {
+      const uri = `content://media/external/video/thumbnails/${mediaId}`;
+      thumbCache.set(mediaId, uri);
+      return uri;
+    }
+    return null;
+  } catch {
     return null;
   }
 }

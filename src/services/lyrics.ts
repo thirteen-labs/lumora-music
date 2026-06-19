@@ -1,5 +1,5 @@
-const LYRICS_API = 'https://api.lyrics.ovh/v1';
-const LRCLIB_API = 'https://lrclib.net/api';
+const LYRICS_API = "https://api.lyrics.ovh/v1";
+const LRCLIB_API = "https://lrclib.net/api";
 
 export interface SyncedLine {
   time: number;
@@ -13,9 +13,18 @@ export interface LyricsResult {
 }
 
 let cache = new Map<string, LyricsResult | null>();
+const CACHE_MAX_SIZE = 200;
 
 function cacheKey(artist: string, title: string): string {
   return `${artist}|||${title}`.toLowerCase().trim();
+}
+
+function trimCache(): void {
+  if (cache.size > CACHE_MAX_SIZE) {
+    const keys = [...cache.keys()];
+    const toDelete = keys.slice(0, keys.length - CACHE_MAX_SIZE);
+    for (const key of toDelete) cache.delete(key);
+  }
 }
 
 function parseLRC(lrc: string): SyncedLine[] {
@@ -25,7 +34,7 @@ function parseLRC(lrc: string): SyncedLine[] {
   while ((match = regex.exec(lrc)) !== null) {
     const min = parseInt(match[1], 10);
     const sec = parseInt(match[2], 10);
-    const ms = parseInt(match[3].padEnd(3, '0'), 10);
+    const ms = parseInt(match[3].padEnd(3, "0"), 10);
     const time = min * 60 + sec + ms / 1000;
     const text = match[4].trim();
     if (text) lines.push({ time, text });
@@ -36,11 +45,11 @@ function parseLRC(lrc: string): SyncedLine[] {
 
 function stripLRCMetadata(lrc: string): string {
   return lrc
-    .replace(/\[ti:.*?\]\s*/g, '')
-    .replace(/\[ar:.*?\]\s*/g, '')
-    .replace(/\[al:.*?\]\s*/g, '')
-    .replace(/\[by:.*?\]\s*/g, '')
-    .replace(/\[offset:.*?\]\s*/g, '')
+    .replace(/\[ti:.*?\]\s*/g, "")
+    .replace(/\[ar:.*?\]\s*/g, "")
+    .replace(/\[al:.*?\]\s*/g, "")
+    .replace(/\[by:.*?\]\s*/g, "")
+    .replace(/\[offset:.*?\]\s*/g, "")
     .trim();
 }
 
@@ -54,14 +63,20 @@ export function getSyncedLine(synced: SyncedLine[], position: number): number {
   return idx;
 }
 
-async function fetchFromLrclib(artist: string, title: string): Promise<LyricsResult | null> {
+async function fetchFromLrclib(
+  artist: string,
+  title: string,
+): Promise<LyricsResult | null> {
   try {
-    const cleanArtist = artist.replace(/[-–—].*$/, '').trim();
-    const cleanTitle = title.replace(/\s*\(.*?\)\s*/g, '').replace(/\s*\[.*?\]\s*/g, '').trim();
+    const cleanArtist = artist.replace(/[-–—].*$/, "").trim();
+    const cleanTitle = title
+      .replace(/\s*\(.*?\)\s*/g, "")
+      .replace(/\s*\[.*?\]\s*/g, "")
+      .trim();
 
     const response = await fetch(
       `${LRCLIB_API}/get?artist_name=${encodeURIComponent(cleanArtist)}&track_name=${encodeURIComponent(cleanTitle)}`,
-      { signal: AbortSignal.timeout(5000) }
+      { signal: AbortSignal.timeout(5000) },
     );
 
     if (!response.ok) return null;
@@ -73,11 +88,11 @@ async function fetchFromLrclib(artist: string, title: string): Promise<LyricsRes
     if (syncedLrc) {
       const synced = parseLRC(syncedLrc);
       const plainText = stripLRCMetadata(syncedLrc);
-      return { lyrics: plainText, synced, source: 'lrclib' };
+      return { lyrics: plainText, synced, source: "lrclib" };
     }
 
     if (plainLyrics) {
-      return { lyrics: plainLyrics, synced: [], source: 'lrclib' };
+      return { lyrics: plainLyrics, synced: [], source: "lrclib" };
     }
 
     return null;
@@ -86,57 +101,69 @@ async function fetchFromLrclib(artist: string, title: string): Promise<LyricsRes
   }
 }
 
-async function fetchFromLyricsOvh(artist: string, title: string): Promise<LyricsResult | null> {
+async function fetchFromLyricsOvh(
+  artist: string,
+  title: string,
+): Promise<LyricsResult | null> {
   try {
-    const cleanArtist = artist.replace(/[-–—].*$/, '').trim();
-    const cleanTitle = title.replace(/\s*\(.*?\)\s*/g, '').replace(/\s*\[.*?\]\s*/g, '').trim();
+    const cleanArtist = artist.replace(/[-–—].*$/, "").trim();
+    const cleanTitle = title
+      .replace(/\s*\(.*?\)\s*/g, "")
+      .replace(/\s*\[.*?\]\s*/g, "")
+      .trim();
 
     const response = await fetch(
       `${LYRICS_API}/${encodeURIComponent(cleanArtist)}/${encodeURIComponent(cleanTitle)}`,
-      { signal: AbortSignal.timeout(5000) }
+      { signal: AbortSignal.timeout(5000) },
     );
 
     if (!response.ok) return null;
 
     const data = await response.json();
-    const raw: string = data.lyrics ?? '';
+    const raw: string = data.lyrics ?? "";
     const synced = parseLRC(raw);
     const plainText = stripLRCMetadata(raw);
 
     return {
       lyrics: plainText,
       synced,
-      source: 'lyrics.ovh',
+      source: "lyrics.ovh",
     };
   } catch {
     return null;
   }
 }
 
-export async function fetchLyrics(artist: string, title: string): Promise<LyricsResult | null> {
+export async function fetchLyrics(
+  artist: string,
+  title: string,
+): Promise<LyricsResult | null> {
   const key = cacheKey(artist, title);
   if (cache.has(key)) return cache.get(key) ?? null;
 
   const lrclibResult = await fetchFromLrclib(artist, title);
   if (lrclibResult) {
     cache.set(key, lrclibResult);
+    trimCache();
     return lrclibResult;
   }
 
   const ovhResult = await fetchFromLyricsOvh(artist, title);
   if (ovhResult) {
     cache.set(key, ovhResult);
+    trimCache();
     return ovhResult;
   }
 
   cache.set(key, null);
+  trimCache();
   return null;
 }
 
 export function parseSyncedLyrics(lrcContent: string): LyricsResult {
   const synced = parseLRC(lrcContent);
   const plainText = stripLRCMetadata(lrcContent);
-  return { lyrics: plainText, synced, source: 'local' };
+  return { lyrics: plainText, synced, source: "local" };
 }
 
 export function clearLyricsCache(): void {

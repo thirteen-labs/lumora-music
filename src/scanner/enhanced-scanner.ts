@@ -1,8 +1,8 @@
-import { storage } from '@/services/mmkv';
-import type { Song } from '@/types/media';
+import { storage } from "@/services/mmkv";
+import type { Song } from "@/types/media";
 
-const SCAN_HISTORY_KEY = 'lumora-scan-history';
-const KNOWN_FILES_KEY = 'lumora-known-files';
+const SCAN_HISTORY_KEY = "lumora-scan-history";
+const KNOWN_FILES_KEY = "lumora-known-files";
 
 interface ScanHistory {
   lastFullScan: number;
@@ -15,7 +15,7 @@ export function getScanHistory(): ScanHistory {
     const raw = storage.getString(SCAN_HISTORY_KEY);
     if (raw) return JSON.parse(raw);
   } catch (error) {
-    console.warn('[EnhancedScanner] Failed to parse scan history:', error);
+    console.warn("[EnhancedScanner] Failed to parse scan history:", error);
   }
   return { lastFullScan: 0, lastIncrementalScan: 0, fileCount: 0 };
 }
@@ -24,7 +24,7 @@ export function saveScanHistory(history: ScanHistory): void {
   try {
     storage.set(SCAN_HISTORY_KEY, JSON.stringify(history));
   } catch (error) {
-    console.warn('[EnhancedScanner] Failed to save scan history:', error);
+    console.warn("[EnhancedScanner] Failed to save scan history:", error);
   }
 }
 
@@ -33,7 +33,7 @@ export function getKnownFiles(): Record<string, number> {
     const raw = storage.getString(KNOWN_FILES_KEY);
     if (raw) return JSON.parse(raw);
   } catch (error) {
-    console.warn('[EnhancedScanner] Failed to parse known files:', error);
+    console.warn("[EnhancedScanner] Failed to parse known files:", error);
   }
   return {};
 }
@@ -42,7 +42,7 @@ export function saveKnownFiles(files: Record<string, number>): void {
   try {
     storage.set(KNOWN_FILES_KEY, JSON.stringify(files));
   } catch (error) {
-    console.warn('[EnhancedScanner] Failed to save known files:', error);
+    console.warn("[EnhancedScanner] Failed to save known files:", error);
   }
 }
 
@@ -65,7 +65,9 @@ export function updateKnownFiles(songs: Song[]): void {
   saveKnownFiles(known);
 }
 
-export function findDuplicateSongs(songs: Song[]): { song: Song; duplicates: Song[] }[] {
+export function findDuplicateSongs(
+  songs: Song[],
+): { song: Song; duplicates: Song[] }[] {
   const byTitle = new Map<string, Song[]>();
   for (const song of songs) {
     const key = `${song.title.toLowerCase()}_${song.artist.toLowerCase()}_${song.duration}`;
@@ -85,15 +87,15 @@ export function findDuplicateSongs(songs: Song[]): { song: Song; duplicates: Son
 
 export function pickBestSong(songs: Song[]): Song {
   return songs.reduce((best, s) => {
-    const bestScore = (best.bitrate ?? 0) + (best.fileSize / 1048576);
-    const sScore = (s.bitrate ?? 0) + (s.fileSize / 1048576);
+    const bestScore = (best.bitrate ?? 0) + best.fileSize / 1048576;
+    const sScore = (s.bitrate ?? 0) + s.fileSize / 1048576;
     return sScore > bestScore ? s : best;
   });
 }
 
 export function removeDuplicateGroup(
   group: { song: Song; duplicates: Song[] },
-  keepIndex: number
+  keepIndex: number,
 ): { kept: Song; removed: Song[] } {
   const all = [group.song, ...group.duplicates];
   const kept = all[keepIndex] ?? group.song;
@@ -101,31 +103,43 @@ export function removeDuplicateGroup(
   return { kept, removed };
 }
 
-export function keepBestAndRemoveDuplicates(
-  group: { song: Song; duplicates: Song[] }
-): { kept: Song; removed: Song[] } {
+export function keepBestAndRemoveDuplicates(group: {
+  song: Song;
+  duplicates: Song[];
+}): { kept: Song; removed: Song[] } {
   const all = [group.song, ...group.duplicates];
   const best = pickBestSong(all);
   const removed = all.filter((s) => s !== best);
   return { kept: best, removed };
 }
 
-export function findMissingFiles(songs: Song[], knownUris: Set<string>): Song[] {
+export function findNewSongs(songs: Song[], knownUris: Set<string>): Song[] {
   return songs.filter((song) => !knownUris.has(song.uri));
 }
 
-export function calculateStorageInfo(songs: Song[], videos: { fileSize: number; title: string }[]) {
+export function calculateStorageInfo(
+  songs: Song[],
+  videos: { fileSize: number; title: string }[],
+) {
   const totalAudioSize = songs.reduce((sum, s) => sum + s.fileSize, 0);
   const totalVideoSize = videos.reduce((sum, v) => sum + v.fileSize, 0);
 
   const allFiles = [
-    ...songs.map((s) => ({ name: s.title, size: s.fileSize, type: 'audio' as const })),
-    ...videos.map((v) => ({ name: v.title, size: v.fileSize, type: 'video' as const })),
+    ...songs.map((s) => ({
+      name: s.title,
+      size: s.fileSize,
+      type: "audio" as const,
+    })),
+    ...videos.map((v) => ({
+      name: v.title,
+      size: v.fileSize,
+      type: "video" as const,
+    })),
   ].sort((a, b) => b.size - a.size);
 
   const genreMap = new Map<string, { count: number; size: number }>();
   for (const song of songs) {
-    const genre = song.genre ?? 'Unknown';
+    const genre = song.genre ?? "Unknown";
     const existing = genreMap.get(genre) || { count: 0, size: 0 };
     existing.count++;
     existing.size += song.fileSize;

@@ -11,16 +11,15 @@ import { Music } from 'lucide-react-native';
 import { Artwork } from '@/components/artwork';
 import { formatDuration } from '@/utils/cn';
 import { s } from '@/styles';
-import { useTranslation } from '@/hooks/use-translation';
 
 export default function MusicScreen() {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
-  const { t } = useTranslation();
   const { songs, scan } = useMusicStore();
 
   useEffect(() => {
     if (songs.length === 0) scan();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
@@ -50,7 +49,7 @@ export default function MusicScreen() {
       ) : (
         <View style={[s.flex1, s.itemsCenter, s.justifyCenter]}>
           <Music size={48} color={colors.textMuted} />
-          <Text style={[s.textSm, s.mt3, { color: colors.textMuted }]}>{t('library.no.songs') || 'No music found'}</Text>
+          <Text style={[s.textSm, s.mt3, { color: colors.textMuted }]}>No music found</Text>
         </View>
       )}
       <MiniPlayer />

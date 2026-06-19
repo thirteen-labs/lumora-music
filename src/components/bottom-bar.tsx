@@ -113,7 +113,7 @@ export function BottomBar() {
               />
               {isActive && (
                 <Text
-                  style={[s.text10, s.fontBold, s.ml1, { color: colors.accent }]}
+                  style={[s.text10, s.fontBold, s.ml15, { color: colors.accent }]}
                 >
                   {t(item.labelKey as any)}
                 </Text>

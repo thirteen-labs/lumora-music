@@ -95,7 +95,7 @@ export default function DocumentViewerScreen() {
               </View>
               {category && (
                 <View style={[s.flexRow, s.itemsCenter, s.gap1, s.mt05]}>
-                  <View style={[s.w2, s.h2, s.roundedFull, { backgroundColor: category.color }]} />
+                  <View style={{ width: 8, height: 8, borderRadius: 9999, backgroundColor: category.color }} />
                   <Text style={[s.text10, { color: category.color }]}>{category.label}</Text>
                 </View>
               )}
@@ -110,7 +110,7 @@ export default function DocumentViewerScreen() {
                   <Text style={[s.textSm, s.mt3, { color: colors.textMuted }]}>Loading file...</Text>
                 </View>
               ) : error ? (
-                <View style={[s.itemsCenter, s.py8, s.gap3]}>
+                <View style={[s.itemsCenter, { paddingVertical: 32 }, s.gap3]}>
                   <FileIcon size={32} color={colors.accent} />
                   <Text style={[s.textSm, { color: colors.accent, textAlign: 'center' }]}>{error}</Text>
                   <Pressable
