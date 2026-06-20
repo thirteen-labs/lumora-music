@@ -1,64 +1,93 @@
-import { View, Text, Pressable, Dimensions, StyleSheet } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { s } from '@/styles';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useTheme } from '@/hooks/use-theme';
+import { View, Text, Pressable, Dimensions, StyleSheet } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { s } from "@/styles";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { useTheme } from "@/hooks/use-theme";
 import {
-  ChevronLeft, Maximize2, Minimize2, Captions, Gauge, X, Play, Pause,
-  SkipBack, SkipForward, Lock, Unlock, RotateCcw, RotateCw,
-  Scaling, MonitorPlay, Camera, AudioLines,
-} from 'lucide-react-native';
-import { useVideoPlayer, VideoView, type VideoPlayer, isPictureInPictureSupported } from 'expo-video';
-import { useState, useCallback, useRef, useEffect } from 'react';
-import * as DocumentPicker from 'expo-document-picker';
-import * as FileSystem from 'expo-file-system';
+  ChevronLeft,
+  Maximize2,
+  Minimize2,
+  Captions,
+  Gauge,
+  X,
+  Play,
+  Pause,
+  SkipBack,
+  SkipForward,
+  Lock,
+  Unlock,
+  RotateCcw,
+  RotateCw,
+  Scaling,
+  MonitorPlay,
+  Camera,
+  AudioLines,
+} from "lucide-react-native";
 import {
-  BottomSheetModal,
-  BottomSheetBackdrop,
-} from '@gorhom/bottom-sheet';
-import { parseSRT, parseVTT, getActiveCue, type SubtitleCue } from '@/utils/subtitle-parser';
-import { formatDuration } from '@/utils/cn';
+  useVideoPlayer,
+  VideoView,
+  type VideoPlayer,
+  isPictureInPictureSupported,
+} from "expo-video";
+import { useState, useCallback, useRef, useEffect } from "react";
+import * as DocumentPicker from "expo-document-picker";
+import * as FileSystem from "expo-file-system";
+import { BottomSheetModal, BottomSheetBackdrop } from "@gorhom/bottom-sheet";
 import {
-  Gesture,
-  GestureDetector,
-} from 'react-native-gesture-handler';
+  parseSRT,
+  parseVTT,
+  getActiveCue,
+  type SubtitleCue,
+} from "@/utils/subtitle-parser";
+import { formatDuration } from "@/utils/cn";
+import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withSpring,
   withTiming,
   runOnJS,
-} from 'react-native-reanimated';
-import { useVideoProgressStore } from '@/store/video-progress-store';
-import { usePlayerStore } from '@/store/player-store';
-import { useVideoStore } from '@/store/video-store';
-import type { Song } from '@/types/media';
-import * as ScreenOrientation from 'expo-screen-orientation';
-import { useTranslation } from '@/hooks/use-translation';
-import { captureRef } from 'react-native-view-shot';
-import * as Sharing from 'expo-sharing';
+} from "react-native-reanimated";
+import { useVideoProgressStore } from "@/store/video-progress-store";
+import { usePlayerStore } from "@/store/player-store";
+import { useVideoStore } from "@/store/video-store";
+import type { Song } from "@/types/media";
+import * as ScreenOrientation from "expo-screen-orientation";
+import { useTranslation } from "@/hooks/use-translation";
+import { captureRef } from "react-native-view-shot";
+import * as Sharing from "expo-sharing";
 
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
 const PLAYBACK_SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 2];
 
 const SCALE_OPTIONS = [
-  { label: '50%', value: 0.5, group: 'small' as const },
-  { label: '60%', value: 0.6, group: 'small' as const },
-  { label: '70%', value: 0.7, group: 'small' as const },
-  { label: '80%', value: 0.8, group: 'small' as const },
-  { label: '110%', value: 1.1, group: 'large' as const },
-  { label: '125%', value: 1.25, group: 'large' as const },
-  { label: '150%', value: 1.5, group: 'large' as const },
-  { label: '200%', value: 2.0, group: 'large' as const },
+  { label: "50%", value: 0.5, group: "small" as const },
+  { label: "60%", value: 0.6, group: "small" as const },
+  { label: "70%", value: 0.7, group: "small" as const },
+  { label: "80%", value: 0.8, group: "small" as const },
+  { label: "110%", value: 1.1, group: "large" as const },
+  { label: "125%", value: 1.25, group: "large" as const },
+  { label: "150%", value: 1.5, group: "large" as const },
+  { label: "200%", value: 2.0, group: "large" as const },
 ];
 
-function SeekIndicator({ visible, text, side }: { visible: boolean; text: string; side: 'left' | 'right' }) {
+function SeekIndicator({
+  visible,
+  text,
+  side,
+}: {
+  visible: boolean;
+  text: string;
+  side: "left" | "right";
+}) {
   const opacity = useSharedValue(0);
 
   useEffect(() => {
-    opacity.value = visible ? withTiming(1, { duration: 150 }) : withTiming(0, { duration: 200 });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    opacity.value = visible
+      ? withTiming(1, { duration: 150 })
+      : withTiming(0, { duration: 200 });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible]);
 
   const animatedStyle = useAnimatedStyle(() => ({
@@ -70,19 +99,21 @@ function SeekIndicator({ visible, text, side }: { visible: boolean; text: string
     <Animated.View
       style={[
         {
-          position: 'absolute',
-          top: '40%',
+          position: "absolute",
+          top: "40%",
           [side]: 40,
-          backgroundColor: 'rgba(0,0,0,0.7)',
+          backgroundColor: "rgba(0,0,0,0.7)",
           borderRadius: 12,
           paddingHorizontal: 16,
           paddingVertical: 10,
-          alignItems: 'center',
+          alignItems: "center",
         },
         animatedStyle,
       ]}
     >
-      <Text style={{ color: '#fff', fontSize: 16, fontWeight: '700' }}>{text}</Text>
+      <Text style={{ color: "#fff", fontSize: 16, fontWeight: "700" }}>
+        {text}
+      </Text>
     </Animated.View>
   );
 }
@@ -100,7 +131,7 @@ function VolumeIndicator({ volume }: { volume: number }) {
       prevVolume.current = volume;
       return () => clearTimeout(timer);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [volume]);
 
   const animatedStyle = useAnimatedStyle(() => ({
@@ -113,18 +144,25 @@ function VolumeIndicator({ volume }: { volume: number }) {
     <Animated.View
       style={[
         {
-          position: 'absolute',
+          position: "absolute",
           right: 20,
-          top: '35%',
-          backgroundColor: 'rgba(0,0,0,0.7)',
+          top: "35%",
+          backgroundColor: "rgba(0,0,0,0.7)",
           borderRadius: 10,
           padding: 10,
-          alignItems: 'center',
+          alignItems: "center",
         },
         animatedStyle,
       ]}
     >
-      <View style={{ flexDirection: 'row', gap: 2, height: 80, alignItems: 'flex-end' }}>
+      <View
+        style={{
+          flexDirection: "row",
+          gap: 2,
+          height: 80,
+          alignItems: "flex-end",
+        }}
+      >
         {Array.from({ length: 15 }).map((_, i) => (
           <View
             key={i}
@@ -132,12 +170,14 @@ function VolumeIndicator({ volume }: { volume: number }) {
               width: 3,
               height: (i + 1) * 5,
               borderRadius: 1.5,
-              backgroundColor: i < bars ? '#fff' : 'rgba(255,255,255,0.3)',
+              backgroundColor: i < bars ? "#fff" : "rgba(255,255,255,0.3)",
             }}
           />
         ))}
       </View>
-      <Text style={{ color: '#fff', fontSize: 12, marginTop: 4 }}>{Math.round(volume * 100)}%</Text>
+      <Text style={{ color: "#fff", fontSize: 12, marginTop: 4 }}>
+        {Math.round(volume * 100)}%
+      </Text>
     </Animated.View>
   );
 }
@@ -155,7 +195,7 @@ function BrightnessIndicator({ brightness }: { brightness: number }) {
       prevBrightness.current = brightness;
       return () => clearTimeout(timer);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [brightness]);
 
   const animatedStyle = useAnimatedStyle(() => ({
@@ -166,21 +206,38 @@ function BrightnessIndicator({ brightness }: { brightness: number }) {
     <Animated.View
       style={[
         {
-          position: 'absolute',
+          position: "absolute",
           left: 20,
-          top: '35%',
-          backgroundColor: 'rgba(0,0,0,0.7)',
+          top: "35%",
+          backgroundColor: "rgba(0,0,0,0.7)",
           borderRadius: 10,
           padding: 10,
-          alignItems: 'center',
+          alignItems: "center",
         },
         animatedStyle,
       ]}
     >
-      <View style={{ width: 4, height: 80, borderRadius: 6, backgroundColor: 'rgba(255,255,255,0.3)', overflow: 'hidden' }}>
-        <View style={{ width: 4, height: `${brightness * 100}%`, borderRadius: 6, backgroundColor: '#fff' }} />
+      <View
+        style={{
+          width: 4,
+          height: 80,
+          borderRadius: 6,
+          backgroundColor: "rgba(255,255,255,0.3)",
+          overflow: "hidden",
+        }}
+      >
+        <View
+          style={{
+            width: 4,
+            height: `${brightness * 100}%`,
+            borderRadius: 6,
+            backgroundColor: "#fff",
+          }}
+        />
       </View>
-      <Text style={{ color: '#fff', fontSize: 12, marginTop: 4 }}>{Math.round(brightness * 100)}%</Text>
+      <Text style={{ color: "#fff", fontSize: 12, marginTop: 4 }}>
+        {Math.round(brightness * 100)}%
+      </Text>
     </Animated.View>
   );
 }
@@ -200,16 +257,21 @@ export default function VideoPlayerScreen() {
   const speedSheetRef = useRef<BottomSheetModal>(null);
   const scaleSheetRef = useRef<BottomSheetModal>(null);
 
-  const [seekText, setSeekText] = useState('');
+  const [seekText, setSeekText] = useState("");
   const [seekVisible, setSeekVisible] = useState(false);
-  const [seekSide, setSeekSide] = useState<'left' | 'right'>('right');
+  const [seekSide, setSeekSide] = useState<"left" | "right">("right");
   const [volume, setVolume] = useState(1);
   const [brightness, setBrightness] = useState(1);
   const seekTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const playerRef = useRef<VideoPlayer | null>(null);
   const videoViewRef = useRef<any>(null);
-  const { saveVideoPosition, getVideoPosition, hasResumePoint, clearVideoProgress } = useVideoProgressStore();
+  const {
+    saveVideoPosition,
+    getVideoPosition,
+    hasResumePoint,
+    clearVideoProgress,
+  } = useVideoProgressStore();
   const [showResume, setShowResume] = useState(false);
   const [resumePosition, setResumePosition] = useState(0);
 
@@ -217,10 +279,17 @@ export default function VideoPlayerScreen() {
   const [isLocked, setIsLocked] = useState(false);
   const [rotation, setRotation] = useState(0);
   const [isPiPSupported] = useState(() => {
-    try { return isPictureInPictureSupported(); } catch { return false; }
+    try {
+      return isPictureInPictureSupported();
+    } catch {
+      return false;
+    }
   });
   const [isPiPActive, setIsPiPActive] = useState(false);
-  const [videoResolution, setVideoResolution] = useState<{ width: number; height: number } | null>(null);
+  const [videoResolution, setVideoResolution] = useState<{
+    width: number;
+    height: number;
+  } | null>(null);
   const [audioTracks, setAudioTracks] = useState<any[]>([]);
   const [activeAudioTrack, setActiveAudioTrack] = useState<string | null>(null);
   const audioTrackSheetRef = useRef<BottomSheetModal>(null);
@@ -234,18 +303,20 @@ export default function VideoPlayerScreen() {
     if (playerRef.current) {
       playerRef.current.pause();
     }
+    // Use player metadata as primary source (always available), store as fallback
     const videos = useVideoStore.getState().videos;
     const video = videos.find((v) => v.uri === uri);
+    const actualDuration = playerRef.current?.duration ?? video?.duration ?? 0;
     const song: Song = {
       id: video?.id ?? `video-${uri}`,
-      uri: uri ?? '',
-      title: title ?? 'Video',
-      artist: 'Video',
-      album: 'Videos',
-      albumId: 'videos',
-      duration: video?.duration ?? playerRef.current?.duration ?? 0,
-      fileSize: video?.fileSize ?? 0,
-      dateAdded: video?.dateAdded ?? Date.now(),
+      uri: uri ?? "",
+      title: title ?? "Video",
+      artist: "Video",
+      album: "Videos",
+      albumId: "videos",
+      duration: actualDuration,
+      fileSize: 0,
+      dateAdded: Date.now(),
       artwork: video?.thumbnail ?? null,
       genre: null,
       bitrate: null,
@@ -261,7 +332,8 @@ export default function VideoPlayerScreen() {
         headerTranslateY.value = e.translationY * 0.4;
       }
     })
-    .onEnd((e) => { // eslint-disable-line react-hooks/refs
+    .onEnd((e) => {
+      // eslint-disable-line react-hooks/refs
       if (e.translationY > 120) {
         runOnJS(playVideoAsAudio)();
       }
@@ -275,7 +347,10 @@ export default function VideoPlayerScreen() {
   const showControls = useCallback(() => {
     setControlsVisible(true);
     if (controlsTimerRef.current) clearTimeout(controlsTimerRef.current);
-    controlsTimerRef.current = setTimeout(() => setControlsVisible(false), 3000);
+    controlsTimerRef.current = setTimeout(
+      () => setControlsVisible(false),
+      3000,
+    );
   }, []);
 
   const handlePlayPause = useCallback(() => {
@@ -288,7 +363,7 @@ export default function VideoPlayerScreen() {
     showControls();
   }, [showControls]);
 
-  const player = useVideoPlayer(uri ?? '', (p: VideoPlayer) => {
+  const player = useVideoPlayer(uri ?? "", (p: VideoPlayer) => {
     p.loop = true;
     playerRef.current = p;
 
@@ -301,7 +376,7 @@ export default function VideoPlayerScreen() {
 
   useEffect(() => {
     if (!player) return;
-    const sub = player.addListener('sourceLoad', (event: any) => {
+    const sub = player.addListener("sourceLoad", (event: any) => {
       const videoTracks = event.availableVideoTracks;
       if (videoTracks && videoTracks.length > 0) {
         const best = videoTracks.reduce((a: any, b: any) => {
@@ -310,7 +385,10 @@ export default function VideoPlayerScreen() {
           return bPixels > aPixels ? b : a;
         });
         if (best.size) {
-          setVideoResolution({ width: best.size.width, height: best.size.height });
+          setVideoResolution({
+            width: best.size.width,
+            height: best.size.height,
+          });
         }
       }
 
@@ -330,13 +408,16 @@ export default function VideoPlayerScreen() {
     return () => sub.remove();
   }, [player]);
 
-  const showSeekIndicator = useCallback((text: string, side: 'left' | 'right') => {
-    setSeekText(text);
-    setSeekSide(side);
-    setSeekVisible(true);
-    if (seekTimerRef.current) clearTimeout(seekTimerRef.current);
-    seekTimerRef.current = setTimeout(() => setSeekVisible(false), 800);
-  }, []);
+  const showSeekIndicator = useCallback(
+    (text: string, side: "left" | "right") => {
+      setSeekText(text);
+      setSeekSide(side);
+      setSeekVisible(true);
+      if (seekTimerRef.current) clearTimeout(seekTimerRef.current);
+      seekTimerRef.current = setTimeout(() => setSeekVisible(false), 800);
+    },
+    [],
+  );
 
   const seekForward = useCallback(() => {
     if (playerRef.current) {
@@ -344,7 +425,7 @@ export default function VideoPlayerScreen() {
       const dur = playerRef.current.duration;
       const newPos = Math.min(pos + 10, dur);
       playerRef.current.currentTime = newPos;
-      showSeekIndicator(`+10s`, 'right');
+      showSeekIndicator(`+10s`, "right");
     }
   }, [showSeekIndicator]);
 
@@ -353,7 +434,7 @@ export default function VideoPlayerScreen() {
       const pos = playerRef.current.currentTime;
       const newPos = Math.max(pos - 10, 0);
       playerRef.current.currentTime = newPos;
-      showSeekIndicator(`-10s`, 'left');
+      showSeekIndicator(`-10s`, "left");
     }
   }, [showSeekIndicator]);
 
@@ -365,7 +446,7 @@ export default function VideoPlayerScreen() {
       const dur = playerRef.current.duration;
       const newPos = Math.min(pos + FRAME_STEP, dur);
       playerRef.current.currentTime = newPos;
-      showSeekIndicator(`+1 frame`, 'right');
+      showSeekIndicator(`+1 frame`, "right");
     }
   }, [showSeekIndicator, FRAME_STEP]);
 
@@ -374,7 +455,7 @@ export default function VideoPlayerScreen() {
       const pos = playerRef.current.currentTime;
       const newPos = Math.max(pos - FRAME_STEP, 0);
       playerRef.current.currentTime = newPos;
-      showSeekIndicator(`-1 frame`, 'left');
+      showSeekIndicator(`-1 frame`, "left");
     }
   }, [showSeekIndicator, FRAME_STEP]);
 
@@ -382,9 +463,13 @@ export default function VideoPlayerScreen() {
     setIsFullscreen((prev) => {
       const entering = !prev;
       if (entering) {
-        ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE).catch(() => {});
+        ScreenOrientation.lockAsync(
+          ScreenOrientation.OrientationLock.LANDSCAPE,
+        ).catch(() => {});
       } else {
-        ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT).catch(() => {});
+        ScreenOrientation.lockAsync(
+          ScreenOrientation.OrientationLock.PORTRAIT,
+        ).catch(() => {});
       }
       return entering;
     });
@@ -413,7 +498,9 @@ export default function VideoPlayerScreen() {
         ScreenOrientation.lockAsync(lock).catch(() => {});
       } else {
         if (isFullscreen) {
-          ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE).catch(() => {});
+          ScreenOrientation.lockAsync(
+            ScreenOrientation.OrientationLock.LANDSCAPE,
+          ).catch(() => {});
         } else {
           ScreenOrientation.unlockAsync().catch(() => {});
         }
@@ -422,9 +509,9 @@ export default function VideoPlayerScreen() {
     });
   }, [isFullscreen]);
 
-  const rotateVideo = useCallback((direction: 'cw' | 'ccw') => {
+  const rotateVideo = useCallback((direction: "cw" | "ccw") => {
     setRotation((prev) => {
-      const step = direction === 'cw' ? 90 : -90;
+      const step = direction === "cw" ? 90 : -90;
       return (prev + step + 360) % 360;
     });
   }, []);
@@ -438,7 +525,7 @@ export default function VideoPlayerScreen() {
         await videoViewRef.current.startPictureInPicture();
       }
     } catch (e) {
-      console.warn('PiP toggle failed:', e);
+      console.warn("PiP toggle failed:", e);
     }
   }, [isPiPActive]);
 
@@ -446,9 +533,9 @@ export default function VideoPlayerScreen() {
     if (!videoViewRef.current) return;
     try {
       const uri = await captureRef(videoViewRef, {
-        format: 'jpg',
+        format: "jpg",
         quality: 0.9,
-        result: 'tmpfile',
+        result: "tmpfile",
       });
       if (uri) {
         setScreenshotTaken(true);
@@ -456,23 +543,24 @@ export default function VideoPlayerScreen() {
         const isSharingAvailable = await Sharing.isAvailableAsync();
         if (isSharingAvailable) {
           await Sharing.shareAsync(uri, {
-            mimeType: 'image/jpeg',
-            dialogTitle: t('video.screenshot.share'),
+            mimeType: "image/jpeg",
+            dialogTitle: t("video.screenshot.share"),
           });
         }
       }
     } catch (e) {
-      console.warn('Screenshot failed:', e);
+      console.warn("Screenshot failed:", e);
     }
   }, [t]);
 
   const handleAudioTrackChange = useCallback((trackId: string) => {
     if (!playerRef.current) return;
     try {
-      (playerRef.current as any).audioTrack = trackId;
+      (playerRef.current as VideoPlayer & { audioTrack?: string }).audioTrack =
+        trackId;
       setActiveAudioTrack(trackId);
     } catch (e) {
-      console.warn('Audio track switch failed:', e);
+      console.warn("Audio track switch failed:", e);
     }
     audioTrackSheetRef.current?.dismiss();
   }, []);
@@ -480,35 +568,43 @@ export default function VideoPlayerScreen() {
   const pickSubtitleFile = useCallback(async () => {
     try {
       const result = await DocumentPicker.getDocumentAsync({
-        type: ['text/vtt', 'text/srt', 'application/x-subrip', '*/*'],
+        type: ["text/vtt", "text/srt", "application/x-subrip", "*/*"],
         copyToCacheDirectory: true,
       });
 
       if (!result.canceled && result.assets[0]) {
         const sub = {
           uri: result.assets[0].uri,
-          label: result.assets[0].name ?? 'Subtitle',
-          language: 'und',
+          label: result.assets[0].name ?? "Subtitle",
+          language: "und",
         };
         setSubtitles((prev) => [...prev, sub]);
         setActiveSubtitle(sub.uri);
 
         try {
-          const content = await FileSystem.readAsStringAsync(sub.uri, { encoding: FileSystem.EncodingType.UTF8 });
-          const ext = sub.label.split('.').pop()?.toLowerCase();
-          parsedCuesRef.current = ext === 'vtt' ? parseVTT(content) : parseSRT(content);
+          const content = await FileSystem.readAsStringAsync(sub.uri, {
+            encoding: FileSystem.EncodingType.UTF8,
+          });
+          const ext = sub.label.split(".").pop()?.toLowerCase();
+          parsedCuesRef.current =
+            ext === "vtt" ? parseVTT(content) : parseSRT(content);
         } catch {
-          console.warn('Failed to parse subtitle file');
+          console.warn("Failed to parse subtitle file");
         }
       }
     } catch {
-      console.warn('Subtitle pick failed');
+      console.warn("Subtitle pick failed");
     }
   }, []);
 
   const renderBackdrop = useCallback(
     (props: any) => (
-      <BottomSheetBackdrop {...props} disappearsOnIndex={-1} appearsOnIndex={0} opacity={0.5} />
+      <BottomSheetBackdrop
+        {...props}
+        disappearsOnIndex={-1}
+        appearsOnIndex={0}
+        opacity={0.5}
+      />
     ),
     [],
   );
@@ -569,9 +665,14 @@ export default function VideoPlayerScreen() {
   useEffect(() => {
     return () => {
       if (playerRef.current) {
-        playerRef.current.pause();
+        try {
+          playerRef.current.pause();
+        } catch {}
+        playerRef.current = null;
       }
-      ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT).catch(() => {});
+      ScreenOrientation.lockAsync(
+        ScreenOrientation.OrientationLock.PORTRAIT,
+      ).catch(() => {});
     };
   }, []);
 
@@ -581,27 +682,30 @@ export default function VideoPlayerScreen() {
   const startBrightness = useSharedValue(1);
   const isSwiping = useSharedValue(false);
   const lastTapTime = useSharedValue(0);
-  const lastTapSide = useSharedValue<'left' | 'right' | ''>('');
+  const lastTapSide = useSharedValue<"left" | "right" | "">("");
 
   /* eslint-disable react-hooks/immutability */
-  const handleDoubleTap = useCallback((side: 'left' | 'right') => {
-    if (isLocked) return;
-    const now = Date.now();
-    const lastTap = lastTapTime.value;
-    const lastSide = lastTapSide.value;
-    if (now - lastTap < 300 && lastSide === side) {
-      if (side === 'left') {
-        seekBackward();
+  const handleDoubleTap = useCallback(
+    (side: "left" | "right") => {
+      if (isLocked) return;
+      const now = Date.now();
+      const lastTap = lastTapTime.value;
+      const lastSide = lastTapSide.value;
+      if (now - lastTap < 300 && lastSide === side) {
+        if (side === "left") {
+          seekBackward();
+        } else {
+          seekForward();
+        }
+        lastTapTime.value = 0;
+        lastTapSide.value = "";
       } else {
-        seekForward();
+        lastTapTime.value = now;
+        lastTapSide.value = side;
       }
-      lastTapTime.value = 0;
-      lastTapSide.value = '';
-    } else {
-      lastTapTime.value = now;
-      lastTapSide.value = side;
-    }
-  }, [seekBackward, seekForward, lastTapTime, lastTapSide, isLocked]);
+    },
+    [seekBackward, seekForward, lastTapTime, lastTapSide, isLocked],
+  );
   /* eslint-enable react-hooks/immutability */
 
   const panGesture = Gesture.Pan()
@@ -616,7 +720,8 @@ export default function VideoPlayerScreen() {
       swipeX.value = e.translationX;
       swipeY.value = e.translationY;
     })
-    .onEnd((e) => { // eslint-disable-line react-hooks/refs
+    .onEnd((e) => {
+      // eslint-disable-line react-hooks/refs
       if (isLocked) return;
       const dx = e.translationX;
       const dy = e.translationY;
@@ -635,7 +740,13 @@ export default function VideoPlayerScreen() {
         const isLeftSide = startX < screenWidth / 2;
 
         const delta = -dy / 300;
-        const newVal = Math.max(0, Math.min(1, (isLeftSide ? startBrightness.value : startVolume.value) + delta));
+        const newVal = Math.max(
+          0,
+          Math.min(
+            1,
+            (isLeftSide ? startBrightness.value : startVolume.value) + delta,
+          ),
+        );
 
         if (isLeftSide) {
           runOnJS(setBrightness)(newVal);
@@ -662,9 +773,9 @@ export default function VideoPlayerScreen() {
       const screenWidth = SCREEN_WIDTH;
       const x = e.absoluteX;
       if (x < screenWidth * 0.3) {
-        runOnJS(handleDoubleTap)('left');
+        runOnJS(handleDoubleTap)("left");
       } else if (x > screenWidth * 0.7) {
-        runOnJS(handleDoubleTap)('right');
+        runOnJS(handleDoubleTap)("right");
       } else {
         runOnJS(handlePlayPause)();
       }
@@ -679,14 +790,18 @@ export default function VideoPlayerScreen() {
   const videoWidth = SCREEN_WIDTH - 32;
   const videoHeight = videoWidth / videoAspectRatio;
 
-  const videoTransform = [
-    { scale },
-    { rotate: `${rotation}deg` },
-  ];
+  const videoTransform = [{ scale }, { rotate: `${rotation}deg` }];
 
   if (!uri) {
     return (
-      <View style={[s.flex1, s.itemsCenter, s.justifyCenter, { backgroundColor: colors.background }]}>
+      <View
+        style={[
+          s.flex1,
+          s.itemsCenter,
+          s.justifyCenter,
+          { backgroundColor: colors.background },
+        ]}
+      >
         <Text style={{ color: colors.textMuted }}>No video URI provided</Text>
         <Pressable onPress={() => router.back()} style={s.mt4}>
           <Text style={{ color: colors.accent }}>Go back</Text>
@@ -714,11 +829,20 @@ export default function VideoPlayerScreen() {
             </View>
           </GestureDetector>
           {activeSubtitle && currentCueText && (
-            <View style={[styles.fullscreenSubtitleContainer, { bottom: insets.bottom + 60 }]}>
+            <View
+              style={[
+                styles.fullscreenSubtitleContainer,
+                { bottom: insets.bottom + 60 },
+              ]}
+            >
               <Text style={styles.subtitleText}>{currentCueText}</Text>
             </View>
           )}
-          <SeekIndicator visible={seekVisible} text={seekText} side={seekSide} />
+          <SeekIndicator
+            visible={seekVisible}
+            text={seekText}
+            side={seekSide}
+          />
           {!isLocked && <VolumeIndicator volume={volume} />}
           {!isLocked && <BrightnessIndicator brightness={brightness} />}
 
@@ -732,7 +856,10 @@ export default function VideoPlayerScreen() {
 
           {!isLocked && (
             <>
-              <Pressable onPress={handlePlayPause} style={styles.fsAlwaysVisiblePlayButton}>
+              <Pressable
+                onPress={handlePlayPause}
+                style={styles.fsAlwaysVisiblePlayButton}
+              >
                 {player.playing ? (
                   <Pause size={18} color="#fff" />
                 ) : (
@@ -740,7 +867,10 @@ export default function VideoPlayerScreen() {
                 )}
               </Pressable>
               {controlsVisible && (
-                <Pressable onPress={handlePlayPause} style={styles.controlsOverlayFullscreen}>
+                <Pressable
+                  onPress={handlePlayPause}
+                  style={styles.controlsOverlayFullscreen}
+                >
                   <View style={styles.playButtonLarge}>
                     {player.playing ? (
                       <Pause size={32} color="#fff" />
@@ -753,35 +883,70 @@ export default function VideoPlayerScreen() {
             </>
           )}
 
-          <View style={[styles.fullscreenControls, { paddingTop: insets.top + 4 }]}>
-            <Pressable onPress={toggleFullscreen} style={styles.fullscreenButton}>
+          <View
+            style={[styles.fullscreenControls, { paddingTop: insets.top + 4 }]}
+          >
+            <Pressable
+              onPress={toggleFullscreen}
+              style={styles.fullscreenButton}
+            >
               <Minimize2 size={24} color="#fff" />
             </Pressable>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
+            <View
+              style={{ flexDirection: "row", alignItems: "center", gap: 16 }}
+            >
               {videoResolution && (
-                <View style={{ backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: 10, paddingHorizontal: 8, paddingVertical: 4 }}>
-                  <Text style={{ color: '#fff', fontSize: 11, fontWeight: '600' }}>
+                <View
+                  style={{
+                    backgroundColor: "rgba(0,0,0,0.5)",
+                    borderRadius: 10,
+                    paddingHorizontal: 8,
+                    paddingVertical: 4,
+                  }}
+                >
+                  <Text
+                    style={{ color: "#fff", fontSize: 11, fontWeight: "600" }}
+                  >
                     {videoResolution.width}x{videoResolution.height}
                   </Text>
                 </View>
               )}
               <Pressable onPress={toggleLock} style={styles.fullscreenButton}>
-                {isLocked ? <Lock size={22} color={colors.warning} /> : <Unlock size={22} color="#fff" />}
+                {isLocked ? (
+                  <Lock size={22} color={colors.warning} />
+                ) : (
+                  <Unlock size={22} color="#fff" />
+                )}
               </Pressable>
               {isPiPSupported && (
                 <Pressable onPress={handlePiP} style={styles.fullscreenButton}>
-                  <MonitorPlay size={22} color={isPiPActive ? colors.warning : '#fff'} />
+                  <MonitorPlay
+                    size={22}
+                    color={isPiPActive ? colors.warning : "#fff"}
+                  />
                 </Pressable>
               )}
-              <Pressable onPress={handleScreenshot} style={styles.fullscreenButton}>
-                <Camera size={22} color={screenshotTaken ? colors.warning : '#fff'} />
+              <Pressable
+                onPress={handleScreenshot}
+                style={styles.fullscreenButton}
+              >
+                <Camera
+                  size={22}
+                  color={screenshotTaken ? colors.warning : "#fff"}
+                />
               </Pressable>
               {audioTracks.length > 1 && (
-                <Pressable onPress={() => audioTrackSheetRef.current?.present()} style={styles.fullscreenButton}>
+                <Pressable
+                  onPress={() => audioTrackSheetRef.current?.present()}
+                  style={styles.fullscreenButton}
+                >
                   <AudioLines size={22} color="#fff" />
                 </Pressable>
               )}
-              <Pressable onPress={() => router.back()} style={styles.backButton}>
+              <Pressable
+                onPress={() => router.back()}
+                style={styles.backButton}
+              >
                 <ChevronLeft size={28} color="#fff" />
               </Pressable>
             </View>
@@ -795,24 +960,63 @@ export default function VideoPlayerScreen() {
     <View style={{ flex: 1 }}>
       <View style={[s.flex1, { backgroundColor: colors.background }]}>
         <GestureDetector gesture={headerPanGesture}>
-        <Animated.View style={[s.flexRow, s.itemsCenter, s.gap3, s.px4, s.pb4, { paddingTop: insets.top + 4 }, headerAnimatedStyle]}>
-          <Pressable onPress={() => router.back()} style={[s.w11, s.h11, s.itemsCenter, s.justifyCenter]}>
-            <ChevronLeft size={28} color={colors.text} />
-          </Pressable>
-          <Text style={[s.textBase, s.fontSemibold, s.flex1, { color: colors.text }]} numberOfLines={1}>
-            {title ?? 'Video'}
-          </Text>
-          {videoResolution && (
-            <View style={{ backgroundColor: colors.card, borderRadius: 10, paddingHorizontal: 8, paddingVertical: 3 }}>
-              <Text style={{ color: colors.textMuted, fontSize: 11, fontWeight: '600' }}>
-                {videoResolution.width}x{videoResolution.height}
-              </Text>
-            </View>
-          )}
-          <Pressable onPress={toggleFullscreen} style={[s.w11, s.h11, s.itemsCenter, s.justifyCenter]}>
-            <Maximize2 size={22} color={colors.text} />
-          </Pressable>
-        </Animated.View>
+          <Animated.View
+            style={[
+              s.flexRow,
+              s.itemsCenter,
+              s.gap3,
+              s.px4,
+              s.pb4,
+              { paddingTop: insets.top + 4 },
+              headerAnimatedStyle,
+            ]}
+          >
+            <Pressable
+              onPress={() => router.back()}
+              style={[s.w11, s.h11, s.itemsCenter, s.justifyCenter]}
+              accessibilityLabel="Go back"
+            >
+              <ChevronLeft size={28} color={colors.text} />
+            </Pressable>
+            <Text
+              style={[
+                s.textBase,
+                s.fontSemibold,
+                s.flex1,
+                { color: colors.text },
+              ]}
+              numberOfLines={1}
+            >
+              {title ?? "Video"}
+            </Text>
+            {videoResolution && (
+              <View
+                style={{
+                  backgroundColor: colors.card,
+                  borderRadius: 10,
+                  paddingHorizontal: 8,
+                  paddingVertical: 3,
+                }}
+              >
+                <Text
+                  style={{
+                    color: colors.textMuted,
+                    fontSize: 11,
+                    fontWeight: "600",
+                  }}
+                >
+                  {videoResolution.width}x{videoResolution.height}
+                </Text>
+              </View>
+            )}
+            <Pressable
+              onPress={toggleFullscreen}
+              style={[s.w11, s.h11, s.itemsCenter, s.justifyCenter]}
+              accessibilityLabel="Toggle fullscreen"
+            >
+              <Maximize2 size={22} color={colors.text} />
+            </Pressable>
+          </Animated.View>
         </GestureDetector>
 
         <View style={[s.flex1, s.itemsCenter, s.justifyCenter, s.px4]}>
@@ -821,7 +1025,11 @@ export default function VideoPlayerScreen() {
               <View>
                 <VideoView
                   ref={videoViewRef}
-                  style={[styles.video, { height: videoHeight }, { transform: videoTransform }]}
+                  style={[
+                    styles.video,
+                    { height: videoHeight },
+                    { transform: videoTransform },
+                  ]}
                   player={player}
                   allowsPictureInPicture
                   startsPictureInPictureAutomatically={false}
@@ -830,11 +1038,20 @@ export default function VideoPlayerScreen() {
                   contentFit="contain"
                 />
                 {activeSubtitle && currentCueText && (
-                  <View style={[styles.subtitleOverlay, { bottom: insets.bottom + 16 }]}>
+                  <View
+                    style={[
+                      styles.subtitleOverlay,
+                      { bottom: insets.bottom + 16 },
+                    ]}
+                  >
                     <Text style={styles.subtitleText}>{currentCueText}</Text>
                   </View>
                 )}
-                <SeekIndicator visible={seekVisible} text={seekText} side={seekSide} />
+                <SeekIndicator
+                  visible={seekVisible}
+                  text={seekText}
+                  side={seekSide}
+                />
                 {isLocked && (
                   <View style={styles.lockOverlay}>
                     <Pressable onPress={toggleLock} style={styles.lockButton}>
@@ -845,25 +1062,75 @@ export default function VideoPlayerScreen() {
                 {showResume && (
                   <View style={styles.resumeOverlay}>
                     <View style={styles.resumeCard}>
-                      <Text style={{ fontSize: 17, fontWeight: '600', color: colors.text, marginBottom: 8 }}>
+                      <Text
+                        style={{
+                          fontSize: 17,
+                          fontWeight: "600",
+                          color: colors.text,
+                          marginBottom: 8,
+                        }}
+                      >
                         Resume Playback?
                       </Text>
-                      <Text style={{ fontSize: 13, color: colors.textMuted, marginBottom: 16 }}>
-                        {t('video.resume', { position: formatDuration(resumePosition) })}
+                      <Text
+                        style={{
+                          fontSize: 13,
+                          color: colors.textMuted,
+                          marginBottom: 16,
+                        }}
+                      >
+                        {t("video.resume", {
+                          position: formatDuration(resumePosition),
+                        })}
                       </Text>
-                      <View style={{ flexDirection: 'row', gap: 12 }}>
+                      <View style={{ flexDirection: "row", gap: 12 }}>
                         <Pressable
                           onPress={handleStartOver}
-                          style={{ flex: 1, paddingVertical: 12, borderRadius: 14, backgroundColor: colors.card, alignItems: 'center' }}
+                          style={{
+                            flex: 1,
+                            paddingVertical: 12,
+                            borderRadius: 14,
+                            backgroundColor: colors.card,
+                            alignItems: "center",
+                          }}
                         >
-                          <Text style={{ fontSize: 14, fontWeight: '600', color: colors.text }}>{t('video.start.over')}</Text>
+                          <Text
+                            style={{
+                              fontSize: 14,
+                              fontWeight: "600",
+                              color: colors.text,
+                            }}
+                          >
+                            {t("video.start.over")}
+                          </Text>
                         </Pressable>
                         <Pressable
                           onPress={handleResume}
-                          style={{ flex: 1, paddingVertical: 12, borderRadius: 14, backgroundColor: colors.accent, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 6 }}
+                          style={{
+                            flex: 1,
+                            paddingVertical: 12,
+                            borderRadius: 14,
+                            backgroundColor: colors.accent,
+                            alignItems: "center",
+                            flexDirection: "row",
+                            justifyContent: "center",
+                            gap: 6,
+                          }}
                         >
-                          <Play size={16} color={colors.background} fill={colors.background} />
-                          <Text style={{ fontSize: 14, fontWeight: '600', color: colors.background }}>Resume</Text>
+                          <Play
+                            size={16}
+                            color={colors.background}
+                            fill={colors.background}
+                          />
+                          <Text
+                            style={{
+                              fontSize: 14,
+                              fontWeight: "600",
+                              color: colors.background,
+                            }}
+                          >
+                            Resume
+                          </Text>
                         </Pressable>
                       </View>
                     </View>
@@ -873,7 +1140,11 @@ export default function VideoPlayerScreen() {
             </GestureDetector>
             {!isLocked && !showResume && (
               <>
-                <Pressable onPress={handlePlayPause} style={styles.alwaysVisiblePlayButton}>
+                <Pressable
+                  onPress={handlePlayPause}
+                  style={styles.alwaysVisiblePlayButton}
+                  accessibilityLabel={player.playing ? "Pause" : "Play"}
+                >
                   {player.playing ? (
                     <Pause size={18} color="#fff" />
                   ) : (
@@ -881,7 +1152,10 @@ export default function VideoPlayerScreen() {
                   )}
                 </Pressable>
                 {controlsVisible && (
-                  <Pressable onPress={handlePlayPause} style={styles.controlsOverlay}>
+                  <Pressable
+                    onPress={handlePlayPause}
+                    style={styles.controlsOverlay}
+                  >
                     <View style={styles.playButtonLarge}>
                       {player.playing ? (
                         <Pause size={32} color="#fff" />
@@ -898,7 +1172,7 @@ export default function VideoPlayerScreen() {
 
         <View style={[s.px4, s.pb4]}>
           <Text style={[s.textLg, s.fontBold, s.mb2, { color: colors.text }]}>
-            {title ?? 'Untitled'}
+            {title ?? "Untitled"}
           </Text>
           <Text style={[s.textSm, s.mb4, { color: colors.textMuted }]}>
             Local video
@@ -907,7 +1181,17 @@ export default function VideoPlayerScreen() {
           <View style={[s.flexRow, s.itemsCenter, s.gap2, s.mb3, s.flexWrap]}>
             <Pressable
               onPress={() => speedSheetRef.current?.present()}
-              style={[s.flexRow, s.itemsCenter, { gap: 6, paddingVertical: 8, paddingHorizontal: 12, borderRadius: 16, backgroundColor: colors.surface }]}
+              style={[
+                s.flexRow,
+                s.itemsCenter,
+                {
+                  gap: 6,
+                  paddingVertical: 8,
+                  paddingHorizontal: 12,
+                  borderRadius: 16,
+                  backgroundColor: colors.surface,
+                },
+              ]}
             >
               <Gauge size={14} color={colors.accent} />
               <Text style={[s.textXs, s.fontMedium, { color: colors.text }]}>
@@ -917,7 +1201,17 @@ export default function VideoPlayerScreen() {
 
             <Pressable
               onPress={() => scaleSheetRef.current?.present()}
-              style={[s.flexRow, s.itemsCenter, { gap: 6, paddingVertical: 8, paddingHorizontal: 12, borderRadius: 16, backgroundColor: colors.surface }]}
+              style={[
+                s.flexRow,
+                s.itemsCenter,
+                {
+                  gap: 6,
+                  paddingVertical: 8,
+                  paddingHorizontal: 12,
+                  borderRadius: 16,
+                  backgroundColor: colors.surface,
+                },
+              ]}
             >
               <Scaling size={14} color={colors.accent} />
               <Text style={[s.textXs, s.fontMedium, { color: colors.text }]}>
@@ -927,24 +1221,63 @@ export default function VideoPlayerScreen() {
 
             <Pressable
               onPress={toggleLock}
-              style={[s.flexRow, s.itemsCenter, { gap: 6, paddingVertical: 8, paddingHorizontal: 12, borderRadius: 16, backgroundColor: isLocked ? colors.accent + '30' : colors.surface }]}
+              accessibilityLabel={
+                isLocked ? "Unlock controls" : "Lock controls"
+              }
+              style={[
+                s.flexRow,
+                s.itemsCenter,
+                {
+                  gap: 6,
+                  paddingVertical: 8,
+                  paddingHorizontal: 12,
+                  borderRadius: 16,
+                  backgroundColor: isLocked
+                    ? colors.accent + "30"
+                    : colors.surface,
+                },
+              ]}
             >
-              {isLocked ? <Lock size={14} color={colors.accent} /> : <Unlock size={14} color={colors.textMuted} />}
-              <Text style={[s.textXs, s.fontMedium, { color: isLocked ? colors.accent : colors.text }]}>
-                {isLocked ? t('video.unlock') : t('video.lock')}
+              {isLocked ? (
+                <Lock size={14} color={colors.accent} />
+              ) : (
+                <Unlock size={14} color={colors.textMuted} />
+              )}
+              <Text
+                style={[
+                  s.textXs,
+                  s.fontMedium,
+                  { color: isLocked ? colors.accent : colors.text },
+                ]}
+              >
+                {isLocked ? t("video.unlock") : t("video.lock")}
               </Text>
             </Pressable>
 
             <Pressable
-              onPress={() => rotateVideo('cw')}
-              style={[{ paddingVertical: 8, paddingHorizontal: 12, borderRadius: 16, backgroundColor: colors.surface }]}
+              onPress={() => rotateVideo("cw")}
+              style={[
+                {
+                  paddingVertical: 8,
+                  paddingHorizontal: 12,
+                  borderRadius: 16,
+                  backgroundColor: colors.surface,
+                },
+              ]}
             >
               <RotateCw size={14} color={colors.textMuted} />
             </Pressable>
 
             <Pressable
-              onPress={() => rotateVideo('ccw')}
-              style={[{ paddingVertical: 8, paddingHorizontal: 12, borderRadius: 16, backgroundColor: colors.surface }]}
+              onPress={() => rotateVideo("ccw")}
+              style={[
+                {
+                  paddingVertical: 8,
+                  paddingHorizontal: 12,
+                  borderRadius: 16,
+                  backgroundColor: colors.surface,
+                },
+              ]}
             >
               <RotateCcw size={14} color={colors.textMuted} />
             </Pressable>
@@ -952,9 +1285,21 @@ export default function VideoPlayerScreen() {
             {isPiPSupported && (
               <Pressable
                 onPress={handlePiP}
-                style={[{ paddingVertical: 8, paddingHorizontal: 12, borderRadius: 16, backgroundColor: isPiPActive ? colors.accent + '30' : colors.surface }]}
+                style={[
+                  {
+                    paddingVertical: 8,
+                    paddingHorizontal: 12,
+                    borderRadius: 16,
+                    backgroundColor: isPiPActive
+                      ? colors.accent + "30"
+                      : colors.surface,
+                  },
+                ]}
               >
-                <MonitorPlay size={14} color={isPiPActive ? colors.accent : colors.textMuted} />
+                <MonitorPlay
+                  size={14}
+                  color={isPiPActive ? colors.accent : colors.textMuted}
+                />
               </Pressable>
             )}
           </View>
@@ -962,18 +1307,35 @@ export default function VideoPlayerScreen() {
           <View style={[s.flexRow, s.itemsCenter, s.gap2, s.mb3, s.flexWrap]}>
             <Pressable
               onPress={pickSubtitleFile}
-              style={[s.flexRow, s.itemsCenter, { gap: 6, paddingVertical: 8, paddingHorizontal: 12, borderRadius: 16, backgroundColor: colors.surface }]}
+              style={[
+                s.flexRow,
+                s.itemsCenter,
+                {
+                  gap: 6,
+                  paddingVertical: 8,
+                  paddingHorizontal: 12,
+                  borderRadius: 16,
+                  backgroundColor: colors.surface,
+                },
+              ]}
             >
               <Captions size={14} color={colors.accent} />
               <Text style={[s.textXs, s.fontMedium, { color: colors.text }]}>
-                {activeSubtitle ? 'Subs On' : t('video.subtitles')}
+                {activeSubtitle ? "Subs On" : t("video.subtitles")}
               </Text>
             </Pressable>
 
             {activeSubtitle && (
               <Pressable
                 onPress={() => setActiveSubtitle(null)}
-                style={[{ paddingVertical: 8, paddingHorizontal: 12, borderRadius: 16, backgroundColor: colors.surface }]}
+                style={[
+                  {
+                    paddingVertical: 8,
+                    paddingHorizontal: 12,
+                    borderRadius: 16,
+                    backgroundColor: colors.surface,
+                  },
+                ]}
               >
                 <X size={14} color={colors.textMuted} />
               </Pressable>
@@ -981,22 +1343,55 @@ export default function VideoPlayerScreen() {
 
             <Pressable
               onPress={handleScreenshot}
-              style={[s.flexRow, s.itemsCenter, { gap: 6, paddingVertical: 8, paddingHorizontal: 12, borderRadius: 16, backgroundColor: screenshotTaken ? colors.accent + '30' : colors.surface }]}
+              style={[
+                s.flexRow,
+                s.itemsCenter,
+                {
+                  gap: 6,
+                  paddingVertical: 8,
+                  paddingHorizontal: 12,
+                  borderRadius: 16,
+                  backgroundColor: screenshotTaken
+                    ? colors.accent + "30"
+                    : colors.surface,
+                },
+              ]}
             >
-              <Camera size={14} color={screenshotTaken ? colors.accent : colors.textMuted} />
-              <Text style={[s.textXs, s.fontMedium, { color: screenshotTaken ? colors.accent : colors.text }]}>
-                {screenshotTaken ? t('video.screenshot.captured') : t('video.screenshot')}
+              <Camera
+                size={14}
+                color={screenshotTaken ? colors.accent : colors.textMuted}
+              />
+              <Text
+                style={[
+                  s.textXs,
+                  s.fontMedium,
+                  { color: screenshotTaken ? colors.accent : colors.text },
+                ]}
+              >
+                {screenshotTaken
+                  ? t("video.screenshot.captured")
+                  : t("video.screenshot")}
               </Text>
             </Pressable>
 
             {audioTracks.length > 1 && (
               <Pressable
                 onPress={() => audioTrackSheetRef.current?.present()}
-                style={[s.flexRow, s.itemsCenter, { gap: 6, paddingVertical: 8, paddingHorizontal: 12, borderRadius: 16, backgroundColor: colors.surface }]}
+                style={[
+                  s.flexRow,
+                  s.itemsCenter,
+                  {
+                    gap: 6,
+                    paddingVertical: 8,
+                    paddingHorizontal: 12,
+                    borderRadius: 16,
+                    backgroundColor: colors.surface,
+                  },
+                ]}
               >
                 <AudioLines size={14} color={colors.accent} />
                 <Text style={[s.textXs, s.fontMedium, { color: colors.text }]}>
-                  {t('video.audio.track')}
+                  {t("video.audio.track")}
                 </Text>
               </Pressable>
             )}
@@ -1005,38 +1400,107 @@ export default function VideoPlayerScreen() {
 
             <Pressable
               onPress={stepBackward}
-              style={[s.flexRow, s.itemsCenter, { gap: 4, paddingVertical: 8, paddingHorizontal: 12, borderRadius: 12, backgroundColor: colors.surface }]}
+              accessibilityLabel="Step backward one frame"
+              style={[
+                s.flexRow,
+                s.itemsCenter,
+                {
+                  gap: 4,
+                  paddingVertical: 8,
+                  paddingHorizontal: 12,
+                  borderRadius: 12,
+                  backgroundColor: colors.surface,
+                },
+              ]}
             >
               <SkipBack size={12} color={colors.accent} />
-              <Text style={[s.text10, s.fontSemibold, { color: colors.accent }]}>1F</Text>
+              <Text
+                style={[s.text10, s.fontSemibold, { color: colors.accent }]}
+              >
+                1F
+              </Text>
             </Pressable>
             <Pressable
               onPress={stepForward}
-              style={[s.flexRow, s.itemsCenter, { gap: 4, paddingVertical: 8, paddingHorizontal: 12, borderRadius: 12, backgroundColor: colors.surface }]}
+              accessibilityLabel="Step forward one frame"
+              style={[
+                s.flexRow,
+                s.itemsCenter,
+                {
+                  gap: 4,
+                  paddingVertical: 8,
+                  paddingHorizontal: 12,
+                  borderRadius: 12,
+                  backgroundColor: colors.surface,
+                },
+              ]}
             >
-              <Text style={[s.text10, s.fontSemibold, { color: colors.accent }]}>1F</Text>
+              <Text
+                style={[s.text10, s.fontSemibold, { color: colors.accent }]}
+              >
+                1F
+              </Text>
               <SkipForward size={12} color={colors.accent} />
             </Pressable>
           </View>
 
           {subtitles.length > 0 && (
             <View style={s.mb2}>
-              <Text style={[s.textXs, s.fontSemibold, s.mb2, { color: colors.textMuted }]}>
+              <Text
+                style={[
+                  s.textXs,
+                  s.fontSemibold,
+                  s.mb2,
+                  { color: colors.textMuted },
+                ]}
+              >
                 SUBTITLES
               </Text>
               {subtitles.map((sub, i) => (
                 <Pressable
                   key={i}
-                  onPress={() => setActiveSubtitle(activeSubtitle === sub.uri ? null : sub.uri)}
-                  style={[s.flexRow, s.itemsCenter, s.justifyBetween, { paddingVertical: 8, paddingHorizontal: 12, borderRadius: 12, marginBottom: 4, backgroundColor: activeSubtitle === sub.uri ? colors.accent + '20' : colors.surface }]}
+                  onPress={() =>
+                    setActiveSubtitle(
+                      activeSubtitle === sub.uri ? null : sub.uri,
+                    )
+                  }
+                  style={[
+                    s.flexRow,
+                    s.itemsCenter,
+                    s.justifyBetween,
+                    {
+                      paddingVertical: 8,
+                      paddingHorizontal: 12,
+                      borderRadius: 12,
+                      marginBottom: 4,
+                      backgroundColor:
+                        activeSubtitle === sub.uri
+                          ? colors.accent + "20"
+                          : colors.surface,
+                    },
+                  ]}
                 >
-                  <Text style={[s.textSm, { color: activeSubtitle === sub.uri ? colors.accent : colors.text }]}>
+                  <Text
+                    style={[
+                      s.textSm,
+                      {
+                        color:
+                          activeSubtitle === sub.uri
+                            ? colors.accent
+                            : colors.text,
+                      },
+                    ]}
+                  >
                     {sub.label}
                   </Text>
-                  <Pressable onPress={() => {
-                    setSubtitles((prev) => prev.filter((_, idx) => idx !== i));
-                    if (activeSubtitle === sub.uri) setActiveSubtitle(null);
-                  }}>
+                  <Pressable
+                    onPress={() => {
+                      setSubtitles((prev) =>
+                        prev.filter((_, idx) => idx !== i),
+                      );
+                      if (activeSubtitle === sub.uri) setActiveSubtitle(null);
+                    }}
+                  >
                     <X size={14} color={colors.textMuted} />
                   </Pressable>
                 </Pressable>
@@ -1048,16 +1512,23 @@ export default function VideoPlayerScreen() {
         {/* Speed Sheet */}
         <BottomSheetModal
           ref={speedSheetRef}
-          snapPoints={['30%']}
+          snapPoints={["30%"]}
           backdropComponent={renderBackdrop}
           backgroundStyle={{ backgroundColor: colors.surface }}
           handleIndicatorStyle={{ backgroundColor: colors.textMuted }}
         >
           <View style={{ padding: 20 }}>
-            <Text style={{ fontSize: 17, fontWeight: '600', color: colors.text, marginBottom: 16 }}>
+            <Text
+              style={{
+                fontSize: 17,
+                fontWeight: "600",
+                color: colors.text,
+                marginBottom: 16,
+              }}
+            >
               Playback Speed
             </Text>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
               {PLAYBACK_SPEEDS.map((speed) => (
                 <Pressable
                   key={speed}
@@ -1066,14 +1537,20 @@ export default function VideoPlayerScreen() {
                     paddingVertical: 10,
                     paddingHorizontal: 20,
                     borderRadius: 18,
-                    backgroundColor: playbackRate === speed ? colors.accent : colors.card,
+                    backgroundColor:
+                      playbackRate === speed ? colors.accent : colors.card,
                   }}
                 >
-                  <Text style={{
-                    fontSize: 14,
-                    fontWeight: '600',
-                    color: playbackRate === speed ? colors.background : colors.text,
-                  }}>
+                  <Text
+                    style={{
+                      fontSize: 14,
+                      fontWeight: "600",
+                      color:
+                        playbackRate === speed
+                          ? colors.background
+                          : colors.text,
+                    }}
+                  >
                     {speed}x
                   </Text>
                 </Pressable>
@@ -1085,69 +1562,119 @@ export default function VideoPlayerScreen() {
         {/* Scale Sheet */}
         <BottomSheetModal
           ref={scaleSheetRef}
-          snapPoints={['40%']}
+          snapPoints={["40%"]}
           backdropComponent={renderBackdrop}
           backgroundStyle={{ backgroundColor: colors.surface }}
           handleIndicatorStyle={{ backgroundColor: colors.textMuted }}
         >
           <View style={{ padding: 20 }}>
-            <Text style={{ fontSize: 17, fontWeight: '600', color: colors.text, marginBottom: 8 }}>
+            <Text
+              style={{
+                fontSize: 17,
+                fontWeight: "600",
+                color: colors.text,
+                marginBottom: 8,
+              }}
+            >
               Video Scale
             </Text>
-            <Text style={{ fontSize: 13, color: colors.textMuted, marginBottom: 16 }}>
+            <Text
+              style={{
+                fontSize: 13,
+                color: colors.textMuted,
+                marginBottom: 16,
+              }}
+            >
               Small scales (shrink) &amp; Large scales (zoom)
             </Text>
 
-            <Text style={{ fontSize: 13, fontWeight: '600', color: colors.textMuted, marginBottom: 8 }}>
+            <Text
+              style={{
+                fontSize: 13,
+                fontWeight: "600",
+                color: colors.textMuted,
+                marginBottom: 8,
+              }}
+            >
               SMALL
             </Text>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
-              {SCALE_OPTIONS.filter((s) => s.group === 'small').map((option) => (
-                <Pressable
-                  key={option.value}
-                  onPress={() => changeScale(option.value)}
-                  style={{
-                    paddingVertical: 10,
-                    paddingHorizontal: 18,
-                    borderRadius: 18,
-                    backgroundColor: scale === option.value ? colors.accent : colors.card,
-                  }}
-                >
-                  <Text style={{
-                    fontSize: 14,
-                    fontWeight: '600',
-                    color: scale === option.value ? colors.background : colors.text,
-                  }}>
-                    {option.label}
-                  </Text>
-                </Pressable>
-              ))}
+            <View
+              style={{
+                flexDirection: "row",
+                flexWrap: "wrap",
+                gap: 8,
+                marginBottom: 16,
+              }}
+            >
+              {SCALE_OPTIONS.filter((s) => s.group === "small").map(
+                (option) => (
+                  <Pressable
+                    key={option.value}
+                    onPress={() => changeScale(option.value)}
+                    style={{
+                      paddingVertical: 10,
+                      paddingHorizontal: 18,
+                      borderRadius: 18,
+                      backgroundColor:
+                        scale === option.value ? colors.accent : colors.card,
+                    }}
+                  >
+                    <Text
+                      style={{
+                        fontSize: 14,
+                        fontWeight: "600",
+                        color:
+                          scale === option.value
+                            ? colors.background
+                            : colors.text,
+                      }}
+                    >
+                      {option.label}
+                    </Text>
+                  </Pressable>
+                ),
+              )}
             </View>
 
-            <Text style={{ fontSize: 13, fontWeight: '600', color: colors.textMuted, marginBottom: 8 }}>
+            <Text
+              style={{
+                fontSize: 13,
+                fontWeight: "600",
+                color: colors.textMuted,
+                marginBottom: 8,
+              }}
+            >
               LARGE
             </Text>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-              {SCALE_OPTIONS.filter((s) => s.group === 'large').map((option) => (
-                <Pressable
-                  key={option.value}
-                  onPress={() => changeScale(option.value)}
-                  style={{
-                    paddingVertical: 10,
-                    paddingHorizontal: 18,
-                    borderRadius: 18,
-                    backgroundColor: scale === option.value ? colors.accent : colors.card,
-                  }}
-                >
-                  <Text style={{
-                    fontSize: 14,
-                    fontWeight: '600',
-                    color: scale === option.value ? colors.background : colors.text,
-                  }}>
-                    {option.label}
-                  </Text>
-                </Pressable>
-              ))}
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+              {SCALE_OPTIONS.filter((s) => s.group === "large").map(
+                (option) => (
+                  <Pressable
+                    key={option.value}
+                    onPress={() => changeScale(option.value)}
+                    style={{
+                      paddingVertical: 10,
+                      paddingHorizontal: 18,
+                      borderRadius: 18,
+                      backgroundColor:
+                        scale === option.value ? colors.accent : colors.card,
+                    }}
+                  >
+                    <Text
+                      style={{
+                        fontSize: 14,
+                        fontWeight: "600",
+                        color:
+                          scale === option.value
+                            ? colors.background
+                            : colors.text,
+                      }}
+                    >
+                      {option.label}
+                    </Text>
+                  </Pressable>
+                ),
+              )}
             </View>
 
             <Pressable
@@ -1157,14 +1684,16 @@ export default function VideoPlayerScreen() {
                 paddingVertical: 10,
                 borderRadius: 18,
                 backgroundColor: scale === 1 ? colors.accent : colors.card,
-                alignItems: 'center',
+                alignItems: "center",
               }}
             >
-              <Text style={{
-                fontSize: 14,
-                fontWeight: '600',
-                color: scale === 1 ? colors.background : colors.text,
-              }}>
+              <Text
+                style={{
+                  fontSize: 14,
+                  fontWeight: "600",
+                  color: scale === 1 ? colors.background : colors.text,
+                }}
+              >
                 Reset (100%)
               </Text>
             </Pressable>
@@ -1174,48 +1703,76 @@ export default function VideoPlayerScreen() {
         {/* Audio Track Sheet */}
         <BottomSheetModal
           ref={audioTrackSheetRef}
-          snapPoints={['30%']}
+          snapPoints={["30%"]}
           backdropComponent={renderBackdrop}
           backgroundStyle={{ backgroundColor: colors.surface }}
           handleIndicatorStyle={{ backgroundColor: colors.textMuted }}
         >
           <View style={{ padding: 20 }}>
-            <Text style={{ fontSize: 17, fontWeight: '600', color: colors.text, marginBottom: 16 }}>
-              {t('video.audio.track.title')}
+            <Text
+              style={{
+                fontSize: 17,
+                fontWeight: "600",
+                color: colors.text,
+                marginBottom: 16,
+              }}
+            >
+              {t("video.audio.track.title")}
             </Text>
             {audioTracks.map((track: any) => (
               <Pressable
                 key={track.id}
                 onPress={() => handleAudioTrackChange(track.id)}
-                style={[s.flexRow, s.itemsCenter, s.justifyBetween, {
-                  paddingVertical: 12,
-                  paddingHorizontal: 16,
-                  borderRadius: 12,
-                  marginBottom: 6,
-                  backgroundColor: activeAudioTrack === track.id ? colors.accent + '20' : colors.card,
-                }]}
+                style={[
+                  s.flexRow,
+                  s.itemsCenter,
+                  s.justifyBetween,
+                  {
+                    paddingVertical: 12,
+                    paddingHorizontal: 16,
+                    borderRadius: 12,
+                    marginBottom: 6,
+                    backgroundColor:
+                      activeAudioTrack === track.id
+                        ? colors.accent + "20"
+                        : colors.card,
+                  },
+                ]}
               >
                 <View style={s.flex1}>
-                  <Text style={{
-                    fontSize: 14,
-                    fontWeight: '600',
-                    color: activeAudioTrack === track.id ? colors.accent : colors.text,
-                  }}>
+                  <Text
+                    style={{
+                      fontSize: 14,
+                      fontWeight: "600",
+                      color:
+                        activeAudioTrack === track.id
+                          ? colors.accent
+                          : colors.text,
+                    }}
+                  >
                     {track.label || `Track ${track.id}`}
                   </Text>
                   {track.language && (
-                    <Text style={{ fontSize: 12, color: colors.textMuted, marginTop: 2 }}>
+                    <Text
+                      style={{
+                        fontSize: 12,
+                        color: colors.textMuted,
+                        marginTop: 2,
+                      }}
+                    >
                       {track.language.toUpperCase()}
                     </Text>
                   )}
                 </View>
                 {activeAudioTrack === track.id && (
-                  <View style={{
-                    width: 8,
-                    height: 8,
-                    borderRadius: 4,
-                    backgroundColor: colors.accent,
-                  }} />
+                  <View
+                    style={{
+                      width: 8,
+                      height: 8,
+                      borderRadius: 4,
+                      backgroundColor: colors.accent,
+                    }}
+                  />
                 )}
               </Pressable>
             ))}
@@ -1230,26 +1787,26 @@ const styles = StyleSheet.create({
   video: {
     width: SCREEN_WIDTH - 32,
     borderRadius: 14,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   fullscreenContainer: {
     flex: 1,
-    backgroundColor: '#000',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "#000",
+    justifyContent: "center",
+    alignItems: "center",
   },
   fullscreenVideo: {
     width: SCREEN_HEIGHT,
     height: SCREEN_WIDTH,
   },
   fullscreenControls: {
-    position: 'absolute',
+    position: "absolute",
     top: 0,
     left: 0,
     right: 0,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingHorizontal: 16,
   },
   fullscreenButton: {
@@ -1259,112 +1816,112 @@ const styles = StyleSheet.create({
     padding: 8,
   },
   subtitleOverlay: {
-    position: 'absolute',
+    position: "absolute",
     left: 16,
     right: 16,
-    alignItems: 'center',
+    alignItems: "center",
   },
   fullscreenSubtitleContainer: {
-    position: 'absolute',
+    position: "absolute",
     left: 32,
     right: 32,
-    alignItems: 'center',
+    alignItems: "center",
   },
   subtitleText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 16,
-    fontWeight: '600',
-    textAlign: 'center',
-    backgroundColor: 'rgba(0,0,0,0.7)',
+    fontWeight: "600",
+    textAlign: "center",
+    backgroundColor: "rgba(0,0,0,0.7)",
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 10,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   resumeOverlay: {
-    position: 'absolute',
+    position: "absolute",
     top: 0,
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: "rgba(0,0,0,0.6)",
+    alignItems: "center",
+    justifyContent: "center",
     borderRadius: 14,
   },
   resumeCard: {
-    backgroundColor: 'rgba(20,20,30,0.95)',
+    backgroundColor: "rgba(20,20,30,0.95)",
     borderRadius: 18,
     padding: 24,
-    width: '80%',
-    alignItems: 'center',
+    width: "80%",
+    alignItems: "center",
   },
   lockOverlay: {
-    position: 'absolute',
+    position: "absolute",
     top: 0,
     left: 0,
     right: 0,
     bottom: 0,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   lockButton: {
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: "rgba(0,0,0,0.5)",
+    alignItems: "center",
+    justifyContent: "center",
   },
   controlsOverlay: {
-    position: 'absolute',
+    position: "absolute",
     top: 0,
     left: 0,
     right: 0,
     bottom: 0,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     borderRadius: 14,
   },
   controlsOverlayFullscreen: {
-    position: 'absolute',
+    position: "absolute",
     top: 0,
     left: 0,
     right: 0,
     bottom: 0,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   playButtonLarge: {
     width: 72,
     height: 72,
     borderRadius: 36,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: "rgba(0,0,0,0.6)",
+    alignItems: "center",
+    justifyContent: "center",
   },
   alwaysVisiblePlayButton: {
-    position: 'absolute',
+    position: "absolute",
     bottom: 12,
     right: 12,
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: "rgba(0,0,0,0.5)",
+    alignItems: "center",
+    justifyContent: "center",
     zIndex: 10,
   },
   fsAlwaysVisiblePlayButton: {
-    position: 'absolute',
+    position: "absolute",
     bottom: 60,
     right: 20,
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: "rgba(0,0,0,0.5)",
+    alignItems: "center",
+    justifyContent: "center",
     zIndex: 10,
   },
 });
