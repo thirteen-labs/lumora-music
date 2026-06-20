@@ -27,9 +27,10 @@ import {
   useVideoPlayer,
   VideoView,
   type VideoPlayer,
+  type AudioTrack,
   isPictureInPictureSupported,
 } from "expo-video";
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import * as DocumentPicker from "expo-document-picker";
 import * as FileSystem from "expo-file-system";
 import { BottomSheetModal, BottomSheetBackdrop } from "@gorhom/bottom-sheet";
@@ -265,6 +266,16 @@ export default function VideoPlayerScreen() {
   const seekTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const playerRef = useRef<VideoPlayer | null>(null);
+
+  const handleVolumeChange = useCallback(
+    (val: number) => {
+      setVolume(val);
+      if (playerRef.current) {
+        playerRef.current.volume = val;
+      }
+    },
+    [setVolume],
+  );
   const videoViewRef = useRef<any>(null);
   const {
     saveVideoPosition,
@@ -326,19 +337,23 @@ export default function VideoPlayerScreen() {
     router.back();
   }, [uri, title, router]);
 
-  const headerPanGesture = Gesture.Pan()
-    .onUpdate((e) => {
-      if (e.translationY > 0) {
-        headerTranslateY.value = e.translationY * 0.4;
-      }
-    })
-    .onEnd((e) => {
-      // eslint-disable-line react-hooks/refs
-      if (e.translationY > 120) {
-        runOnJS(playVideoAsAudio)();
-      }
-      headerTranslateY.value = withSpring(0, { damping: 20, stiffness: 200 });
-    });
+  const headerPanGesture = useMemo(
+    () =>
+      Gesture.Pan()
+        .onUpdate((e) => {
+          if (e.translationY > 0) {
+            headerTranslateY.value = e.translationY * 0.4;
+          }
+        })
+        // eslint-disable-next-line react-hooks/refs
+        .onEnd((e) => {
+          if (e.translationY > 80) {
+            runOnJS(playVideoAsAudio)();
+          }
+          headerTranslateY.value = withSpring(0, { damping: 20, stiffness: 200 });
+        }),
+    [playVideoAsAudio], // eslint-disable-line react-hooks/exhaustive-deps
+  );
 
   const headerAnimatedStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: headerTranslateY.value }],
@@ -553,12 +568,11 @@ export default function VideoPlayerScreen() {
     }
   }, [t]);
 
-  const handleAudioTrackChange = useCallback((trackId: string) => {
+  const handleAudioTrackChange = useCallback((track: AudioTrack) => {
     if (!playerRef.current) return;
     try {
-      (playerRef.current as VideoPlayer & { audioTrack?: string }).audioTrack =
-        trackId;
-      setActiveAudioTrack(trackId);
+      playerRef.current.audioTrack = track;
+      setActiveAudioTrack(track.id ?? null);
     } catch (e) {
       console.warn("Audio track switch failed:", e);
     }
@@ -670,6 +684,8 @@ export default function VideoPlayerScreen() {
         } catch {}
         playerRef.current = null;
       }
+      if (seekTimerRef.current) clearTimeout(seekTimerRef.current);
+      if (controlsTimerRef.current) clearTimeout(controlsTimerRef.current);
       ScreenOrientation.lockAsync(
         ScreenOrientation.OrientationLock.PORTRAIT,
       ).catch(() => {});
@@ -708,78 +724,97 @@ export default function VideoPlayerScreen() {
   );
   /* eslint-enable react-hooks/immutability */
 
-  const panGesture = Gesture.Pan()
-    .onStart(() => {
-      if (isLocked) return;
-      startVolume.value = volume;
-      startBrightness.value = brightness;
-      isSwiping.value = true;
-    })
-    .onUpdate((e) => {
-      if (isLocked) return;
-      swipeX.value = e.translationX;
-      swipeY.value = e.translationY;
-    })
-    .onEnd((e) => {
-      // eslint-disable-line react-hooks/refs
-      if (isLocked) return;
-      const dx = e.translationX;
-      const dy = e.translationY;
-      const absDx = Math.abs(dx);
-      const absDy = Math.abs(dy);
+  const panGesture = useMemo(
+    () =>
+      Gesture.Pan()
+        .onStart(() => {
+          if (isLocked) return;
+          startVolume.value = volume;
+          startBrightness.value = brightness;
+          isSwiping.value = true;
+        })
+        .onUpdate((e) => {
+          if (isLocked) return;
+          swipeX.value = e.translationX;
+          swipeY.value = e.translationY;
+        })
+        // eslint-disable-next-line react-hooks/refs
+        .onEnd((e) => {
+          if (isLocked) return;
+          const dx = e.translationX;
+          const dy = e.translationY;
+          const absDx = Math.abs(dx);
+          const absDy = Math.abs(dy);
 
-      if (absDx > absDy && absDx > 50) {
-        if (dx > 0) {
-          runOnJS(seekForward)();
-        } else {
-          runOnJS(seekBackward)();
-        }
-      } else if (absDy > 30) {
-        const screenWidth = SCREEN_WIDTH;
-        const startX = e.absoluteX;
-        const isLeftSide = startX < screenWidth / 2;
-
-        const delta = -dy / 300;
-        const newVal = Math.max(
-          0,
-          Math.min(
-            1,
-            (isLeftSide ? startBrightness.value : startVolume.value) + delta,
-          ),
-        );
-
-        if (isLeftSide) {
-          runOnJS(setBrightness)(newVal);
-        } else {
-          runOnJS(setVolume)(newVal);
-          if (playerRef.current) {
-            playerRef.current.volume = newVal;
+          // Large downward swipe anywhere on the video plays as audio
+          if (dy > 150 && absDy > absDx) {
+            runOnJS(playVideoAsAudio)();
+            return;
           }
+
+          if (absDx > absDy && absDx > 50) {
+            if (dx > 0) {
+              runOnJS(seekForward)();
+            } else {
+              runOnJS(seekBackward)();
+            }
+          } else if (absDy > 30) {
+            const screenWidth = SCREEN_WIDTH;
+            const startX = e.absoluteX;
+            const isLeftSide = startX < screenWidth / 2;
+
+            const delta = -dy / 300;
+            const newVal = Math.max(
+              0,
+              Math.min(
+                1,
+                (isLeftSide ? startBrightness.value : startVolume.value) + delta,
+              ),
+            );
+
+            if (isLeftSide) {
+              runOnJS(setBrightness)(newVal);
+            } else {
+              runOnJS(handleVolumeChange)(newVal);
+            }
+          }
+
+          swipeX.value = 0;
+          swipeY.value = 0;
+          isSwiping.value = false;
+        }),
+    [ // eslint-disable-line react-hooks/exhaustive-deps
+      isLocked,
+      volume,
+      brightness,
+      seekForward,
+      seekBackward,
+      handleVolumeChange,
+      setBrightness,
+      playVideoAsAudio,
+    ],
+  );
+
+  const tapGesture = useMemo(
+    () =>
+      // eslint-disable-next-line react-hooks/refs
+      Gesture.Tap().onEnd((e) => {
+        if (isLocked) {
+          runOnJS(setIsLocked)(false);
+          return;
         }
-      }
-
-      swipeX.value = 0;
-      swipeY.value = 0;
-      isSwiping.value = false;
-    });
-
-  const tapGesture = Gesture.Tap()
-    // eslint-disable-next-line react-hooks/refs
-    .onEnd((e) => {
-      if (isLocked) {
-        runOnJS(setIsLocked)(false);
-        return;
-      }
-      const screenWidth = SCREEN_WIDTH;
-      const x = e.absoluteX;
-      if (x < screenWidth * 0.3) {
-        runOnJS(handleDoubleTap)("left");
-      } else if (x > screenWidth * 0.7) {
-        runOnJS(handleDoubleTap)("right");
-      } else {
-        runOnJS(handlePlayPause)();
-      }
-    });
+        const screenWidth = SCREEN_WIDTH;
+        const x = e.absoluteX;
+        if (x < screenWidth * 0.3) {
+          runOnJS(handleDoubleTap)("left");
+        } else if (x > screenWidth * 0.7) {
+          runOnJS(handleDoubleTap)("right");
+        } else {
+          runOnJS(handlePlayPause)();
+        }
+      }),
+    [isLocked, setIsLocked, handleDoubleTap, handlePlayPause],
+  );
 
   const composedGestures = Gesture.Simultaneous(panGesture, tapGesture);
 
@@ -1722,7 +1757,7 @@ export default function VideoPlayerScreen() {
             {audioTracks.map((track: any) => (
               <Pressable
                 key={track.id}
-                onPress={() => handleAudioTrackChange(track.id)}
+                onPress={() => handleAudioTrackChange(track)}
                 style={[
                   s.flexRow,
                   s.itemsCenter,
