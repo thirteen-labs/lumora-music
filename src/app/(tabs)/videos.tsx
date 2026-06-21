@@ -1,4 +1,4 @@
-import { View, Text, Pressable, Dimensions, Image } from 'react-native';
+import { View, Text, Pressable, Dimensions, Image, TextInput } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FlashList } from '@shopify/flash-list';
 import { useTheme } from '@/hooks/use-theme';
@@ -7,15 +7,21 @@ import { useLayoutStore } from '@/store/layout-store';
 import { TopBar } from '@/components/top-bar';
 import { MiniPlayer } from '@/components/mini-player';
 import { SortMenu } from '@/components/sort-menu';
-import { Video as VideoIcon } from 'lucide-react-native';
+import { Video as VideoIcon, Search, FolderOpen } from 'lucide-react-native';
 import { formatDuration } from '@/utils/cn';
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { SORT_OPTIONS, type SortField, type SortOrder } from '@/types/media';
 import { useRouter } from 'expo-router';
 import { s } from '@/styles';
 import { useTranslation } from '@/hooks/use-translation';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
+
+function extractFolder(uri: string): string {
+  const parts = uri.replace('file://', '').split('/');
+  parts.pop();
+  return parts.pop() || 'Unknown';
+}
 
 function sortVideos(videos: any[], sortField: SortField, sortOrder: SortOrder) {
   const sorted = [...videos];
@@ -60,31 +66,124 @@ export default function VideosScreen() {
   const setSort = useVideoStore((s) => s.setSort);
   const scanVideos = useVideoStore((s) => s.scanVideos);
   const { fileSizeTheme } = useLayoutStore();
-  const sortedVideos = useMemo(() => sortVideos(videos, sortField, sortOrder), [videos, sortField, sortOrder]);
-  const activeSort = SORT_OPTIONS.find((o) => o.field === sortField && o.order === sortOrder) ?? SORT_OPTIONS[0];
   const router = useRouter();
+  const [searchQuery, setSearchQuery] = useState('');
+  const [groupByFolder, setGroupByFolder] = useState(false);
 
   useEffect(() => {
     scanVideos();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const sortedVideos = useMemo(() => sortVideos(videos, sortField, sortOrder), [videos, sortField, sortOrder]);
+  const activeSort = SORT_OPTIONS.find((o) => o.field === sortField && o.order === sortOrder) ?? SORT_OPTIONS[0];
+
+  const filtered = useMemo(() => {
+    if (!searchQuery.trim()) return sortedVideos;
+    const q = searchQuery.toLowerCase();
+    return sortedVideos.filter((v) =>
+      v.title.toLowerCase().includes(q) ||
+      extractFolder(v.uri).toLowerCase().includes(q),
+    );
+  }, [sortedVideos, searchQuery]);
+
+  const grouped = useMemo(() => {
+    if (!groupByFolder) return null;
+    const map = new Map<string, typeof filtered>();
+    for (const video of filtered) {
+      const folder = extractFolder(video.uri);
+      const group = map.get(folder) || [];
+      group.push(video);
+      map.set(folder, group);
+    }
+    return Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0]));
+  }, [filtered, groupByFolder]);
+
   const SMALL_COLUMNS = 4;
   const SMALL_GAP = 4;
   const SMALL_ITEM_W = (SCREEN_WIDTH - 32 - (SMALL_COLUMNS - 1) * SMALL_GAP) / SMALL_COLUMNS;
+
+  const headerContent = (
+    <>
+      <View style={[s.flexRow, s.itemsCenter, s.gap2, s.mx4, s.mb2]}>
+        <View style={[s.flex1, s.flexRow, s.itemsCenter, s.rounded2xl, s.px3, { height: 36, backgroundColor: colors.surface }]}>
+          <Search size={14} color={colors.textMuted} />
+          <TextInput
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            placeholder="Search videos..."
+            placeholderTextColor={colors.textMuted}
+            style={[s.flex1, s.textSm, s.ml2, { color: colors.text, height: 36 }]}
+          />
+        </View>
+        <Pressable
+          onPress={() => setGroupByFolder((v) => !v)}
+          style={[s.w9, s.h9, s.roundedXl, s.itemsCenter, s.justifyCenter, { backgroundColor: groupByFolder ? colors.accent + '25' : colors.surface }]}
+        >
+          <FolderOpen size={16} color={groupByFolder ? colors.accent : colors.textMuted} />
+        </Pressable>
+      </View>
+      <SortMenu
+        options={SORT_OPTIONS.filter((o) => o.field !== 'artist')}
+        active={activeSort}
+        onSelect={(opt) => setSort(opt.field, opt.order)}
+        count={filtered.length}
+      />
+    </>
+  );
+
+  if (groupByFolder && grouped) {
+    return (
+      <View style={[s.flex1, { backgroundColor: colors.background }]}>
+        <TopBar />
+        <FlashList
+          data={grouped}
+          keyExtractor={([folder]) => folder}
+          contentContainerStyle={{ paddingBottom: 120 + insets.bottom }}
+          ListHeaderComponent={headerContent}
+          renderItem={({ item: [folder, folderVideos] }) => (
+            <View style={[s.px4, s.mb4]}>
+              <View style={[s.flexRow, s.itemsCenter, s.gap2, s.mb2]}>
+                <FolderOpen size={14} color={colors.accent} />
+                <Text style={[s.textSm, s.fontSemibold, { color: colors.text }]}>{folder}</Text>
+                <Text style={[s.textXs, { color: colors.textMuted }]}>{folderVideos.length}</Text>
+              </View>
+              <View style={[s.flexRow, s.flexWrap, { gap: 8 }]}>
+                {folderVideos.map((video: any) => {
+                  const cardW = (SCREEN_WIDTH - 48) / 3;
+                  return (
+                    <Pressable
+                      key={video.id}
+                      onPress={() => router.push({ pathname: '/video-player', params: { uri: video.uri, title: video.title } })}
+                      style={{ width: cardW }}
+                    >
+                      <VideoThumb uri={video.thumbnail} width={cardW} height={cardW * 0.65} borderRadius={8} colors={colors} />
+                      <Text style={{ fontSize: 11, color: colors.text, marginTop: 4 }} numberOfLines={1}>{video.title}</Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </View>
+          )}
+          ListEmptyComponent={
+            <View style={[s.itemsCenter, s.py20]}>
+              <VideoIcon size={40} color={colors.textMuted} />
+              <Text style={[s.mt3, { color: colors.textMuted }]}>{t('common.no.results')}</Text>
+            </View>
+          }
+        />
+        <MiniPlayer />
+      </View>
+    );
+  }
 
   if (fileSizeTheme === 'small') {
     return (
       <View style={[s.flex1, { backgroundColor: colors.background }]}>
         <TopBar />
-        <SortMenu
-          options={SORT_OPTIONS.filter((o) => o.field !== 'artist')}
-          active={activeSort}
-          onSelect={(opt) => setSort(opt.field, opt.order)}
-          count={sortedVideos.length}
-        />
+        {headerContent}
         <FlashList
-          data={sortedVideos}
+          data={filtered}
           keyExtractor={(item) => item.id}
           numColumns={SMALL_COLUMNS}
           contentContainerStyle={{ paddingBottom: 120 + insets.bottom, paddingHorizontal: 16 }}
@@ -112,14 +211,9 @@ export default function VideosScreen() {
     return (
       <View style={[s.flex1, { backgroundColor: colors.background }]}>
         <TopBar />
-        <SortMenu
-          options={SORT_OPTIONS.filter((o) => o.field !== 'artist')}
-          active={activeSort}
-          onSelect={(opt) => setSort(opt.field, opt.order)}
-          count={sortedVideos.length}
-        />
+        {headerContent}
         <FlashList
-          data={sortedVideos}
+          data={filtered}
           keyExtractor={(item) => item.id}
           contentContainerStyle={{ paddingBottom: 120 + insets.bottom, paddingHorizontal: 16 }}
           renderItem={({ item }) => (
@@ -151,14 +245,9 @@ export default function VideosScreen() {
   return (
     <View style={[s.flex1, { backgroundColor: colors.background }]}>
       <TopBar />
-      <SortMenu
-        options={SORT_OPTIONS.filter((o) => o.field !== 'artist')}
-        active={activeSort}
-        onSelect={(opt) => setSort(opt.field, opt.order)}
-        count={sortedVideos.length}
-      />
+      {headerContent}
       <FlashList
-        data={sortedVideos}
+        data={filtered}
         keyExtractor={(item) => item.id}
         numColumns={2}
         contentContainerStyle={{ paddingBottom: 120 + insets.bottom, paddingHorizontal: 16 }}

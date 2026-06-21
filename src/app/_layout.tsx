@@ -1,7 +1,7 @@
 import "../../global.css";
 
 import { View } from "react-native";
-import { Stack, usePathname } from "expo-router";
+import { Stack, usePathname, useSegments } from "expo-router";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { BottomBar } from "@/components/bottom-bar";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -19,15 +19,10 @@ import { useScanManager } from "@/hooks/use-scan-manager";
 function RootStack() {
   const { colors } = useTheme();
   const pathname = usePathname();
+  const segments = useSegments();
   useScanManager();
 
-  const isTabScreen =
-    pathname === "/" ||
-    ["music", "videos", "files", "playlists", "favorites", "settings"].some(
-      (key) => pathname === `/${key}` || pathname.startsWith(`/${key}/`),
-    ) ||
-    pathname === "/playlists" ||
-    pathname.startsWith("/playlist/");
+  const isTabScreen = segments.length > 0 && segments[0] === "(tabs)";
 
   return (
     <View style={{ flex: 1 }}>
@@ -66,10 +61,6 @@ function RootStack() {
           />
           <Stack.Screen
             name="music/genre/[id]"
-            options={{ animation: "slide_from_right" }}
-          />
-          <Stack.Screen
-            name="files"
             options={{ animation: "slide_from_right" }}
           />
           <Stack.Screen

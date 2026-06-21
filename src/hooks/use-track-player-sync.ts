@@ -71,7 +71,12 @@ export function useTrackPlayerSync() {
 
     if (remaining <= crossfadeDur && remaining > 0 && duration > 0) {
       crossfadeTriggeredRef.current = true;
-      state.next();
+      if (state.repeat === 'one') {
+        player.seekTo(0);
+        player.play();
+      } else {
+        state.next();
+      }
     }
   }
 

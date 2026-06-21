@@ -1,8 +1,8 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { View, Text, Pressable, type LayoutChangeEvent } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Music, Video, Folder, ListMusic } from 'lucide-react-native';
-import { useRouter, usePathname } from 'expo-router';
+import { Music, Video, Folder, ListMusic, Heart, Settings } from 'lucide-react-native';
+import { useRouter, usePathname, useSegments } from 'expo-router';
 import { s } from '@/styles';
 import { useTheme } from '@/hooks/use-theme';
 import { useTranslation } from '@/hooks/use-translation';
@@ -12,6 +12,8 @@ const NAV_ITEMS = [
   { key: 'music', labelKey: 'nav.music', icon: Music, route: '/(tabs)/music' },
   { key: 'videos', labelKey: 'nav.videos', icon: Video, route: '/(tabs)/videos' },
   { key: 'files', labelKey: 'nav.folders', icon: Folder, route: '/(tabs)/files' },
+  { key: 'favorites', labelKey: 'nav.favorites', icon: Heart, route: '/(tabs)/favorites' },
+  { key: 'settings', labelKey: 'nav.settings', icon: Settings, route: '/(tabs)/settings' },
   { key: 'playlists', labelKey: 'nav.playlists', icon: ListMusic, route: '/playlists' },
 ] as const;
 
@@ -21,17 +23,17 @@ export function BottomBar() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const pathname = usePathname();
+  const segments = useSegments();
   const { colors } = useTheme();
   const { t } = useTranslation();
 
-  const isTabScreen = pathname === '/' || TAB_KEYS.some((key) => pathname === `/${key}` || pathname.startsWith(`/${key}/`)) || pathname === '/playlists' || pathname.startsWith('/playlist/');
+  const isTabScreen = segments.length > 0 && segments[0] === "(tabs)";
 
   const getActiveKey = () => {
-    if (pathname.startsWith('/music')) return 'music';
-    if (pathname.startsWith('/videos')) return 'videos';
-    if (pathname.startsWith('/files')) return 'files';
-    if (pathname === '/playlists' || pathname.startsWith('/playlist/')) return 'playlists';
-    return null;
+    if (segments[0] !== "(tabs)") return null;
+    const tab = segments[1];
+    if (tab === "index" || !tab) return null;
+    return tab;
   };
 
   const activeKey = getActiveKey();
@@ -102,23 +104,12 @@ export function BottomBar() {
             key={item.key}
             onPress={() => router.push(item.route as any)}
             onLayout={(e) => handleLayout(item.key, e)}
-            style={{ marginHorizontal: 6, alignItems: 'center' }}
+            style={{ padding: 8, alignItems: 'center' }}
           >
-            <View
-              style={[s.flexRow, s.itemsCenter, s.roundedFull, isActive ? s.px3 : s.px2, s.py1, { backgroundColor: 'transparent' }]}
-            >
-              <Icon
-                size={14}
-                color={isActive ? colors.accent : colors.textMuted}
-              />
-              {isActive && (
-                <Text
-                  style={[s.text10, s.fontBold, s.ml15, { color: colors.accent }]}
-                >
-                  {t(item.labelKey as any)}
-                </Text>
-              )}
-            </View>
+            <Icon
+              size={24}
+              color={isActive ? colors.accent : colors.textMuted}
+            />
           </Pressable>
         );
       })}
