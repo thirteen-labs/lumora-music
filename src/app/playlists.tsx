@@ -15,7 +15,7 @@ import { useLyricsStore } from '@/store/lyrics-store';
 import { usePlayerStore } from '@/store/player-store';
 import { useRouter } from 'expo-router';
 import {
-  Heart, Plus, ListMusic, Trash2, Play, Tag, Users, Mic2, Clock, TrendingUp, Disc3,
+  Heart, Plus, ListMusic, Play, Tag, Users, Mic2, Clock, TrendingUp, Disc3,
 } from 'lucide-react-native';
 import {
   BottomSheetModal,
@@ -175,37 +175,34 @@ export default function PlaylistsScreen() {
         <FlashList
           data={playlists}
           keyExtractor={(item) => item.id}
+          numColumns={2}
           ListHeaderComponent={renderListHeader}
-          contentContainerStyle={{ paddingBottom: 120 + insets.bottom }}
+          contentContainerStyle={{ paddingBottom: 120 + insets.bottom, paddingHorizontal: 20 }}
           showsVerticalScrollIndicator={false}
-          renderItem={({ item }) => (
+          renderItem={({ item, index }) => (
             <Pressable
               onPress={() => router.push({ pathname: '/playlist/[id]', params: { id: item.id } })}
-              style={[
-                s.flexRow,
-                s.itemsCenter,
-                s.gap3,
-                s.px5,
-                s.py3,
-                {
-                  backgroundColor: colors.surface,
-                  borderRadius: 16,
-                  borderWidth: 1,
-                  borderColor: colors.accent + '30',
-                  marginHorizontal: 20,
-                  marginBottom: 8,
-                },
-              ]}
+              onLongPress={() => handleDelete(item.id, item.name)}
+              style={{
+                width: (screenWidth - 40 - 12) / 2,
+                marginRight: index % 2 === 0 ? 12 : 0,
+                marginBottom: 12,
+                backgroundColor: colors.surface,
+                borderRadius: 16,
+                borderWidth: 1,
+                borderColor: colors.accent + '30',
+                padding: 16,
+                alignItems: 'center',
+                gap: 8,
+              }}
             >
               <View style={[s.w14, s.h14, s.roundedXl, s.itemsCenter, s.justifyCenter, { backgroundColor: colors.accent + '15' }]}>
                 <ListMusic size={24} color={colors.accent} />
               </View>
-              <View style={s.flex1}>
-                <Text style={[s.textSm, s.fontSemibold, { color: colors.text }]} numberOfLines={1}>{item.name}</Text>
-                <Text style={[s.textXs, { color: colors.textMuted }]}>
-                  {item.songIds.length} {item.songIds.length === 1 ? t('library.song') : t('library.tracks')}
-                </Text>
-              </View>
+              <Text style={[s.textSm, s.fontSemibold, { color: colors.text }]} numberOfLines={1}>{item.name}</Text>
+              <Text style={[s.textXs, { color: colors.textMuted }]}>
+                {item.songIds.length} {item.songIds.length === 1 ? t('library.song') : t('library.tracks')}
+              </Text>
               {item.songIds.length > 0 && (
                 <Pressable
                   onPress={() => handlePlayAll(item.id)}
@@ -214,12 +211,6 @@ export default function PlaylistsScreen() {
                   <Play size={18} color={colors.background} fill={colors.background} />
                 </Pressable>
               )}
-              <Pressable
-                onPress={() => handleDelete(item.id, item.name)}
-                style={[s.w11, s.h11, s.itemsCenter, s.justifyCenter]}
-              >
-                <Trash2 size={18} color={colors.textMuted} />
-              </Pressable>
             </Pressable>
           )}
         />

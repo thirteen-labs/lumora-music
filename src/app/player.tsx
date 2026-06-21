@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState, useEffect } from 'react';
+import { useCallback, useRef, useState, useEffect, useMemo } from 'react';
 import { View, Text, Pressable, Dimensions, ActivityIndicator, ScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@/hooks/use-theme';
@@ -40,7 +40,8 @@ import { useRouter } from 'expo-router';
 import { useFavoritesStore } from '@/store/favorites-store';
 import { useToastStore } from '@/store/toast-store';
 import { Image } from 'expo-image';
-import { fetchLyrics, type LyricsResult, type SyncedLine } from '@/services/lyrics';
+import { useLyricsStore } from '@/store/lyrics-store';
+import { fetchLyrics, parseSyncedLyrics, type LyricsResult, type SyncedLine } from '@/services/lyrics';
 import {
   BottomSheetModal,
   BottomSheetFlatList,
@@ -80,6 +81,7 @@ export default function PlayerScreen() {
   const router = useRouter();
   const { t } = useTranslation();
   const showToast = useToastStore((s) => s.showToast);
+  const lyricsMap = useLyricsStore((s) => s.lyricsMap);
 
   const queueSheetRef = useRef<BottomSheetModal>(null);
   const lyricsSheetRef = useRef<BottomSheetModal>(null);
@@ -90,12 +92,18 @@ export default function PlayerScreen() {
     error: boolean;
   }>({ trackId: null, lyrics: null, error: false });
 
-  const isLyricsLoading = currentTrack != null && lyricsData.trackId !== currentTrack.id;
-  const lyrics = lyricsData.trackId === currentTrack?.id ? lyricsData.lyrics : null;
-  const lyricsError = lyricsData.trackId === currentTrack?.id ? lyricsData.error : false;
+  const localLyricsRaw = currentTrack ? lyricsMap[currentTrack.id] : null;
+  const localLyrics = useMemo(
+    () => (localLyricsRaw ? parseSyncedLyrics(localLyricsRaw) : null),
+    [localLyricsRaw],
+  );
+
+  const isLyricsLoading = !localLyrics && currentTrack != null && lyricsData.trackId !== currentTrack.id;
+  const lyrics = localLyrics ?? (lyricsData.trackId === currentTrack?.id ? lyricsData.lyrics : null);
+  const lyricsError = localLyrics ? false : (lyricsData.trackId === currentTrack?.id ? lyricsData.error : false);
 
   useEffect(() => {
-    if (!currentTrack) return;
+    if (!currentTrack || localLyrics) return;
     const trackId = currentTrack.id;
 
     let cancelled = false;
@@ -114,7 +122,7 @@ export default function PlayerScreen() {
       cancelled = true;
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentTrack?.id, currentTrack?.artist, currentTrack?.title]);
+  }, [currentTrack?.id, currentTrack?.artist, currentTrack?.title, localLyrics]);
 
   const renderBackdrop = useCallback(
     (props: any) => (

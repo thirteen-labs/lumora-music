@@ -35,10 +35,6 @@ function RootStack() {
         >
           <Stack.Screen name="(tabs)" />
           <Stack.Screen
-            name="music/songs"
-            options={{ animation: "slide_from_right" }}
-          />
-          <Stack.Screen
             name="music/albums"
             options={{ animation: "slide_from_right" }}
           />

@@ -10,6 +10,7 @@ import { usePlayerStore } from '@/store/player-store';
 import { useLayoutStore } from '@/store/layout-store';
 import { useStatsStore } from '@/store/stats-store';
 import { useLyricsStore } from '@/store/lyrics-store';
+import { hasCachedLyrics } from '@/services/lyrics';
 import { TopBar } from '@/components/top-bar';
 import { MiniPlayer } from '@/components/mini-player';
 import { SortMenu } from '@/components/sort-menu';
@@ -137,7 +138,7 @@ export default function SongsScreen() {
                   <Text style={{ fontSize: 13, fontWeight: '600', color: colors.text, marginTop: 8 }} numberOfLines={1}>{item.title}</Text>
                   <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 3 }}>
                     <Text style={{ fontSize: 11, color: colors.textMuted }} numberOfLines={1}>{item.artist}</Text>
-                    <LyricsBadge colors={colors} show={!!lyricsMap[item.id]} />
+                    <LyricsBadge colors={colors} show={!!lyricsMap[item.id] || hasCachedLyrics(item.artist, item.title) === true} />
                   </View>
                 </>
               ) : (
@@ -156,7 +157,7 @@ export default function SongsScreen() {
                   <Text style={{ fontSize: 12, fontWeight: '500', color: colors.text, marginTop: 8 }} numberOfLines={1}>{item.title}</Text>
                   <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 2 }}>
                     <Text style={{ fontSize: 11, color: colors.textMuted }} numberOfLines={1}>{item.artist}</Text>
-                    <LyricsBadge colors={colors} show={!!lyricsMap[item.id]} />
+                    <LyricsBadge colors={colors} show={!!lyricsMap[item.id] || hasCachedLyrics(item.artist, item.title) === true} />
                   </View>
                 </>
               )}
@@ -187,7 +188,7 @@ export default function SongsScreen() {
                   <Text style={[s.textXs, { color: colors.textMuted }]} numberOfLines={1}>
                     {item.artist}
                   </Text>
-                  <LyricsBadge colors={colors} show={!!lyricsMap[item.id]} />
+                  <LyricsBadge colors={colors} show={!!lyricsMap[item.id] || hasCachedLyrics(item.artist, item.title) === true} />
                   {fileSizeTheme === 'big' && (
                     <Text style={[s.textXs, { color: colors.textMuted, marginLeft: 6 }]}>
                       {formatFileSize(item.fileSize)}

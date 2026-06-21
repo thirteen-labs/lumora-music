@@ -29,7 +29,7 @@ function trimCache(): void {
 
 function parseLRC(lrc: string): SyncedLine[] {
   const lines: SyncedLine[] = [];
-  const regex = /\[(\d{2}):(\d{2})\.(\d{2,3})\]\s*(.*)/g;
+  const regex = /\[(\d{2}):(\d{2})[.:](\d{2,3})\]\s*(.*)/g;
   let match: RegExpExecArray | null;
   while ((match = regex.exec(lrc)) !== null) {
     const min = parseInt(match[1], 10);
@@ -50,6 +50,7 @@ function stripLRCMetadata(lrc: string): string {
     .replace(/\[al:.*?\]\s*/g, "")
     .replace(/\[by:.*?\]\s*/g, "")
     .replace(/\[offset:.*?\]\s*/g, "")
+    .replace(/\[\d{2}:\d{2}[.:]\d{2,3}\]\s*/g, "")
     .trim();
 }
 
@@ -138,6 +139,7 @@ export async function fetchLyrics(
   artist: string,
   title: string,
 ): Promise<LyricsResult | null> {
+  if (!artist || !title) return null;
   const key = cacheKey(artist, title);
   if (cache.has(key)) return cache.get(key) ?? null;
 
@@ -168,4 +170,11 @@ export function parseSyncedLyrics(lrcContent: string): LyricsResult {
 
 export function clearLyricsCache(): void {
   cache.clear();
+}
+
+export function hasCachedLyrics(artist: string, title: string): boolean | null {
+  if (!artist || !title) return false;
+  const key = cacheKey(artist, title);
+  if (!cache.has(key)) return null;
+  return cache.get(key) !== null;
 }

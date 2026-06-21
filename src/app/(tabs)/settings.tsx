@@ -8,6 +8,7 @@ import { useThemeStore } from '@/store/theme-store';
 import { getThemeById } from '@/theme/themes';
 import { useRouter } from 'expo-router';
 import { useTranslation } from '@/hooks/use-translation';
+import { useCloudStore } from '@/store/cloud-store';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import {
@@ -35,9 +36,9 @@ import {
   Clock,
   Moon,
   Bell,
-  HardDrive,
   Headphones,
   Disc3,
+  Cloud,
 } from 'lucide-react-native';
 import { s } from '@/styles';
 
@@ -67,6 +68,7 @@ export default function SettingsScreen() {
   const fontLabel = FONT_OPTIONS.find((f) => f.key === fontFamily)?.label ?? 'System';
   const gaplessPlayback = useSettingsStore((s) => s.gaplessPlayback);
   const setGaplessPlayback = useSettingsStore((s) => s.setGaplessPlayback);
+  const connectedProviders = useCloudStore((s) => s.connectedProviders);
   const playTogether = useSettingsStore((s) => s.playTogether);
   const setPlayTogether = useSettingsStore((s) => s.setPlayTogether);
 
@@ -385,10 +387,10 @@ export default function SettingsScreen() {
               colors={colors}
             />
             <SettingRow
-              icon={HardDrive}
-              label="Backup & Restore"
-              subtitle="Coming soon"
-              onPress={() => router.push('/backup-restore' as any)}
+              icon={Cloud}
+              label="Cloud Sync"
+              subtitle={connectedProviders.length > 0 ? `${connectedProviders.length} provider(s) connected` : 'Backup & sync to cloud'}
+              onPress={() => router.push('/cloud-sync' as any)}
               colors={colors}
             />
           </Section>

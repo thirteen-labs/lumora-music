@@ -22,6 +22,9 @@ import {
   MonitorPlay,
   Camera,
   AudioLines,
+  MoreHorizontal,
+  Share2,
+  Trash2,
 } from "lucide-react-native";
 import {
   useVideoPlayer,
@@ -243,6 +246,25 @@ function BrightnessIndicator({ brightness }: { brightness: number }) {
   );
 }
 
+async function handleShareVideo(uri: string) {
+  try {
+    const isAvailable = await Sharing.isAvailableAsync();
+    if (isAvailable) {
+      await Sharing.shareAsync(uri, {
+        mimeType: "video/*",
+        dialogTitle: "Share Video",
+      });
+    }
+  } catch {}
+}
+
+async function handleDeleteVideo(uri: string, router: any) {
+  try {
+    await FileSystem.deleteAsync(uri, { idempotent: true });
+    router.back();
+  } catch {}
+}
+
 export default function VideoPlayerScreen() {
   const { colors } = useTheme();
   const { t } = useTranslation();
@@ -257,6 +279,7 @@ export default function VideoPlayerScreen() {
   const [currentCueText, setCurrentCueText] = useState<string | null>(null);
   const speedSheetRef = useRef<BottomSheetModal>(null);
   const scaleSheetRef = useRef<BottomSheetModal>(null);
+  const moreSheetRef = useRef<BottomSheetModal>(null);
 
   const [seekText, setSeekText] = useState("");
   const [seekVisible, setSeekVisible] = useState(false);
@@ -287,8 +310,10 @@ export default function VideoPlayerScreen() {
   const [resumePosition, setResumePosition] = useState(0);
 
   const [scale, setScale] = useState(1);
+  const [contentFit, setContentFit] = useState<any>("contain");
   const [isLocked, setIsLocked] = useState(false);
   const [rotation, setRotation] = useState(0);
+  const fitSheetRef = useRef<BottomSheetModal>(null);
   const [isPiPSupported] = useState(() => {
     try {
       return isPictureInPictureSupported();
@@ -312,12 +337,15 @@ export default function VideoPlayerScreen() {
 
   const playVideoAsAudio = useCallback(() => {
     if (playerRef.current) {
-      playerRef.current.pause();
+      try {
+        playerRef.current.pause();
+      } catch {}
+      playerRef.current = null;
     }
     // Use player metadata as primary source (always available), store as fallback
     const videos = useVideoStore.getState().videos;
     const video = videos.find((v) => v.uri === uri);
-    const actualDuration = playerRef.current?.duration ?? video?.duration ?? 0;
+    const actualDuration = video?.duration ?? 0;
     const song: Song = {
       id: video?.id ?? `video-${uri}`,
       uri: uri ?? "",
@@ -367,6 +395,23 @@ export default function VideoPlayerScreen() {
       3000,
     );
   }, []);
+
+  const toggleControls = useCallback(() => {
+    if (controlsVisible) {
+      if (controlsTimerRef.current) {
+        clearTimeout(controlsTimerRef.current);
+        controlsTimerRef.current = null;
+      }
+      setControlsVisible(false);
+    } else {
+      if (controlsTimerRef.current) clearTimeout(controlsTimerRef.current);
+      controlsTimerRef.current = setTimeout(
+        () => setControlsVisible(false),
+        3000,
+      );
+      setControlsVisible(true);
+    }
+  }, [controlsVisible]);
 
   const handlePlayPause = useCallback(() => {
     if (!playerRef.current) return;
@@ -623,6 +668,27 @@ export default function VideoPlayerScreen() {
     [],
   );
 
+  const dismissMoreSheet = useCallback(() => {
+    moreSheetRef.current?.dismiss();
+  }, []);
+
+  const dismissAndPresentAudioTrack = useCallback(() => {
+    moreSheetRef.current?.dismiss();
+    setTimeout(() => audioTrackSheetRef.current?.present(), 300);
+  }, []);
+
+  const moreActions = useMemo(() => [
+    { icon: <RotateCw size={20} color={colors.text} />, label: "Rotate CW", onPress: () => { rotateVideo("cw"); dismissMoreSheet(); } },
+    { icon: <RotateCcw size={20} color={colors.text} />, label: "Rotate CCW", onPress: () => { rotateVideo("ccw"); dismissMoreSheet(); } },
+    ...(isPiPSupported ? [{ icon: <MonitorPlay size={20} color={colors.text} />, label: "Picture-in-Picture", onPress: () => { handlePiP(); dismissMoreSheet(); } }] : []),
+    { icon: <Camera size={20} color={colors.text} />, label: screenshotTaken ? "Captured!" : "Screenshot", onPress: () => { handleScreenshot(); dismissMoreSheet(); } },
+    { icon: <AudioLines size={20} color={colors.text} />, label: "Audio Track", onPress: () => { dismissAndPresentAudioTrack(); } },
+    { icon: <SkipBack size={20} color={colors.text} />, label: "Frame Back", onPress: () => { stepBackward(); dismissMoreSheet(); } },
+    { icon: <SkipForward size={20} color={colors.text} />, label: "Frame Forward", onPress: () => { stepForward(); dismissMoreSheet(); } },
+    { icon: <Share2 size={20} color={colors.text} />, label: "Share", onPress: () => { dismissMoreSheet(); if (uri) handleShareVideo(uri); } },
+    { icon: <Trash2 size={20} color="#ff4444" />, label: "Delete", onPress: () => { dismissMoreSheet(); if (uri) handleDeleteVideo(uri, router); } },
+  ], [rotateVideo, dismissMoreSheet, isPiPSupported, handlePiP, dismissAndPresentAudioTrack, screenshotTaken, handleScreenshot, stepBackward, stepForward, uri, colors.text, router]);
+
   useEffect(() => {
     if (!activeSubtitle) {
       parsedCuesRef.current = [];
@@ -678,12 +744,7 @@ export default function VideoPlayerScreen() {
 
   useEffect(() => {
     return () => {
-      if (playerRef.current) {
-        try {
-          playerRef.current.pause();
-        } catch {}
-        playerRef.current = null;
-      }
+      playerRef.current = null;
       if (seekTimerRef.current) clearTimeout(seekTimerRef.current);
       if (controlsTimerRef.current) clearTimeout(controlsTimerRef.current);
       ScreenOrientation.lockAsync(
@@ -803,17 +864,16 @@ export default function VideoPlayerScreen() {
           runOnJS(setIsLocked)(false);
           return;
         }
+        runOnJS(toggleControls)();
         const screenWidth = SCREEN_WIDTH;
         const x = e.absoluteX;
         if (x < screenWidth * 0.3) {
           runOnJS(handleDoubleTap)("left");
         } else if (x > screenWidth * 0.7) {
           runOnJS(handleDoubleTap)("right");
-        } else {
-          runOnJS(handlePlayPause)();
         }
       }),
-    [isLocked, setIsLocked, handleDoubleTap, handlePlayPause],
+    [isLocked, setIsLocked, toggleControls, handleDoubleTap],
   );
 
   const composedGestures = Gesture.Simultaneous(panGesture, tapGesture);
@@ -859,7 +919,7 @@ export default function VideoPlayerScreen() {
                 startsPictureInPictureAutomatically={false}
                 onPictureInPictureStart={() => setIsPiPActive(true)}
                 onPictureInPictureStop={() => setIsPiPActive(false)}
-                contentFit="contain"
+                contentFit={contentFit}
               />
             </View>
           </GestureDetector>
@@ -918,9 +978,10 @@ export default function VideoPlayerScreen() {
             </>
           )}
 
-          <View
-            style={[styles.fullscreenControls, { paddingTop: insets.top + 4 }]}
-          >
+          {!isLocked && (
+            <View
+              style={[styles.fullscreenControls, { paddingTop: insets.top + 4 }]}
+            >
             <Pressable
               onPress={toggleFullscreen}
               style={styles.fullscreenButton}
@@ -986,6 +1047,7 @@ export default function VideoPlayerScreen() {
               </Pressable>
             </View>
           </View>
+          )}
         </View>
       </View>
     );
@@ -1070,7 +1132,7 @@ export default function VideoPlayerScreen() {
                   startsPictureInPictureAutomatically={false}
                   onPictureInPictureStart={() => setIsPiPActive(true)}
                   onPictureInPictureStop={() => setIsPiPActive(false)}
-                  contentFit="contain"
+                  contentFit={contentFit}
                 />
                 {activeSubtitle && currentCueText && (
                   <View
@@ -1218,143 +1280,33 @@ export default function VideoPlayerScreen() {
           <View style={[s.flexRow, s.itemsCenter, s.gap2, s.mb3, s.flexWrap]}>
             <Pressable
               onPress={() => speedSheetRef.current?.present()}
-              style={[
-                s.flexRow,
-                s.itemsCenter,
-                {
-                  gap: 6,
-                  paddingVertical: 8,
-                  paddingHorizontal: 12,
-                  borderRadius: 16,
-                  backgroundColor: colors.surface,
-                },
-              ]}
+              style={[s.flexRow, s.itemsCenter, { gap: 6, paddingVertical: 8, paddingHorizontal: 12, borderRadius: 16, backgroundColor: colors.surface }]}
             >
               <Gauge size={14} color={colors.accent} />
-              <Text style={[s.textXs, s.fontMedium, { color: colors.text }]}>
-                {playbackRate}x
-              </Text>
+              <Text style={[s.textXs, s.fontMedium, { color: colors.text }]}>{playbackRate}x</Text>
             </Pressable>
 
             <Pressable
               onPress={() => scaleSheetRef.current?.present()}
-              style={[
-                s.flexRow,
-                s.itemsCenter,
-                {
-                  gap: 6,
-                  paddingVertical: 8,
-                  paddingHorizontal: 12,
-                  borderRadius: 16,
-                  backgroundColor: colors.surface,
-                },
-              ]}
+              style={[s.flexRow, s.itemsCenter, { gap: 6, paddingVertical: 8, paddingHorizontal: 12, borderRadius: 16, backgroundColor: colors.surface }]}
             >
               <Scaling size={14} color={colors.accent} />
+              <Text style={[s.textXs, s.fontMedium, { color: colors.text }]}>{Math.round(scale * 100)}%</Text>
+            </Pressable>
+
+            <Pressable
+              onPress={() => fitSheetRef.current?.present()}
+              style={[s.flexRow, s.itemsCenter, { gap: 6, paddingVertical: 8, paddingHorizontal: 12, borderRadius: 16, backgroundColor: colors.surface }]}
+            >
+              <Maximize2 size={14} color={colors.accent} />
               <Text style={[s.textXs, s.fontMedium, { color: colors.text }]}>
-                {Math.round(scale * 100)}%
+                {contentFit === "contain" ? "Fit" : contentFit === "cover" ? "Fill" : contentFit === "fill" ? "Stretch" : "Original"}
               </Text>
             </Pressable>
 
-            <Pressable
-              onPress={toggleLock}
-              accessibilityLabel={
-                isLocked ? "Unlock controls" : "Lock controls"
-              }
-              style={[
-                s.flexRow,
-                s.itemsCenter,
-                {
-                  gap: 6,
-                  paddingVertical: 8,
-                  paddingHorizontal: 12,
-                  borderRadius: 16,
-                  backgroundColor: isLocked
-                    ? colors.accent + "30"
-                    : colors.surface,
-                },
-              ]}
-            >
-              {isLocked ? (
-                <Lock size={14} color={colors.accent} />
-              ) : (
-                <Unlock size={14} color={colors.textMuted} />
-              )}
-              <Text
-                style={[
-                  s.textXs,
-                  s.fontMedium,
-                  { color: isLocked ? colors.accent : colors.text },
-                ]}
-              >
-                {isLocked ? t("video.unlock") : t("video.lock")}
-              </Text>
-            </Pressable>
-
-            <Pressable
-              onPress={() => rotateVideo("cw")}
-              style={[
-                {
-                  paddingVertical: 8,
-                  paddingHorizontal: 12,
-                  borderRadius: 16,
-                  backgroundColor: colors.surface,
-                },
-              ]}
-            >
-              <RotateCw size={14} color={colors.textMuted} />
-            </Pressable>
-
-            <Pressable
-              onPress={() => rotateVideo("ccw")}
-              style={[
-                {
-                  paddingVertical: 8,
-                  paddingHorizontal: 12,
-                  borderRadius: 16,
-                  backgroundColor: colors.surface,
-                },
-              ]}
-            >
-              <RotateCcw size={14} color={colors.textMuted} />
-            </Pressable>
-
-            {isPiPSupported && (
-              <Pressable
-                onPress={handlePiP}
-                style={[
-                  {
-                    paddingVertical: 8,
-                    paddingHorizontal: 12,
-                    borderRadius: 16,
-                    backgroundColor: isPiPActive
-                      ? colors.accent + "30"
-                      : colors.surface,
-                  },
-                ]}
-              >
-                <MonitorPlay
-                  size={14}
-                  color={isPiPActive ? colors.accent : colors.textMuted}
-                />
-              </Pressable>
-            )}
-          </View>
-
-          <View style={[s.flexRow, s.itemsCenter, s.gap2, s.mb3, s.flexWrap]}>
             <Pressable
               onPress={pickSubtitleFile}
-              style={[
-                s.flexRow,
-                s.itemsCenter,
-                {
-                  gap: 6,
-                  paddingVertical: 8,
-                  paddingHorizontal: 12,
-                  borderRadius: 16,
-                  backgroundColor: colors.surface,
-                },
-              ]}
+              style={[s.flexRow, s.itemsCenter, { gap: 6, paddingVertical: 8, paddingHorizontal: 12, borderRadius: 16, backgroundColor: colors.surface }]}
             >
               <Captions size={14} color={colors.accent} />
               <Text style={[s.textXs, s.fontMedium, { color: colors.text }]}>
@@ -1363,121 +1315,29 @@ export default function VideoPlayerScreen() {
             </Pressable>
 
             {activeSubtitle && (
-              <Pressable
-                onPress={() => setActiveSubtitle(null)}
-                style={[
-                  {
-                    paddingVertical: 8,
-                    paddingHorizontal: 12,
-                    borderRadius: 16,
-                    backgroundColor: colors.surface,
-                  },
-                ]}
-              >
+              <Pressable onPress={() => setActiveSubtitle(null)} style={{ paddingVertical: 8, paddingHorizontal: 12, borderRadius: 16, backgroundColor: colors.surface }}>
                 <X size={14} color={colors.textMuted} />
               </Pressable>
             )}
 
             <Pressable
-              onPress={handleScreenshot}
-              style={[
-                s.flexRow,
-                s.itemsCenter,
-                {
-                  gap: 6,
-                  paddingVertical: 8,
-                  paddingHorizontal: 12,
-                  borderRadius: 16,
-                  backgroundColor: screenshotTaken
-                    ? colors.accent + "30"
-                    : colors.surface,
-                },
-              ]}
+              onPress={toggleLock}
+              accessibilityLabel={isLocked ? "Unlock controls" : "Lock controls"}
+              style={[s.flexRow, s.itemsCenter, { gap: 6, paddingVertical: 8, paddingHorizontal: 12, borderRadius: 16, backgroundColor: isLocked ? colors.accent + "30" : colors.surface }]}
             >
-              <Camera
-                size={14}
-                color={screenshotTaken ? colors.accent : colors.textMuted}
-              />
-              <Text
-                style={[
-                  s.textXs,
-                  s.fontMedium,
-                  { color: screenshotTaken ? colors.accent : colors.text },
-                ]}
-              >
-                {screenshotTaken
-                  ? t("video.screenshot.captured")
-                  : t("video.screenshot")}
+              {isLocked ? <Lock size={14} color={colors.accent} /> : <Unlock size={14} color={colors.textMuted} />}
+              <Text style={[s.textXs, s.fontMedium, { color: isLocked ? colors.accent : colors.text }]}>
+                {isLocked ? t("video.unlock") : t("video.lock")}
               </Text>
             </Pressable>
-
-            {audioTracks.length > 1 && (
-              <Pressable
-                onPress={() => audioTrackSheetRef.current?.present()}
-                style={[
-                  s.flexRow,
-                  s.itemsCenter,
-                  {
-                    gap: 6,
-                    paddingVertical: 8,
-                    paddingHorizontal: 12,
-                    borderRadius: 16,
-                    backgroundColor: colors.surface,
-                  },
-                ]}
-              >
-                <AudioLines size={14} color={colors.accent} />
-                <Text style={[s.textXs, s.fontMedium, { color: colors.text }]}>
-                  {t("video.audio.track")}
-                </Text>
-              </Pressable>
-            )}
 
             <View style={s.flex1} />
 
             <Pressable
-              onPress={stepBackward}
-              accessibilityLabel="Step backward one frame"
-              style={[
-                s.flexRow,
-                s.itemsCenter,
-                {
-                  gap: 4,
-                  paddingVertical: 8,
-                  paddingHorizontal: 12,
-                  borderRadius: 12,
-                  backgroundColor: colors.surface,
-                },
-              ]}
+              onPress={() => moreSheetRef.current?.present()}
+              style={[{ paddingVertical: 8, paddingHorizontal: 14, borderRadius: 16, backgroundColor: colors.surface }]}
             >
-              <SkipBack size={12} color={colors.accent} />
-              <Text
-                style={[s.text10, s.fontSemibold, { color: colors.accent }]}
-              >
-                1F
-              </Text>
-            </Pressable>
-            <Pressable
-              onPress={stepForward}
-              accessibilityLabel="Step forward one frame"
-              style={[
-                s.flexRow,
-                s.itemsCenter,
-                {
-                  gap: 4,
-                  paddingVertical: 8,
-                  paddingHorizontal: 12,
-                  borderRadius: 12,
-                  backgroundColor: colors.surface,
-                },
-              ]}
-            >
-              <Text
-                style={[s.text10, s.fontSemibold, { color: colors.accent }]}
-              >
-                1F
-              </Text>
-              <SkipForward size={12} color={colors.accent} />
+              <MoreHorizontal size={18} color={colors.textMuted} />
             </Pressable>
           </View>
 
@@ -1737,6 +1597,44 @@ export default function VideoPlayerScreen() {
           </View>
         </BottomSheetModal>
 
+        {/* Video Fit Sheet */}
+        <BottomSheetModal
+          ref={fitSheetRef}
+          snapPoints={["35%"]}
+          backdropComponent={renderBackdrop}
+          backgroundStyle={{ backgroundColor: colors.surface }}
+          handleIndicatorStyle={{ backgroundColor: colors.textMuted }}
+        >
+          <View style={{ padding: 20 }}>
+            <Text style={{ fontSize: 17, fontWeight: "600", color: colors.text, marginBottom: 16 }}>
+              Video Size
+            </Text>
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+              {[
+                { key: "contain", label: "Fit" },
+                { key: "cover", label: "Fill Screen" },
+                { key: "fill", label: "Stretch" },
+                { key: "scale-down", label: "Original" },
+              ].map((opt) => (
+                <Pressable
+                  key={opt.key}
+                  onPress={() => { setContentFit(opt.key); fitSheetRef.current?.dismiss(); }}
+                  style={{
+                    paddingVertical: 10,
+                    paddingHorizontal: 20,
+                    borderRadius: 18,
+                    backgroundColor: contentFit === opt.key ? colors.accent : colors.card,
+                  }}
+                >
+                  <Text style={{ fontSize: 14, fontWeight: "600", color: contentFit === opt.key ? colors.background : colors.text }}>
+                    {opt.label}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+          </View>
+        </BottomSheetModal>
+
         {/* Audio Track Sheet */}
         <BottomSheetModal
           ref={audioTrackSheetRef}
@@ -1813,6 +1711,43 @@ export default function VideoPlayerScreen() {
                 )}
               </Pressable>
             ))}
+          </View>
+        </BottomSheetModal>
+
+        {/* More Actions Sheet */}
+        <BottomSheetModal
+          ref={moreSheetRef}
+          snapPoints={["50%"]}
+          backdropComponent={renderBackdrop}
+          backgroundStyle={{ backgroundColor: colors.surface }}
+          handleIndicatorStyle={{ backgroundColor: colors.textMuted }}
+        >
+          <View style={{ padding: 20 }}>
+            <Text style={{ fontSize: 17, fontWeight: "600", color: colors.text, marginBottom: 16 }}>
+              More Actions
+            </Text>
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
+              {/* eslint-disable-next-line react-hooks/refs */}
+              {moreActions.map((item) => (
+                <Pressable
+                  key={item.label}
+                  onPress={item.onPress}
+                  style={{
+                    width: (SCREEN_WIDTH - 40 - 10) / 3 - 10,
+                    alignItems: "center",
+                    paddingVertical: 16,
+                    borderRadius: 16,
+                    backgroundColor: colors.card,
+                    gap: 8,
+                  }}
+                >
+                  {item.icon}
+                  <Text style={{ fontSize: 11, fontWeight: "500", color: item.label === "Delete" ? "#ff4444" : colors.text, textAlign: "center" }} numberOfLines={2}>
+                    {item.label}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
           </View>
         </BottomSheetModal>
       </View>
