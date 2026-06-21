@@ -1,9 +1,10 @@
 import { useCallback, useRef, useState, useEffect, useMemo } from 'react';
-import { View, Text, Pressable, Dimensions, ActivityIndicator, ScrollView } from 'react-native';
+import { View, Text, Pressable, Dimensions, ActivityIndicator, ScrollView, TextInput } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@/hooks/use-theme';
 import { usePlayerStore } from '@/store/player-store';
 import { useSettingsStore, type NowPlayingLayout } from '@/store/settings-store';
+import { useMetadataStore, type MetadataOverride } from '@/store/metadata-store';
 import {
   Play,
   Pause,
@@ -20,9 +21,13 @@ import {
   GripVertical,
   Trash2,
   LayoutGrid,
-  ChevronUp,
-  ChevronDown as ChevronDownIcon,
   PenLine,
+  Info,
+  Car,
+  Maximize2,
+  Mic2,
+  Save,
+  RotateCcw,
 } from 'lucide-react-native';
 import {
   Gesture,
@@ -34,7 +39,7 @@ import Animated, {
   withSpring,
   runOnJS,
 } from 'react-native-reanimated';
-import { formatDuration } from '@/utils/cn';
+import { formatDuration, formatFileSize } from '@/utils/cn';
 import Slider from '@react-native-community/slider';
 import { useRouter } from 'expo-router';
 import { useFavoritesStore } from '@/store/favorites-store';
@@ -50,9 +55,11 @@ import {
 } from '@gorhom/bottom-sheet';
 import { useSyncedLyricsScroll } from '@/hooks/use-synced-lyrics-scroll';
 import { useTranslation } from '@/hooks/use-translation';
+import * as ImagePicker from 'expo-image-picker';
 import { s } from '@/styles';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const QUEUE_ITEM_HEIGHT = 64;
 const ARTWORK_SIZE = SCREEN_WIDTH * 0.72;
 
 export default function PlayerScreen() {
@@ -80,9 +87,20 @@ export default function PlayerScreen() {
   const setNowPlayingLayout = useSettingsStore((s) => s.setNowPlayingLayout);
   const router = useRouter();
   const { t } = useTranslation();
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  const dragTranslateY = useSharedValue(0);
+  const isDragging = useSharedValue(false);
   const showToast = useToastStore((s) => s.showToast);
   const lyricsMap = useLyricsStore((s) => s.lyricsMap);
+  const getOverriddenSong = useMetadataStore((s) => s.getOverriddenSong);
+  const setOverride = useMetadataStore((s) => s.setOverride);
+  const track = currentTrack ? getOverriddenSong(currentTrack) : null;
+  const [editTitle, setEditTitle] = useState(track?.title ?? '');
+  const [editArtist, setEditArtist] = useState(track?.artist ?? '');
+  const [editAlbum, setEditAlbum] = useState(track?.album ?? '');
+  const [editArtwork, setEditArtwork] = useState<string | null>(track?.artwork ?? null);
 
+  const infoSheetRef = useRef<BottomSheetModal>(null);
   const queueSheetRef = useRef<BottomSheetModal>(null);
   const lyricsSheetRef = useRef<BottomSheetModal>(null);
   const layoutSheetRef = useRef<BottomSheetModal>(null);
@@ -134,81 +152,93 @@ export default function PlayerScreen() {
   const renderQueueItem = useCallback(
     ({ item, index }: { item: any; index: number }) => {
       const isCurrent = index === queueIndex;
+      const isBeingDragged = draggedIndex === index;
+
+      const gripGesture = Gesture.Pan()
+        .activateAfterLongPress(200)
+        .onStart(() => {
+          isDragging.value = true;
+          dragTranslateY.value = 0;
+          runOnJS(setDraggedIndex)(index);
+        })
+        .onUpdate((e) => {
+          dragTranslateY.value = e.translationY;
+        })
+        .onEnd((e) => {
+          const moveBy = Math.round(e.translationY / QUEUE_ITEM_HEIGHT);
+          const toIndex = Math.max(0, Math.min(queue.length - 1, index + moveBy));
+          if (toIndex !== index) {
+            runOnJS(reorderQueue)(index, toIndex);
+          }
+          dragTranslateY.value = 0;
+          isDragging.value = false;
+          runOnJS(setDraggedIndex)(null);
+        });
+
       return (
-        <View
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: 8,
-            paddingHorizontal: 16,
-            paddingVertical: 8,
-            backgroundColor: isCurrent ? colors.accent + '18' : 'transparent',
-          }}
-        >
-          <View style={{ alignItems: 'center', gap: 2 }}>
-            <Pressable
-              onPress={() => index > 0 && reorderQueue(index, index - 1)}
-              disabled={index === 0}
-              hitSlop={4}
-              style={{ padding: 2, opacity: index === 0 ? 0.2 : 1 }}
-            >
-              <ChevronUp size={14} color={colors.textMuted} />
-            </Pressable>
-            <Pressable
-              onPress={() => index < queue.length - 1 && reorderQueue(index, index + 1)}
-              disabled={index === queue.length - 1}
-              hitSlop={4}
-              style={{ padding: 2, opacity: index === queue.length - 1 ? 0.2 : 1 }}
-            >
-              <ChevronDownIcon size={14} color={colors.textMuted} />
-            </Pressable>
-          </View>
-          <GripVertical size={14} color={colors.textMuted} />
+        <GestureDetector gesture={gripGesture}>
           <View
             style={{
-              width: 40,
-              height: 40,
-              borderRadius: 12,
-              overflow: 'hidden',
+              flexDirection: 'row',
               alignItems: 'center',
-              justifyContent: 'center',
-              backgroundColor: colors.card,
+              gap: 8,
+              paddingHorizontal: 16,
+              paddingVertical: 8,
+              backgroundColor: isCurrent ? colors.accent + '18' : 'transparent',
             }}
           >
-            {item.artwork ? (
-              <Image source={{ uri: item.artwork }} style={{ width: 40, height: 40 }} contentFit="cover" />
-            ) : (
-              <Music size={16} color={colors.accent} />
+            <View style={{ padding: 4 }}>
+              <GripVertical size={14} color={isBeingDragged ? colors.accent : colors.textMuted} />
+            </View>
+            <View
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: 12,
+                overflow: 'hidden',
+                alignItems: 'center',
+                justifyContent: 'center',
+                backgroundColor: colors.card,
+              }}
+            >
+              {item.artwork ? (
+                <Image source={{ uri: item.artwork }} style={{ width: 40, height: 40 }} contentFit="cover" />
+              ) : (
+                <Music size={16} color={colors.accent} />
+              )}
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text
+                style={{
+                  fontSize: 14,
+                  fontWeight: isCurrent ? '600' : '400',
+                  color: isCurrent ? colors.accent : colors.text,
+                }}
+                numberOfLines={1}
+              >
+                {item.title}
+              </Text>
+              <Text style={{ fontSize: 12, color: colors.textMuted }} numberOfLines={1}>
+                {item.artist} · {formatDuration(item.duration)}
+              </Text>
+            </View>
+            {index !== queueIndex && (
+              <Pressable
+                onPress={() => removeFromQueue(index)}
+                hitSlop={8}
+                style={{ padding: 4 }}
+              >
+                <Trash2 size={16} color={colors.textMuted} />
+              </Pressable>
+            )}
+            {isBeingDragged && (
+              <View style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, backgroundColor: colors.accent + '15', borderRadius: 12 }} pointerEvents="none" />
             )}
           </View>
-          <View style={{ flex: 1 }}>
-            <Text
-              style={{
-                fontSize: 14,
-                fontWeight: isCurrent ? '600' : '400',
-                color: isCurrent ? colors.accent : colors.text,
-              }}
-              numberOfLines={1}
-            >
-              {item.title}
-            </Text>
-            <Text style={{ fontSize: 12, color: colors.textMuted }} numberOfLines={1}>
-              {item.artist} · {formatDuration(item.duration)}
-            </Text>
-          </View>
-          {index !== queueIndex && (
-            <Pressable
-              onPress={() => removeFromQueue(index)}
-              hitSlop={8}
-              style={{ padding: 4 }}
-            >
-              <Trash2 size={16} color={colors.textMuted} />
-            </Pressable>
-          )}
-        </View>
+        </GestureDetector>
       );
     },
-    [queueIndex, queue.length, colors, removeFromQueue, reorderQueue],
+    [queueIndex, queue.length, colors, removeFromQueue, reorderQueue, draggedIndex, isDragging, dragTranslateY, setDraggedIndex],
   );
 
   const isFav = currentTrack ? favoriteSongIds.includes(currentTrack.id) : false;
@@ -223,7 +253,7 @@ export default function PlayerScreen() {
   }, [favoriteSongIds, toggleSongFavorite, showToast]);
 
   const cycleLayout = () => {
-    const layouts: NowPlayingLayout[] = ['classic', 'modern', 'minimal'];
+    const layouts: NowPlayingLayout[] = ['classic', 'modern', 'minimal', 'driving'];
     const idx = layouts.indexOf(nowPlayingLayout);
     setNowPlayingLayout(layouts[(idx + 1) % layouts.length]);
   };
@@ -271,7 +301,7 @@ export default function PlayerScreen() {
         <Animated.View style={[s.flex1, animatedStyle]}>
       {nowPlayingLayout === 'modern' ? (
         <ModernLayout
-          currentTrack={currentTrack}
+          currentTrack={track}
           isPlaying={isPlaying}
           position={position}
           duration={duration}
@@ -291,10 +321,11 @@ export default function PlayerScreen() {
           hideFullPlayer={() => { hideFullPlayer(); router.back(); }}
           onQueuePress={() => queueSheetRef.current?.present()}
           onLyricsPress={() => lyricsSheetRef.current?.present()}
+          onInfoPress={() => infoSheetRef.current?.present()}
         />
       ) : nowPlayingLayout === 'minimal' ? (
         <MinimalLayout
-          currentTrack={currentTrack}
+          currentTrack={track}
           isPlaying={isPlaying}
           position={position}
           duration={duration}
@@ -314,10 +345,35 @@ export default function PlayerScreen() {
           hideFullPlayer={() => { hideFullPlayer(); router.back(); }}
           onQueuePress={() => queueSheetRef.current?.present()}
           onLyricsPress={() => lyricsSheetRef.current?.present()}
+          onInfoPress={() => infoSheetRef.current?.present()}
+        />
+      ) : nowPlayingLayout === 'driving' ? (
+        <DrivingLayout
+          currentTrack={track}
+          isPlaying={isPlaying}
+          position={position}
+          duration={duration}
+          progress={progress}
+          isFav={isFav}
+          shuffle={shuffle}
+          repeat={repeat}
+          colors={colors}
+          togglePlay={togglePlay}
+          next={next}
+          previous={previous}
+          seekTo={seekTo}
+          setShuffle={setShuffle}
+          setRepeat={setRepeat}
+          toggleSongFavorite={toggleFavWithToast}
+          cycleLayout={cycleLayout}
+          hideFullPlayer={() => { hideFullPlayer(); router.back(); }}
+          onQueuePress={() => queueSheetRef.current?.present()}
+          onLyricsPress={() => lyricsSheetRef.current?.present()}
+          onInfoPress={() => infoSheetRef.current?.present()}
         />
       ) : (
         <ClassicLayout
-          currentTrack={currentTrack}
+          currentTrack={track}
           isPlaying={isPlaying}
           position={position}
           duration={duration}
@@ -337,6 +393,7 @@ export default function PlayerScreen() {
           hideFullPlayer={() => { hideFullPlayer(); router.back(); }}
           onQueuePress={() => queueSheetRef.current?.present()}
           onLyricsPress={() => lyricsSheetRef.current?.present()}
+          onInfoPress={() => infoSheetRef.current?.present()}
         />
       )}
 
@@ -429,7 +486,7 @@ export default function PlayerScreen() {
       {/* Layout Picker Bottom Sheet */}
       <BottomSheetModal
         ref={layoutSheetRef}
-        snapPoints={['30%']}
+        snapPoints={['40%']}
         backdropComponent={renderBackdrop}
         backgroundStyle={{ backgroundColor: colors.surface }}
         handleIndicatorStyle={{ backgroundColor: colors.textMuted }}
@@ -438,7 +495,7 @@ export default function PlayerScreen() {
           <Text style={{ fontSize: 17, fontWeight: '600', color: colors.text, marginBottom: 16 }}>
             Player Layout
           </Text>
-          {(['classic', 'modern', 'minimal'] as const).map((layout) => (
+          {(['classic', 'modern', 'minimal', 'driving'] as const).map((layout) => (
             <Pressable
               key={layout}
               onPress={() => { setNowPlayingLayout(layout); layoutSheetRef.current?.dismiss(); }}
@@ -453,14 +510,150 @@ export default function PlayerScreen() {
                 backgroundColor: nowPlayingLayout === layout ? colors.accent + '20' : colors.card,
               }}
             >
-              <Text style={{ fontSize: 15, fontWeight: '500', color: nowPlayingLayout === layout ? colors.accent : colors.text }}>
-                {layout.charAt(0).toUpperCase() + layout.slice(1)}
-              </Text>
+              <View style={[s.flexRow, s.itemsCenter, s.gap3]}>
+                {layout === 'driving' && <Car size={16} color={nowPlayingLayout === layout ? colors.accent : colors.textMuted} />}
+                <Text style={{ fontSize: 15, fontWeight: '500', color: nowPlayingLayout === layout ? colors.accent : colors.text }}>
+                  {layout.charAt(0).toUpperCase() + layout.slice(1)}
+                </Text>
+              </View>
               {nowPlayingLayout === layout && (
                 <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: colors.accent }} />
               )}
             </Pressable>
           ))}
+        </View>
+      </BottomSheetModal>
+
+      {/* Song Info Bottom Sheet */}
+      <BottomSheetModal
+        ref={infoSheetRef}
+        snapPoints={['65%']}
+        backdropComponent={renderBackdrop}
+        backgroundStyle={{ backgroundColor: colors.surface }}
+        handleIndicatorStyle={{ backgroundColor: colors.textMuted }}
+      >
+        <View style={{ flex: 1, padding: 20 }}>
+          <ScrollView showsVerticalScrollIndicator={false}>
+            <Text style={{ fontSize: 17, fontWeight: '600', color: colors.text, marginBottom: 16 }}>
+              Song Information
+            </Text>
+
+            {/* Artwork */}
+            <View style={[s.itemsCenter, s.mb6]}>
+              <View style={[s.rounded2xl, s.overflowHidden, { width: 120, height: 120, backgroundColor: colors.card }]}>
+                {editArtwork ? (
+                  <Image source={{ uri: editArtwork }} style={{ width: 120, height: 120 }} contentFit="cover" />
+                ) : (
+                  <View style={[s.flex1, s.itemsCenter, s.justifyCenter]}>
+                    <Music size={36} color={colors.textMuted} />
+                  </View>
+                )}
+              </View>
+              <Pressable
+                onPress={async () => {
+                  const result = await ImagePicker.launchImageLibraryAsync({
+                    mediaTypes: ['images'],
+                    quality: 0.8,
+                    allowsEditing: true,
+                    aspect: [1, 1],
+                  });
+                  if (!result.canceled && result.assets[0]) {
+                    setEditArtwork(result.assets[0].uri);
+                  }
+                }}
+                style={[s.mt2, { paddingVertical: 4, paddingHorizontal: 12, borderRadius: 10, backgroundColor: colors.accent + '20' }]}
+              >
+                <Text style={{ fontSize: 12, fontWeight: '600', color: colors.accent }}>
+                  {editArtwork || track?.artwork ? 'Change Artwork' : 'Add Artwork'}
+                </Text>
+              </Pressable>
+            </View>
+
+            {/* Editable fields */}
+            <View style={[s.gap4, s.mb6]}>
+              <View>
+                <Text style={[s.textXs, s.fontSemibold, s.mb1, { color: colors.textMuted }]}>Title</Text>
+                <TextInput
+                  value={editTitle}
+                  onChangeText={setEditTitle}
+                  placeholder="Track title"
+                  placeholderTextColor={colors.textMuted}
+                  style={[{ padding: 12, backgroundColor: colors.card, borderRadius: 12, color: colors.text, fontSize: 15 }]}
+                />
+              </View>
+              <View>
+                <Text style={[s.textXs, s.fontSemibold, s.mb1, { color: colors.textMuted }]}>Artist</Text>
+                <TextInput
+                  value={editArtist}
+                  onChangeText={setEditArtist}
+                  placeholder="Artist name"
+                  placeholderTextColor={colors.textMuted}
+                  style={[{ padding: 12, backgroundColor: colors.card, borderRadius: 12, color: colors.text, fontSize: 15 }]}
+                />
+              </View>
+              <View>
+                <Text style={[s.textXs, s.fontSemibold, s.mb1, { color: colors.textMuted }]}>Album</Text>
+                <TextInput
+                  value={editAlbum}
+                  onChangeText={setEditAlbum}
+                  placeholder="Album name"
+                  placeholderTextColor={colors.textMuted}
+                  style={[{ padding: 12, backgroundColor: colors.card, borderRadius: 12, color: colors.text, fontSize: 15 }]}
+                />
+              </View>
+            </View>
+
+            {/* Technical Info */}
+            <Text style={[s.textXs, s.fontBold, s.mb3, { color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 1 }]}>
+              Technical Information
+            </Text>
+            <View style={s.gap4}>
+              <InfoRow label="Format" value={track?.uri.split('.').pop()?.toUpperCase() ?? 'NONE'} colors={colors} />
+              <InfoRow label="Bitrate" value={track?.bitrate ? `${track.bitrate} kbps` : 'Unknown'} colors={colors} />
+              <InfoRow label="Sample Rate" value={track?.sampleRate ? `${track.sampleRate} Hz` : 'Unknown'} colors={colors} />
+              <InfoRow label="File Size" value={track ? formatFileSize(track.fileSize) : '0 B'} colors={colors} />
+              <InfoRow label="File Path" value={track?.uri ?? 'Unknown'} colors={colors} multiline />
+            </View>
+
+            {/* Save / Reset */}
+            <View style={[s.flexRow, s.gap4, s.mt6, s.mb4]}>
+              <Pressable
+                onPress={() => {
+                  if (track) {
+                    setEditTitle(track.title);
+                    setEditArtist(track.artist ?? '');
+                    setEditAlbum(track.album ?? '');
+                    setEditArtwork(track.artwork ?? null);
+                  }
+                }}
+                style={[s.flex1, s.flexRow, s.itemsCenter, s.justifyCenter, s.gap2, { backgroundColor: colors.card, paddingVertical: 12, borderRadius: 16 }]}
+              >
+                <RotateCcw size={16} color={colors.text} />
+                <Text style={[s.fontSemibold, { color: colors.text }]}>Reset</Text>
+              </Pressable>
+              <Pressable
+                onPress={() => {
+                  if (!track) return;
+                  const override: MetadataOverride = {};
+                  if (editTitle !== track.title) override.title = editTitle;
+                  if (editArtist !== (track.artist ?? '')) override.artist = editArtist;
+                  if (editAlbum !== (track.album ?? '')) override.album = editAlbum;
+                  if (editArtwork !== (track.artwork ?? null)) {
+                    if (editArtwork) override.artwork = editArtwork;
+                    else override.artwork = '';
+                  }
+                  if (Object.keys(override).length > 0) {
+                    setOverride(track.id, override);
+                  }
+                  infoSheetRef.current?.dismiss();
+                }}
+                style={[s.flex1, s.flexRow, s.itemsCenter, s.justifyCenter, s.gap2, { backgroundColor: colors.accent, paddingVertical: 12, borderRadius: 16 }]}
+              >
+                <Save size={16} color="#fff" />
+                <Text style={[s.fontSemibold, { color: '#fff' }]}>Save</Text>
+              </Pressable>
+            </View>
+          </ScrollView>
         </View>
       </BottomSheetModal>
     </View>
@@ -488,6 +681,7 @@ interface LayoutProps {
   hideFullPlayer: () => void;
   onQueuePress: () => void;
   onLyricsPress: () => void;
+  onInfoPress: () => void;
 }
 
 function RepeatButton({ repeat, setRepeat, colors }: { repeat: string; setRepeat: (m: any) => void; colors: any }) {
@@ -581,6 +775,9 @@ function ClassicLayout(props: LayoutProps) {
           </Pressable>
           <Pressable onPress={props.onLyricsPress}>
             <AlignLeft size={22} color={colors.textMuted} />
+          </Pressable>
+          <Pressable onPress={props.onInfoPress}>
+            <Info size={22} color={colors.textMuted} />
           </Pressable>
         </View>
       </View>
@@ -684,6 +881,9 @@ function ModernLayout(props: LayoutProps) {
             <Pressable onPress={props.onLyricsPress}>
               <AlignLeft size={22} color={m.textFaint} />
             </Pressable>
+            <Pressable onPress={props.onInfoPress}>
+              <Info size={22} color={m.textFaint} />
+            </Pressable>
           </View>
         </View>
       </View>
@@ -766,8 +966,95 @@ function MinimalLayout(props: LayoutProps) {
           <Pressable onPress={props.onLyricsPress}>
             <AlignLeft size={20} color={colors.textMuted} />
           </Pressable>
+          <Pressable onPress={props.onInfoPress}>
+            <Info size={20} color={colors.textMuted} />
+          </Pressable>
         </View>
       </View>
+    </View>
+  );
+}
+
+function DrivingLayout(props: LayoutProps) {
+  const { colors, currentTrack, isPlaying } = props;
+  const insets = useSafeAreaInsets();
+
+  return (
+    <View style={[s.flex1, { paddingBottom: insets.bottom, backgroundColor: '#000' }]}>
+      <View style={[s.flexRow, s.itemsCenter, s.justifyBetween, s.px6, { paddingTop: insets.top + 10 }]}>
+        <Pressable onPress={props.hideFullPlayer}>
+          <ChevronDown size={32} color="#fff" />
+        </Pressable>
+        <Car size={24} color={colors.accent} />
+        <Pressable onPress={props.cycleLayout}>
+          <Maximize2 size={24} color="#fff" />
+        </Pressable>
+      </View>
+
+      <View style={[s.flex1, s.justifyCenter, s.px8]}>
+        <Text style={[s.text3xl, s.fontBold, s.mb2, { color: '#fff', textAlign: 'center' }]} numberOfLines={2}>
+          {currentTrack.title}
+        </Text>
+        <Text style={[s.textXl, { color: '#aaa', textAlign: 'center', marginBottom: 60 }]} numberOfLines={1}>
+          {currentTrack.artist}
+        </Text>
+
+        <View style={[s.flexRow, s.itemsCenter, s.justifyCenter, { gap: 40 }]}>
+          <Pressable 
+            onPress={props.previous} 
+            style={[{ width: 80, height: 80, borderRadius: 40, alignItems: 'center', justifyContent: 'center', backgroundColor: '#222' }]}
+          >
+            <SkipBack size={40} color="#fff" fill="#fff" />
+          </Pressable>
+          
+          <Pressable 
+            onPress={props.togglePlay} 
+            style={[s.roundedFull, s.itemsCenter, s.justifyCenter, { width: 100, height: 100, backgroundColor: colors.accent }]}
+          >
+            {isPlaying ? (
+              <Pause size={48} color="#000" fill="#000" />
+            ) : (
+              <Play size={48} color="#000" fill="#000" />
+            )}
+          </Pressable>
+
+          <Pressable 
+            onPress={props.next} 
+            style={[{ width: 80, height: 80, borderRadius: 40, alignItems: 'center', justifyContent: 'center', backgroundColor: '#222' }]}
+          >
+            <SkipForward size={40} color="#fff" fill="#fff" />
+          </Pressable>
+        </View>
+
+        <View style={[s.flexRow, s.itemsCenter, s.justifyCenter, s.mt10, s.gap12]}>
+           <Pressable onPress={props.onQueuePress} style={s.itemsCenter}>
+              <ListMusic size={24} color="#666" />
+              <Text style={[s.textXs, s.mt2, { color: '#666' }]}>Queue</Text>
+           </Pressable>
+           <Pressable onPress={props.onLyricsPress} style={s.itemsCenter}>
+              <Mic2 size={24} color="#666" />
+              <Text style={[s.textXs, s.mt2, { color: '#666' }]}>Lyrics</Text>
+           </Pressable>
+           <Pressable onPress={props.onInfoPress} style={s.itemsCenter}>
+              <Info size={24} color="#666" />
+              <Text style={[s.textXs, s.mt2, { color: '#666' }]}>Info</Text>
+           </Pressable>
+        </View>
+      </View>
+    </View>
+  );
+}
+
+function InfoRow({ label, value, colors, multiline }: { label: string; value: string; colors: any; multiline?: boolean }) {
+  return (
+    <View style={[multiline ? s.flexCol : s.flexRow, multiline ? s.itemsStart : s.itemsCenter, s.justifyBetween, s.py1]}>
+      <Text style={[s.textXs, { color: colors.textMuted, width: multiline ? '100%' : 100 }]}>{label}</Text>
+      <Text 
+        style={[s.textSm, s.fontMedium, { color: colors.text, flex: 1, textAlign: multiline ? 'left' : 'right' }]} 
+        numberOfLines={multiline ? 3 : 1}
+      >
+        {value}
+      </Text>
     </View>
   );
 }
@@ -794,7 +1081,7 @@ function SyncedLyricsView({ synced, position, colors }: { synced: SyncedLine[]; 
               fontWeight: isActive ? '700' : '400',
               color: isActive ? colors.accent : isPast ? colors.textMuted + '80' : colors.text + '60',
               lineHeight: isActive ? 32 : 28,
-              marginBottom: 4,
+              marginBottom: i === synced.length - 1 ? 0 : 4,
               textAlign: 'center',
             }}
           >
@@ -805,3 +1092,4 @@ function SyncedLyricsView({ synced, position, colors }: { synced: SyncedLine[]; 
     </ScrollView>
   );
 }
+

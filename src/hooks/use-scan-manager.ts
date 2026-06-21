@@ -1,4 +1,4 @@
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useRef } from 'react';
 import { AppState, AppStateStatus } from 'react-native';
 import { useMusicStore } from '@/store/music-store';
 import { useVideoStore } from '@/store/video-store';
@@ -9,12 +9,15 @@ import {
   isBackgroundScanEnabled,
 } from '@/services/background-scanner';
 
+const FOREGROUND_SCAN_COOLDOWN = 5000;
+
 export function useScanManager() {
   const scan = useMusicStore((s) => s.scan);
   const songs = useMusicStore((s) => s.songs);
   const scanVideos = useVideoStore((s) => s.scanVideos);
   const scanDocuments = useDocumentStore((s) => s.scanDocuments);
   const docFiles = useDocumentStore((s) => s.files);
+  const lastForegroundScan = useRef(0);
 
   useEffect(() => {
     const setup = async () => {
@@ -31,6 +34,9 @@ export function useScanManager() {
   useEffect(() => {
     const handleAppState = async (nextState: AppStateStatus) => {
       if (nextState === 'active') {
+        const now = Date.now();
+        if (now - lastForegroundScan.current < FOREGROUND_SCAN_COOLDOWN) return;
+        lastForegroundScan.current = now;
         await scan();
         await scanVideos();
         await scanDocuments();
@@ -41,6 +47,7 @@ export function useScanManager() {
   }, [scan, scanVideos, scanDocuments]);
 
   useEffect(() => {
+    if (songs.length > 0) return;
     let cancelled = false;
     (async () => {
       if (!cancelled) {

@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 import type { Video, SortField, SortOrder, MediaScanStatus } from '@/types/media';
 import { scanMediaLibrary, getCachedVideos } from '@/services/scanner';
+import { useToastStore } from '@/store/toast-store';
 
 interface VideoState {
   videos: Video[];
@@ -39,20 +40,28 @@ export const useVideoStore = create<VideoState>()(
           return;
         }
       }
-      const result = await scanMediaLibrary(
-        (status) => {
-          set((s) => { s.scanStatus = status; });
-        },
-        (processed, total) => {
-          set((s) => { s.scanProgress = { processed, total }; });
-        },
-        { audio: false },
-      );
-      set((s) => {
-        s.videos = result.videos;
-        s.scanStatus = 'complete';
-        s.scanProgress = null;
-      });
+      try {
+        const result = await scanMediaLibrary(
+          (status) => {
+            set((s) => { s.scanStatus = status; });
+          },
+          (processed, total) => {
+            set((s) => { s.scanProgress = { processed, total }; });
+          },
+          { audio: false },
+        );
+        set((s) => {
+          s.videos = result.videos;
+          s.scanStatus = 'complete';
+          s.scanProgress = null;
+        });
+      } catch {
+        set((s) => {
+          s.scanStatus = 'error';
+          s.scanProgress = null;
+        });
+        useToastStore.getState().showToast('Video scan failed. Please try again.');
+      }
     },
 
     setSort: (field, order) => {

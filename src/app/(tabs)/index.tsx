@@ -6,10 +6,12 @@ import { useFavoritesStore } from '@/store/favorites-store';
 import { useMusicStore } from '@/store/music-store';
 import { useVideoStore } from '@/store/video-store';
 import { useStatsStore } from '@/store/stats-store';
+import { usePlaylistStore } from '@/store/playlist-store';
 import { TopBar } from '@/components/top-bar';
 import { MiniPlayer } from '@/components/mini-player';
 import { SongContextMenu, useSongContextMenu } from '@/components/song-context-menu';
-import { Music, Play, Sparkles } from 'lucide-react-native';
+import { SwipeableRow } from '@/components/swipeable-row';
+import { Music, Play, Sparkles, FileMusic } from 'lucide-react-native';
 import { Artwork } from '@/components/artwork';
 import { formatDuration } from '@/utils/cn';
 import { useRouter } from 'expo-router';
@@ -35,6 +37,7 @@ export default function HomeScreen() {
   const { songs, scan } = useMusicStore();
   const { favoriteSongIds, hydrateFavorites } = useFavoritesStore();
   const { currentTrack } = usePlayerStore();
+  const { playlists } = usePlaylistStore();
   const router = useRouter();
   const { bottomSheetRef, present, song } = useSongContextMenu();
   const trackStats = useStatsStore((s) => s.trackStats);
@@ -96,6 +99,41 @@ export default function HomeScreen() {
                 </Text>
               </View>
             </View>
+
+            {/* Custom Playlists */}
+            {playlists.length > 0 && (
+              <View style={[s.mb8]}>
+                <View style={[s.flexRow, s.itemsCenter, s.justifyBetween, s.px5, s.mb3]}>
+                   <Text style={[s.textXs, s.fontBold, s.uppercase, { letterSpacing: 1, color: colors.textMuted }]}>
+                    Your Playlists
+                  </Text>
+                  <Pressable onPress={() => router.push('/playlist-picker')}>
+                    <Text style={[s.textXs, s.fontSemibold, { color: colors.accent }]}>
+                      View All
+                    </Text>
+                  </Pressable>
+                </View>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, gap: 12 }}>
+                  {playlists.map((pl) => (
+                    <Pressable
+                      key={pl.id}
+                      onPress={() => router.push({ pathname: '/(tabs)/playlist/[id]', params: { id: pl.id } })}
+                      style={{ width: 140 }}
+                    >
+                      <View style={[s.rounded2xl, s.justifyCenter, s.itemsCenter, { width: 140, height: 140, backgroundColor: colors.surface, borderRadius: 20 }]}>
+                         <FileMusic size={40} color={colors.accent} />
+                      </View>
+                      <Text style={[s.textSm, s.fontSemibold, s.mt2, { color: colors.text }]} numberOfLines={1}>
+                        {pl.name}
+                      </Text>
+                      <Text style={[s.textXs, { color: colors.textMuted }]}>
+                        {pl.songIds.length} tracks
+                      </Text>
+                    </Pressable>
+                  ))}
+                </ScrollView>
+              </View>
+            )}
 
             {/* Now Playing Card */}
             {currentTrack && (
@@ -212,27 +250,31 @@ export default function HomeScreen() {
                 </Text>
                 <View style={[s.px5]}>
                   {favSongs.map((song) => (
-                    <Pressable
-                      key={song.id}
-                      onPress={() => usePlayerStore.getState().play(song, favSongs)}
-                      onLongPress={() => present(song)}
-                      style={[s.flexRow, s.itemsCenter, s.gap3, s.py3]}
-                    >
-                      <View style={[s.w12, s.h12, s.roundedXl, s.overflowHidden, { backgroundColor: colors.surface }]}>
-                        <Artwork uri={song.artwork} size={48} borderRadius={12} iconSize={20} iconColor={colors.accent} backgroundColor="transparent" />
-                      </View>
-                      <View style={[s.flex1]}>
-                        <Text style={[s.textSm, s.fontSemibold, { color: colors.text }]} numberOfLines={1}>
-                          {song.title}
+                    <SwipeableRow key={song.id} rightActions={[{ type: 'queue', onPress: () => {
+                      const { queue } = usePlayerStore.getState();
+                      usePlayerStore.getState().play(song, [...queue, song]);
+                    } }]}>
+                      <Pressable
+                        onPress={() => usePlayerStore.getState().play(song, favSongs)}
+                        onLongPress={() => present(song)}
+                        style={[s.flexRow, s.itemsCenter, s.gap3, s.py3]}
+                      >
+                        <View style={[s.w12, s.h12, s.roundedXl, s.overflowHidden, { backgroundColor: colors.surface }]}>
+                          <Artwork uri={song.artwork} size={48} borderRadius={12} iconSize={20} iconColor={colors.accent} backgroundColor="transparent" />
+                        </View>
+                        <View style={[s.flex1]}>
+                          <Text style={[s.textSm, s.fontSemibold, { color: colors.text }]} numberOfLines={1}>
+                            {song.title}
+                          </Text>
+                          <Text style={[s.textXs, s.mt05, { color: colors.textMuted }]} numberOfLines={1}>
+                            {song.artist}
+                          </Text>
+                        </View>
+                        <Text style={[s.textXs, { color: colors.textMuted }]}>
+                          {formatDuration(song.duration)}
                         </Text>
-                        <Text style={[s.textXs, s.mt05, { color: colors.textMuted }]} numberOfLines={1}>
-                          {song.artist}
-                        </Text>
-                      </View>
-                      <Text style={[s.textXs, { color: colors.textMuted }]}>
-                        {formatDuration(song.duration)}
-                      </Text>
-                    </Pressable>
+                      </Pressable>
+                    </SwipeableRow>
                   ))}
                 </View>
               </View>

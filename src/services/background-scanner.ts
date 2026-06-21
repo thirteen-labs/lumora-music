@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-require-imports */
 import { storage } from './mmkv';
+import { reportWarning } from '@/utils/error-handler';
 
 const BACKGROUND_SCAN_TASK = 'lumora-background-scan';
 const SCAN_INTERVAL_KEY = 'lumora-bg-scan-interval';
@@ -41,7 +42,9 @@ function ensureTaskDefined(): void {
             const storage = require('./mmkv').storage;
             storage.set('lumora-documents', JSON.stringify(docs));
             storage.set('lumora-documents-time', new Date().toISOString());
-          } catch {}
+          } catch (e) {
+            reportWarning('BackgroundScanner', e, 'Failed to persist document scan results');
+          }
         }
 
         storage.set(LAST_BG_SCAN_KEY, Date.now());
@@ -57,7 +60,7 @@ function ensureTaskDefined(): void {
     });
     taskDefined = true;
   } catch (e) {
-    console.warn('Failed to define background scan task:', e);
+    reportWarning('BackgroundScanner', e, 'Failed to define background scan task');
   }
 }
 
@@ -73,7 +76,7 @@ export async function registerBackgroundScan(): Promise<void> {
     });
     console.log('[BackgroundScanner] Registered successfully');
   } catch (error) {
-    console.error('[BackgroundScanner] Failed to register background scan:', error);
+    reportWarning('BackgroundScanner', error, 'Failed to register background scan');
   }
 }
 
@@ -84,7 +87,7 @@ export async function unregisterBackgroundScan(): Promise<void> {
     await BackgroundFetch.unregisterTaskAsync(BACKGROUND_SCAN_TASK);
     console.log('[BackgroundScanner] Unregistered successfully');
   } catch (error) {
-    console.error('[BackgroundScanner] Failed to unregister background scan:', error);
+    reportWarning('BackgroundScanner', error, 'Failed to unregister background scan');
   }
 }
 
@@ -93,7 +96,8 @@ export async function isBackgroundScanRegistered(): Promise<boolean> {
   try {
     const TaskManager = require('expo-task-manager');
     return await TaskManager.isTaskRegisteredAsync(BACKGROUND_SCAN_TASK);
-  } catch {
+  } catch (e) {
+    reportWarning('BackgroundScanner', e);
     return false;
   }
 }
@@ -105,7 +109,9 @@ export function getScanInterval(): number {
 
 export function setScanInterval(minutes: number): void {
   storage.set(SCAN_INTERVAL_KEY, minutes.toString());
-  unregisterBackgroundScan().then(() => registerBackgroundScan()).catch(() => {});
+  unregisterBackgroundScan()
+    .then(() => registerBackgroundScan())
+    .catch((e) => reportWarning('BackgroundScanner', e, 'Failed to re-register background scan'));
 }
 
 export function isBackgroundScanEnabled(): boolean {
@@ -116,9 +122,9 @@ export function isBackgroundScanEnabled(): boolean {
 export function setBackgroundScanEnabled(enabled: boolean): void {
   storage.set(BG_SCAN_ENABLED_KEY, enabled.toString());
   if (enabled) {
-    registerBackgroundScan();
+    registerBackgroundScan().catch((e) => reportWarning('BackgroundScanner', e, 'Failed to enable background scan'));
   } else {
-    unregisterBackgroundScan();
+    unregisterBackgroundScan().catch((e) => reportWarning('BackgroundScanner', e, 'Failed to disable background scan'));
   }
 }
 

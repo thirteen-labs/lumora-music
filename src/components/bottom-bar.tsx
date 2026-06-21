@@ -12,7 +12,7 @@ const NAV_ITEMS = [
   { key: 'videos', labelKey: 'nav.videos', icon: Video, route: '/(tabs)/videos' },
   { key: 'files', labelKey: 'nav.folders', icon: Folder, route: '/(tabs)/files' },
   { key: 'favorites', labelKey: 'nav.favorites', icon: Heart, route: '/(tabs)/favorites' },
-  { key: 'playlists', labelKey: 'nav.playlists', icon: ListMusic, route: '/playlists' },
+  { key: 'playlists', labelKey: 'nav.playlists', icon: ListMusic, route: '/(tabs)/playlists' },
 ] as const;
 
 export function BottomBar() {
@@ -25,8 +25,8 @@ export function BottomBar() {
 
   const getActiveKey = () => {
     if (segments[0] !== "(tabs)") return null;
-    const tab = segments[1];
-    if ((tab as string) === "index" || !tab) return null;
+    const tab = (segments as string[])[1];
+    if (tab === "index" || !tab) return null;
     return tab;
   };
 
@@ -77,8 +77,6 @@ export function BottomBar() {
         paddingHorizontal: 8,
         justifyContent: 'space-evenly',
         backgroundColor: colors.background,
-        borderTopLeftRadius: 16,
-        borderTopRightRadius: 16,
       }]}
     >
       <Animated.View

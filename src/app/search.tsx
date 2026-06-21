@@ -39,7 +39,9 @@ function loadRecent(): string[] {
 function saveRecent(items: string[]): void {
   try {
     storage.set(RECENT_KEY, JSON.stringify(items));
-  } catch {}
+  } catch (e) {
+    console.warn('[Search] Failed to save recent searches:', e);
+  }
 }
 
 export default function SearchScreen() {
@@ -78,22 +80,108 @@ export default function SearchScreen() {
     addRecent(term);
   };
 
+  const activeFilters: string[] = useMemo(() => {
+    const q = debouncedQuery.trim().toLowerCase();
+    if (!q) return [];
+    const filters: string[] = [];
+    const tokens = q.split(/\s+/);
+    for (const token of tokens) {
+      if (token.startsWith('year:')) filters.push(token);
+      else if (token.startsWith('genre:')) filters.push(token);
+      else if (token.startsWith('ext:')) filters.push(token);
+    }
+    return filters;
+  }, [debouncedQuery]);
+
   const results = useMemo(() => {
-    const q = debouncedQuery.trim();
+    let q = debouncedQuery.trim();
     if (!q)
       return { songs: [], videos: [], albums: [], artists: [], genres: [] };
-    const matchedSongs = fuzzySearch(songs, q, (s) => [
-      s.title,
-      s.artist,
-      s.album,
-    ]);
-    const matchedVideos = fuzzySearch(videos, q, (v) => [v.title]);
-    const matchedAlbums = fuzzySearch(albums, q, (a) => [
+
+    let yearFilter: string | null = null;
+    let genreFilter: string | null = null;
+    let extFilter: string | null = null;
+
+    const tokens = q.toLowerCase().split(/\s+/);
+    const cleanedTokens = [];
+    for (const token of tokens) {
+      if (token.startsWith('year:')) {
+        yearFilter = token.substring(5);
+      } else if (token.startsWith('genre:')) {
+        genreFilter = token.substring(6);
+      } else if (token.startsWith('ext:')) {
+        extFilter = token.substring(4);
+      } else {
+        cleanedTokens.push(token);
+      }
+    }
+
+    const baseQuery = cleanedTokens.join(' ').trim();
+
+    let filteredSongs = songs;
+    let filteredVideos = videos;
+
+    if (yearFilter || genreFilter || extFilter) {
+      filteredSongs = songs.filter((s) => {
+        let match = true;
+        if (yearFilter) {
+          const year = s.dateAdded ? new Date(s.dateAdded).getFullYear().toString() : '';
+          if (year !== yearFilter) match = false;
+        }
+        if (genreFilter && s.genre?.toLowerCase() !== genreFilter.toLowerCase()) match = false;
+        if (extFilter) {
+          const ext = s.uri ? s.uri.split('.').pop()?.toLowerCase() || '' : '';
+          if (ext !== extFilter) match = false;
+        }
+        return match;
+      });
+
+      filteredVideos = videos.filter((v) => {
+        let match = true;
+        if (yearFilter) {
+          const year = v.dateAdded ? new Date(v.dateAdded).getFullYear().toString() : '';
+          if (year !== yearFilter) match = false;
+        }
+        // Videos don't have genre in our app, skip genre filter
+        if (extFilter) {
+          const ext = v.uri ? v.uri.split('.').pop()?.toLowerCase() || '' : '';
+          if (ext !== extFilter) match = false;
+        }
+        return match;
+      });
+    }
+
+    const getSongFields = (s: any) => {
+      const year = s.dateAdded ? new Date(s.dateAdded).getFullYear().toString() : '';
+      const ext = s.uri ? s.uri.split('.').pop() || '' : '';
+      return [s.title, s.artist, s.album, s.genre || '', year, ext];
+    };
+
+    const getVideoFields = (v: any) => {
+      const year = v.dateAdded ? new Date(v.dateAdded).getFullYear().toString() : '';
+      const ext = v.uri ? v.uri.split('.').pop() || '' : '';
+      return [v.title, year, ext];
+    };
+
+    // If there's no base query but we have filters, just return all filtered
+    if (!baseQuery && (yearFilter || genreFilter || extFilter)) {
+      return {
+        songs: filteredSongs,
+        videos: filteredVideos,
+        albums: genreFilter || extFilter ? [] : albums, // albums don't match ext well
+        artists: genreFilter || extFilter ? [] : artists,
+        genres: yearFilter || extFilter ? [] : genres,
+      };
+    }
+
+    const matchedSongs = fuzzySearch(filteredSongs, baseQuery || q, getSongFields);
+    const matchedVideos = fuzzySearch(filteredVideos, baseQuery || q, getVideoFields);
+    const matchedAlbums = fuzzySearch(albums, baseQuery || q, (a) => [
       a.title,
       a.artist,
     ]);
-    const matchedArtists = fuzzySearch(artists, q, (a) => [a.name]);
-    const matchedGenres = fuzzySearch(genres, q, (g) => [g.name]);
+    const matchedArtists = fuzzySearch(artists, baseQuery || q, (a) => [a.name]);
+    const matchedGenres = fuzzySearch(genres, baseQuery || q, (g) => [g.name]);
     return {
       songs: matchedSongs.map((r) => r.item),
       videos: matchedVideos.map((r) => r.item),
@@ -223,6 +311,22 @@ export default function SearchScreen() {
         </View>
       </View>
 
+      {activeFilters.length > 0 && (
+        <View style={[s.flexRow, s.flexWrap, s.gap2, s.px4, s.pb2]}>
+          {activeFilters.map((f) => (
+            <View
+              key={f}
+              style={[s.flexRow, s.itemsCenter, s.gap1, s.px2, s.py1, s.roundedFull, { backgroundColor: colors.accent + '25' }]}
+            >
+              <Text style={[s.text9, s.fontSemibold, { color: colors.accent }]}>{f}</Text>
+              <Pressable onPress={() => setQuery(query.replace(new RegExp(`\\b${f}\\s*`), '').trim())}>
+                <X size={12} color={colors.accent} />
+              </Pressable>
+            </View>
+          ))}
+        </View>
+      )}
+
       {!query.trim() ? (
         <View style={[s.px4, s.pt2]}>
           {recentSearches.length > 0 && (
@@ -252,6 +356,9 @@ export default function SearchScreen() {
               <Search size={40} color={colors.textMuted} />
               <Text style={[s.mt3, { color: colors.textMuted }]}>
                 Search your music, videos & files
+              </Text>
+              <Text style={[s.mt3, s.textXs, s.textCenter, { color: colors.textMuted }]}>
+                Pro tip: Use advanced filters like{'\n'}year:2023, genre:rock, or ext:mp3
               </Text>
             </View>
           )}

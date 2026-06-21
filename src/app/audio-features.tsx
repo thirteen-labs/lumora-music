@@ -63,9 +63,12 @@ export default function AudioFeaturesScreen() {
                     ))}
                   </ScrollView>
 
-                  <View style={[s.flexRow, s.itemsEnd, s.justifyBetween, s.gap1, s.mb4, { height: 140 }]}>
+                  <View style={[s.gap3, s.mb4]}>
                     {eq.bands.map((band, i) => (
-                      <View key={band.frequency} style={[s.flex1, s.itemsCenter]}>
+                      <View key={band.frequency} style={[s.flexRow, s.itemsCenter, s.gap3]}>
+                        <Text style={[s.textXs, { width: 36, color: colors.textMuted }]}>
+                          {band.frequency >= 1000 ? `${band.frequency / 1000}k` : band.frequency}
+                        </Text>
                         <Slider
                           value={(band.gain + 12) / 24}
                           onValueChange={(val) => eq.setBandGain(i, Math.round((val * 24 - 12) * 2) / 2)}
@@ -74,11 +77,10 @@ export default function AudioFeaturesScreen() {
                           minimumTrackTintColor={colors.accent}
                           maximumTrackTintColor={colors.border}
                           thumbTintColor={colors.accent}
-                          style={{ width: 28, height: 120 }}
-                          vertical
+                          style={{ flex: 1, height: 32 }}
                         />
-                        <Text style={[s.text9, s.mt1, { color: colors.textMuted }]}>
-                          {band.frequency >= 1000 ? `${band.frequency / 1000}k` : band.frequency}
+                        <Text style={[s.textXs, { width: 30, textAlign: 'right', color: band.gain >= 0 ? colors.accent : colors.textMuted, fontVariant: ['tabular-nums'] }]}>
+                          {band.gain > 0 ? '+' : ''}{band.gain}
                         </Text>
                       </View>
                     ))}

@@ -52,6 +52,7 @@ function VideoThumb({ uri, videoId, videoUri, width, height, borderRadius, color
     if (!uri && !generatedThumb) {
       generateVideoThumbnail(videoId, videoUri).then(setGeneratedThumb);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [uri, videoId, videoUri]);
 
   const imageSource: string | ExpoVideoThumbnail | null = generatedThumb ?? uri;

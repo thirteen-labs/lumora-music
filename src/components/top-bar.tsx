@@ -9,9 +9,10 @@ interface TopBarProps {
   showSearch?: boolean;
   showSettings?: boolean;
   title?: string;
+  rightElement?: React.ReactNode;
 }
 
-export function TopBar({ showSearch = true, showSettings = true, title }: TopBarProps) {
+export function TopBar({ showSearch = true, showSettings = true, title, rightElement }: TopBarProps) {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { colors } = useTheme();
@@ -45,35 +46,41 @@ export function TopBar({ showSearch = true, showSettings = true, title }: TopBar
         </View>
 
         <View style={[s.flexRow, s.itemsCenter, s.gap2]}>
-          {showSearch && (
-            <Pressable
-              onPress={() => router.push('/search')}
-              style={[s.w11, s.h11, s.roundedFull, s.itemsCenter, s.justifyCenter, {
-                backgroundColor: colors.surface,
-                elevation: 4,
-                shadowColor: '#000',
-                shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: 0.25,
-                shadowRadius: 4,
-              }]}
-            >
-              <Search size={20} color={colors.text} />
-            </Pressable>
-          )}
-          {showSettings && (
-            <Pressable
-              onPress={() => router.push('/settings')}
-              style={[s.w11, s.h11, s.roundedFull, s.itemsCenter, s.justifyCenter, {
-                backgroundColor: colors.surface,
-                elevation: 4,
-                shadowColor: '#000',
-                shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: 0.25,
-                shadowRadius: 4,
-              }]}
-            >
-              <Settings size={20} color={colors.text} />
-            </Pressable>
+          {rightElement ? (
+            rightElement
+          ) : (
+            <>
+              {showSearch && (
+                <Pressable
+                  onPress={() => router.push('/search')}
+                  style={[s.w11, s.h11, s.roundedFull, s.itemsCenter, s.justifyCenter, {
+                    backgroundColor: colors.surface,
+                    elevation: 4,
+                    shadowColor: '#000',
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: 0.25,
+                    shadowRadius: 4,
+                  }]}
+                >
+                  <Search size={20} color={colors.text} />
+                </Pressable>
+              )}
+              {showSettings && (
+                <Pressable
+                  onPress={() => router.push('/settings')}
+                  style={[s.w11, s.h11, s.roundedFull, s.itemsCenter, s.justifyCenter, {
+                    backgroundColor: colors.surface,
+                    elevation: 4,
+                    shadowColor: '#000',
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: 0.25,
+                    shadowRadius: 4,
+                  }]}
+                >
+                  <Settings size={20} color={colors.text} />
+                </Pressable>
+              )}
+            </>
           )}
         </View>
       </View>

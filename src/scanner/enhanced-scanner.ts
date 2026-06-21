@@ -70,7 +70,9 @@ export function findDuplicateSongs(
 ): { song: Song; duplicates: Song[] }[] {
   const byTitle = new Map<string, Song[]>();
   for (const song of songs) {
-    const key = `${song.title.toLowerCase()}_${song.artist.toLowerCase()}_${song.duration}`;
+    const title = (song.title ?? '').toLowerCase();
+    const artist = (song.artist ?? '').toLowerCase();
+    const key = `${title}_${artist}_${song.duration}`;
     const existing = byTitle.get(key) || [];
     existing.push(song);
     byTitle.set(key, existing);

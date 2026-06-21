@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 import { storage } from '@/services/mmkv';
+import { reportWarning } from '@/utils/error-handler';
 
 const HIDDEN_SONGS_KEY = 'lumora-hidden-songs';
 const HIDDEN_VIDEOS_KEY = 'lumora-hidden-videos';
@@ -9,12 +10,12 @@ function loadStringSet(key: string): Set<string> {
   try {
     const raw = storage.getString(key);
     if (raw) return new Set(JSON.parse(raw));
-  } catch {}
+  } catch (e) { reportWarning('HiddenFiles', e); }
   return new Set();
 }
 
 function saveStringSet(key: string, set: Set<string>): void {
-  try { storage.set(key, JSON.stringify([...set])); } catch {}
+  try { storage.set(key, JSON.stringify([...set])); } catch (e) { reportWarning('HiddenFiles', e); }
 }
 
 interface HiddenFilesState {

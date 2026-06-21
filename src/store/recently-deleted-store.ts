@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 import { storage } from '@/services/mmkv';
+import { reportWarning } from '@/utils/error-handler';
 
 const DELETED_KEY = 'lumora-recently-deleted';
 const MAX_DELETED = 50;
@@ -20,12 +21,12 @@ function loadDeleted(): DeletedItem[] {
   try {
     const raw = storage.getString(DELETED_KEY);
     if (raw) return JSON.parse(raw);
-  } catch {}
+  } catch (e) { reportWarning('RecentlyDeleted', e); }
   return [];
 }
 
 function saveDeleted(items: DeletedItem[]): void {
-  try { storage.set(DELETED_KEY, JSON.stringify(items)); } catch {}
+  try { storage.set(DELETED_KEY, JSON.stringify(items)); } catch (e) { reportWarning('RecentlyDeleted', e); }
 }
 
 interface RecentlyDeletedState {

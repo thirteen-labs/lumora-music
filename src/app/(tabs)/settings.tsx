@@ -23,6 +23,7 @@ import {
   SlidersHorizontal,
   Volume2,
   FolderOpen,
+  FolderMinus,
   RefreshCw,
   Database,
   EyeOff,
@@ -39,6 +40,7 @@ import {
   Headphones,
   Disc3,
   Cloud,
+  SearchCode,
 } from 'lucide-react-native';
 import { s } from '@/styles';
 
@@ -75,7 +77,7 @@ export default function SettingsScreen() {
   const accentLabel: Record<string, string> = {
     '#7C3AED': 'Purple', '#3B82F6': 'Blue', '#10B981': 'Green',
     '#EF4444': 'Red', '#F59E0B': 'Orange', '#EC4899': 'Pink',
-    '#06B6D4': 'Cyan', '#14B8A6': 'Teal',
+    '#06B6D4': 'Cyan', '#14B8A6': 'Teal', '#84CC16': 'Lime',
   };
 
   const handleBackgroundImagePress = () => {
@@ -183,6 +185,19 @@ export default function SettingsScreen() {
                 </View>
               </View>
               <Text style={[s.textSm, s.fontMedium, s.mt2, { color: colors.text }]}>Background Image</Text>
+            </Pressable>
+            <Pressable
+              onPress={() => router.push('/background-image-adjuster')}
+              style={[s.flexRow, s.itemsCenter, s.gap4, s.p4]}
+            >
+              <View style={[s.w10, s.h10, s.roundedXl, s.itemsCenter, s.justifyCenter, { backgroundColor: colors.accent + '15' }]}>
+                <SlidersHorizontal size={20} color={colors.accent} />
+              </View>
+              <View style={[s.flex1]}>
+                <Text style={[s.textSm, s.fontMedium, { color: colors.text }]}>Background Image Adjusters</Text>
+                <Text style={[s.textXs, s.mt05, { color: colors.textMuted }]}>Brightness, Blur, Hue</Text>
+              </View>
+              <ChevronRight size={18} color={colors.textMuted} />
             </Pressable>
             <View style={[s.flexRow, s.itemsCenter, s.gap4, s.p4]}>
               <View style={[s.w10, s.h10, s.roundedXl, s.itemsCenter, s.justifyCenter, { backgroundColor: colors.accent + '15' }]}>
@@ -301,6 +316,13 @@ export default function SettingsScreen() {
               colors={colors}
             />
             <SettingRow
+              icon={FolderMinus}
+              label="Excluded Folders"
+              subtitle={`${useSettingsStore(s => s.excludedFolders).length} folders ignored`}
+              onPress={() => router.push('/excluded-folders' as any)}
+              colors={colors}
+            />
+            <SettingRow
               icon={FileText}
               label={t('settings.document.reader')}
               subtitle={t('settings.document.reader.desc')}
@@ -338,6 +360,13 @@ export default function SettingsScreen() {
               </View>
               <Switch value={showSystemHiddenFiles} onValueChange={setShowSystemHiddenFiles} trackColor={{ false: colors.card, true: colors.accent + '80' }} thumbColor="#fff" />
             </View>
+            <SettingRow
+              icon={SearchCode}
+              label="Deep Files"
+              subtitle="Access restricted folders & auto-group files"
+              onPress={() => router.push('/deep-files' as any)}
+              colors={colors}
+            />
           </Section>
 
           <Section title="GENERAL" colors={colors}>

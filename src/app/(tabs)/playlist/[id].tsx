@@ -24,7 +24,7 @@ export default function PlaylistDetailScreen() {
   const router = useRouter();
   const songs = useMusicStore((s) => s.songs);
   const play = usePlayerStore((s) => s.play);
-  const { playlists, removeSongsFromPlaylist } = usePlaylistStore();
+  const { playlists, removeSongFromPlaylist } = usePlaylistStore();
 
   const playlist = playlists.find((p) => p.id === id);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -70,7 +70,7 @@ export default function PlaylistDetailScreen() {
         text: 'Remove',
         style: 'destructive',
         onPress: () => {
-          removeSongsFromPlaylist(playlist.id, Array.from(selectedIds));
+          Array.from(selectedIds).forEach((songId) => removeSongFromPlaylist(playlist.id, songId));
           setSelectedIds(new Set());
         },
       },

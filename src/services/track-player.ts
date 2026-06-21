@@ -5,6 +5,7 @@ import {
   showNowPlayingNotification,
   dismissNowPlayingNotification,
 } from "@/services/notifications";
+import { reportWarning } from "@/utils/error-handler";
 
 let crossfadeEnabled = false;
 let crossfadeDuration = 5;
@@ -121,7 +122,9 @@ export async function setupPlayer(): Promise<void> {
       shouldPlayInBackground: true,
       interruptionMode: "doNotMix",
     });
-  } catch {}
+  } catch (e) {
+    reportWarning('TrackPlayer', e, 'Failed to set audio mode');
+  }
 }
 
 export async function loadTrack(track: Song): Promise<void> {

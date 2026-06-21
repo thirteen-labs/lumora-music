@@ -44,17 +44,9 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#020008",
+          "backgroundColor": "#00000",
           "image": "./assets/splash.png",
-          "resizeMode": "cover",
-          "android": {
-            "image": "./assets/splash.png",
-            "resizeMode": "cover"
-          },
-          "ios": {
-            "image": "./assets/splash.png",
-            "resizeMode": "cover"
-          }
+          "resizeMode": "cover"
         }
       ],
       [
@@ -107,7 +99,8 @@
       ],
       "expo-task-manager",
       "expo-background-fetch",
-      "expo-font"
+      "expo-font",
+      "expo-sharing"
     ],
     "experiments": {
       "typedRoutes": true,

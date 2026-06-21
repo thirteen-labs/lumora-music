@@ -8,6 +8,7 @@ import {
   AudioManager,
 } from 'react-native-audio-api';
 import type { EqualizerBand } from '@/types/audio';
+import { reportWarning } from '@/utils/error-handler';
 
 const EQ_FREQUENCIES = [60, 170, 310, 600, 1000, 3000, 6000, 12000, 14000, 16000];
 const BASS_BOOST_FREQUENCY = 150;
@@ -86,80 +87,86 @@ class AudioEngine {
           }
         }
       });
-    } catch {}
+    } catch (e) {
+      reportWarning('AudioEngine', e);
+    }
   }
 
   private buildProcessingChain(): void {
     if (!this.context) return;
 
-    this.eqFilters = EQ_FREQUENCIES.map((freq) => {
-      const filter = this.context!.createBiquadFilter();
-      filter.type = 'peaking';
-      filter.frequency.value = freq;
-      filter.Q.value = EQ_Q;
-      filter.gain.value = 0;
-      return filter;
-    });
+    try {
+      this.eqFilters = EQ_FREQUENCIES.map((freq) => {
+        const filter = this.context!.createBiquadFilter();
+        filter.type = 'peaking';
+        filter.frequency.value = freq;
+        filter.Q.value = EQ_Q;
+        filter.gain.value = 0;
+        return filter;
+      });
 
-    this.bassBoostFilter = this.context.createBiquadFilter();
-    this.bassBoostFilter.type = 'lowshelf';
-    this.bassBoostFilter.frequency.value = BASS_BOOST_FREQUENCY;
-    this.bassBoostFilter.gain.value = 0;
+      this.bassBoostFilter = this.context.createBiquadFilter();
+      this.bassBoostFilter.type = 'lowshelf';
+      this.bassBoostFilter.frequency.value = BASS_BOOST_FREQUENCY;
+      this.bassBoostFilter.gain.value = 0;
 
-    this.volumeGain = this.context.createGain();
-    this.volumeGain.gain.value = 1.0;
+      this.volumeGain = this.context.createGain();
+      this.volumeGain.gain.value = 1.0;
 
-    this.replayGainNode = this.context.createGain();
-    this.replayGainNode.gain.value = 1.0;
+      this.replayGainNode = this.context.createGain();
+      this.replayGainNode.gain.value = 1.0;
 
-    this.balancePanner = this.context.createStereoPanner();
-    this.balancePanner.pan.value = 0;
+      this.balancePanner = this.context.createStereoPanner();
+      this.balancePanner.pan.value = 0;
 
-    this.mainGain = this.context.createGain();
-    this.mainGain.gain.value = 1.0;
+      this.mainGain = this.context.createGain();
+      this.mainGain.gain.value = 1.0;
 
-    this.crossfadeGain = this.context.createGain();
-    this.crossfadeGain.gain.value = 0;
+      this.crossfadeGain = this.context.createGain();
+      this.crossfadeGain.gain.value = 0;
 
-    this.loudnessFilters = [
-      { freq: 100, type: 'lowshelf' as const, q: 0.7 },
-      { freq: 3000, type: 'peaking' as const, q: 1.0 },
-      { freq: 10000, type: 'highshelf' as const, q: 0.7 },
-    ].map(({ freq, type, q }) => {
-      const filter = this.context!.createBiquadFilter();
-      filter.type = type;
-      filter.frequency.value = freq;
-      filter.Q.value = q;
-      filter.gain.value = 0;
-      return filter;
-    });
+      this.loudnessFilters = [
+        { freq: 100, type: 'lowshelf' as const, q: 0.7 },
+        { freq: 3000, type: 'peaking' as const, q: 1.0 },
+        { freq: 10000, type: 'highshelf' as const, q: 0.7 },
+      ].map(({ freq, type, q }) => {
+        const filter = this.context!.createBiquadFilter();
+        filter.type = type;
+        filter.frequency.value = freq;
+        filter.Q.value = q;
+        filter.gain.value = 0;
+        return filter;
+      });
 
-    for (let i = 0; i < this.eqFilters.length - 1; i++) {
-      this.eqFilters[i].connect(this.eqFilters[i + 1]);
-    }
-    const lastEq = this.eqFilters[this.eqFilters.length - 1];
-    lastEq.connect(this.bassBoostFilter);
-    this.bassBoostFilter.connect(this.replayGainNode);
-    this.replayGainNode.connect(this.volumeGain);
+      for (let i = 0; i < this.eqFilters.length - 1; i++) {
+        this.eqFilters[i].connect(this.eqFilters[i + 1]);
+      }
+      const lastEq = this.eqFilters[this.eqFilters.length - 1];
+      lastEq.connect(this.bassBoostFilter);
+      this.bassBoostFilter.connect(this.replayGainNode);
+      this.replayGainNode.connect(this.volumeGain);
 
-    if (this.loudnessFilters.length > 0) {
-      this.volumeGain.connect(this.loudnessFilters[0]);
-      let lastLoudness: BiquadFilterNode | null = null;
-      for (const filter of this.loudnessFilters) {
-        if (lastLoudness) {
-          lastLoudness.connect(filter);
+      if (this.loudnessFilters.length > 0) {
+        this.volumeGain.connect(this.loudnessFilters[0]);
+        let lastLoudness: BiquadFilterNode | null = null;
+        for (const filter of this.loudnessFilters) {
+          if (lastLoudness) {
+            lastLoudness.connect(filter);
+          }
+          lastLoudness = filter;
         }
-        lastLoudness = filter;
+        if (lastLoudness) {
+          lastLoudness.connect(this.balancePanner);
+        }
+      } else {
+        this.volumeGain.connect(this.balancePanner);
       }
-      if (lastLoudness) {
-        lastLoudness.connect(this.balancePanner);
-      }
-    } else {
-      this.volumeGain.connect(this.balancePanner);
-    }
 
-    this.balancePanner.connect(this.mainGain);
-    this.mainGain.connect(this.context.destination);
+      this.balancePanner.connect(this.mainGain);
+      this.mainGain.connect(this.context.destination);
+    } catch (e) {
+      console.warn('[AudioEngine] Failed to build processing chain:', e);
+    }
   }
 
   onStateChange(callback: StateChangeCallback): () => void {
@@ -225,13 +232,18 @@ class AudioEngine {
   private createSource(
     buffer: AudioBuffer,
     pitchCorrection: boolean
-  ): AudioBufferSourceNode {
-    if (!this.context) throw new Error('AudioContext not initialized');
-    const source = this.context.createBufferSource({ pitchCorrection });
-    source.buffer = buffer;
-    source.playbackRate.value = this._speed;
-    source.connect(this.eqFilters[0]);
-    return source;
+  ): AudioBufferSourceNode | null {
+    if (!this.context || !this.eqFilters[0]) return null;
+    try {
+      const source = this.context.createBufferSource({ pitchCorrection });
+      source.buffer = buffer;
+      source.playbackRate.value = this._speed;
+      source.connect(this.eqFilters[0]);
+      return source;
+    } catch (e) {
+      console.warn('[AudioEngine] Failed to create source:', e);
+      return null;
+    }
   }
 
   play(): void {
@@ -247,7 +259,9 @@ class AudioEngine {
     }
 
     this.stopCurrentSource();
-    this.currentSource = this.createSource(this.currentBuffer, this._pitchCorrection);
+    const source = this.createSource(this.currentBuffer, this._pitchCorrection);
+    if (!source) return;
+    this.currentSource = source;
     this._startContextTime = this.context.currentTime;
     this._startOffset = this._currentTime;
     this.currentSource.onEnded = () => {
@@ -292,7 +306,9 @@ class AudioEngine {
         this.currentSource.onEnded = null;
         this.currentSource.disconnect();
         this.currentSource.stop();
-      } catch {}
+      } catch (e) {
+        reportWarning('AudioEngine', e);
+      }
       this.currentSource = null;
     }
     if (this.crossfadeSource) {
@@ -300,7 +316,9 @@ class AudioEngine {
         this.crossfadeSource.onEnded = null;
         this.crossfadeSource.disconnect();
         this.crossfadeSource.stop();
-      } catch {}
+      } catch (e) {
+        reportWarning('AudioEngine', e);
+      }
       this.crossfadeSource = null;
     }
   }
@@ -315,19 +333,22 @@ class AudioEngine {
 
     if (wasPlaying && this.currentBuffer) {
       this.stopCurrentSource();
-      this.currentSource = this.createSource(this.currentBuffer, this._pitchCorrection);
-      this.currentSource.onEnded = () => {
-        if (this._playing && !this._seeking) {
-          this._playing = false;
-          this._currentTime = this._duration;
-          this.stopPositionTracking();
-          this.emitState();
-        }
-      };
-      this.currentSource.start(0, this._currentTime);
-      this._playing = true;
-      this._paused = false;
-      this.startPositionTracking();
+      const source = this.createSource(this.currentBuffer, this._pitchCorrection);
+      if (source) {
+        this.currentSource = source;
+        this.currentSource.onEnded = () => {
+          if (this._playing && !this._seeking) {
+            this._playing = false;
+            this._currentTime = this._duration;
+            this.stopPositionTracking();
+            this.emitState();
+          }
+        };
+        this.currentSource.start(0, this._currentTime);
+        this._playing = true;
+        this._paused = false;
+        this.startPositionTracking();
+      }
     }
     this._seeking = false;
     this.emitState();
@@ -490,12 +511,25 @@ class AudioEngine {
       let step = 0;
 
       this._crossfadeInterval = setInterval(() => {
+        if (!this._crossfading || !this.context) {
+          if (this._crossfadeInterval) {
+            clearInterval(this._crossfadeInterval);
+            this._crossfadeInterval = null;
+          }
+          this._crossfading = false;
+          return;
+        }
+
         step++;
         const progress = step / steps;
 
         if (this.context) {
-          oldGain.gain.setValueAtTime(1 - progress, this.context.currentTime);
-          newGain.gain.setValueAtTime(progress, this.context.currentTime);
+          try {
+            oldGain.gain.setValueAtTime(1 - progress, this.context.currentTime);
+            newGain.gain.setValueAtTime(progress, this.context.currentTime);
+          } catch (e) {
+            reportWarning('AudioEngine', e);
+          }
         }
 
         if (step >= steps) {
@@ -509,7 +543,9 @@ class AudioEngine {
             this.currentSource?.onEnded && (this.currentSource.onEnded = null);
             this.currentSource?.disconnect();
             this.currentSource?.stop();
-          } catch {}
+          } catch (e) {
+            reportWarning('AudioEngine', e);
+          }
 
           this.currentSource = this.crossfadeSource;
           this.crossfadeSource = null;
@@ -520,14 +556,16 @@ class AudioEngine {
           this._startContextTime = this.context?.currentTime ?? 0;
           this._crossfading = false;
 
-          this.currentSource!.onEnded = () => {
-            if (this._playing && !this._seeking) {
-              this._playing = false;
-              this._currentTime = this._duration;
-              this.stopPositionTracking();
-              this.emitState();
-            }
-          };
+          if (this.currentSource) {
+            this.currentSource.onEnded = () => {
+              if (this._playing && !this._seeking) {
+                this._playing = false;
+                this._currentTime = this._duration;
+                this.stopPositionTracking();
+                this.emitState();
+              }
+            };
+          }
 
           this.emitState();
         }
@@ -552,9 +590,11 @@ class AudioEngine {
           return true;
         } catch {
           // Context is dead, will re-create below
-          this.context = null;
+          this.stopCurrentSource();
+          this.stopPositionTracking();
           this.currentBuffer = null;
-          this.currentSource = null;
+          this.crossfadeBuffer = null;
+          this.context = null;
         }
       }
       await this.init();
@@ -566,7 +606,8 @@ class AudioEngine {
         }
       }
       return this.context !== null;
-    } catch {
+    } catch (e) {
+      console.warn('[AudioEngine] ensureAlive failed:', e);
       return false;
     }
   }

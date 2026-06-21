@@ -1,5 +1,5 @@
 import { useState, useRef, useMemo } from 'react';
-import { View, Text, Pressable, Alert, TextInput, ScrollView, useWindowDimensions } from 'react-native';
+import { View, Text, Pressable, Alert, TextInput, ScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { s } from '@/styles';
 import { FlashList } from '@shopify/flash-list';
@@ -47,7 +47,6 @@ export default function PlaylistsScreen() {
   const favoriteCount = useFavoritesStore((s) => s.favoriteSongIds.length);
   const trackStats = useStatsStore((s) => s.trackStats);
   const lyricsMap = useLyricsStore((s) => s.lyricsMap);
-  const { width: screenWidth } = useWindowDimensions();
 
   const [newName, setNewName] = useState('');
   const createSheetRef = useRef<BottomSheetModal>(null);
@@ -74,8 +73,6 @@ export default function PlaylistsScreen() {
       default: return 0;
     }
   };
-
-  const cardWidth = (screenWidth - 40 - 12) / 2;
 
   const handleCreate = () => {
     if (newName.trim()) {
@@ -111,7 +108,7 @@ export default function PlaylistsScreen() {
     <View>
       <View style={[s.px5, s.py2]}>
         <Text style={[s.textSm, s.fontSemibold, s.mb3, { color: colors.textMuted }]}>Browse</Text>
-        <View style={[s.flexRow, s.flexWrap, { gap: 12, justifyContent: 'flex-start' }]}>
+        <View style={[s.gap2]}>
           {PREDEFINED_SECTIONS.map((section) => {
             const Icon = section.icon;
             const count = getCount(section.labelKey);
@@ -119,26 +116,19 @@ export default function PlaylistsScreen() {
               <Pressable
                 key={section.labelKey}
                 onPress={() => router.push(section.route as any)}
-                style={{
-                  width: cardWidth,
-                  backgroundColor: colors.surface,
-                  borderRadius: 16,
-                  borderWidth: 1,
-                  borderColor: colors.accent + '30',
-                  padding: 16,
-                  alignItems: 'center',
-                  gap: 8,
-                }}
+                style={[s.flexRow, s.itemsCenter, s.gap3, s.p4, { backgroundColor: colors.surface, borderRadius: 16, borderWidth: 1, borderColor: colors.accent + '30' }]}
               >
                 <View style={[s.w14, s.h14, s.roundedXl, s.itemsCenter, s.justifyCenter, { backgroundColor: colors.accent + '15' }]}>
                   <Icon size={24} color={colors.accent} />
                 </View>
-                <Text style={[s.textSm, s.fontSemibold, { color: colors.text }]} numberOfLines={1}>
-                  {t(section.labelKey as any)}
-                </Text>
-                <Text style={[s.textXs, { color: colors.textMuted }]}>
-                  {count} {count === 1 ? t('library.song') : t('library.tracks')}
-                </Text>
+                <View style={s.flex1}>
+                  <Text style={[s.textSm, s.fontSemibold, { color: colors.text }]} numberOfLines={1}>
+                    {t(section.labelKey as any)}
+                  </Text>
+                  <Text style={[s.textXs, { color: colors.textMuted }]}>
+                    {count} {count === 1 ? t('library.song') : t('library.tracks')}
+                  </Text>
+                </View>
               </Pressable>
             );
           })}
@@ -175,34 +165,25 @@ export default function PlaylistsScreen() {
         <FlashList
           data={playlists}
           keyExtractor={(item) => item.id}
-          numColumns={2}
+          numColumns={1}
           ListHeaderComponent={renderListHeader}
           contentContainerStyle={{ paddingBottom: 120 + insets.bottom, paddingHorizontal: 20 }}
           showsVerticalScrollIndicator={false}
-          renderItem={({ item, index }) => (
+          renderItem={({ item }) => (
             <Pressable
-              onPress={() => router.push({ pathname: '/playlist/[id]', params: { id: item.id } })}
+              onPress={() => router.push({ pathname: '/(tabs)/playlist/[id]', params: { id: item.id } })}
               onLongPress={() => handleDelete(item.id, item.name)}
-              style={{
-                width: (screenWidth - 40 - 12) / 2,
-                marginRight: index % 2 === 0 ? 12 : 0,
-                marginBottom: 12,
-                backgroundColor: colors.surface,
-                borderRadius: 16,
-                borderWidth: 1,
-                borderColor: colors.accent + '30',
-                padding: 16,
-                alignItems: 'center',
-                gap: 8,
-              }}
+              style={[s.flexRow, s.itemsCenter, s.gap3, s.p4, { marginBottom: 12, backgroundColor: colors.surface, borderRadius: 16, borderWidth: 1, borderColor: colors.accent + '30' }]}
             >
               <View style={[s.w14, s.h14, s.roundedXl, s.itemsCenter, s.justifyCenter, { backgroundColor: colors.accent + '15' }]}>
                 <ListMusic size={24} color={colors.accent} />
               </View>
-              <Text style={[s.textSm, s.fontSemibold, { color: colors.text }]} numberOfLines={1}>{item.name}</Text>
-              <Text style={[s.textXs, { color: colors.textMuted }]}>
-                {item.songIds.length} {item.songIds.length === 1 ? t('library.song') : t('library.tracks')}
-              </Text>
+              <View style={s.flex1}>
+                <Text style={[s.textSm, s.fontSemibold, { color: colors.text }]} numberOfLines={1}>{item.name}</Text>
+                <Text style={[s.textXs, { color: colors.textMuted }]}>
+                  {item.songIds.length} {item.songIds.length === 1 ? t('library.song') : t('library.tracks')}
+                </Text>
+              </View>
               {item.songIds.length > 0 && (
                 <Pressable
                   onPress={() => handlePlayAll(item.id)}

@@ -1,157 +1,144 @@
-import { create } from "zustand";
-import { immer } from "zustand/middleware/immer";
-import { storage } from "@/services/mmkv";
-import type { Song, Playlist } from "@/types/media";
+import { create } from 'zustand';
+import { immer } from 'zustand/middleware/immer';
+import { storage } from '@/services/mmkv';
+import { reportWarning } from '@/utils/error-handler';
+import { useMusicStore } from './music-store';
 
-const PLAYLISTS_KEY = "lumora-playlists";
+const PLAYLISTS_KEY = 'lumora-custom-playlists';
+
+export interface Playlist {
+  id: string;
+  name: string;
+  songIds: string[];
+  createdAt: number;
+  artwork?: string | null;
+}
+
+interface PlaylistState {
+  playlists: Playlist[];
+  createPlaylist: (name: string) => string;
+  deletePlaylist: (id: string) => void;
+  renamePlaylist: (id: string, name: string) => void;
+  addSongToPlaylist: (playlistId: string, songId: string) => void;
+  addSongsToPlaylist: (playlistId: string, songIds: string[]) => void;
+  removeSongFromPlaylist: (playlistId: string, songId: string) => void;
+  reorderSongs: (playlistId: string, fromIndex: number, toIndex: number) => void;
+  getPlaylistSongs: (playlistId: string) => any[];
+  reloadPlaylists: () => void;
+}
 
 function loadPlaylists(): Playlist[] {
   try {
     const raw = storage.getString(PLAYLISTS_KEY);
     return raw ? JSON.parse(raw) : [];
-  } catch {
+  } catch (e) {
+    reportWarning('Playlist', e);
     return [];
   }
 }
 
-function savePlaylists(playlists: Playlist[]): void {
+function savePlaylists(playlists: Playlist[]) {
   try {
     storage.set(PLAYLISTS_KEY, JSON.stringify(playlists));
-  } catch {}
-}
-
-interface PlaylistState {
-  playlists: Playlist[];
-  loadPlaylists: () => void;
-  createPlaylist: (name: string, description?: string) => Playlist;
-  deletePlaylist: (id: string) => void;
-  renamePlaylist: (id: string, name: string) => void;
-  updateDescription: (id: string, description: string) => void;
-  addSongsToPlaylist: (playlistId: string, songIds: string[]) => void;
-  removeSongsFromPlaylist: (playlistId: string, songIds: string[]) => void;
-  reorderPlaylistSongs: (
-    playlistId: string,
-    fromIndex: number,
-    toIndex: number,
-  ) => void;
-  getPlaylistSongs: (playlistId: string, allSongs: Song[]) => Song[];
-  isSongInPlaylist: (playlistId: string, songId: string) => boolean;
+  } catch (e) { reportWarning('Playlist', e); }
 }
 
 export const usePlaylistStore = create<PlaylistState>()(
   immer((set, get) => ({
     playlists: loadPlaylists(),
-
-    loadPlaylists: () => {
-      set((s) => {
-        s.playlists = loadPlaylists();
-      });
-    },
-
-    createPlaylist: (name, description = "") => {
+    
+    createPlaylist: (name) => {
+      const id = Math.random().toString(36).substring(7);
       const newPlaylist: Playlist = {
-        id: `playlist-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        id,
         name,
-        description,
         songIds: [],
         createdAt: Date.now(),
-        updatedAt: Date.now(),
-        artwork: null,
       };
-      set((s) => {
-        s.playlists.push(newPlaylist);
-        savePlaylists(s.playlists);
+      set((state) => {
+        state.playlists.push(newPlaylist);
+        savePlaylists(state.playlists);
       });
-      return newPlaylist;
+      return id;
     },
 
     deletePlaylist: (id) => {
-      set((s) => {
-        s.playlists = s.playlists.filter((p) => p.id !== id);
-        savePlaylists(s.playlists);
+      set((state) => {
+        state.playlists = state.playlists.filter(p => p.id !== id);
+        savePlaylists(state.playlists);
       });
     },
 
     renamePlaylist: (id, name) => {
-      set((s) => {
-        const playlist = s.playlists.find((p) => p.id === id);
-        if (playlist) {
-          playlist.name = name;
-          playlist.updatedAt = Date.now();
-          savePlaylists(s.playlists);
+      set((state) => {
+        const p = state.playlists.find(p => p.id === id);
+        if (p) {
+          p.name = name;
+          savePlaylists(state.playlists);
         }
       });
     },
 
-    updateDescription: (id, description) => {
-      set((s) => {
-        const playlist = s.playlists.find((p) => p.id === id);
-        if (playlist) {
-          playlist.description = description;
-          playlist.updatedAt = Date.now();
-          savePlaylists(s.playlists);
+    addSongToPlaylist: (playlistId, songId) => {
+      set((state) => {
+        const p = state.playlists.find(p => p.id === playlistId);
+        if (p) {
+          if (!p.songIds.includes(songId)) {
+            p.songIds.push(songId);
+            savePlaylists(state.playlists);
+          }
         }
       });
     },
 
     addSongsToPlaylist: (playlistId, songIds) => {
-      set((s) => {
-        const playlist = s.playlists.find((p) => p.id === playlistId);
-        if (playlist) {
-          const uniqueNew = songIds.filter(
-            (id) => !playlist.songIds.includes(id),
-          );
-          playlist.songIds.push(...uniqueNew);
-          playlist.updatedAt = Date.now();
-          savePlaylists(s.playlists);
+      set((state) => {
+        const p = state.playlists.find(p => p.id === playlistId);
+        if (p) {
+          for (const songId of songIds) {
+            if (!p.songIds.includes(songId)) {
+              p.songIds.push(songId);
+            }
+          }
+          savePlaylists(state.playlists);
         }
       });
     },
 
-    removeSongsFromPlaylist: (playlistId, songIds) => {
-      set((s) => {
-        const playlist = s.playlists.find((p) => p.id === playlistId);
-        if (playlist) {
-          const removeSet = new Set(songIds);
-          playlist.songIds = playlist.songIds.filter(
-            (id) => !removeSet.has(id),
-          );
-          playlist.updatedAt = Date.now();
-          savePlaylists(s.playlists);
+    removeSongFromPlaylist: (playlistId, songId) => {
+      set((state) => {
+        const p = state.playlists.find(p => p.id === playlistId);
+        if (p) {
+          p.songIds = p.songIds.filter(id => id !== songId);
+          savePlaylists(state.playlists);
         }
       });
     },
 
-    reorderPlaylistSongs: (playlistId, fromIndex, toIndex) => {
-      set((s) => {
-        const playlist = s.playlists.find((p) => p.id === playlistId);
-        if (
-          playlist &&
-          fromIndex >= 0 &&
-          fromIndex < playlist.songIds.length &&
-          toIndex >= 0 &&
-          toIndex < playlist.songIds.length
-        ) {
-          const [item] = playlist.songIds.splice(fromIndex, 1);
-          playlist.songIds.splice(toIndex, 0, item);
-          playlist.updatedAt = Date.now();
-          savePlaylists(s.playlists);
+    reorderSongs: (playlistId, fromIndex, toIndex) => {
+      set((state) => {
+        const p = state.playlists.find(p => p.id === playlistId);
+        if (p) {
+          const [moved] = p.songIds.splice(fromIndex, 1);
+          p.songIds.splice(toIndex, 0, moved);
+          savePlaylists(state.playlists);
         }
       });
     },
 
-    getPlaylistSongs: (playlistId, allSongs) => {
-      const playlist = get().playlists.find((p) => p.id === playlistId);
+    getPlaylistSongs: (playlistId) => {
+      const playlist = get().playlists.find(p => p.id === playlistId);
       if (!playlist) return [];
-      const songMap = new Map(allSongs.map((s) => [s.id, s]));
+      const allSongs = useMusicStore.getState().songs;
       return playlist.songIds
-        .map((id) => songMap.get(id))
-        .filter(Boolean) as Song[];
+        .map(id => allSongs.find(s => s.id === id))
+        .filter(s => !!s);
     },
 
-    isSongInPlaylist: (playlistId, songId) => {
-      const playlist = get().playlists.find((p) => p.id === playlistId);
-      return playlist?.songIds.includes(songId) ?? false;
+    reloadPlaylists: () => {
+      set((state) => {
+        state.playlists = loadPlaylists();
+      });
     },
   })),
 );

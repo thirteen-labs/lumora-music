@@ -8,9 +8,11 @@ import {
   resumePlayback,
   seekTo as serviceSeekTo,
   getPlayer,
+  clearLockScreenControls,
 } from "@/services/track-player";
 import { useStatsStore } from "@/store/stats-store";
 import { useQueuePersistStore } from "@/store/queue-persist-store";
+import { reportWarning } from "@/utils/error-handler";
 
 function shuffleArray(length: number): number[] {
   const arr = Array.from({ length }, (_, i) => i);
@@ -45,6 +47,7 @@ interface PlayerState {
   shuffledOrder: number[];
   play: (track: Song, queue?: Song[]) => Promise<void>;
   pause: () => Promise<void>;
+  stop: () => Promise<void>;
   resume: () => Promise<void>;
   togglePlay: () => Promise<void>;
   next: () => Promise<void>;
@@ -112,6 +115,16 @@ export const usePlayerStore = create<PlayerState>()(
         s.isPlaying = false;
       });
       await pausePlayback();
+    },
+
+    stop: async () => {
+      set((s) => {
+        s.isPlaying = false;
+        s.currentTrack = null;
+        s.isMiniPlayerVisible = false;
+      });
+      await pausePlayback();
+      clearLockScreenControls();
     },
 
     resume: async () => {
@@ -322,13 +335,12 @@ export const usePlayerStore = create<PlayerState>()(
         }
       });
 
-      // If the currently playing track was removed, sync the audio engine
       if (wasCurrent) {
         const newState = get();
         if (newState.currentTrack) {
-          loadTrack(newState.currentTrack);
+          loadTrack(newState.currentTrack).catch((e) => reportWarning('Player', e, 'Failed to load next track after queue removal'));
         } else {
-          pausePlayback();
+          pausePlayback().catch((e) => reportWarning('Player', e, 'Failed to pause after queue removal'));
         }
       }
     },

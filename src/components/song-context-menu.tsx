@@ -9,6 +9,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { usePlayerStore } from '@/store/player-store';
 import { useFavoritesStore } from '@/store/favorites-store';
 import { useToastStore } from '@/store/toast-store';
+import { useRouter } from 'expo-router';
 import type { Song } from '@/types/media';
 import {
   Play,
@@ -16,6 +17,7 @@ import {
   Heart,
   Share2,
   Music,
+  FolderPlus,
 } from 'lucide-react-native';
 import * as Sharing from 'expo-sharing';
 
@@ -42,6 +44,7 @@ export function SongContextMenu({ bottomSheetRef, song, onDismiss }: SongContext
   const { play, addToQueue } = usePlayerStore();
   const { favoriteSongIds, toggleSongFavorite } = useFavoritesStore();
   const showToast = useToastStore((s) => s.showToast);
+  const router = useRouter();
 
   const renderBackdrop = useCallback(
     (props: any) => (
@@ -158,6 +161,19 @@ export function SongContextMenu({ bottomSheetRef, song, onDismiss }: SongContext
             >
               <Heart size={20} color={colors.text} />
               <Text style={{ fontSize: 15, color: colors.text }}>{isFav ? 'Remove from Favorites' : 'Add to Favorites'}</Text>
+            </Pressable>
+            <Pressable
+              onPress={() => { dismiss(); router.push({ pathname: '/playlist-picker' as any, params: { songId: song.id } }); }}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 16,
+                paddingHorizontal: 20,
+                paddingVertical: 14,
+              }}
+            >
+              <FolderPlus size={20} color={colors.text} />
+              <Text style={{ fontSize: 15, color: colors.text }}>Add to Playlist</Text>
             </Pressable>
             <Pressable
               onPress={handleShare}

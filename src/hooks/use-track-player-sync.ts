@@ -16,6 +16,7 @@ export function useTrackPlayerSync() {
   const playTimeAccumRef = useRef(0);
   const lastQueueSaveRef = useRef(0);
   const lastNotifUpdateRef = useRef(0);
+  const isProcessingRef = useRef(false);
 
   useEffect(() => {
     syncFromPlayerRef.current = usePlayerStore.getState().syncFromPlayer;
@@ -123,16 +124,20 @@ export function useTrackPlayerSync() {
 
   useEffect(() => {
     const interval = setInterval(() => {
-      const player = getPlayer();
-      if (!player) return;
+      if (isProcessingRef.current) return;
+      isProcessingRef.current = true;
 
-      syncFromPlayerRef.current();
+      try {
+        const player = getPlayer();
+        if (!player) return;
 
-      const state = usePlayerStore.getState();
-      const isNowPlaying = player.playing;
-      const currentTime = player.currentTime;
-      const duration = player.duration;
-      const now = Date.now();
+        syncFromPlayerRef.current();
+
+        const state = usePlayerStore.getState();
+        const isNowPlaying = player.playing;
+        const currentTime = player.currentTime;
+        const duration = player.duration;
+        const now = Date.now();
 
       // Notification handling (throttled to once per second)
       if (now - lastNotifUpdateRef.current >= 1000) {
@@ -198,7 +203,10 @@ export function useTrackPlayerSync() {
         crossfadeTriggeredRef.current = false;
       }
 
-      lastTimeRef.current = currentTime;
+        lastTimeRef.current = currentTime;
+      } finally {
+        isProcessingRef.current = false;
+      }
     }, 250);
 
     return () => clearInterval(interval);

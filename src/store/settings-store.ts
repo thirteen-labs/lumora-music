@@ -2,8 +2,9 @@ import { create } from "zustand";
 import { immer } from "zustand/middleware/immer";
 import { storage } from "@/services/mmkv";
 import type { RepeatMode } from "@/types/player";
+import { reportWarning } from "@/utils/error-handler";
 
-export type NowPlayingLayout = "classic" | "modern" | "minimal";
+export type NowPlayingLayout = "classic" | "modern" | "minimal" | "driving";
 export type AppLanguage = "en" | "es" | "fr" | "de" | "ja" | "zh" | "pt" | "ru" | "it" | "ko" | "ar" | "tr";
 export type FontFamily = "system" | "serif" | "rounded" | "mono" | "poppins" | "inter" | "monr" | "socide" | "epsor" | "roba" | "hago" | "preospe";
 
@@ -44,6 +45,9 @@ const SETTINGS_KEYS = {
   crossfadeDuration: "lumora-setting-crossfade-duration",
   colorAware: "lumora-setting-color-aware",
   backgroundImage: "lumora-setting-bg-image",
+  backgroundBrightness: "lumora-setting-bg-brightness",
+  backgroundBlur: "lumora-setting-bg-blur",
+  backgroundHue: "lumora-setting-bg-hue",
   nowPlayingLayout: "lumora-setting-np-layout",
   language: "lumora-setting-language",
   fontFamily: "lumora-setting-font-family",
@@ -56,19 +60,23 @@ const SETTINGS_KEYS = {
   playTogether: "lumora-setting-play-together",
   newMediaNotification: "lumora-setting-new-media-notif",
   pushNotification: "lumora-setting-push-notif",
+  deepFilesEnabled: "lumora-setting-deep-files",
+  excludedFolders: "lumora-setting-excluded-folders",
 } as const;
 
 function loadBool(key: string, fallback: boolean): boolean {
   try {
     return storage.getBoolean(key) ?? fallback;
-  } catch {
+  } catch (e) {
+    reportWarning("Settings", e, `Failed to load boolean setting: ${key}`);
     return fallback;
   }
 }
 function loadString(key: string, fallback: string): string {
   try {
     return storage.getString(key) ?? fallback;
-  } catch {
+  } catch (e) {
+    reportWarning("Settings", e, `Failed to load string setting: ${key}`);
     return fallback;
   }
 }
@@ -80,6 +88,9 @@ interface SettingsState {
   crossfadeDuration: number;
   colorAware: boolean;
   backgroundImage: string | null;
+  backgroundBrightness: number;
+  backgroundBlur: number;
+  backgroundHue: number;
   nowPlayingLayout: NowPlayingLayout;
   language: AppLanguage;
   fontFamily: FontFamily;
@@ -92,6 +103,8 @@ interface SettingsState {
   playTogether: boolean;
   newMediaNotification: boolean;
   pushNotification: boolean;
+  deepFilesEnabled: boolean;
+  excludedFolders: string[];
   setShowSystemHiddenFiles: (v: boolean) => void;
   setDefaultShuffle: (v: boolean) => void;
   setDefaultRepeat: (v: RepeatMode) => void;
@@ -99,6 +112,9 @@ interface SettingsState {
   setCrossfadeDuration: (v: number) => void;
   setColorAware: (v: boolean) => void;
   setBackgroundImage: (path: string | null) => void;
+  setBackgroundBrightness: (v: number) => void;
+  setBackgroundBlur: (v: number) => void;
+  setBackgroundHue: (v: number) => void;
   setNowPlayingLayout: (layout: NowPlayingLayout) => void;
   setLanguage: (lang: AppLanguage) => void;
   setFontFamily: (font: FontFamily) => void;
@@ -110,6 +126,22 @@ interface SettingsState {
   setPlayTogether: (v: boolean) => void;
   setNewMediaNotification: (v: boolean) => void;
   setPushNotification: (v: boolean) => void;
+  setDeepFilesEnabled: (v: boolean) => void;
+  setExcludedFolders: (folders: string[]) => void;
+}
+
+function persistSetting(key: string, value: unknown): void {
+  try {
+    if (typeof value === "boolean") {
+      storage.set(key, value);
+    } else if (typeof value === "string") {
+      storage.set(key, value);
+    } else if (typeof value === "number") {
+      storage.set(key, String(value));
+    }
+  } catch (e) {
+    reportWarning("Settings", e, `Failed to save setting: ${key}`);
+  }
 }
 
 export const useSettingsStore = create<SettingsState>()(
@@ -120,7 +152,8 @@ export const useSettingsStore = create<SettingsState>()(
     crossfadeDuration: (() => {
       try {
         return Number(storage.getString(SETTINGS_KEYS.crossfadeDuration)) || 5;
-      } catch {
+      } catch (e) {
+        reportWarning("Settings", e);
         return 5;
       }
     })(),
@@ -132,6 +165,15 @@ export const useSettingsStore = create<SettingsState>()(
     backgroundImage: (() => {
       const v = loadString(SETTINGS_KEYS.backgroundImage, "");
       return v || null;
+    })(),
+    backgroundBrightness: (() => {
+      try { return Number(storage.getString(SETTINGS_KEYS.backgroundBrightness)) || 100; } catch { return 100; }
+    })(),
+    backgroundBlur: (() => {
+      try { return Number(storage.getString(SETTINGS_KEYS.backgroundBlur)) || 0; } catch { return 0; }
+    })(),
+    backgroundHue: (() => {
+      try { return Number(storage.getString(SETTINGS_KEYS.backgroundHue)) || 0; } catch { return 0; }
     })(),
     nowPlayingLayout:
       (loadString(
@@ -148,110 +190,108 @@ export const useSettingsStore = create<SettingsState>()(
     playTogether: loadBool(SETTINGS_KEYS.playTogether, false),
     newMediaNotification: loadBool(SETTINGS_KEYS.newMediaNotification, true),
     pushNotification: loadBool(SETTINGS_KEYS.pushNotification, true),
+    deepFilesEnabled: loadBool(SETTINGS_KEYS.deepFilesEnabled, false),
+    excludedFolders: (() => {
+      try {
+        const raw = storage.getString(SETTINGS_KEYS.excludedFolders);
+        return raw ? JSON.parse(raw) : [];
+      } catch (e) {
+        reportWarning("Settings", e);
+        return [];
+      }
+    })(),
 
     setShowSystemHiddenFiles: (v) => {
       set((s) => { s.showSystemHiddenFiles = v; });
-      try { storage.set(SETTINGS_KEYS.showSystemHiddenFiles, v); } catch {}
+      persistSetting(SETTINGS_KEYS.showSystemHiddenFiles, v);
     },
     setDefaultShuffle: (v) => {
-      set((s) => {
-        s.defaultShuffle = v;
-      });
-      try {
-        storage.set(SETTINGS_KEYS.defaultShuffle, v);
-      } catch {}
+      set((s) => { s.defaultShuffle = v; });
+      persistSetting(SETTINGS_KEYS.defaultShuffle, v);
     },
     setDefaultRepeat: (v) => {
-      set((s) => {
-        s.defaultRepeat = v;
-      });
-      try {
-        storage.set(SETTINGS_KEYS.defaultRepeat, v);
-      } catch {}
+      set((s) => { s.defaultRepeat = v; });
+      persistSetting(SETTINGS_KEYS.defaultRepeat, v);
     },
     setCrossfade: (v) => {
-      set((s) => {
-        s.crossfade = v;
-      });
-      try {
-        storage.set(SETTINGS_KEYS.crossfade, v);
-      } catch {}
+      set((s) => { s.crossfade = v; });
+      persistSetting(SETTINGS_KEYS.crossfade, v);
     },
     setCrossfadeDuration: (v) => {
-      set((s) => {
-        s.crossfadeDuration = v;
-      });
-      try {
-        storage.set(SETTINGS_KEYS.crossfadeDuration, String(v));
-      } catch {}
+      set((s) => { s.crossfadeDuration = v; });
+      persistSetting(SETTINGS_KEYS.crossfadeDuration, v);
     },
     setColorAware: (v) => {
-      set((s) => {
-        s.colorAware = v;
-      });
-      try {
-        storage.set(SETTINGS_KEYS.colorAware, v);
-      } catch {}
+      set((s) => { s.colorAware = v; });
+      persistSetting(SETTINGS_KEYS.colorAware, v);
     },
     setBackgroundImage: (path) => {
-      set((s) => {
-        s.backgroundImage = path;
-      });
-      try {
-        if (path) storage.set(SETTINGS_KEYS.backgroundImage, path);
-          else storage.set(SETTINGS_KEYS.backgroundImage, '');
-      } catch {}
+      set((s) => { s.backgroundImage = path; });
+      persistSetting(SETTINGS_KEYS.backgroundImage, path ?? '');
+    },
+    setBackgroundBrightness: (v) => {
+      set((s) => { s.backgroundBrightness = v; });
+      persistSetting(SETTINGS_KEYS.backgroundBrightness, v);
+    },
+    setBackgroundBlur: (v) => {
+      set((s) => { s.backgroundBlur = v; });
+      persistSetting(SETTINGS_KEYS.backgroundBlur, v);
+    },
+    setBackgroundHue: (v) => {
+      set((s) => { s.backgroundHue = v; });
+      persistSetting(SETTINGS_KEYS.backgroundHue, v);
     },
     setNowPlayingLayout: (layout) => {
-      set((s) => {
-        s.nowPlayingLayout = layout;
-      });
-      try {
-        storage.set(SETTINGS_KEYS.nowPlayingLayout, layout);
-      } catch {}
+      set((s) => { s.nowPlayingLayout = layout; });
+      persistSetting(SETTINGS_KEYS.nowPlayingLayout, layout);
     },
     setLanguage: (lang) => {
       set((s) => { s.language = lang; });
-      try { storage.set(SETTINGS_KEYS.language, lang); } catch {}
+      persistSetting(SETTINGS_KEYS.language, lang);
     },
     setFontFamily: (font) => {
       set((s) => { s.fontFamily = font; });
-      try { storage.set(SETTINGS_KEYS.fontFamily, font); } catch {}
+      persistSetting(SETTINGS_KEYS.fontFamily, font);
     },
     setAdsRemoved: (v) => {
       set((s) => { s.adsRemoved = v; });
-      try { storage.set(SETTINGS_KEYS.adsRemoved, v); } catch {}
+      persistSetting(SETTINGS_KEYS.adsRemoved, v);
     },
     setAccentOverride: (color) => {
       set((s) => { s.accentOverride = color; });
-      try {
-        if (color) storage.set(SETTINGS_KEYS.accentOverride, color);
-        else storage.set(SETTINGS_KEYS.accentOverride, '');
-      } catch {}
+      persistSetting(SETTINGS_KEYS.accentOverride, color ?? '');
     },
     setAudioQuality: (v) => {
       set((s) => { s.audioQuality = v; });
-      try { storage.set(SETTINGS_KEYS.audioQuality, v); } catch {}
+      persistSetting(SETTINGS_KEYS.audioQuality, v);
     },
     setVideoQuality: (v) => {
       set((s) => { s.videoQuality = v; });
-      try { storage.set(SETTINGS_KEYS.videoQuality, v); } catch {}
+      persistSetting(SETTINGS_KEYS.videoQuality, v);
     },
     setGaplessPlayback: (v) => {
       set((s) => { s.gaplessPlayback = v; });
-      try { storage.set(SETTINGS_KEYS.gaplessPlayback, v); } catch {}
+      persistSetting(SETTINGS_KEYS.gaplessPlayback, v);
     },
     setPlayTogether: (v) => {
       set((s) => { s.playTogether = v; });
-      try { storage.set(SETTINGS_KEYS.playTogether, v); } catch {}
+      persistSetting(SETTINGS_KEYS.playTogether, v);
     },
     setNewMediaNotification: (v) => {
       set((s) => { s.newMediaNotification = v; });
-      try { storage.set(SETTINGS_KEYS.newMediaNotification, v); } catch {}
+      persistSetting(SETTINGS_KEYS.newMediaNotification, v);
     },
     setPushNotification: (v) => {
       set((s) => { s.pushNotification = v; });
-      try { storage.set(SETTINGS_KEYS.pushNotification, v); } catch {}
+      persistSetting(SETTINGS_KEYS.pushNotification, v);
+    },
+    setDeepFilesEnabled: (v) => {
+      set((s) => { s.deepFilesEnabled = v; });
+      persistSetting(SETTINGS_KEYS.deepFilesEnabled, v);
+    },
+    setExcludedFolders: (folders) => {
+      set((s) => { s.excludedFolders = folders; });
+      persistSetting(SETTINGS_KEYS.excludedFolders, JSON.stringify(folders));
     },
   })),
 );

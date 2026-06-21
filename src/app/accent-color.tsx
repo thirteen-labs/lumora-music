@@ -15,6 +15,7 @@ const ACCENT_COLORS = [
   { id: 'pink', label: 'Pink', color: '#EC4899' },
   { id: 'cyan', label: 'Cyan', color: '#06B6D4' },
   { id: 'teal', label: 'Teal', color: '#14B8A6' },
+  { id: 'lime', label: 'Lime', color: '#84CC16' },
 ];
 
 export default function AccentColorScreen() {

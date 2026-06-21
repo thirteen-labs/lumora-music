@@ -15,6 +15,7 @@ import { TopBar } from '@/components/top-bar';
 import { MiniPlayer } from '@/components/mini-player';
 import { SortMenu } from '@/components/sort-menu';
 import { SongContextMenu, useSongContextMenu } from '@/components/song-context-menu';
+import { SwipeableRow } from '@/components/swipeable-row';
 import { Music, LayoutGrid, List } from 'lucide-react-native';
 import { Artwork } from '@/components/artwork';
 import { formatDuration, formatFileSize } from '@/utils/cn';
@@ -175,30 +176,38 @@ export default function SongsScreen() {
           data={sortedSongs}
           keyExtractor={(item) => item.id}
           contentContainerStyle={{ paddingBottom: 120 + insets.bottom }}
-          renderItem={({ item }: { item: Song }) => (
-            <Pressable
-              onPress={() => usePlayerStore.getState().play(item, generateRandomQueue(item, songs))}
-              onLongPress={() => present(item)}
-              style={[s.flexRowCenter, s.gap3, s.px4, { height: rowHeight }]}
-            >
-              <Artwork uri={item.artwork} size={artSize} borderRadius={artSize * 0.25} iconColor={colors.accent} backgroundColor={colors.surface} />
-              <View style={s.flex1}>
-                <Text style={[s.textSm, s.fontMedium, { color: colors.text }]} numberOfLines={1}>{item.title}</Text>
-                <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 2 }}>
-                  <Text style={[s.textXs, { color: colors.textMuted }]} numberOfLines={1}>
-                    {item.artist}
-                  </Text>
-                  <LyricsBadge colors={colors} show={!!lyricsMap[item.id] || hasCachedLyrics(item.artist, item.title) === true} />
-                  {fileSizeTheme === 'big' && (
-                    <Text style={[s.textXs, { color: colors.textMuted, marginLeft: 6 }]}>
-                      {formatFileSize(item.fileSize)}
-                    </Text>
-                  )}
-                </View>
-              </View>
-              <Text style={[s.textXs, { color: colors.textMuted }]}>{formatDuration(item.duration)}</Text>
-            </Pressable>
-          )}
+          renderItem={({ item }: { item: Song }) => {
+            const queueSong = () => {
+              const { queue } = usePlayerStore.getState();
+              usePlayerStore.getState().play(item, [...queue, item]);
+            };
+            return (
+              <SwipeableRow rightActions={[{ type: 'queue', onPress: queueSong }]}>
+                <Pressable
+                  onPress={() => usePlayerStore.getState().play(item, generateRandomQueue(item, songs))}
+                  onLongPress={() => present(item)}
+                  style={[s.flexRowCenter, s.gap3, s.px4, { height: rowHeight }]}
+                >
+                  <Artwork uri={item.artwork} size={artSize} borderRadius={artSize * 0.25} iconColor={colors.accent} backgroundColor={colors.surface} />
+                  <View style={s.flex1}>
+                    <Text style={[s.textSm, s.fontMedium, { color: colors.text }]} numberOfLines={1}>{item.title}</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 2 }}>
+                      <Text style={[s.textXs, { color: colors.textMuted }]} numberOfLines={1}>
+                        {item.artist}
+                      </Text>
+                      <LyricsBadge colors={colors} show={!!lyricsMap[item.id] || hasCachedLyrics(item.artist, item.title) === true} />
+                      {fileSizeTheme === 'big' && (
+                        <Text style={[s.textXs, { color: colors.textMuted, marginLeft: 6 }]}>
+                          {formatFileSize(item.fileSize)}
+                        </Text>
+                      )}
+                    </View>
+                  </View>
+                  <Text style={[s.textXs, { color: colors.textMuted }]}>{formatDuration(item.duration)}</Text>
+                </Pressable>
+              </SwipeableRow>
+            );
+          }}
           ListEmptyComponent={
             <View style={[s.itemsCenter, s.py20]}>
               <Music size={40} color={colors.textMuted} />

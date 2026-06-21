@@ -1,24 +1,26 @@
 import { useState, useCallback } from 'react';
-import { View, Text, ScrollView, Pressable, Alert, Switch } from 'react-native';
+import { View, Text, ScrollView, Pressable, Alert, Switch, TextInput } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { s } from '@/styles';
 import { useTheme } from '@/hooks/use-theme';
 import { TopBar } from '@/components/top-bar';
 import { useCloudStore } from '@/store/cloud-store';
 import { useMusicStore } from '@/store/music-store';
-import { usePlaylistStore } from '@/store/playlist-store';
 import { useToastStore } from '@/store/toast-store';
 import {
-  HardDrive, Cloud, FolderOpen, Server, Check, Link2,
-  Upload, Download, RefreshCw, Info, ChevronRight,
+  HardDrive, Cloud, Server, Check, Link2,
+  Upload, Download, RefreshCw, Info, ChevronRight, Settings,
 } from 'lucide-react-native';
-import { CLOUD_PROVIDERS, exportBackup, importBackup, restoreFromBackup, collectBackupData } from '@/services/cloud-backup';
+import {
+  CLOUD_PROVIDERS, exportBackup, importBackup, restoreFromBackup, collectBackupData,
+} from '@/services/cloud-backup';
+import { getProviders } from '@/services/cloud-providers';
 import type { CloudProviderId } from '@/services/cloud-backup';
 
 const PROVIDER_ICONS: Record<string, React.ComponentType<any>> = {
   'google-drive': HardDrive,
   'dropbox': Cloud,
-  'mega': FolderOpen,
+  'mega': Server,
   'onedrive': Cloud,
   'custom': Server,
 };
@@ -36,12 +38,18 @@ export default function CloudSyncScreen() {
   const songs = useMusicStore((s) => s.songs);
   const showToast = useToastStore((s) => s.showToast);
   const {
-    connectedProviders, lastBackupTimestamp, autoBackup, autoBackupInterval,
-    connectProvider, disconnectProvider, isConnected, setLastBackup,
-    setAutoBackup, setAutoBackupInterval,
+    googleClientId, dropboxAppKey,
+    lastBackupTimestamp, autoBackup, autoBackupInterval,
+    setGoogleCredentials, setDropboxCredentials,
+    setLastBackup, setAutoBackup, setAutoBackupInterval,
+    refreshConnectionStatus, isConnected, connectedProviders,
   } = useCloudStore();
+
   const [isExporting, setIsExporting] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
+  const [showConfig, setShowConfig] = useState(false);
+  const [editGoogleId, setEditGoogleId] = useState(googleClientId);
+  const [editDropboxKey, setEditDropboxKey] = useState(dropboxAppKey);
 
   const formatLastBackup = useCallback(() => {
     if (!lastBackupTimestamp) return 'Never';
@@ -52,19 +60,50 @@ export default function CloudSyncScreen() {
     return `${Math.floor(diff / 86400000)}d ago`;
   }, [lastBackupTimestamp]);
 
-  const handleConnect = (id: CloudProviderId) => {
+  const handleConnect = async (id: CloudProviderId) => {
     if (isConnected(id)) {
       Alert.alert(
         'Disconnect Provider',
-        `Disconnect ${CLOUD_PROVIDERS.find((p) => p.id === id)?.name}? Your backups will remain saved in the app data.`,
+        `Disconnect from ${CLOUD_PROVIDERS.find((p) => p.id === id)?.name}?`,
         [
           { text: 'Cancel', style: 'cancel' },
-          { text: 'Disconnect', style: 'destructive', onPress: () => disconnectProvider(id) },
+          {
+            text: 'Disconnect', style: 'destructive', onPress: async () => {
+              const providers = getProviders();
+              const provider = providers.find((p) => p.id === id);
+              if (provider) {
+                await provider.revoke();
+              }
+              refreshConnectionStatus();
+              showToast(`Disconnected from ${CLOUD_PROVIDERS.find((p) => p.id === id)?.name}`, 'check');
+            },
+          },
         ],
       );
     } else {
-      connectProvider(id);
-      showToast('check', `Connected to ${CLOUD_PROVIDERS.find((p) => p.id === id)?.name}`);
+      if (id === 'google-drive' && !googleClientId) {
+        Alert.alert('Configure First', 'Set your Google Drive Client ID in the settings first.');
+        return;
+      }
+      if (id === 'dropbox' && !dropboxAppKey) {
+        Alert.alert('Configure First', 'Set your Dropbox App Key in the settings first.');
+        return;
+      }
+
+      const providers = getProviders();
+      const provider = providers.find((p) => p.id === id);
+      if (!provider) {
+        showToast(`Provider not configured. Add credentials in settings.`, 'check');
+        return;
+      }
+
+      const ok = await provider.authorize();
+      if (ok) {
+        refreshConnectionStatus();
+        showToast(`Connected to ${CLOUD_PROVIDERS.find((p) => p.id === id)?.name}`, 'check');
+      } else {
+        showToast('Failed to connect. Check your credentials.', 'check');
+      }
     }
   };
 
@@ -76,13 +115,11 @@ export default function CloudSyncScreen() {
       const success = await exportBackup(data);
       if (success) {
         setLastBackup(Date.now());
-        showToast('check', 'Backup exported successfully');
       } else {
-        showToast('check', 'Backup data ready — save via share sheet');
-        setLastBackup(Date.now());
+        showToast('No backup method available', 'check');
       }
     } catch {
-      showToast('check', 'Failed to create backup');
+      showToast('Failed to create backup', 'check');
     } finally {
       setIsExporting(false);
     }
@@ -94,20 +131,28 @@ export default function CloudSyncScreen() {
     try {
       const data = await importBackup();
       if (!data) {
-        showToast('check', 'No backup file selected or invalid format');
+        showToast('No backup file selected or invalid format', 'check');
         return;
       }
       const success = await restoreFromBackup(data);
       if (success) {
-        showToast('check', `Backup restored — ${data.metadata.songCount} songs, ${data.metadata.playlistCount} playlists`);
+        showToast(`Backup restored — ${data.metadata.songCount} songs, ${data.metadata.playlistCount} playlists`, 'check');
       } else {
-        showToast('check', 'Failed to restore backup');
+        showToast('Failed to restore backup', 'check');
       }
     } catch {
-      showToast('check', 'Failed to import backup');
+      showToast('Failed to import backup', 'check');
     } finally {
       setIsImporting(false);
     }
+  };
+
+  const handleSaveConfig = () => {
+    setGoogleCredentials(editGoogleId);
+    setDropboxCredentials(editDropboxKey);
+    refreshConnectionStatus();
+    setShowConfig(false);
+    showToast('Credentials saved', 'check');
   };
 
   return (
@@ -129,6 +174,51 @@ export default function CloudSyncScreen() {
             </View>
           </View>
 
+          {/* Credentials Config */}
+          <Pressable
+            onPress={() => setShowConfig(!showConfig)}
+            style={[s.flexRow, s.itemsCenter, s.gap3, s.p4, s.rounded3xl, { backgroundColor: colors.surface }]}
+          >
+            <Settings size={18} color={colors.textMuted} />
+            <Text style={[s.flex1, s.textSm, s.fontMedium, { color: colors.text }]}>Provider Credentials</Text>
+            <ChevronRight size={16} color={colors.textMuted} />
+          </Pressable>
+
+          {showConfig && (
+            <View style={[s.p4, s.rounded3xl, s.gap4, { backgroundColor: colors.surface }]}>
+              <View>
+                <Text style={[s.textXs, s.fontSemibold, s.mb1, { color: colors.textMuted }]}>Google Drive Client ID</Text>
+                <TextInput
+                  value={editGoogleId}
+                  onChangeText={setEditGoogleId}
+                  placeholder="xxxxxxxx-xxxx.apps.googleusercontent.com"
+                  placeholderTextColor={colors.textMuted}
+                  style={[s.textSm, s.px4, s.py3, s.roundedXl, { backgroundColor: colors.card, color: colors.text }]}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
+              </View>
+              <View>
+                <Text style={[s.textXs, s.fontSemibold, s.mb1, { color: colors.textMuted }]}>Dropbox App Key</Text>
+                <TextInput
+                  value={editDropboxKey}
+                  onChangeText={setEditDropboxKey}
+                  placeholder="xxxxxxxxxxxxxxxxx"
+                  placeholderTextColor={colors.textMuted}
+                  style={[s.textSm, s.px4, s.py3, s.roundedXl, { backgroundColor: colors.card, color: colors.text }]}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
+              </View>
+              <Pressable
+                onPress={handleSaveConfig}
+                style={[s.px6, s.py3, s.roundedXl, s.itemsCenter, { backgroundColor: colors.accent }]}
+              >
+                <Text style={[s.textSm, s.fontSemibold, { color: '#000' }]}>Save Credentials</Text>
+              </Pressable>
+            </View>
+          )}
+
           {/* Cloud Providers */}
           <View>
             <Text style={[s.textXs, s.fontSemibold, s.mb3, s.px1, { color: colors.textMuted }]}>
@@ -137,7 +227,10 @@ export default function CloudSyncScreen() {
             <View style={[s.rounded3xl, s.overflowHidden, { backgroundColor: colors.surface }]}>
               {CLOUD_PROVIDERS.map((provider, i) => {
                 const Icon = PROVIDER_ICONS[provider.id] || Cloud;
-                const connected = isConnected(provider.id as CloudProviderId);
+                const connected = connectedProviders.includes(provider.id as CloudProviderId);
+                const hasCreds = provider.id === 'google-drive' ? !!googleClientId
+                  : provider.id === 'dropbox' ? !!dropboxAppKey
+                  : false;
                 return (
                   <Pressable
                     key={provider.id}
@@ -150,7 +243,7 @@ export default function CloudSyncScreen() {
                     <View style={s.flex1}>
                       <Text style={[s.textSm, s.fontMedium, { color: colors.text }]}>{provider.name}</Text>
                       <Text style={[s.textXs, s.mt05, { color: connected ? colors.accent : colors.textMuted }]}>
-                        {connected ? 'Connected' : 'Tap to connect'}
+                        {connected ? 'Connected' : hasCreds ? 'Tap to connect' : 'Set credentials first'}
                       </Text>
                     </View>
                     {connected ? (
@@ -166,9 +259,9 @@ export default function CloudSyncScreen() {
                 );
               })}
             </View>
-            {connectedProviders.length === 0 && (
+            {!googleClientId && !dropboxAppKey && (
               <Text style={[s.textXs, s.mt2, s.px1, { color: colors.textMuted }]}>
-                Connect at least one cloud provider to enable backup and sync features.
+                Tap &ldquo;Provider Credentials&rdquo; above to enter your Google Drive Client ID or Dropbox App Key.
               </Text>
             )}
           </View>
@@ -192,7 +285,11 @@ export default function CloudSyncScreen() {
                     {isExporting ? 'Creating backup...' : 'Create Backup'}
                   </Text>
                   <Text style={[s.textXs, s.mt05, { color: colors.textMuted }]}>
-                    {lastBackupTimestamp ? `Last backup: ${formatLastBackup()}` : 'No backups yet'}
+                    {connectedProviders.length > 0
+                      ? `Upload to ${connectedProviders.length} connected provider(s)`
+                      : lastBackupTimestamp
+                        ? `Last backup: ${formatLastBackup()}`
+                        : 'No backups yet'}
                   </Text>
                 </View>
                 <ChevronRight size={16} color={colors.textMuted} />
@@ -210,7 +307,9 @@ export default function CloudSyncScreen() {
                     {isImporting ? 'Restoring...' : 'Restore from Backup'}
                   </Text>
                   <Text style={[s.textXs, s.mt05, { color: colors.textMuted }]}>
-                    Pick a .json backup file to restore
+                    {connectedProviders.length > 0
+                      ? 'Download latest backup from cloud'
+                      : 'Pick a .json backup file'}
                   </Text>
                 </View>
                 <ChevronRight size={16} color={colors.textMuted} />
@@ -243,13 +342,11 @@ export default function CloudSyncScreen() {
               </View>
               {autoBackup && (
                 <View>
-                  {INTERVAL_OPTIONS.map((opt, i) => (
+                  {INTERVAL_OPTIONS.map((opt) => (
                     <Pressable
                       key={opt.value}
                       onPress={() => setAutoBackupInterval(opt.value as any)}
-                      style={[s.flexRow, s.itemsCenter, s.gap3, s.p4, {
-                        paddingLeft: 56,
-                      }]}
+                      style={[s.flexRow, s.itemsCenter, s.gap3, s.p4, { paddingLeft: 56 }]}
                     >
                       <View style={[{ width: 32, height: 32 }, s.roundedFull, s.itemsCenter, s.justifyCenter, {
                         borderWidth: 2,
@@ -274,9 +371,7 @@ export default function CloudSyncScreen() {
               <Text style={[s.textXs, s.fontSemibold, { color: colors.textMuted }]}>BACKUP DATA</Text>
             </View>
             <Text style={[s.textXs, { color: colors.textMuted, lineHeight: 20 }]}>
-              Your backup includes:               playlists ({usePlaylistStore.getState().playlists.length}), favorites, play stats,
-              equalizer & audio settings, theme, custom presets, and all app preferences.
-              Song and video files themselves are not backed up — only your library metadata.
+              Your backup includes: playlists, favorites, play stats, equalizer & audio settings, theme, custom presets, and all app preferences. Song and video files themselves are not backed up — only your library metadata.
             </Text>
           </View>
 

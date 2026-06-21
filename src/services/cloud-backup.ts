@@ -11,6 +11,8 @@ import { useEqualizerStore } from '@/store/equalizer-store';
 import { usePlaybackSpeedStore } from '@/store/playback-speed-store';
 import { useLoudnessEnhancerStore } from '@/store/loudness-enhancer-store';
 import { useSmartPlaylistStore } from '@/store/smart-playlist-store';
+import { getProviders } from '@/services/cloud-providers';
+import { useToastStore } from '@/store/toast-store';
 import type { Playlist, Song } from '@/types/media';
 import type { SmartPlaylist, TrackStats } from '@/types/audio';
 import type { ThemeId } from '@/types/theme';
@@ -100,7 +102,7 @@ export async function collectBackupData(songs: Song[]): Promise<BackupData> {
       playlistCount: usePlaylistStore.getState().playlists.length,
       fileSize: 0,
     },
-    playlists: usePlaylistStore.getState().playlists,
+    playlists: usePlaylistStore.getState().playlists as Playlist[],
     smartPlaylists: useSmartPlaylistStore.getState().playlists,
     favoriteSongIds: useFavoritesStore.getState().favoriteSongIds,
     favoriteVideoIds: useFavoritesStore.getState().favoriteVideoIds,
@@ -118,17 +120,41 @@ export async function collectBackupData(songs: Song[]): Promise<BackupData> {
     loudnessEnhancer: { enabled: loudness.enabled, level: loudness.level },
   };
 
-  data.metadata.fileSize = new Blob([JSON.stringify(data)]).size;
+  const json = JSON.stringify(data);
+  data.metadata.fileSize = new Blob([json]).size;
   return data;
 }
 
+export function generateBackupFileName(): string {
+  return `lumora-backup-${new Date().toISOString().split('T')[0]}.json`;
+}
+
 export async function exportBackup(data: BackupData): Promise<boolean> {
+  const json = JSON.stringify(data, null, 2);
+  const fileName = generateBackupFileName();
+
+  const providers = getProviders();
+  const connected = providers.filter((p) => p.isConnected());
+
+  if (connected.length > 0) {
+    let uploaded = false;
+    for (const provider of connected) {
+      try {
+        const ok = await provider.uploadBackup(json, fileName);
+        if (ok) {
+          uploaded = true;
+        }
+      } catch {}
+    }
+    if (uploaded) {
+      useToastStore.getState().showToast(`Backup uploaded to ${connected.length} cloud provider(s)`);
+      return true;
+    }
+  }
+
   try {
-    const json = JSON.stringify(data, null, 2);
-    const fileName = `lumora-backup-${new Date().toISOString().split('T')[0]}.json`;
     const cacheDir = Paths.cache.uri;
     const fileUri = `${cacheDir}${fileName}`;
-
     const file = new File(fileUri);
     await file.write(json);
 
@@ -148,6 +174,24 @@ export async function exportBackup(data: BackupData): Promise<boolean> {
 }
 
 export async function importBackup(): Promise<BackupData | null> {
+  const providers = getProviders();
+  const connected = providers.filter((p) => p.isConnected());
+
+  for (const provider of connected) {
+    try {
+      const files = await provider.listBackups();
+      if (files.length > 0) {
+        const json = await provider.downloadBackup(files[0].id);
+        if (json) {
+          const data: BackupData = JSON.parse(json);
+          if (data.metadata && data.metadata.version === BACKUP_VERSION) {
+            return data;
+          }
+        }
+      }
+    } catch {}
+  }
+
   try {
     const result = await DocumentPicker.getDocumentAsync({
       type: BACKUP_MIME_TYPE,
@@ -159,7 +203,6 @@ export async function importBackup(): Promise<BackupData | null> {
     const fileUri = result.assets[0].uri;
     const file = new File(fileUri);
     const json = await file.text();
-
     const data: BackupData = JSON.parse(json);
 
     if (!data.metadata || data.metadata.version !== BACKUP_VERSION) {
@@ -176,7 +219,7 @@ export async function restoreFromBackup(data: BackupData): Promise<boolean> {
   try {
     if (data.playlists) {
       storage.set('lumora-playlists', JSON.stringify(data.playlists));
-      usePlaylistStore.getState().loadPlaylists();
+      usePlaylistStore.getState().reloadPlaylists();
     }
 
     if (data.smartPlaylists) {

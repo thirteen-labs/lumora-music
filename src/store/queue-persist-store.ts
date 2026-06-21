@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 import { storage } from '@/services/mmkv';
+import { reportWarning } from '@/utils/error-handler';
 import type { Song } from '@/types/media';
 
 const QUEUE_KEY = 'lumora-persisted-queue';
@@ -31,19 +32,19 @@ export const useQueuePersistStore = create<QueuePersistState>()(
         repeat,
         position,
       };
-      try { storage.set(QUEUE_KEY, JSON.stringify(data)); } catch {}
+      try { storage.set(QUEUE_KEY, JSON.stringify(data)); } catch (e) { reportWarning('QueuePersist', e); }
     },
 
     loadQueue: () => {
       try {
         const raw = storage.getString(QUEUE_KEY);
         if (raw) return JSON.parse(raw);
-      } catch {}
+      } catch (e) { reportWarning('QueuePersist', e); }
       return null;
     },
 
     clearQueue: () => {
-      try { storage.set(QUEUE_KEY, ''); } catch {}
+      try { storage.set(QUEUE_KEY, ''); } catch (e) { reportWarning('QueuePersist', e); }
     },
   })),
 );

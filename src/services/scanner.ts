@@ -2,6 +2,7 @@ import { Platform, PermissionsAndroid } from 'react-native';
 import type { Song, Album as LumoraAlbum, Artist, Genre, Video, MediaScanStatus } from '@/types/media';
 import { getVideoThumbnailUri } from '@/services/video-thumbnails';
 import { storage } from '@/services/mmkv';
+import { reportWarning } from '@/utils/error-handler';
 
 const CACHED_SONGS_KEY = 'lumora-cached-songs';
 const CACHED_ALBUMS_KEY = 'lumora-cached-albums';
@@ -20,33 +21,33 @@ async function loadModules(): Promise<boolean> {
     MediaLibrary = ml;
     hasMediaLibrary = true;
   } catch (e) {
-    console.warn('[Scanner] Failed to load expo-media-library/legacy:', e);
+    reportWarning('Scanner', e, 'Failed to load expo-media-library/legacy');
     try {
       const ml = await import('expo-media-library');
       if (typeof ml.getAssetsAsync === 'function') {
         MediaLibrary = ml;
         hasMediaLibrary = true;
       } else {
-        console.warn('[Scanner] expo-media-library (new API) lacks getAssetsAsync');
+        reportWarning('Scanner', null, 'expo-media-library (new API) lacks getAssetsAsync');
       }
     } catch (e2) {
-      console.warn('[Scanner] Failed to load expo-media-library:', e2);
+      reportWarning('Scanner', e2, 'Failed to load expo-media-library');
     }
   }
   try {
     const mr = await import('@missingcore/react-native-metadata-retriever');
     MetadataRetriever = mr;
   } catch (e) {
-    console.warn('[Scanner] Failed to load metadata retriever (metadata parsing disabled):', e);
+    reportWarning('Scanner', e, 'Metadata parsing disabled');
   }
   try {
     const fs = await import('expo-file-system/legacy');
     FileSystemLegacy = fs;
   } catch (e) {
-    console.warn('[Scanner] Failed to load expo-file-system/legacy:', e);
+    reportWarning('Scanner', e, 'Failed to load expo-file-system/legacy');
   }
   if (!hasMediaLibrary) {
-    console.warn('[Scanner] Media library module is required but failed to load');
+    reportWarning('Scanner', null, 'Media library module is required but failed to load');
     return false;
   }
   return true;
@@ -72,30 +73,21 @@ let cachedGenres: Genre[] = [];
 let cachedVideos: Video[] = [];
 
 function loadCachedDataFromStorage(): void {
-  try {
-    const songsRaw = storage.getString(CACHED_SONGS_KEY);
-    if (songsRaw) {
-      cachedSongs = JSON.parse(songsRaw);
+  const tryParse = <T>(key: string, fallback: T): T => {
+    try {
+      const raw = storage.getString(key);
+      if (raw) return JSON.parse(raw);
+    } catch (error) {
+      reportWarning('Scanner', error, `Failed to load cached data: ${key}`);
     }
-    const albumsRaw = storage.getString(CACHED_ALBUMS_KEY);
-    if (albumsRaw) {
-      cachedAlbums = JSON.parse(albumsRaw);
-    }
-    const artistsRaw = storage.getString(CACHED_ARTISTS_KEY);
-    if (artistsRaw) {
-      cachedArtists = JSON.parse(artistsRaw);
-    }
-    const genresRaw = storage.getString(CACHED_GENRES_KEY);
-    if (genresRaw) {
-      cachedGenres = JSON.parse(genresRaw);
-    }
-    const videosRaw = storage.getString(CACHED_VIDEOS_KEY);
-    if (videosRaw) {
-      cachedVideos = JSON.parse(videosRaw);
-    }
-  } catch (error) {
-    console.warn('[Scanner] Failed to load cached data from storage:', error);
-  }
+    return fallback;
+  };
+
+  cachedSongs = tryParse(CACHED_SONGS_KEY, cachedSongs);
+  cachedAlbums = tryParse(CACHED_ALBUMS_KEY, cachedAlbums);
+  cachedArtists = tryParse(CACHED_ARTISTS_KEY, cachedArtists);
+  cachedGenres = tryParse(CACHED_GENRES_KEY, cachedGenres);
+  cachedVideos = tryParse(CACHED_VIDEOS_KEY, cachedVideos);
 }
 
 function saveCachedDataToStorage(): void {
@@ -106,7 +98,7 @@ function saveCachedDataToStorage(): void {
     storage.set(CACHED_GENRES_KEY, JSON.stringify(cachedGenres));
     storage.set(CACHED_VIDEOS_KEY, JSON.stringify(cachedVideos));
   } catch (error) {
-    console.warn('[Scanner] Failed to save cached data to storage:', error);
+    reportWarning('Scanner', error, 'Failed to save cached data to storage');
   }
 }
 
@@ -266,10 +258,12 @@ async function parseAudioMetadata(uri: string): Promise<{
   }
 }
 
-async function processAsset(asset: any): Promise<Song | null> {
+async function processAsset(asset: any, excludedFolders: string[] = []): Promise<Song | null> {
   try {
-    const uri = asset.uri;
+    const uri = asset.uri as string | undefined;
     if (!uri) return null;
+
+    if (excludedFolders.some(folder => uri.includes(folder))) return null;
 
     const meta = await parseAudioMetadata(uri);
     let fileSize = asset.fileSize ?? asset.size ?? 0;
@@ -302,14 +296,14 @@ async function processAsset(asset: any): Promise<Song | null> {
   }
 }
 
-async function processBatch(assets: any[], concurrency = 10): Promise<Song[]> {
+async function processBatch(assets: any[], concurrency = 10, excludedFolders: string[] = []): Promise<Song[]> {
   const results: Song[] = [];
   const queue = [...assets];
 
   async function worker(): Promise<void> {
     while (queue.length > 0) {
       const asset = queue.shift()!;
-      const song = await processAsset(asset);
+      const song = await processAsset(asset, excludedFolders);
       if (song) results.push(song);
     }
   }
@@ -323,6 +317,7 @@ async function processBatch(assets: any[], concurrency = 10): Promise<Song[]> {
 }
 
 async function fetchSongs(
+  excludedFolders: string[],
   onProgress?: (batchCount: number) => void,
 ): Promise<Song[]> {
   if (!MediaLibrary || typeof MediaLibrary.getAssetsAsync !== 'function') return [];
@@ -349,7 +344,7 @@ async function fetchSongs(
   }
 
   while (result.assets.length > 0) {
-    const songs = await processBatch(result.assets, 20);
+    const songs = await processBatch(result.assets, 20, excludedFolders);
     allSongs.push(...songs);
     onProgress?.(songs.length);
 
@@ -371,10 +366,12 @@ async function fetchSongs(
   return allSongs;
 }
 
-async function processVideoAsset(asset: any): Promise<Video | null> {
+async function processVideoAsset(asset: any, excludedFolders: string[] = []): Promise<Video | null> {
   try {
-    const uri = asset.uri;
+    const uri = asset.uri as string | undefined;
     if (!uri) return null;
+
+    if (excludedFolders.some(folder => uri.includes(folder))) return null;
 
     let fileSize = asset.fileSize ?? asset.size ?? 0;
     if (fileSize <= 0) {
@@ -404,14 +401,14 @@ async function processVideoAsset(asset: any): Promise<Video | null> {
   }
 }
 
-async function processVideoBatch(assets: any[], concurrency = 10): Promise<Video[]> {
+async function processVideoBatch(assets: any[], concurrency = 10, excludedFolders: string[] = []): Promise<Video[]> {
   const results: Video[] = [];
   const queue = [...assets];
 
   async function worker(): Promise<void> {
     while (queue.length > 0) {
       const asset = queue.shift()!;
-      const video = await processVideoAsset(asset);
+      const video = await processVideoAsset(asset, excludedFolders);
       if (video) results.push(video);
     }
   }
@@ -425,6 +422,7 @@ async function processVideoBatch(assets: any[], concurrency = 10): Promise<Video
 }
 
 async function fetchVideos(
+  excludedFolders: string[],
   onProgress?: (batchCount: number) => void,
 ): Promise<Video[]> {
   if (!MediaLibrary || typeof MediaLibrary.getAssetsAsync !== 'function') return [];
@@ -449,7 +447,7 @@ async function fetchVideos(
   }
 
   while (result.assets.length > 0) {
-    const videos = await processVideoBatch(result.assets, 20);
+    const videos = await processVideoBatch(result.assets, 20, excludedFolders);
     allVideos.push(...videos);
     onProgress?.(videos.length);
 
@@ -496,6 +494,14 @@ export async function scanMediaLibrary(
       return { songs: [], albums: [], artists: [], genres: [], videos: [] };
     }
 
+    let excludedFolders: string[] = [];
+    try {
+      const raw = storage.getString('lumora-setting-excluded-folders');
+      if (raw) excludedFolders = JSON.parse(raw);
+    } catch (e) {
+      reportWarning('Scanner', e, 'Failed to load excluded folders');
+    }
+
     const MediaType = MediaLibrary.MediaType;
     const countPromises: Promise<any>[] = [];
     if (scanAudio) countPromises.push(MediaLibrary.getAssetsAsync({ first: 1, mediaType: MediaType?.audio ?? 'audio' }));
@@ -511,7 +517,7 @@ export async function scanMediaLibrary(
     const scanPromises: Promise<SongsResult | VideosResult>[] = [];
     if (scanAudio) {
       scanPromises.push(
-        fetchSongs((count) => {
+        fetchSongs(excludedFolders, (count) => {
           songsProcessed += count;
           onProgress?.(songsProcessed + videosProcessed, totalItems);
         }).then((songs) => ({ songs }) as SongsResult),
@@ -519,7 +525,7 @@ export async function scanMediaLibrary(
     }
     if (scanVideo) {
       scanPromises.push(
-        fetchVideos((count) => {
+        fetchVideos(excludedFolders, (count) => {
           videosProcessed += count;
           onProgress?.(songsProcessed + videosProcessed, totalItems);
         }).then((videos) => ({ videos }) as VideosResult),

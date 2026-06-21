@@ -12,6 +12,7 @@ import { syncReplayGainToEngine } from '@/store/replay-gain-store';
 import { useLoudnessEnhancerStore } from '@/store/loudness-enhancer-store';
 import { audioEngine } from '@/services/audio-engine';
 import { useTheme } from '@/hooks/use-theme';
+import { reportWarning } from '@/utils/error-handler';
 
 function PlayerSync() {
   useTrackPlayerSync();
@@ -146,7 +147,9 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     try {
       setCrossfadeEnabled(crossfade);
       setCrossfadeDuration(crossfadeDuration);
-    } catch {}
+    } catch (e) {
+      reportWarning('PlayerProvider', e, 'Failed to set crossfade settings');
+    }
   }, [crossfade, crossfadeDuration]);
 
   useEffect(() => {
@@ -156,7 +159,9 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       const le = useLoudnessEnhancerStore.getState();
       audioEngine.setLoudnessEnabled(le.enabled);
       audioEngine.setLoudnessLevel(le.level);
-    } catch {}
+    } catch (e) {
+      reportWarning('PlayerProvider', e, 'Failed to sync audio settings to engine');
+    }
   }, []);
 
   const { colors } = useTheme();

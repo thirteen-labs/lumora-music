@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 import { storage } from '@/services/mmkv';
 import type { SleepTimerSettings } from '@/types/audio';
+import { usePlayerStore } from '@/store/player-store';
 
 const TIMER_KEY = 'lumora-sleep-timer';
 
@@ -83,6 +84,7 @@ export const useSleepTimerStore = create<SleepTimerState>()(
       const remaining = state.endTime - Date.now();
       if (remaining <= 0) {
         set((s) => { s.expiredFlag = true; });
+        usePlayerStore.getState().pause();
         get().cancel();
         return true;
       } else {

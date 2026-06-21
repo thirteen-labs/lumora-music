@@ -30,6 +30,11 @@ import {
   saveScanHistory,
   getScanHistory,
 } from "@/scanner/enhanced-scanner";
+import {
+  showScanningNotification,
+  showScanCompleteNotification,
+} from "@/services/notifications";
+import { useToastStore } from "@/store/toast-store";
 
 const LAST_SCAN_TIME_KEY = "lumora-last-scan-time";
 
@@ -93,45 +98,67 @@ export const useMusicStore = create<MusicState>()(
         }
       }
 
-      const result = await scanMediaLibrary(
-        (status) => {
-          set((state) => {
-            state.scanStatus = status;
-          });
-        },
-        (processed, total) => {
-          set((state) => {
-            state.scanProgress = { processed, total };
-          });
-        },
-        { video: false },
-      );
-
-      const knownUris = new Set(Object.keys(getKnownFiles()));
-      const newSongs = findNewSongs(result.songs, knownUris);
-      const removedUris = findRemovedFiles(result.songs.map((s) => s.uri));
-      updateKnownFiles(result.songs);
-      saveScanHistory({
-        lastFullScan: force ? Date.now() : getScanHistory().lastFullScan,
-        lastIncrementalScan: Date.now(),
-        fileCount: result.songs.length,
-      });
-
-      const now = Date.now();
+      useToastStore.getState().showToast("Scanning media library...", "music");
+      showScanningNotification();
       try {
-        storage.set(LAST_SCAN_TIME_KEY, now);
-      } catch {}
-      set((state) => {
-        state.songs = result.songs;
-        state.albums = result.albums;
-        state.artists = result.artists;
-        state.genres = result.genres;
-        state.scanStatus = "complete";
-        state.lastScanTime = now;
-        state.newSongsCount = newSongs.length;
-        state.removedSongsCount = removedUris.length;
-        state.scanProgress = null;
-      });
+        const result = await scanMediaLibrary(
+          (status) => {
+            set((state) => {
+              state.scanStatus = status;
+            });
+          },
+          (processed, total) => {
+            set((state) => {
+              state.scanProgress = { processed, total };
+            });
+          },
+          { video: false },
+        );
+
+        const knownUris = new Set(Object.keys(getKnownFiles()));
+        const newSongs = findNewSongs(result.songs, knownUris);
+        const removedUris = findRemovedFiles(result.songs.map((s) => s.uri));
+        updateKnownFiles(result.songs);
+        saveScanHistory({
+          lastFullScan: force ? Date.now() : getScanHistory().lastFullScan,
+          lastIncrementalScan: Date.now(),
+          fileCount: result.songs.length,
+        });
+
+        const now = Date.now();
+        try {
+          storage.set(LAST_SCAN_TIME_KEY, now);
+        } catch {
+          console.warn('[MusicStore] Failed to save last scan time');
+        }
+        showScanCompleteNotification(result.songs.length, 0);
+
+        if (newSongs.length > 0) {
+          useToastStore.getState().showToast(`Found ${newSongs.length} new song${newSongs.length !== 1 ? 's' : ''}`, "check");
+        } else if (result.songs.length > 0) {
+          useToastStore.getState().showToast(`Library has ${result.songs.length} songs`, "check");
+        } else {
+          useToastStore.getState().showToast("No songs found in library", "music");
+        }
+
+        set((state) => {
+          state.songs = result.songs;
+          state.albums = result.albums;
+          state.artists = result.artists;
+          state.genres = result.genres;
+          state.scanStatus = "complete";
+          state.lastScanTime = now;
+          state.newSongsCount = newSongs.length;
+          state.removedSongsCount = removedUris.length;
+          state.scanProgress = null;
+        });
+      } catch {
+        set((state) => {
+          state.scanStatus = "error";
+          state.scanProgress = null;
+        });
+        useToastStore.getState().showToast("Scan failed. Please try again.", "music");
+      }
     },
 
     setSort: (field, order) => {

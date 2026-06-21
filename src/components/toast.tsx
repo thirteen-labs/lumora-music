@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react';
-import { View, Text, Animated } from 'react-native';
+import { useEffect } from 'react';
+import { View, Text } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { s } from '@/styles';
 import { useTheme } from '@/hooks/use-theme';
 import { useToastStore } from '@/store/toast-store';
 import { Check, Heart, ListPlus, Music } from 'lucide-react-native';
+import Animated, { useSharedValue, useAnimatedStyle, withTiming } from 'react-native-reanimated';
 
 const ICON_MAP: Record<string, React.ComponentType<any>> = {
   check: Check,
@@ -17,28 +18,23 @@ export function Toast() {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const toasts = useToastStore((s) => s.toasts);
-  const [opacity] = useState(() => new Animated.Value(0));
-  const [translateY] = useState(() => new Animated.Value(20));
+  const opacity = useSharedValue(0);
+  const translateY = useSharedValue(20);
 
   useEffect(() => {
     if (toasts.length > 0) {
-      Animated.parallel([
-        Animated.timing(opacity, {
-          toValue: 1,
-          duration: 200,
-          useNativeDriver: true,
-        }),
-        Animated.timing(translateY, {
-          toValue: 0,
-          duration: 200,
-          useNativeDriver: true,
-        }),
-      ]).start();
+      opacity.value = withTiming(1, { duration: 200 });
+      translateY.value = withTiming(0, { duration: 200 });
     } else {
-      translateY.setValue(20);
-      opacity.setValue(0);
+      opacity.value = 0;
+      translateY.value = 20;
     }
   }, [toasts.length, opacity, translateY]);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    opacity: opacity.value,
+    transform: [{ translateY: translateY.value }],
+  }));
 
   if (toasts.length === 0) return null;
 
@@ -47,17 +43,15 @@ export function Toast() {
 
   return (
     <Animated.View
-      style={{
+      style={[{
         position: 'absolute',
         bottom: insets.bottom + 100,
         left: 20,
         right: 20,
         alignItems: 'center',
-        opacity,
-        transform: [{ translateY }],
         zIndex: 9999,
         pointerEvents: 'none',
-      }}
+      }, animatedStyle]}
     >
       <View style={{
         flexDirection: 'row',

@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 import { storage } from '@/services/mmkv';
+import { reportWarning } from '@/utils/error-handler';
 import type { Song, Video } from '@/types/media';
 
 const FAV_SONGS_KEY = 'lumora-fav-songs';
@@ -10,11 +11,11 @@ function loadIds(key: string): string[] {
   try {
     const raw = storage.getString(key);
     return raw ? JSON.parse(raw) : [];
-  } catch { return []; }
+  } catch (e) { reportWarning('Favorites', e); return []; }
 }
 
 function saveIds(key: string, ids: string[]): void {
-  try { storage.set(key, JSON.stringify(ids)); } catch {}
+  try { storage.set(key, JSON.stringify(ids)); } catch (e) { reportWarning('Favorites', e); }
 }
 
 interface FavoritesState {

@@ -3,6 +3,7 @@ import { View, Text, Pressable, ScrollView } from 'react-native';
 
 interface Props {
   children: ReactNode;
+  name?: string;
 }
 
 interface State {
@@ -22,7 +23,7 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: any) {
-    console.error('ErrorBoundary caught:', error, errorInfo);
+    console.error(`[ErrorBoundary${this.props.name ? `:${this.props.name}` : ''}]`, error, errorInfo);
     this.setState({
       errorInfo: errorInfo?.componentStack ?? null,
     });
@@ -64,7 +65,7 @@ export class ErrorBoundary extends Component<Props, State> {
             showsVerticalScrollIndicator={false}
           >
             <Text style={{ color: '#fff', fontSize: 18, fontWeight: '600', marginBottom: 8 }}>
-              Something went wrong
+              {this.props.name ?? 'Something went wrong'}
             </Text>
             <Text
               style={{
