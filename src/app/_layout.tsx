@@ -1,7 +1,7 @@
 import "../../global.css";
 
 import { View } from "react-native";
-import { Stack, usePathname, useSegments } from "expo-router";
+import { Stack, useSegments } from "expo-router";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { BottomBar } from "@/components/bottom-bar";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -18,7 +18,6 @@ import { useScanManager } from "@/hooks/use-scan-manager";
 
 function RootStack() {
   const { colors } = useTheme();
-  const pathname = usePathname();
   const segments = useSegments();
   useScanManager();
 

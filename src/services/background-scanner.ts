@@ -26,17 +26,30 @@ function ensureTaskDefined(): void {
 
         console.log('[BackgroundScanner] Starting background scan');
         const result = await scanMediaLibrary();
-        console.log('[BackgroundScanner] Scan complete:', result.songs.length, 'songs,', result.videos.length, 'videos');
+        console.log('[BackgroundScanner] Media scan complete:', result.songs.length, 'songs,', result.videos.length, 'videos');
 
-        if (result.songs.length === 0 && result.videos.length === 0) {
-          console.log('[BackgroundScanner] No new data found');
-          return BackgroundFetch.BackgroundFetchResult.NoData;
+        if (result.songs.length > 0) {
+          updateKnownFiles(result.songs);
         }
 
-        updateKnownFiles(result.songs);
+        const { scanRootDirectories } = require('./document-scanner');
+        const docs = await scanRootDirectories();
+        console.log('[BackgroundScanner] Document scan complete:', docs.length, 'documents');
+
+        if (docs.length > 0) {
+          try {
+            const storage = require('./mmkv').storage;
+            storage.set('lumora-documents', JSON.stringify(docs));
+            storage.set('lumora-documents-time', new Date().toISOString());
+          } catch {}
+        }
+
         storage.set(LAST_BG_SCAN_KEY, Date.now());
 
-        return BackgroundFetch.BackgroundFetchResult.NewData;
+        const hasData = result.songs.length > 0 || result.videos.length > 0 || docs.length > 0;
+        return hasData
+          ? BackgroundFetch.BackgroundFetchResult.NewData
+          : BackgroundFetch.BackgroundFetchResult.NoData;
       } catch (error) {
         console.error('[BackgroundScanner] Background scan failed:', error);
         return BackgroundFetch.BackgroundFetchResult.Failed;

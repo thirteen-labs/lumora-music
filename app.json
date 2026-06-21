@@ -49,7 +49,7 @@
           "resizeMode": "contain",
           "android": {
             "image": "./assets/splash.png",
-            "resizeMode": "contain"
+            "resizeMode": "cover"
           },
           "ios": {
             "image": "./assets/splash.png",

@@ -1,6 +1,11 @@
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
+import { storage } from '@/services/mmkv';
 import { scanSystemFolders, groupFilesBySubstring, type ScannedFile, type FileGroup } from '@/services/system-scanner';
+
+const HIDDEN_FILES_KEY = 'lumora-hidden-files';
+const HIDDEN_GROUPS_KEY = 'lumora-hidden-groups';
+const HIDDEN_LAST_SCAN_KEY = 'lumora-hidden-last-scan';
 
 type ScanStatus = 'idle' | 'scanning' | 'complete' | 'error';
 
@@ -14,13 +19,30 @@ interface SystemHiddenState {
   clear: () => void;
 }
 
+function loadPersistedFiles(): { files: ScannedFile[]; groups: FileGroup[]; lastScanTime: number | null } {
+  try {
+    const filesRaw = storage.getString(HIDDEN_FILES_KEY);
+    const groupsRaw = storage.getString(HIDDEN_GROUPS_KEY);
+    const lastScanRaw = storage.getString(HIDDEN_LAST_SCAN_KEY);
+    return {
+      files: filesRaw ? JSON.parse(filesRaw) : [],
+      groups: groupsRaw ? JSON.parse(groupsRaw) : [],
+      lastScanTime: lastScanRaw ? JSON.parse(lastScanRaw) : null,
+    };
+  } catch {
+    return { files: [], groups: [], lastScanTime: null };
+  }
+}
+
+const persisted = loadPersistedFiles();
+
 export const useSystemHiddenStore = create<SystemHiddenState>()(
-  immer((set, get) => ({
-    files: [],
-    groups: [],
-    status: 'idle',
+  immer((set) => ({
+    files: persisted.files,
+    groups: persisted.groups,
+    status: persisted.files.length > 0 ? 'complete' : 'idle',
     error: null,
-    lastScanTime: null,
+    lastScanTime: persisted.lastScanTime,
 
     scan: async () => {
       set((s) => {
@@ -31,12 +53,17 @@ export const useSystemHiddenStore = create<SystemHiddenState>()(
       try {
         const files = await scanSystemFolders();
         const groups = groupFilesBySubstring(files);
+        const now = Date.now();
+
+        storage.set(HIDDEN_FILES_KEY, JSON.stringify(files));
+        storage.set(HIDDEN_GROUPS_KEY, JSON.stringify(groups));
+        storage.set(HIDDEN_LAST_SCAN_KEY, JSON.stringify(now));
 
         set((s) => {
           s.files = files;
           s.groups = groups;
           s.status = 'complete';
-          s.lastScanTime = Date.now();
+          s.lastScanTime = now;
         });
       } catch (e: any) {
         set((s) => {
@@ -47,6 +74,10 @@ export const useSystemHiddenStore = create<SystemHiddenState>()(
     },
 
     clear: () => {
+      storage.remove(HIDDEN_FILES_KEY);
+      storage.remove(HIDDEN_GROUPS_KEY);
+      storage.remove(HIDDEN_LAST_SCAN_KEY);
+
       set((s) => {
         s.files = [];
         s.groups = [];

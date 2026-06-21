@@ -146,9 +146,7 @@ export function getRootDocPaths(): string[] {
   return [];
 }
 
-const FILE_BATCH_SIZE = 20;
-
-async function scanDirRecursive(dirUri: string, maxDepth = 3): Promise<DocFile[]> {
+async function scanDirRecursive(dirUri: string, maxDepth = 5): Promise<DocFile[]> {
   if (maxDepth <= 0) return [];
   try {
     const dir = new Directory(dirUri);
@@ -185,29 +183,22 @@ async function scanDirRecursive(dirUri: string, maxDepth = 3): Promise<DocFile[]
 }
 
 async function batchFileInfo(files: File[]): Promise<DocFile[]> {
-  const results: DocFile[] = [];
-  for (let i = 0; i < files.length; i += FILE_BATCH_SIZE) {
-    const batch = files.slice(i, i + FILE_BATCH_SIZE);
-    const items = await Promise.all(
-      batch.map(async (file) => {
-        try {
-          const info = await file.info();
-          return {
-            name: file.name,
-            uri: file.uri,
-            size: info.size ?? 0,
-            modificationTime: (info as any).modificationTime ?? 0,
-          } as DocFile;
-        } catch {
-          return null;
-        }
-      })
-    );
-    for (const item of items) {
-      if (item) results.push(item);
-    }
-  }
-  return results;
+  const results = await Promise.all(
+    files.map(async (file) => {
+      try {
+        const info = await file.info();
+        return {
+          name: file.name,
+          uri: file.uri,
+          size: info.size ?? 0,
+          modificationTime: (info as any).modificationTime ?? 0,
+        } as DocFile;
+      } catch {
+        return null;
+      }
+    })
+  );
+  return results.filter((r): r is DocFile => r !== null);
 }
 
 export async function scanRootDirectories(): Promise<DocFile[]> {

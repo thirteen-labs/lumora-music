@@ -16,6 +16,7 @@ import {
   getCachedArtists,
   getCachedGenres,
 } from "@/services/scanner";
+import { storage } from "@/services/mmkv";
 import { useStatsStore } from "@/store/stats-store";
 import {
   isBackgroundScanEnabled,
@@ -29,6 +30,8 @@ import {
   saveScanHistory,
   getScanHistory,
 } from "@/scanner/enhanced-scanner";
+
+const LAST_SCAN_TIME_KEY = "lumora-last-scan-time";
 
 interface MusicState {
   songs: Song[];
@@ -55,9 +58,14 @@ export const useMusicStore = create<MusicState>()(
     albums: [],
     artists: [],
     genres: [],
-    scanStatus: "idle",
+    scanStatus: getCachedSongs().length > 0 ? "complete" : "idle",
     scanProgress: null,
-    lastScanTime: 0,
+    lastScanTime: (() => {
+      try {
+        const val = storage.getNumber(LAST_SCAN_TIME_KEY);
+        return val ?? 0;
+      } catch { return 0; }
+    })(),
     newSongsCount: 0,
     removedSongsCount: 0,
     sortField: "title",
@@ -109,13 +117,17 @@ export const useMusicStore = create<MusicState>()(
         fileCount: result.songs.length,
       });
 
+      const now = Date.now();
+      try {
+        storage.set(LAST_SCAN_TIME_KEY, now);
+      } catch {}
       set((state) => {
         state.songs = result.songs;
         state.albums = result.albums;
         state.artists = result.artists;
         state.genres = result.genres;
         state.scanStatus = "complete";
-        state.lastScanTime = Date.now();
+        state.lastScanTime = now;
         state.newSongsCount = newSongs.length;
         state.removedSongsCount = removedUris.length;
         state.scanProgress = null;

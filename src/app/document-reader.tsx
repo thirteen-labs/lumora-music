@@ -10,14 +10,10 @@ import {
   FileArchive, ChevronRight, Files, RefreshCw,
 } from 'lucide-react-native';
 import {
-  DOC_CATEGORIES, type DocCategory, type DocFile,
-  scanRootDirectories, categorizeAndCount, getDocCategory,
-  type CategorizedResult, formatFileSize,
+  type DocCategory, type DocFile,
+  getDocCategory, formatFileSize,
 } from '@/services/document-scanner';
-import { storage } from '@/services/mmkv';
-
-const DOC_CACHE_KEY = 'lumora-documents';
-const DOC_CACHE_TIME_KEY = 'lumora-documents-time';
+import { useDocumentStore } from '@/store/document-store';
 
 const CATEGORY_ICONS: Record<string, typeof FileText> = {
   pdf: FileText,
@@ -37,56 +33,23 @@ export default function DocumentReaderScreen() {
   const router = useRouter();
   const [viewMode, setViewMode] = useState<ViewMode>('categories');
   const [selectedCategory, setSelectedCategory] = useState<DocCategory | null>(null);
-  const [allDocuments, setAllDocuments] = useState<DocFile[]>([]);
-  const [scanning, setScanning] = useState(true);
-  const [scanError, setScanError] = useState<string | null>(null);
+
+  const files = useDocumentStore((s) => s.files);
+  const scanStatus = useDocumentStore((s) => s.scanStatus);
+  const scanError = useDocumentStore((s) => s.scanError);
+  const categorized = useDocumentStore((s) => s.categorized);
+  const categories = useDocumentStore((s) => s.categories);
+  const scanDocuments = useDocumentStore((s) => s.scanDocuments);
+
+  const scanning = scanStatus === 'scanning';
 
   useEffect(() => {
-    let cancelled = false;
-    async function load() {
-      const cached = storage.getString(DOC_CACHE_KEY);
-      if (cached) {
-        try {
-          const docs: DocFile[] = JSON.parse(cached);
-          if (!cancelled) setAllDocuments(docs);
-        } catch {}
-        if (!cancelled) setScanning(false);
-        return;
-      }
-      if (!cancelled) setScanning(true);
-      try {
-        const docs = await scanRootDirectories();
-        storage.set(DOC_CACHE_KEY, JSON.stringify(docs));
-        storage.set(DOC_CACHE_TIME_KEY, new Date().toISOString());
-        if (!cancelled) setAllDocuments(docs);
-      } catch (e: any) {
-        if (!cancelled) setScanError(e?.message || 'Failed to scan documents');
-      } finally {
-        if (!cancelled) setScanning(false);
-      }
-    }
-    load();
-    return () => { cancelled = true; };
-  }, []);
+    scanDocuments();
+  }, [scanDocuments]);
 
   const handleRefresh = useCallback(async () => {
-    setScanning(true);
-    setScanError(null);
-    try {
-      const docs = await scanRootDirectories();
-      storage.set(DOC_CACHE_KEY, JSON.stringify(docs));
-      storage.set(DOC_CACHE_TIME_KEY, new Date().toISOString());
-      setAllDocuments(docs);
-    } catch (e: any) {
-      setScanError(e?.message || 'Failed to scan documents');
-    } finally {
-      setScanning(false);
-    }
-  }, []);
-
-  const { categorized, counts: categoryCounts } = useMemo<CategorizedResult>(
-    () => categorizeAndCount(allDocuments), [allDocuments]
-  );
+    await scanDocuments(true);
+  }, [scanDocuments]);
 
   const handleCategoryPress = useCallback((category: DocCategory) => {
     setSelectedCategory(category);
@@ -112,10 +75,10 @@ export default function DocumentReaderScreen() {
   }, [viewMode, router]);
 
   const currentDocs = useMemo(() => {
-    if (viewMode === 'all') return allDocuments;
-    if (viewMode === 'category' && selectedCategory) return categorized[selectedCategory.id] || [];
+    if (viewMode === 'all') return files;
+    if (viewMode === 'category' && selectedCategory) return categorized.categorized[selectedCategory.id] || [];
     return [];
-  }, [viewMode, selectedCategory, categorized, allDocuments]);
+  }, [viewMode, selectedCategory, categorized, files]);
 
   return (
     <View style={[s.flex1, { backgroundColor: colors.background }]}>
@@ -141,7 +104,7 @@ export default function DocumentReaderScreen() {
                 <View style={s.flex1}>
                   <Text style={[s.textXl, s.fontBold, { color: colors.text }]}>Document Reader</Text>
                   <Text style={[s.textXs, { color: colors.textMuted }]}>
-                    {scanning ? 'Scanning your device...' : `${allDocuments.length} documents found`}
+                    {scanning ? 'Scanning your device...' : `${files.length} documents found`}
                   </Text>
                 </View>
                 {scanning && <ActivityIndicator size="small" color={colors.accent} />}
@@ -158,7 +121,7 @@ export default function DocumentReaderScreen() {
                 </View>
               )}
 
-              {!scanning && allDocuments.length > 0 && (
+              {!scanning && files.length > 0 && (
                 <Pressable
                   onPress={handleAllPress}
                   style={[s.flexRow, s.itemsCenter, s.gap3, {
@@ -174,7 +137,7 @@ export default function DocumentReaderScreen() {
                   </View>
                   <View style={s.flex1}>
                     <Text style={[s.textSm, s.fontSemibold, { color: colors.text }]}>All Documents</Text>
-                    <Text style={[s.text10, { color: colors.textMuted }]}>{allDocuments.length} files</Text>
+                    <Text style={[s.text10, { color: colors.textMuted }]}>{files.length} files</Text>
                   </View>
                   <ChevronRight size={16} color={colors.textMuted} />
                 </Pressable>
@@ -185,9 +148,9 @@ export default function DocumentReaderScreen() {
               </Text>
 
               <View style={[s.flexRow, s.flexWrap, { gap: 12 }]}>
-                {DOC_CATEGORIES.map((category) => {
+                {categories.map((category) => {
                   const Icon = CATEGORY_ICONS[category.id] || File;
-                  const count = categoryCounts[category.id] || 0;
+                  const count = categorized.counts[category.id] || 0;
                   return (
                     <Pressable
                       key={category.id}

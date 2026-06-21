@@ -5,6 +5,7 @@ import {
   GainNode,
   BiquadFilterNode,
   StereoPannerNode,
+  AudioManager,
 } from 'react-native-audio-api';
 import type { EqualizerBand } from '@/types/audio';
 
@@ -62,6 +63,30 @@ class AudioEngine {
     if (this.context) return;
     this.context = new AudioContext();
     this.buildProcessingChain();
+
+    try {
+      AudioManager.setAudioSessionActivity(true);
+      AudioManager.observeAudioInterruptions(true);
+      AudioManager.addSystemEventListener('interruption', (event) => {
+        if (event.type === 'began') {
+          if (this._playing) {
+            this.context?.suspend();
+            this._paused = true;
+            this._playing = false;
+            this.stopPositionTracking();
+            this.emitState();
+          }
+        } else if (event.type === 'ended' && event.shouldResume) {
+          if (this._paused && !this._playing) {
+            this.context?.resume();
+            this._playing = true;
+            this._paused = false;
+            this.startPositionTracking();
+            this.emitState();
+          }
+        }
+      });
+    } catch {}
   }
 
   private buildProcessingChain(): void {

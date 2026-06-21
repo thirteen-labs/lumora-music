@@ -1087,6 +1087,8 @@ export default function VideoPlayerScreen() {
                   text={seekText}
                   side={seekSide}
                 />
+                {!isLocked && <VolumeIndicator volume={volume} />}
+                {!isLocked && <BrightnessIndicator brightness={brightness} />}
                 {isLocked && (
                   <View style={styles.lockOverlay}>
                     <Pressable onPress={toggleLock} style={styles.lockButton}>

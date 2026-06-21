@@ -17,7 +17,7 @@ interface VideoState {
 export const useVideoStore = create<VideoState>()(
   immer((set, get) => ({
     videos: [],
-    scanStatus: 'idle',
+    scanStatus: getCachedVideos().length > 0 ? 'complete' : 'idle',
     scanProgress: null,
     sortField: 'dateAdded',
     sortOrder: 'desc',

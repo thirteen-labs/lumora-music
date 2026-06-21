@@ -1,6 +1,13 @@
 import { Platform, PermissionsAndroid } from 'react-native';
 import type { Song, Album as LumoraAlbum, Artist, Genre, Video, MediaScanStatus } from '@/types/media';
 import { getVideoThumbnailUri } from '@/services/video-thumbnails';
+import { storage } from '@/services/mmkv';
+
+const CACHED_SONGS_KEY = 'lumora-cached-songs';
+const CACHED_ALBUMS_KEY = 'lumora-cached-albums';
+const CACHED_ARTISTS_KEY = 'lumora-cached-artists';
+const CACHED_GENRES_KEY = 'lumora-cached-genres';
+const CACHED_VIDEOS_KEY = 'lumora-cached-videos';
 
 let MediaLibrary: any = null;
 let MetadataRetriever: any = null;
@@ -47,6 +54,7 @@ async function loadModules(): Promise<boolean> {
 
 let modulesLoaded = false;
 let moduleLoadAttempted = false;
+let permissionCache: boolean | null = null;
 
 async function ensureModulesLoaded(): Promise<boolean> {
   if (modulesLoaded) return true;
@@ -63,14 +71,57 @@ let cachedArtists: Artist[] = [];
 let cachedGenres: Genre[] = [];
 let cachedVideos: Video[] = [];
 
+function loadCachedDataFromStorage(): void {
+  try {
+    const songsRaw = storage.getString(CACHED_SONGS_KEY);
+    if (songsRaw) {
+      cachedSongs = JSON.parse(songsRaw);
+    }
+    const albumsRaw = storage.getString(CACHED_ALBUMS_KEY);
+    if (albumsRaw) {
+      cachedAlbums = JSON.parse(albumsRaw);
+    }
+    const artistsRaw = storage.getString(CACHED_ARTISTS_KEY);
+    if (artistsRaw) {
+      cachedArtists = JSON.parse(artistsRaw);
+    }
+    const genresRaw = storage.getString(CACHED_GENRES_KEY);
+    if (genresRaw) {
+      cachedGenres = JSON.parse(genresRaw);
+    }
+    const videosRaw = storage.getString(CACHED_VIDEOS_KEY);
+    if (videosRaw) {
+      cachedVideos = JSON.parse(videosRaw);
+    }
+  } catch (error) {
+    console.warn('[Scanner] Failed to load cached data from storage:', error);
+  }
+}
+
+function saveCachedDataToStorage(): void {
+  try {
+    storage.set(CACHED_SONGS_KEY, JSON.stringify(cachedSongs));
+    storage.set(CACHED_ALBUMS_KEY, JSON.stringify(cachedAlbums));
+    storage.set(CACHED_ARTISTS_KEY, JSON.stringify(cachedArtists));
+    storage.set(CACHED_GENRES_KEY, JSON.stringify(cachedGenres));
+    storage.set(CACHED_VIDEOS_KEY, JSON.stringify(cachedVideos));
+  } catch (error) {
+    console.warn('[Scanner] Failed to save cached data to storage:', error);
+  }
+}
+
+// Load persisted cache on module init so stores can skip re-scan
+loadCachedDataFromStorage();
+
 export function getCachedSongs(): Song[] { return cachedSongs; }
 export function getCachedAlbums(): LumoraAlbum[] { return cachedAlbums; }
 export function getCachedArtists(): Artist[] { return cachedArtists; }
 export function getCachedGenres(): Genre[] { return cachedGenres; }
 export function getCachedVideos(): Video[] { return cachedVideos; }
 
-export async function requestPermissions(options?: { audio?: boolean; video?: boolean }): Promise<boolean> {
+export async function requestPermissions(options?: { audio?: boolean; video?: boolean }, force = false): Promise<boolean> {
   if (!MediaLibrary) return false;
+  if (!force && permissionCache !== null) return permissionCache;
   const needAudio = options?.audio !== false;
   const needVideo = options?.video !== false;
   try {
@@ -111,6 +162,7 @@ export async function requestPermissions(options?: { audio?: boolean; video?: bo
       }
     }
 
+    permissionCache = mediaLibraryGranted;
     return mediaLibraryGranted;
   } catch (error) {
     console.error('[Scanner] Permission request failed:', error);
@@ -276,26 +328,44 @@ async function fetchSongs(
   if (!MediaLibrary || typeof MediaLibrary.getAssetsAsync !== 'function') return [];
   const batch = 500;
   const allSongs: Song[] = [];
-  let cursor: string | undefined;
-  let hasMore = true;
-
   const MediaType = MediaLibrary.MediaType;
 
-  while (hasMore) {
-    const result = await MediaLibrary.getAssetsAsync({
+  // Fetch first page
+  let result = await MediaLibrary.getAssetsAsync({
+    first: batch,
+    mediaType: MediaType?.audio ?? 'audio',
+    sortBy: 'default',
+  });
+
+  // Start fetching next page in parallel with processing current page
+  let nextPagePromise: Promise<any> | null = null;
+  if (result.hasNextPage && result.endCursor) {
+    nextPagePromise = MediaLibrary.getAssetsAsync({
       first: batch,
-      after: cursor,
+      after: result.endCursor,
       mediaType: MediaType?.audio ?? 'audio',
       sortBy: 'default',
     });
+  }
 
-    if (result.assets.length === 0) break;
-
-    const songs = await processBatch(result.assets, 10);
+  while (result.assets.length > 0) {
+    const songs = await processBatch(result.assets, 20);
     allSongs.push(...songs);
     onProgress?.(songs.length);
-    hasMore = result.hasNextPage;
-    cursor = result.endCursor;
+
+    if (!nextPagePromise) break;
+
+    result = await nextPagePromise;
+    nextPagePromise = null;
+
+    if (result.hasNextPage && result.endCursor) {
+      nextPagePromise = MediaLibrary.getAssetsAsync({
+        first: batch,
+        after: result.endCursor,
+        mediaType: MediaType?.audio ?? 'audio',
+        sortBy: 'default',
+      });
+    }
   }
 
   return allSongs;
@@ -360,26 +430,42 @@ async function fetchVideos(
   if (!MediaLibrary || typeof MediaLibrary.getAssetsAsync !== 'function') return [];
   const batch = 500;
   const allVideos: Video[] = [];
-  let cursor: string | undefined;
-  let hasMore = true;
-
   const MediaType = MediaLibrary.MediaType;
 
-  while (hasMore) {
-    const result = await MediaLibrary.getAssetsAsync({
+  let result = await MediaLibrary.getAssetsAsync({
+    first: batch,
+    mediaType: MediaType?.video ?? 'video',
+    sortBy: 'default',
+  });
+
+  let nextPagePromise: Promise<any> | null = null;
+  if (result.hasNextPage && result.endCursor) {
+    nextPagePromise = MediaLibrary.getAssetsAsync({
       first: batch,
-      after: cursor,
+      after: result.endCursor,
       mediaType: MediaType?.video ?? 'video',
       sortBy: 'default',
     });
+  }
 
-    if (result.assets.length === 0) break;
-
-    const videos = await processVideoBatch(result.assets, 10);
+  while (result.assets.length > 0) {
+    const videos = await processVideoBatch(result.assets, 20);
     allVideos.push(...videos);
     onProgress?.(videos.length);
-    hasMore = result.hasNextPage;
-    cursor = result.endCursor;
+
+    if (!nextPagePromise) break;
+
+    result = await nextPagePromise;
+    nextPagePromise = null;
+
+    if (result.hasNextPage && result.endCursor) {
+      nextPagePromise = MediaLibrary.getAssetsAsync({
+        first: batch,
+        after: result.endCursor,
+        mediaType: MediaType?.video ?? 'video',
+        sortBy: 'default',
+      });
+    }
   }
 
   return allVideos;
@@ -507,6 +593,7 @@ export async function scanMediaLibrary(
     if (scanVideo) {
       cachedVideos = videos;
     }
+    saveCachedDataToStorage();
 
     onProgress?.(totalItems, totalItems);
     onStatusChange?.('complete');

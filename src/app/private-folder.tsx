@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { View, Text, ScrollView, Pressable, TextInput, Alert } from 'react-native';
 import { s } from '@/styles';
 import { useTheme } from '@/hooks/use-theme';
@@ -8,7 +8,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { storage } from '@/services/mmkv';
 
 const PIN_KEY = 'lumora-private-folder-pin';
-const LOCKED_CONTENT_KEY = 'lumora-private-folder-locked-files';
 
 function hashPin(pin: string): string {
   let hash = 5381;
@@ -44,20 +43,13 @@ export default function PrivateFolderScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
-  const [mode, setMode] = useState<'idle' | 'setup' | 'verify' | 'unlocked'>('idle');
+  const [mode, setMode] = useState<'idle' | 'setup' | 'verify' | 'unlocked'>(() =>
+    getStoredPinHash() ? 'verify' : 'idle',
+  );
   const [pin, setPin] = useState('');
   const [confirmPin, setConfirmPin] = useState('');
   const [step, setStep] = useState<'check' | 'content'>('check');
   const [error, setError] = useState('');
-
-  useEffect(() => {
-    const existingHash = getStoredPinHash();
-    if (existingHash) {
-      setMode('verify');
-    } else {
-      setMode('idle');
-    }
-  }, []);
 
   function handleSetUpLock() {
     setMode('setup');

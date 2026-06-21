@@ -42,6 +42,7 @@ export const s = StyleSheet.create({
   w16: { width: 64 },
   w5: { width: 20 },
   w3: { width: 12 },
+  w9: { width: 36 },
   h16: { height: 64 },
   h10: { height: 40 },
   h11: { height: 44 },
@@ -49,6 +50,7 @@ export const s = StyleSheet.create({
   h14: { height: 56 },
   h5: { height: 20 },
   h3: { height: 12 },
+  h9: { height: 36 },
   h2px: { height: 2 },
   aspectSquare: { aspectRatio: 1 },
 
@@ -105,10 +107,12 @@ export const s = StyleSheet.create({
   mt05: { marginTop: 2 },
   mt12: { marginTop: 48 },
   ml15: { marginLeft: 6 },
+  ml2: { marginLeft: 8 },
   mr2: { marginRight: 8 },
   mr3: { marginRight: 12 },
   mx05: { marginHorizontal: 2 },
   mx0: { marginHorizontal: 0 },
+  mx4: { marginHorizontal: 16 },
 
   // ── Border Radius ──
   roundedXs: { borderRadius: 4 },

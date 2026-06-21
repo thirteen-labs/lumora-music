@@ -1,11 +1,10 @@
 import { useEffect, useRef, useCallback } from 'react';
-import { View, Text, Pressable, type LayoutChangeEvent } from 'react-native';
+import { View, Pressable, type LayoutChangeEvent } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Music, Video, Folder, ListMusic, Heart, Settings } from 'lucide-react-native';
-import { useRouter, usePathname, useSegments } from 'expo-router';
+import { useRouter, useSegments } from 'expo-router';
 import { s } from '@/styles';
 import { useTheme } from '@/hooks/use-theme';
-import { useTranslation } from '@/hooks/use-translation';
 import Animated, { useSharedValue, useAnimatedStyle, withTiming } from 'react-native-reanimated';
 
 const NAV_ITEMS = [
@@ -17,22 +16,18 @@ const NAV_ITEMS = [
   { key: 'playlists', labelKey: 'nav.playlists', icon: ListMusic, route: '/playlists' },
 ] as const;
 
-const TAB_KEYS = ['music', 'videos', 'files', 'playlists', 'favorites', 'settings'] as const;
-
 export function BottomBar() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const pathname = usePathname();
   const segments = useSegments();
   const { colors } = useTheme();
-  const { t } = useTranslation();
 
   const isTabScreen = segments.length > 0 && segments[0] === "(tabs)";
 
   const getActiveKey = () => {
     if (segments[0] !== "(tabs)") return null;
     const tab = segments[1];
-    if (tab === "index" || !tab) return null;
+    if ((tab as string) === "index" || !tab) return null;
     return tab;
   };
 

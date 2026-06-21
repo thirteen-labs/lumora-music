@@ -2,6 +2,7 @@ import { useEffect, useCallback } from 'react';
 import { AppState, AppStateStatus } from 'react-native';
 import { useMusicStore } from '@/store/music-store';
 import { useVideoStore } from '@/store/video-store';
+import { useDocumentStore } from '@/store/document-store';
 import {
   registerBackgroundScan,
   isBackgroundScanRegistered,
@@ -12,6 +13,8 @@ export function useScanManager() {
   const scan = useMusicStore((s) => s.scan);
   const songs = useMusicStore((s) => s.songs);
   const scanVideos = useVideoStore((s) => s.scanVideos);
+  const scanDocuments = useDocumentStore((s) => s.scanDocuments);
+  const docFiles = useDocumentStore((s) => s.files);
 
   useEffect(() => {
     const setup = async () => {
@@ -30,17 +33,18 @@ export function useScanManager() {
       if (nextState === 'active') {
         await scan();
         await scanVideos();
+        await scanDocuments();
       }
     };
     const subscription = AppState.addEventListener('change', handleAppState);
     return () => subscription?.remove();
-  }, [scan, scanVideos]);
+  }, [scan, scanVideos, scanDocuments]);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      if (songs.length === 0 && !cancelled) {
-        await Promise.all([scan(), scanVideos()]);
+      if (!cancelled) {
+        await Promise.all([scan(), scanVideos(), scanDocuments()]);
       }
     })();
     return () => { cancelled = true; };
@@ -49,11 +53,13 @@ export function useScanManager() {
 
   const manualScan = useCallback(async () => {
     await scan();
-    scanVideos();
-  }, [scan, scanVideos]);
+    await scanVideos();
+    await scanDocuments();
+  }, [scan, scanVideos, scanDocuments]);
 
   return {
     manualScan,
     songCount: songs.length,
+    docCount: docFiles.length,
   };
 }
