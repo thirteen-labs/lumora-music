@@ -88,7 +88,7 @@ export default function RecentlyDeletedScreen() {
                     {songs.map((item, i) => (
                       <View
                         key={item.id}
-                        style={[s.flexRow, s.itemsCenter, s.gap3, s.p4, { borderBottomWidth: i < songs.length - 1 ? 1 : 0, borderBottomColor: colors.border }]}
+                        style={[s.flexRow, s.itemsCenter, s.gap3, s.p4]}
                       >
                         <Music size={18} color={colors.accent} />
                         <View style={s.flex1}>
@@ -124,7 +124,7 @@ export default function RecentlyDeletedScreen() {
                     {videos.map((item, i) => (
                       <View
                         key={item.id}
-                        style={[s.flexRow, s.itemsCenter, s.gap3, s.p4, { borderBottomWidth: i < videos.length - 1 ? 1 : 0, borderBottomColor: colors.border }]}
+                        style={[s.flexRow, s.itemsCenter, s.gap3, s.p4]}
                       >
                         <Film size={18} color={colors.accent} />
                         <View style={s.flex1}>

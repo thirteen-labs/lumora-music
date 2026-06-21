@@ -216,7 +216,7 @@ export default function HomeScreen() {
                       key={song.id}
                       onPress={() => usePlayerStore.getState().play(song, favSongs)}
                       onLongPress={() => present(song)}
-                      style={[s.flexRow, s.itemsCenter, s.gap3, s.py3, { borderBottomWidth: 1, borderBottomColor: colors.border }]}
+                      style={[s.flexRow, s.itemsCenter, s.gap3, s.py3]}
                     >
                       <View style={[s.w12, s.h12, s.roundedXl, s.overflowHidden, { backgroundColor: colors.surface }]}>
                         <Artwork uri={song.artwork} size={48} borderRadius={12} iconSize={20} iconColor={colors.accent} backgroundColor="transparent" />

@@ -51,7 +51,7 @@ export default function AccentColorScreen() {
               <Pressable
                 key={c.id}
                 onPress={() => setAccentOverride(c.color)}
-                style={[s.flexRow, s.itemsCenter, s.gap4, s.p4, { borderBottomWidth: i < ACCENT_COLORS.length - 1 ? 1 : 0, borderBottomColor: colors.border + '20' }]}
+                style={[s.flexRow, s.itemsCenter, s.gap4, s.p4]}
               >
                 <View style={[s.w10, s.h10, s.roundedFull, { backgroundColor: c.color }]} />
                 <Text style={[s.flex1, s.textSm, s.fontMedium, { color: colors.text }]}>{c.label}</Text>

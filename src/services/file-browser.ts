@@ -37,20 +37,21 @@ export interface MediaFolderItem extends FileItem {
   mediaCount: { audio: number; video: number };
 }
 
-export async function countMediaFiles(uri: string): Promise<{ audio: number; video: number }> {
+export async function countMediaFiles(uri: string, filterType?: 'audio' | 'video'): Promise<{ audio: number; video: number }> {
   const entries = await listDirectory(uri);
   let audio = 0;
   let video = 0;
   for (const entry of entries) {
     if (entry.isDirectory) continue;
     const type = getMediaType(entry.name);
+    if (filterType && type !== filterType) continue;
     if (type === 'audio') audio++;
     else if (type === 'video') video++;
   }
   return { audio, video };
 }
 
-export async function listMediaContents(uri: string): Promise<{
+export async function listMediaContents(uri: string, filterType?: 'audio' | 'video'): Promise<{
   mediaFiles: FileItem[];
   mediaFolders: MediaFolderItem[];
 }> {
@@ -63,20 +64,22 @@ export async function listMediaContents(uri: string): Promise<{
     if (entry.isDirectory) {
       folders.push(entry);
     } else if (getMediaType(entry.name)) {
-      mediaFiles.push(entry);
+      if (!filterType || getMediaType(entry.name) === filterType) {
+        mediaFiles.push(entry);
+      }
     }
   }
 
   const results = await Promise.all(
     folders.map(async (folder) => {
-      const count = await countMediaFiles(folder.uri);
+      const count = await countMediaFiles(folder.uri, filterType);
       return { folder, count };
     })
   );
 
   const mediaFolders: MediaFolderItem[] = [];
   for (const { folder, count } of results) {
-    if (count.audio > 0 || count.video > 0) {
+    if (filterType === 'audio' ? count.audio > 0 : count.audio > 0 || count.video > 0) {
       mediaFolders.push({ ...folder, mediaCount: count });
     }
   }

@@ -5,6 +5,7 @@ import {
   Pressable,
   Alert,
   ActivityIndicator,
+  Switch,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { s } from "@/styles";
@@ -32,8 +33,18 @@ import {
   Search,
   RefreshCw,
   Check,
+  Clock,
+  ScanLine,
 } from "lucide-react-native";
-import { useState, useCallback } from "react";
+import {
+  isBackgroundScanEnabled,
+  setBackgroundScanEnabled,
+  getScanInterval,
+  setScanInterval,
+  getLastBackgroundScanTime,
+  isBackgroundScanRegistered,
+} from "@/services/background-scanner";
+import { useState, useCallback, useEffect } from "react";
 
 export default function LibraryToolsScreen() {
   const { colors } = useTheme();
@@ -47,6 +58,46 @@ export default function LibraryToolsScreen() {
   } | null>(null);
   const [removingGroups, setRemovingGroups] = useState<Set<number>>(new Set());
   const [batchDeleting, setBatchDeleting] = useState(false);
+
+  // Background scanning state
+  const [bgScanEnabled, setBgScanEnabled] = useState(isBackgroundScanEnabled);
+  const [bgScanInterval, setBgScanInterval] = useState(getScanInterval);
+  const [bgScanRegistered, setBgScanRegistered] = useState(false);
+  const [lastBgScan, setLastBgScan] = useState(getLastBackgroundScanTime);
+
+  useEffect(() => {
+    isBackgroundScanRegistered().then(setBgScanRegistered).catch(() => {});
+  }, [bgScanEnabled]);
+
+  const INTERVAL_OPTIONS = [
+    { label: '15 min', value: 15 },
+    { label: '30 min', value: 30 },
+    { label: '1 hour', value: 60 },
+    { label: '3 hours', value: 180 },
+    { label: '6 hours', value: 360 },
+    { label: '12 hours', value: 720 },
+  ];
+
+  const handleToggleBgScan = (value: boolean) => {
+    setBgScanEnabled(value);
+    setBackgroundScanEnabled(value);
+    if (value) {
+      isBackgroundScanRegistered().then(setBgScanRegistered).catch(() => {});
+    } else {
+      setBgScanRegistered(false);
+    }
+  };
+
+  const handleSetInterval = (minutes: number) => {
+    setBgScanInterval(minutes);
+    setScanInterval(minutes);
+  };
+
+  const formatLastScan = (ts: number) => {
+    if (!ts) return 'Never';
+    const d = new Date(ts);
+    return d.toLocaleDateString() + ' · ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
 
   const duplicates = findDuplicateSongs(songs);
   const scanHistory = getScanHistory();
@@ -227,14 +278,9 @@ export default function LibraryToolsScreen() {
                 {duplicates.slice(0, 20).map((group, i) => (
                   <View
                     key={i}
-                    style={[
-                      s.p4,
-                      {
-                        borderBottomWidth:
-                          i < Math.min(duplicates.length, 20) - 1 ? 1 : 0,
-                        borderBottomColor: colors.border,
-                      },
-                    ]}
+                      style={[
+                        s.p4,
+                      ]}
                   >
                     <View style={[s.flexRow, s.itemsCenter, s.gap2, s.mb2]}>
                       <Music size={14} color={colors.accent} />
@@ -462,6 +508,120 @@ export default function LibraryToolsScreen() {
               )}
             </View>
           </View>
+          {/* Background Scanning */}
+          <View>
+            <SectionHeader title="Background Scanning" />
+            <View
+              style={[
+                s.rounded3xl,
+                s.p4,
+                s.gap4,
+                { backgroundColor: colors.surface },
+              ]}
+            >
+              {/* Enable toggle row */}
+              <View style={[s.flexRow, s.itemsCenter, s.gap3]}>
+                <View
+                  style={[
+                    s.w10,
+                    s.h10,
+                    s.roundedXl,
+                    s.itemsCenter,
+                    s.justifyCenter,
+                    { backgroundColor: colors.accent + '18' },
+                  ]}
+                >
+                  <ScanLine size={20} color={colors.accent} />
+                </View>
+                <View style={s.flex1}>
+                  <Text style={[s.textSm, s.fontMedium, { color: colors.text }]}>
+                    Auto-scan in background
+                  </Text>
+                  <Text style={[s.textXs, { color: colors.textMuted }]}>
+                    {bgScanEnabled
+                      ? bgScanRegistered
+                        ? 'Active — scanning periodically'
+                        : 'Enabled — registering…'
+                      : 'Disabled'}
+                  </Text>
+                </View>
+                <Switch
+                  value={bgScanEnabled}
+                  onValueChange={handleToggleBgScan}
+                  trackColor={{ false: colors.border, true: colors.accent + '80' }}
+                  thumbColor={bgScanEnabled ? colors.accent : colors.textMuted}
+                />
+              </View>
+
+              {/* Last scan time */}
+              <View style={[s.flexRow, s.itemsCenter, s.gap3]}>
+                <View
+                  style={[
+                    s.w10,
+                    s.h10,
+                    s.roundedXl,
+                    s.itemsCenter,
+                    s.justifyCenter,
+                    { backgroundColor: colors.card },
+                  ]}
+                >
+                  <Clock size={18} color={colors.textMuted} />
+                </View>
+                <View style={s.flex1}>
+                  <Text style={[s.textSm, s.fontMedium, { color: colors.text }]}>Last background scan</Text>
+                  <Text style={[s.textXs, { color: colors.textMuted }]}>
+                    {formatLastScan(lastBgScan)}
+                  </Text>
+                </View>
+                <Pressable
+                  onPress={() => setLastBgScan(getLastBackgroundScanTime())}
+                  hitSlop={8}
+                >
+                  <RefreshCw size={16} color={colors.textMuted} />
+                </Pressable>
+              </View>
+
+              {/* Interval picker */}
+              <View>
+                <Text style={[s.textXs, s.fontMedium, s.mb2, { color: colors.textMuted }]}>
+                  SCAN INTERVAL
+                </Text>
+                <View style={[s.flexRow, { flexWrap: 'wrap', gap: 8 }]}>
+                  {INTERVAL_OPTIONS.map((opt) => {
+                    const active = bgScanInterval === opt.value;
+                    return (
+                      <Pressable
+                        key={opt.value}
+                        onPress={() => handleSetInterval(opt.value)}
+                        style={[
+                          {
+                            paddingHorizontal: 14,
+                            paddingVertical: 7,
+                            borderRadius: 20,
+                            backgroundColor: active ? colors.accent : colors.card,
+                          },
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            s.textXs,
+                            s.fontSemibold,
+                            { color: active ? '#fff' : colors.textMuted },
+                          ]}
+                        >
+                          {opt.label}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+                <Text style={[s.textXs, s.mt2, { color: colors.textMuted }]}>
+                  Note: Android may enforce a minimum interval (~15 min).
+                </Text>
+              </View>
+            </View>
+          </View>
+
         </View>
       </ScrollView>
     </View>

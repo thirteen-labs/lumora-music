@@ -60,7 +60,7 @@ export default function StorageScreen() {
                 info.largestFiles.slice(0, 15).map((file, i) => (
                   <View
                     key={`${file.name}-${i}`}
-                    style={[s.flexRow, s.itemsCenter, s.gap3, s.p4, { borderBottomWidth: i < Math.min(info.largestFiles.length, 15) - 1 ? 1 : 0, borderBottomColor: colors.border }]}
+                    style={[s.flexRow, s.itemsCenter, s.gap3, s.p4]}
                   >
                     {file.type === 'audio' ? (
                       <Music size={16} color={colors.accent} />
@@ -93,7 +93,7 @@ export default function StorageScreen() {
                   return (
                     <View
                       key={genre.genre}
-                      style={[s.p4, { borderBottomWidth: i < info.genreBreakdown.length - 1 ? 1 : 0, borderBottomColor: colors.border }]}
+                      style={[s.p4]}
                     >
                       <View style={[s.flexRow, s.itemsCenter, s.justifyBetween, s.mb1]}>
                         <Text style={[s.textSm, s.fontMedium, { color: colors.text }]}>{genre.genre}</Text>

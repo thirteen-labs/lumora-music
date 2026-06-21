@@ -203,7 +203,7 @@ export default function BatchOperationsScreen() {
                   <Pressable
                     key={song.id}
                     onPress={() => toggleSelect(song.id)}
-                    style={[s.flexRow, s.itemsCenter, s.gap3, s.p3, { borderBottomWidth: i < songs.length - 1 ? 1 : 0, borderBottomColor: colors.border, backgroundColor: isSelected ? colors.accent + '10' : 'transparent' }]}
+                    style={[s.flexRow, s.itemsCenter, s.gap3, s.p3, { backgroundColor: isSelected ? colors.accent + '10' : 'transparent' }]}
                   >
                     {isSelected ? (
                       <SquareCheck size={20} color={colors.accent} />
@@ -278,7 +278,7 @@ function ActionButton({
     <Pressable
       onPress={onPress}
       disabled={disabled}
-      style={[s.flexRow, s.itemsCenter, s.gap3, s.p4, { borderBottomWidth: 1, borderBottomColor: colors.border, opacity: disabled ? 0.5 : 1 }]}
+      style={[s.flexRow, s.itemsCenter, s.gap3, s.p4, { opacity: disabled ? 0.5 : 1 }]}
     >
       <Icon size={18} color={danger ? colors.notification : colors.accent} />
       <Text style={[s.flex1, s.textSm, s.fontMedium, { color: danger ? colors.notification : colors.text }]}>{label}</Text>

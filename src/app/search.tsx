@@ -239,7 +239,7 @@ export default function SearchScreen() {
                 <Pressable
                   key={term}
                   onPress={() => selectRecent(term)}
-                  style={[s.flexRow, s.itemsCenter, s.gap3, s.py3, { borderBottomWidth: 1, borderBottomColor: colors.border }]}
+                  style={[s.flexRow, s.itemsCenter, s.gap3, s.py3]}
                 >
                   <Clock size={16} color={colors.textMuted} />
                   <Text style={[s.textSm, { color: colors.text }]}>{term}</Text>
@@ -292,14 +292,14 @@ export default function SearchScreen() {
                 } else if (item.type === "video") {
                   const video = videos.find((v) => v.id === item.id);
                   if (video) {
-                    router.push({
+                    router.replace({
                       pathname: "/video-player",
                       params: { uri: video.uri, title: video.title },
                     });
                   }
                 }
               }}
-              style={[s.flexRow, s.itemsCenter, s.gap3, s.px4, s.py3, { borderBottomWidth: 1, borderBottomColor: colors.border }]}
+              style={[s.flexRow, s.itemsCenter, s.gap3, s.px4, s.py3]}
             >
               <Artwork
                 uri={item.artwork ?? item.thumbnail}

@@ -51,7 +51,7 @@ export default function GenreDetailScreen() {
           <Pressable
             onPress={() => usePlayerStore.getState().play(item, genreSongs)}
             onLongPress={() => present(item)}
-            style={[s.flexRowCenter, s.gap3, s.px4, { height: rowHeight, borderBottomWidth: 1, borderBottomColor: colors.border }]}
+            style={[s.flexRowCenter, s.gap3, s.px4, { height: rowHeight }]}
           >
             <Text style={[s.textSm, s.textCenter, { width: 24, color: colors.textMuted }]}>
               {index + 1}

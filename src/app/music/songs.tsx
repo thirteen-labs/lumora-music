@@ -6,7 +6,7 @@ import { useMemo } from 'react';
 import { s } from '@/styles';
 import { useTheme } from '@/hooks/use-theme';
 import { useMusicStore } from '@/store/music-store';
-import { usePlayerStore } from '@/store/player-store';
+import { usePlayerStore, generateRandomQueue } from '@/store/player-store';
 import { useLayoutStore } from '@/store/layout-store';
 import { useStatsStore } from '@/store/stats-store';
 import { useLyricsStore } from '@/store/lyrics-store';
@@ -118,7 +118,7 @@ export default function SongsScreen() {
           contentContainerStyle={{ paddingBottom: 120 + insets.bottom, paddingHorizontal: 16 }}
           renderItem={({ item }: { item: Song }) => (
             <Pressable
-              onPress={() => usePlayerStore.getState().play(item, sortedSongs)}
+              onPress={() => usePlayerStore.getState().play(item, generateRandomQueue(item, songs))}
               onLongPress={() => present(item)}
               style={{ width: GRID_ITEM_WIDTH, marginBottom: 16 }}
             >
@@ -177,9 +177,9 @@ export default function SongsScreen() {
           contentContainerStyle={{ paddingBottom: 120 + insets.bottom }}
           renderItem={({ item }: { item: Song }) => (
             <Pressable
-              onPress={() => usePlayerStore.getState().play(item, sortedSongs)}
+              onPress={() => usePlayerStore.getState().play(item, generateRandomQueue(item, songs))}
               onLongPress={() => present(item)}
-              style={[s.flexRowCenter, s.gap3, s.px4, { height: rowHeight, borderBottomWidth: 1, borderBottomColor: colors.border }]}
+              style={[s.flexRowCenter, s.gap3, s.px4, { height: rowHeight }]}
             >
               <Artwork uri={item.artwork} size={artSize} borderRadius={artSize * 0.25} iconColor={colors.accent} backgroundColor={colors.surface} />
               <View style={s.flex1}>

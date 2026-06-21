@@ -106,7 +106,7 @@ export default function StatisticsScreen() {
                 topSongs.map(({ song, count }, i) => (
                   <View
                     key={song.id}
-                    style={[s.flexRow, s.itemsCenter, s.gap3, s.p4, { borderBottomWidth: i < topSongs.length - 1 ? 1 : 0, borderBottomColor: colors.border }]}
+                    style={[s.flexRow, s.itemsCenter, s.gap3, s.p4]}
                   >
                     <Text style={[s.textSm, s.fontBold, { width: 24, textAlign: 'center', color: colors.accent }]}>
                       {i + 1}
@@ -135,7 +135,7 @@ export default function StatisticsScreen() {
                 listeningStats.topArtists.map(({ name, count }, i) => (
                   <View
                     key={name}
-                    style={[s.flexRow, s.itemsCenter, s.gap3, s.p4, { borderBottomWidth: i < listeningStats.topArtists.length - 1 ? 1 : 0, borderBottomColor: colors.border }]}
+                    style={[s.flexRow, s.itemsCenter, s.gap3, s.p4]}
                   >
                     <Text style={[s.textSm, s.fontBold, { width: 24, textAlign: 'center', color: colors.accent }]}>{i + 1}</Text>
                     <Text style={[s.flex1, s.textSm, s.fontMedium, { color: colors.text }]} numberOfLines={1}>{name}</Text>
@@ -159,7 +159,7 @@ export default function StatisticsScreen() {
                 listeningStats.topAlbums.map(({ name, count }, i) => (
                   <View
                     key={name}
-                    style={[s.flexRow, s.itemsCenter, s.gap3, s.p4, { borderBottomWidth: i < listeningStats.topAlbums.length - 1 ? 1 : 0, borderBottomColor: colors.border }]}
+                    style={[s.flexRow, s.itemsCenter, s.gap3, s.p4]}
                   >
                     <Text style={[s.textSm, s.fontBold, { width: 24, textAlign: 'center', color: colors.accent }]}>{i + 1}</Text>
                     <Text style={[s.flex1, s.textSm, s.fontMedium, { color: colors.text }]} numberOfLines={1}>{name}</Text>

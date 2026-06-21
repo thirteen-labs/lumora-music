@@ -79,7 +79,7 @@ export default function HiddenFilesScreen() {
                       <Pressable
                         key={song.id}
                         onPress={() => handleUnhideSong(song.id, song.title)}
-                        style={[s.flexRow, s.itemsCenter, s.gap3, s.p4, { borderBottomWidth: i < hiddenSongs.length - 1 ? 1 : 0, borderBottomColor: colors.border }]}
+                        style={[s.flexRow, s.itemsCenter, s.gap3, s.p4]}
                       >
                         <Music size={18} color={colors.accent} />
                         <View style={s.flex1}>
@@ -105,7 +105,7 @@ export default function HiddenFilesScreen() {
                       <Pressable
                         key={video.id}
                         onPress={() => handleUnhideVideo(video.id, video.title)}
-                        style={[s.flexRow, s.itemsCenter, s.gap3, s.p4, { borderBottomWidth: i < hiddenVideos.length - 1 ? 1 : 0, borderBottomColor: colors.border }]}
+                        style={[s.flexRow, s.itemsCenter, s.gap3, s.p4]}
                       >
                         <Film size={18} color={colors.accent} />
                         <View style={s.flex1}>

@@ -35,7 +35,7 @@ export default function VideoQualityScreen() {
               <Pressable
                 key={opt.id}
                 onPress={() => setVideoQuality(opt.id)}
-                style={[s.flexRow, s.itemsCenter, s.gap4, s.p4, { borderBottomWidth: i < QUALITY_OPTIONS.length - 1 ? 1 : 0, borderBottomColor: colors.border + '20' }]}
+                style={[s.flexRow, s.itemsCenter, s.gap4, s.p4]}
               >
                 <View style={s.flex1}>
                   <Text style={[s.textSm, s.fontMedium, { color: colors.text }]}>{opt.label}</Text>

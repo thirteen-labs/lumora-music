@@ -45,7 +45,7 @@
 | 14 | **Online Subtitle Downloading** | Requires subtitle API (OpenSubtitles, etc.) |
 | 15 | **AI Playlists / Mood Detection / NLP Search** | Requires ML models or cloud AI APIs |
 | 16 | **Cloud Backup & Sync** | Requires cloud storage backend and auth |
-| 17 | **Background Scanning** | Requires `expo-task-manager` integration (v2 feature) |
+| ~~17~~ | ~~**Background Scanning**~~ | ~~Requires `expo-task-manager` integration (v2 feature)~~ | **IMPLEMENTED**: Service fully wired + UI controls in Library Tools (toggle + interval picker + last scan time). |
 | 19 | **File Operations** (rename/move/copy/delete) | **IMPLEMENTED** in `src/services/file-operations.ts` using `expo-file-system` |
 
 ---

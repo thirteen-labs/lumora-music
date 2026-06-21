@@ -35,7 +35,7 @@ export default function AboutScreen() {
             ].map((item, i, arr) => (
               <View
                 key={item.label}
-                style={[s.flexRow, s.itemsCenter, s.justifyBetween, s.p4, { borderBottomWidth: i < arr.length - 1 ? 1 : 0, borderBottomColor: colors.border + '20' }]}
+                style={[s.flexRow, s.itemsCenter, s.justifyBetween, s.p4]}
               >
                 <Text style={[s.textSm, s.fontMedium, { color: colors.text }]}>{item.label}</Text>
                 <Text style={[s.textSm, { color: colors.textMuted }]}>{item.value}</Text>

@@ -28,7 +28,7 @@ export default function PrivacyScreen() {
             ].map((item, i, arr) => (
               <View
                 key={item.label}
-                style={[s.flexRow, s.itemsCenter, s.gap4, s.p4, { borderBottomWidth: i < arr.length - 1 ? 1 : 0, borderBottomColor: colors.border + '20' }]}
+                style={[s.flexRow, s.itemsCenter, s.gap4, s.p4]}
               >
                 <View style={[s.w10, s.h10, s.roundedXl, s.itemsCenter, s.justifyCenter, { backgroundColor: colors.accent + '15' }]}>
                   <Shield size={20} color={colors.accent} />

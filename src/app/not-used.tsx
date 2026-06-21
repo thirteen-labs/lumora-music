@@ -39,7 +39,7 @@ export default function NotUsedScreen() {
                 <Pressable
                   key={song.id}
                   onPress={() => usePlayerStore.getState().play(song, notUsed)}
-                  style={[s.flexRow, s.itemsCenter, s.gap3, s.p4, { borderBottomWidth: i < notUsed.length - 1 ? 1 : 0, borderBottomColor: colors.border + '20' }]}
+                  style={[s.flexRow, s.itemsCenter, s.gap3, s.p4]}
                 >
                   <View style={[s.w10, s.h10, s.roundedXl, s.itemsCenter, s.justifyCenter, { backgroundColor: colors.accent + '15' }]}>
                     <Play size={18} color={colors.accent} />

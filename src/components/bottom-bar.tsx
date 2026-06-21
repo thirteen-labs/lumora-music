@@ -1,7 +1,7 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { View, Pressable, type LayoutChangeEvent } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Music, Video, Folder, ListMusic, Heart, Settings } from 'lucide-react-native';
+import { Music, Video, Folder, ListMusic, Heart } from 'lucide-react-native';
 import { useRouter, useSegments } from 'expo-router';
 import { s } from '@/styles';
 import { useTheme } from '@/hooks/use-theme';
@@ -12,7 +12,6 @@ const NAV_ITEMS = [
   { key: 'videos', labelKey: 'nav.videos', icon: Video, route: '/(tabs)/videos' },
   { key: 'files', labelKey: 'nav.folders', icon: Folder, route: '/(tabs)/files' },
   { key: 'favorites', labelKey: 'nav.favorites', icon: Heart, route: '/(tabs)/favorites' },
-  { key: 'settings', labelKey: 'nav.settings', icon: Settings, route: '/(tabs)/settings' },
   { key: 'playlists', labelKey: 'nav.playlists', icon: ListMusic, route: '/playlists' },
 ] as const;
 

@@ -31,7 +31,7 @@ export default function HelpSupportScreen() {
               <Pressable
                 key={link.label}
                 onPress={() => link.url && Linking.openURL(link.url)}
-                style={[s.flexRow, s.itemsCenter, s.gap4, s.p4, { borderBottomWidth: i < LINKS.length - 1 ? 1 : 0, borderBottomColor: colors.border + '20' }]}
+                style={[s.flexRow, s.itemsCenter, s.gap4, s.p4]}
               >
                 <View style={[s.w10, s.h10, s.roundedXl, s.itemsCenter, s.justifyCenter, { backgroundColor: colors.accent + '15' }]}>
                   <link.icon size={20} color={colors.accent} />

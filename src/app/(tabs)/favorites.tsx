@@ -44,7 +44,7 @@ export default function FavoritesScreen() {
           <Pressable
             onPress={() => usePlayerStore.getState().play(item, songs)}
             onLongPress={() => present(item)}
-            style={[s.flexRow, s.itemsCenter, s.gap3, s.px4, s.py3, { borderBottomWidth: 1, borderBottomColor: colors.border }]}
+            style={[s.flexRow, s.itemsCenter, s.gap3, s.px4, s.py3]}
           >
             <Artwork uri={item.artwork}
              size={44} 

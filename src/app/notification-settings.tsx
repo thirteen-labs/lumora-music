@@ -26,7 +26,7 @@ export default function NotificationSettingsScreen() {
       <ScrollView contentContainerStyle={{ paddingBottom: 120 + insets.bottom, paddingTop: 8 }} showsVerticalScrollIndicator={false}>
         <View style={s.px5}>
           <View style={[s.mb6, { backgroundColor: colors.surface, borderRadius: 16, overflow: 'hidden' }]}>
-            <View style={[s.flexRow, s.itemsCenter, s.gap4, s.p4, { borderBottomWidth: 1, borderBottomColor: colors.border + '20' }]}>
+            <View style={[s.flexRow, s.itemsCenter, s.gap4, s.p4]}>
               <View style={[s.w10, s.h10, s.roundedXl, s.itemsCenter, s.justifyCenter, { backgroundColor: colors.accent + '15' }]}>
                 <BellPlus size={20} color={colors.accent} />
               </View>

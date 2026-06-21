@@ -84,7 +84,7 @@ export default function GestureControlsScreen() {
                 <Pressable
                   key={g.gesture}
                   onPress={() => toggleSetting(g.key)}
-                  style={[s.flexRow, s.itemsCenter, s.gap3, s.p4, { borderBottomWidth: i < gestures.length - 1 ? 1 : 0, borderBottomColor: colors.border }]}
+                  style={[s.flexRow, s.itemsCenter, s.gap3, s.p4]}
                 >
                   <View style={s.flex1}>
                     <Text style={[s.textSm, s.fontMedium, { color: colors.text }]}>{g.gesture}</Text>

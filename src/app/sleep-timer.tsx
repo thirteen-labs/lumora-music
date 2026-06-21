@@ -92,11 +92,7 @@ export default function SleepTimerScreen() {
                 <Pressable
                   key={option.minutes}
                   onPress={() => timer.start(option.minutes)}
-                  style={[s.flexRow, s.itemsCenter, s.justifyBetween, s.p4, {
-                    borderBottomWidth:
-                      i < SLEEP_TIMER_OPTIONS.length - 1 ? 1 : 0,
-                    borderBottomColor: colors.border,
-                  }]}
+                  style={[s.flexRow, s.itemsCenter, s.justifyBetween, s.p4]}
                 >
                   <View style={[s.flexRow, s.itemsCenter, s.gap3]}>
                     <Clock size={18} color={colors.accent} />

@@ -225,7 +225,7 @@ export default function DocumentReaderScreen() {
                       <Pressable
                         key={doc.uri}
                         onPress={() => handleDocPress(doc)}
-                        style={[s.flexRow, s.itemsCenter, s.gap3, s.p4, i < currentDocs.length - 1 ? { borderBottomWidth: 1, borderBottomColor: colors.border + '20' } : undefined]}
+                        style={[s.flexRow, s.itemsCenter, s.gap3, s.p4]}
                       >
                         <View style={[s.w10, s.h10, s.roundedXl, s.itemsCenter, s.justifyCenter, { backgroundColor: catColor + '15' }]}>
                           <Icon size={20} color={catColor} />

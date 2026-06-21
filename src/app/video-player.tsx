@@ -1,4 +1,5 @@
-import { View, Text, Pressable, Dimensions, StyleSheet } from "react-native";
+import { View, Text, Pressable, Dimensions, StyleSheet, Alert, ActivityIndicator } from "react-native";
+import Slider from "@react-native-community/slider";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { s } from "@/styles";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -12,8 +13,6 @@ import {
   X,
   Play,
   Pause,
-  SkipBack,
-  SkipForward,
   Lock,
   Unlock,
   RotateCcw,
@@ -25,6 +24,10 @@ import {
   MoreHorizontal,
   Share2,
   Trash2,
+  Repeat1,
+  Heart,
+  SkipBack,
+  SkipForward,
 } from "lucide-react-native";
 import {
   useVideoPlayer,
@@ -43,7 +46,7 @@ import {
   getActiveCue,
   type SubtitleCue,
 } from "@/utils/subtitle-parser";
-import { formatDuration } from "@/utils/cn";
+import { formatDuration, formatFileSize } from "@/utils/cn";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
   useSharedValue,
@@ -55,7 +58,8 @@ import Animated, {
 import { useVideoProgressStore } from "@/store/video-progress-store";
 import { usePlayerStore } from "@/store/player-store";
 import { useVideoStore } from "@/store/video-store";
-import type { Song } from "@/types/media";
+import { useFavoritesStore } from "@/store/favorites-store";
+import type { Song, Video } from "@/types/media";
 import * as ScreenOrientation from "expo-screen-orientation";
 import { useTranslation } from "@/hooks/use-translation";
 import { captureRef } from "react-native-view-shot";
@@ -63,7 +67,23 @@ import * as Sharing from "expo-sharing";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
-const PLAYBACK_SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 2];
+const PLAYBACK_SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 2, 2.5, 3];
+
+async function setScreenBrightness(value: number) {
+  try {
+    const Brightness = require('expo-brightness');
+    await Brightness.setBrightnessAsync(Math.max(0.01, Math.min(1, value)));
+  } catch {}
+}
+
+async function getScreenBrightness(): Promise<number> {
+  try {
+    const Brightness = require('expo-brightness');
+    return await Brightness.getBrightnessAsync();
+  } catch {
+    return 1;
+  }
+}
 
 const SCALE_OPTIONS = [
   { label: "50%", value: 0.5, group: "small" as const },
@@ -258,11 +278,24 @@ async function handleShareVideo(uri: string) {
   } catch {}
 }
 
-async function handleDeleteVideo(uri: string, router: any) {
-  try {
-    await FileSystem.deleteAsync(uri, { idempotent: true });
-    router.back();
-  } catch {}
+function confirmDeleteVideo(uri: string, router: any) {
+  Alert.alert(
+    "Delete Video",
+    "This will permanently delete the file from your device. This cannot be undone.",
+    [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Delete",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            await FileSystem.deleteAsync(uri, { idempotent: true });
+            router.back();
+          } catch {}
+        },
+      },
+    ],
+  );
 }
 
 export default function VideoPlayerScreen() {
@@ -286,7 +319,38 @@ export default function VideoPlayerScreen() {
   const [seekSide, setSeekSide] = useState<"left" | "right">("right");
   const [volume, setVolume] = useState(1);
   const [brightness, setBrightness] = useState(1);
+
+  // Seek bar state
+  const [currentPosition, setCurrentPosition] = useState(0);
+  const [videoDuration, setVideoDuration] = useState(0);
+  const [isBuffering, setIsBuffering] = useState(false);
+  const [isLooping, setIsLooping] = useState(false);
+  const isScrubbing = useRef(false);
+  const scrubValue = useRef(0);
   const seekTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const { isVideoFavorite, toggleVideoFavorite } = useFavoritesStore();
+  const videos = useVideoStore((s) => s.videos);
+  const sortField = useVideoStore((s) => s.sortField);
+  const sortOrder = useVideoStore((s) => s.sortOrder);
+
+  const sortedVideos = useMemo(() => {
+    const sorted = [...videos];
+    sorted.sort((a, b) => {
+      let cmp = 0;
+      switch (sortField) {
+        case 'title': cmp = a.title.localeCompare(b.title); break;
+        case 'dateAdded': cmp = a.dateAdded - b.dateAdded; break;
+        case 'duration': cmp = a.duration - b.duration; break;
+        case 'fileSize': cmp = a.fileSize - b.fileSize; break;
+        default: cmp = a.dateAdded - b.dateAdded;
+      }
+      return sortOrder === 'desc' ? -cmp : cmp;
+    });
+    return sorted;
+  }, [videos, sortField, sortOrder]);
+  const currentVideo = useMemo(() => sortedVideos.find(v => v.uri === uri), [sortedVideos, uri]);
+  const isFav = currentVideo ? isVideoFavorite(currentVideo.id) : false;
 
   const playerRef = useRef<VideoPlayer | null>(null);
 
@@ -423,8 +487,13 @@ export default function VideoPlayerScreen() {
     showControls();
   }, [showControls]);
 
-  const player = useVideoPlayer(uri ?? "", (p: VideoPlayer) => {
-    p.loop = true;
+  // Sync real screen brightness on mount
+  useEffect(() => {
+    getScreenBrightness().then(setBrightness).catch(() => {});
+  }, []);
+
+  const player = useVideoPlayer(uri ?? null, (p: VideoPlayer) => {
+    p.loop = false; // loop is toggled by the user via isLooping state
     playerRef.current = p;
 
     if (uri && hasResumePoint(uri)) {
@@ -498,27 +567,6 @@ export default function VideoPlayerScreen() {
     }
   }, [showSeekIndicator]);
 
-  const FRAME_STEP = 1 / 30;
-
-  const stepForward = useCallback(() => {
-    if (playerRef.current) {
-      const pos = playerRef.current.currentTime;
-      const dur = playerRef.current.duration;
-      const newPos = Math.min(pos + FRAME_STEP, dur);
-      playerRef.current.currentTime = newPos;
-      showSeekIndicator(`+1 frame`, "right");
-    }
-  }, [showSeekIndicator, FRAME_STEP]);
-
-  const stepBackward = useCallback(() => {
-    if (playerRef.current) {
-      const pos = playerRef.current.currentTime;
-      const newPos = Math.max(pos - FRAME_STEP, 0);
-      playerRef.current.currentTime = newPos;
-      showSeekIndicator(`-1 frame`, "left");
-    }
-  }, [showSeekIndicator, FRAME_STEP]);
-
   const toggleFullscreen = useCallback(() => {
     setIsFullscreen((prev) => {
       const entering = !prev;
@@ -542,6 +590,59 @@ export default function VideoPlayerScreen() {
     }
     speedSheetRef.current?.dismiss();
   }, []);
+
+  const toggleLoop = useCallback(() => {
+    setIsLooping((prev) => {
+      const next = !prev;
+      if (playerRef.current) {
+        playerRef.current.loop = next;
+      }
+      return next;
+    });
+  }, []);
+
+  const handleBrightnessChange = useCallback((val: number) => {
+    setBrightness(val);
+    setScreenBrightness(val);
+  }, []);
+
+  const goToNext = useCallback(() => {
+    if (!sortedVideos.length) return;
+    const idx = sortedVideos.findIndex(v => v.uri === uri);
+    const next = sortedVideos[(idx + 1) % sortedVideos.length];
+    if (next) {
+      router.replace({ pathname: "/video-player", params: { uri: next.uri, title: next.title } });
+    }
+  }, [sortedVideos, uri, router]);
+
+  const goToPrev = useCallback(() => {
+    if (!sortedVideos.length) return;
+    const idx = sortedVideos.findIndex(v => v.uri === uri);
+    const prev = sortedVideos[(idx - 1 + sortedVideos.length) % sortedVideos.length];
+    if (prev) {
+      router.replace({ pathname: "/video-player", params: { uri: prev.uri, title: prev.title } });
+    }
+  }, [sortedVideos, uri, router]);
+
+  // Handle auto-playing next video when current one finishes
+  useEffect(() => {
+    if (!player) return;
+    const sub = player.addListener('playToEnd', () => {
+      if (!isLooping) {
+        goToNext();
+      }
+    });
+    return () => sub.remove();
+  }, [player, isLooping, goToNext]);
+
+  const stepFrame = useCallback((direction: 'next' | 'prev') => {
+    if (!playerRef.current) return;
+    const fps = 30;
+    const frameTime = 1 / fps;
+    const currentTime = playerRef.current.currentTime;
+    playerRef.current.currentTime = direction === 'next' ? currentTime + frameTime : Math.max(0, currentTime - frameTime);
+    showControls();
+  }, [showControls]);
 
   const changeScale = useCallback((newScale: number) => {
     setScale(newScale);
@@ -680,14 +781,14 @@ export default function VideoPlayerScreen() {
   const moreActions = useMemo(() => [
     { icon: <RotateCw size={20} color={colors.text} />, label: "Rotate CW", onPress: () => { rotateVideo("cw"); dismissMoreSheet(); } },
     { icon: <RotateCcw size={20} color={colors.text} />, label: "Rotate CCW", onPress: () => { rotateVideo("ccw"); dismissMoreSheet(); } },
+    { icon: <SkipForward size={20} color={colors.text} />, label: "Next Frame", onPress: () => { stepFrame('next'); dismissMoreSheet(); } },
+    { icon: <SkipBack size={20} color={colors.text} />, label: "Prev Frame", onPress: () => { stepFrame('prev'); dismissMoreSheet(); } },
     ...(isPiPSupported ? [{ icon: <MonitorPlay size={20} color={colors.text} />, label: "Picture-in-Picture", onPress: () => { handlePiP(); dismissMoreSheet(); } }] : []),
     { icon: <Camera size={20} color={colors.text} />, label: screenshotTaken ? "Captured!" : "Screenshot", onPress: () => { handleScreenshot(); dismissMoreSheet(); } },
     { icon: <AudioLines size={20} color={colors.text} />, label: "Audio Track", onPress: () => { dismissAndPresentAudioTrack(); } },
-    { icon: <SkipBack size={20} color={colors.text} />, label: "Frame Back", onPress: () => { stepBackward(); dismissMoreSheet(); } },
-    { icon: <SkipForward size={20} color={colors.text} />, label: "Frame Forward", onPress: () => { stepForward(); dismissMoreSheet(); } },
     { icon: <Share2 size={20} color={colors.text} />, label: "Share", onPress: () => { dismissMoreSheet(); if (uri) handleShareVideo(uri); } },
-    { icon: <Trash2 size={20} color="#ff4444" />, label: "Delete", onPress: () => { dismissMoreSheet(); if (uri) handleDeleteVideo(uri, router); } },
-  ], [rotateVideo, dismissMoreSheet, isPiPSupported, handlePiP, dismissAndPresentAudioTrack, screenshotTaken, handleScreenshot, stepBackward, stepForward, uri, colors.text, router]);
+    { icon: <Trash2 size={20} color="#ff4444" />, label: "Delete", onPress: () => { dismissMoreSheet(); if (uri) confirmDeleteVideo(uri, router); } },
+  ], [rotateVideo, dismissMoreSheet, stepFrame, isPiPSupported, handlePiP, dismissAndPresentAudioTrack, screenshotTaken, handleScreenshot, uri, colors.text, router]);
 
   useEffect(() => {
     if (!activeSubtitle) {
@@ -708,6 +809,29 @@ export default function VideoPlayerScreen() {
     }, 5000);
     return () => clearInterval(interval);
   }, [uri, saveVideoPosition]);
+
+  // Real-time position polling for seek bar
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (playerRef.current && !isScrubbing.current) {
+        const pos = playerRef.current.currentTime ?? 0;
+        const dur = playerRef.current.duration ?? 0;
+        setCurrentPosition(pos);
+        if (dur > 0 && dur !== videoDuration) setVideoDuration(dur);
+      }
+    }, 200);
+    return () => clearInterval(interval);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [videoDuration]);
+
+  // Buffering detection via status change
+  useEffect(() => {
+    if (!player) return;
+    const sub = player.addListener('statusChange', (event: any) => {
+      setIsBuffering(event.status === 'loading');
+    });
+    return () => sub.remove();
+  }, [player]);
 
   const handleResume = useCallback(() => {
     if (playerRef.current && resumePosition > 0) {
@@ -744,6 +868,9 @@ export default function VideoPlayerScreen() {
 
   useEffect(() => {
     return () => {
+      try {
+        playerRef.current?.pause();
+      } catch {}
       playerRef.current = null;
       if (seekTimerRef.current) clearTimeout(seekTimerRef.current);
       if (controlsTimerRef.current) clearTimeout(controlsTimerRef.current);
@@ -834,7 +961,7 @@ export default function VideoPlayerScreen() {
             );
 
             if (isLeftSide) {
-              runOnJS(setBrightness)(newVal);
+              runOnJS(handleBrightnessChange)(newVal);
             } else {
               runOnJS(handleVolumeChange)(newVal);
             }
@@ -921,8 +1048,39 @@ export default function VideoPlayerScreen() {
                 onPictureInPictureStop={() => setIsPiPActive(false)}
                 contentFit={contentFit}
               />
+              {/* Buffering spinner - fullscreen */}
+              {isBuffering && (
+                <View style={styles.bufferingOverlay}>
+                  <ActivityIndicator size="large" color="rgba(255,255,255,0.8)" />
+                </View>
+              )}
             </View>
           </GestureDetector>
+          {/* Fullscreen seek bar + time */}
+          {!isLocked && (
+            <View style={styles.fullscreenSeekBar}>
+              <Text style={styles.timeText}>{formatDuration(currentPosition)}</Text>
+              <Slider
+                style={{ flex: 1, height: 36 }}
+                minimumValue={0}
+                maximumValue={Math.max(videoDuration, 1)}
+                value={currentPosition}
+                onSlidingStart={() => { isScrubbing.current = true; }}
+                onValueChange={(v) => { scrubValue.current = v; }}
+                onSlidingComplete={(v) => {
+                  isScrubbing.current = false;
+                  if (playerRef.current) {
+                    playerRef.current.currentTime = v;
+                    setCurrentPosition(v);
+                  }
+                }}
+                minimumTrackTintColor="#ffffff"
+                maximumTrackTintColor="rgba(255,255,255,0.3)"
+                thumbTintColor="#ffffff"
+              />
+              <Text style={styles.timeText}>{formatDuration(videoDuration)}</Text>
+            </View>
+          )}
           {activeSubtitle && currentCueText && (
             <View
               style={[
@@ -949,33 +1107,30 @@ export default function VideoPlayerScreen() {
             </View>
           )}
 
-          {!isLocked && (
-            <>
-              <Pressable
-                onPress={handlePlayPause}
-                style={styles.fsAlwaysVisiblePlayButton}
-              >
-                {player.playing ? (
-                  <Pause size={18} color="#fff" />
-                ) : (
-                  <Play size={18} color="#fff" fill="#fff" />
+          {!isLocked && controlsVisible && (
+            <Pressable
+              style={styles.controlsOverlayFullscreen}
+            >
+              <View style={[s.flexRow, s.itemsCenter, s.gap8]}>
+                {sortedVideos.length > 1 && (
+                  <Pressable onPress={goToPrev} style={styles.navButton}>
+                    <SkipBack size={32} color="#fff" fill="#fff" />
+                  </Pressable>
                 )}
-              </Pressable>
-              {controlsVisible && (
-                <Pressable
-                  onPress={handlePlayPause}
-                  style={styles.controlsOverlayFullscreen}
-                >
-                  <View style={styles.playButtonLarge}>
-                    {player.playing ? (
-                      <Pause size={32} color="#fff" />
-                    ) : (
-                      <Play size={32} color="#fff" fill="#fff" />
-                    )}
-                  </View>
+                <Pressable onPress={handlePlayPause} style={styles.playButtonLarge}>
+                  {player.playing ? (
+                    <Pause size={32} color="#fff" />
+                  ) : (
+                    <Play size={32} color="#fff" fill="#fff" />
+                  )}
                 </Pressable>
-              )}
-            </>
+                {sortedVideos.length > 1 && (
+                  <Pressable onPress={goToNext} style={styles.navButton}>
+                    <SkipForward size={32} color="#fff" fill="#fff" />
+                  </Pressable>
+                )}
+              </View>
+            </Pressable>
           )}
 
           {!isLocked && (
@@ -1014,6 +1169,11 @@ export default function VideoPlayerScreen() {
                   <Unlock size={22} color="#fff" />
                 )}
               </Pressable>
+              {currentVideo && (
+                <Pressable onPress={() => toggleVideoFavorite(currentVideo)} style={styles.fullscreenButton}>
+                  <Heart size={22} color={isFav ? colors.accent : "#fff"} fill={isFav ? colors.accent : "transparent"} />
+                </Pressable>
+              )}
               {isPiPSupported && (
                 <Pressable onPress={handlePiP} style={styles.fullscreenButton}>
                   <MonitorPlay
@@ -1086,6 +1246,14 @@ export default function VideoPlayerScreen() {
             >
               {title ?? "Video"}
             </Text>
+            {currentVideo && (
+              <Pressable
+                onPress={() => toggleVideoFavorite(currentVideo)}
+                style={[s.w11, s.h11, s.itemsCenter, s.justifyCenter]}
+              >
+                <Heart size={22} color={isFav ? colors.accent : colors.textMuted} fill={isFav ? colors.accent : "transparent"} />
+              </Pressable>
+            )}
             {videoResolution && (
               <View
                 style={{
@@ -1151,6 +1319,12 @@ export default function VideoPlayerScreen() {
                 />
                 {!isLocked && <VolumeIndicator volume={volume} />}
                 {!isLocked && <BrightnessIndicator brightness={brightness} />}
+                {/* Buffering spinner */}
+                {isBuffering && (
+                  <View style={styles.bufferingOverlay}>
+                    <ActivityIndicator size="large" color="rgba(255,255,255,0.8)" />
+                  </View>
+                )}
                 {isLocked && (
                   <View style={styles.lockOverlay}>
                     <Pressable onPress={toggleLock} style={styles.lockButton}>
@@ -1237,34 +1411,30 @@ export default function VideoPlayerScreen() {
                 )}
               </View>
             </GestureDetector>
-            {!isLocked && !showResume && (
-              <>
-                <Pressable
-                  onPress={handlePlayPause}
-                  style={styles.alwaysVisiblePlayButton}
-                  accessibilityLabel={player.playing ? "Pause" : "Play"}
-                >
-                  {player.playing ? (
-                    <Pause size={18} color="#fff" />
-                  ) : (
-                    <Play size={18} color="#fff" fill="#fff" />
+            {!isLocked && !showResume && controlsVisible && (
+              <Pressable
+                style={styles.controlsOverlay}
+              >
+                <View style={[s.flexRow, s.itemsCenter, s.gap6]}>
+                  {sortedVideos.length > 1 && (
+                    <Pressable onPress={goToPrev} style={styles.navButtonSmall}>
+                      <SkipBack size={24} color="#fff" fill="#fff" />
+                    </Pressable>
                   )}
-                </Pressable>
-                {controlsVisible && (
-                  <Pressable
-                    onPress={handlePlayPause}
-                    style={styles.controlsOverlay}
-                  >
-                    <View style={styles.playButtonLarge}>
-                      {player.playing ? (
-                        <Pause size={32} color="#fff" />
-                      ) : (
-                        <Play size={32} color="#fff" fill="#fff" />
-                      )}
-                    </View>
+                  <Pressable onPress={handlePlayPause} style={styles.playButtonLarge}>
+                    {player.playing ? (
+                      <Pause size={32} color="#fff" />
+                    ) : (
+                      <Play size={32} color="#fff" fill="#fff" />
+                    )}
                   </Pressable>
-                )}
-              </>
+                  {sortedVideos.length > 1 && (
+                    <Pressable onPress={goToNext} style={styles.navButtonSmall}>
+                      <SkipForward size={24} color="#fff" fill="#fff" />
+                    </Pressable>
+                  )}
+                </View>
+              </Pressable>
             )}
           </View>
         </View>
@@ -1273,9 +1443,39 @@ export default function VideoPlayerScreen() {
           <Text style={[s.textLg, s.fontBold, s.mb2, { color: colors.text }]}>
             {title ?? "Untitled"}
           </Text>
-          <Text style={[s.textSm, s.mb4, { color: colors.textMuted }]}>
-            Local video
+          <Text style={[s.textXs, s.mb4, { color: colors.textMuted }]}>
+            {currentVideo ? `${formatFileSize(currentVideo.fileSize)} · ` : ''}{videoResolution ? `${videoResolution.width}x${videoResolution.height}` : 'Local video'}
           </Text>
+
+          {/* Seek bar + time display */}
+          <View style={[s.flexRow, s.itemsCenter, { gap: 8, marginBottom: 4 }]}>
+            <Text style={{ color: colors.textMuted, fontSize: 12, fontVariant: ['tabular-nums'], minWidth: 38 }}>
+              {formatDuration(currentPosition)}
+            </Text>
+            <View style={{ flex: 1 }}>
+              <Slider
+                style={{ height: 36 }}
+                minimumValue={0}
+                maximumValue={Math.max(videoDuration, 1)}
+                value={currentPosition}
+                onSlidingStart={() => { isScrubbing.current = true; }}
+                onValueChange={(v) => { scrubValue.current = v; }}
+                onSlidingComplete={(v) => {
+                  isScrubbing.current = false;
+                  if (playerRef.current) {
+                    playerRef.current.currentTime = v;
+                    setCurrentPosition(v);
+                  }
+                }}
+                minimumTrackTintColor={colors.accent}
+                maximumTrackTintColor={colors.border}
+                thumbTintColor={colors.accent}
+              />
+            </View>
+            <Text style={{ color: colors.textMuted, fontSize: 12, fontVariant: ['tabular-nums'], minWidth: 38, textAlign: 'right' }}>
+              {formatDuration(videoDuration)}
+            </Text>
+          </View>
 
           <View style={[s.flexRow, s.itemsCenter, s.gap2, s.mb3, s.flexWrap]}>
             <Pressable
@@ -1328,6 +1528,16 @@ export default function VideoPlayerScreen() {
               {isLocked ? <Lock size={14} color={colors.accent} /> : <Unlock size={14} color={colors.textMuted} />}
               <Text style={[s.textXs, s.fontMedium, { color: isLocked ? colors.accent : colors.text }]}>
                 {isLocked ? t("video.unlock") : t("video.lock")}
+              </Text>
+            </Pressable>
+
+            <Pressable
+              onPress={toggleLoop}
+              style={[s.flexRow, s.itemsCenter, { gap: 6, paddingVertical: 8, paddingHorizontal: 12, borderRadius: 16, backgroundColor: isLooping ? colors.accent + '25' : colors.surface }]}
+            >
+              <Repeat1 size={14} color={isLooping ? colors.accent : colors.textMuted} />
+              <Text style={[s.textXs, s.fontMedium, { color: isLooping ? colors.accent : colors.text }]}>
+                {isLooping ? 'Loop On' : 'Loop'}
               </Text>
             </Pressable>
 
@@ -1781,6 +1991,36 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 16,
   },
+  fullscreenSeekBar: {
+    position: "absolute",
+    bottom: 24,
+    left: 16,
+    right: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: "rgba(0,0,0,0.4)",
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+  },
+  timeText: {
+    color: "#fff",
+    fontSize: 12,
+    fontWeight: "600",
+    minWidth: 38,
+    textAlign: "center",
+  },
+  bufferingOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(0,0,0,0.25)",
+  },
   fullscreenButton: {
     padding: 8,
   },
@@ -1872,28 +2112,20 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  alwaysVisiblePlayButton: {
-    position: "absolute",
-    bottom: 12,
-    right: 12,
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: "rgba(0,0,0,0.5)",
+  navButton: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: "rgba(0,0,0,0.3)",
     alignItems: "center",
     justifyContent: "center",
-    zIndex: 10,
   },
-  fsAlwaysVisiblePlayButton: {
-    position: "absolute",
-    bottom: 60,
-    right: 20,
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: "rgba(0,0,0,0.5)",
+  navButtonSmall: {
+    width: 54,
+    height: 54,
+    borderRadius: 27,
+    backgroundColor: "rgba(0,0,0,0.3)",
     alignItems: "center",
     justifyContent: "center",
-    zIndex: 10,
   },
 });

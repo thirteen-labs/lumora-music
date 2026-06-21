@@ -105,7 +105,7 @@ export default function PlayTimeScreen() {
                 {topSongs.map(({ song, count }, i) => (
                   <View
                     key={song.id}
-                    style={[s.flexRow, s.itemsCenter, s.gap3, s.p4, { borderBottomWidth: i < topSongs.length - 1 ? 1 : 0, borderBottomColor: colors.border }]}
+                    style={[s.flexRow, s.itemsCenter, s.gap3, s.p4]}
                   >
                     <Text style={[s.textSm, s.fontBold, { width: 24, textAlign: 'center', color: colors.accent }]}>
                       {i + 1}

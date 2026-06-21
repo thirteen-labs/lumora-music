@@ -157,7 +157,7 @@ export default function SystemHiddenFilesScreen() {
                       const isExpanded = expandedGroups.has(group.name);
                       const TypeIcon = getTypeIcon(group.type);
                       return (
-                        <View key={group.name} style={{ borderBottomWidth: i < groups.length - 1 ? 1 : 0, borderBottomColor: colors.border }}>
+                        <View key={group.name}>
                           <Pressable
                             onPress={() => toggleGroup(group.name)}
                             style={[s.flexRow, s.itemsCenter, s.gap3, s.p4]}

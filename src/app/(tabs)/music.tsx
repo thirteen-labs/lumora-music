@@ -3,7 +3,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FlashList } from '@shopify/flash-list';
 import { useTheme } from '@/hooks/use-theme';
 import { useMusicStore } from '@/store/music-store';
-import { usePlayerStore } from '@/store/player-store';
+import { usePlayerStore, generateRandomQueue } from '@/store/player-store';
 import { useSmartPlaylistStore } from '@/store/smart-playlist-store';
 import { useStatsStore } from '@/store/stats-store';
 import { useLyricsStore } from '@/store/lyrics-store';
@@ -108,7 +108,7 @@ export default function MusicScreen() {
             contentContainerStyle={{ paddingBottom: 120 + insets.bottom, paddingHorizontal: 16 }}
             renderItem={({ item }: { item: Song }) => (
               <Pressable
-                onPress={() => usePlayerStore.getState().play(item, sortedSongs)}
+                onPress={() => usePlayerStore.getState().play(item, generateRandomQueue(item, songs))}
                 style={{ width: GRID_ITEM_WIDTH, marginBottom: 16 }}
               >
                 <View
@@ -148,8 +148,8 @@ export default function MusicScreen() {
                   {recentlyAdded.slice(0, 5).map((item) => (
                     <Pressable
                       key={item.id}
-                      onPress={() => usePlayerStore.getState().play(item, songs)}
-                      style={[s.flexRow, s.itemsCenter, s.gap3, s.px4, s.py3, { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border }]}
+                      onPress={() => usePlayerStore.getState().play(item, generateRandomQueue(item, songs))}
+                      style={[s.flexRow, s.itemsCenter, s.gap3, s.px4, s.py3]}
                     >
                       <Artwork uri={item.artwork} size={40} borderRadius={8} iconSize={16} iconColor={colors.accent} backgroundColor={colors.card} />
                       <View style={s.flex1}>
@@ -164,8 +164,8 @@ export default function MusicScreen() {
             }
             renderItem={({ item }) => (
               <Pressable
-                onPress={() => usePlayerStore.getState().play(item, sortedSongs)}
-                style={[s.flexRow, s.itemsCenter, s.gap3, s.px4, s.py3, { borderBottomWidth: 1, borderBottomColor: colors.border }]}
+                onPress={() => usePlayerStore.getState().play(item, generateRandomQueue(item, songs))}
+                style={[s.flexRow, s.itemsCenter, s.gap3, s.px4, s.py3]}
               >
                 <Artwork uri={item.artwork} size={40} borderRadius={8} iconSize={16} iconColor={colors.accent} backgroundColor={colors.card} />
                 <View style={s.flex1}>

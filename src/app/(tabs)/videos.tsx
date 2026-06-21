@@ -1,4 +1,5 @@
-import { View, Text, Pressable, Dimensions, Image, TextInput } from 'react-native';
+import { View, Text, Pressable, Dimensions, TextInput } from 'react-native';
+import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FlashList } from '@shopify/flash-list';
 import { useTheme } from '@/hooks/use-theme';
@@ -14,6 +15,8 @@ import { SORT_OPTIONS, type SortField, type SortOrder } from '@/types/media';
 import { useRouter } from 'expo-router';
 import { s } from '@/styles';
 import { useTranslation } from '@/hooks/use-translation';
+import { getCachedVideoThumbnail, generateVideoThumbnail } from '@/services/video-thumbnails';
+import type { VideoThumbnail as ExpoVideoThumbnail } from 'expo-video';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -39,19 +42,34 @@ function sortVideos(videos: any[], sortField: SortField, sortOrder: SortOrder) {
   return sorted;
 }
 
-function VideoThumb({ uri, width, height, borderRadius, colors }: { uri: string | null; width: number; height: number; borderRadius: number; colors: any }) {
-  if (!uri) {
+function VideoThumb({ uri, videoId, videoUri, width, height, borderRadius, colors }: { uri: string | null; videoId: string; videoUri: string; width: number; height: number; borderRadius: number; colors: any }) {
+  const [hasError, setHasError] = useState(false);
+  const [generatedThumb, setGeneratedThumb] = useState<ExpoVideoThumbnail | null | undefined>(
+    getCachedVideoThumbnail(videoId) ?? undefined,
+  );
+
+  useEffect(() => {
+    if (!uri && !generatedThumb) {
+      generateVideoThumbnail(videoId, videoUri).then(setGeneratedThumb);
+    }
+  }, [uri, videoId, videoUri]);
+
+  const imageSource: string | ExpoVideoThumbnail | null = generatedThumb ?? uri;
+
+  if (!imageSource || hasError) {
     return (
       <View style={{ width, height, borderRadius, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center' }}>
         <VideoIcon size={width * 0.4} color={colors.accent} />
       </View>
     );
   }
+
   return (
     <Image
-      source={{ uri }}
+      source={imageSource}
       style={{ width, height, borderRadius }}
-      resizeMode="cover"
+      contentFit="cover"
+      onError={() => setHasError(true)}
     />
   );
 }
@@ -154,10 +172,10 @@ export default function VideosScreen() {
                   return (
                     <Pressable
                       key={video.id}
-                      onPress={() => router.push({ pathname: '/video-player', params: { uri: video.uri, title: video.title } })}
+                      onPress={() => router.replace({ pathname: '/video-player', params: { uri: video.uri, title: video.title } })}
                       style={{ width: cardW }}
                     >
-                      <VideoThumb uri={video.thumbnail} width={cardW} height={cardW * 0.65} borderRadius={8} colors={colors} />
+                      <VideoThumb uri={video.thumbnail} videoId={video.id} videoUri={video.uri} width={cardW} height={cardW * 0.65} borderRadius={8} colors={colors} />
                       <Text style={{ fontSize: 11, color: colors.text, marginTop: 4 }} numberOfLines={1}>{video.title}</Text>
                     </Pressable>
                   );
@@ -189,10 +207,10 @@ export default function VideosScreen() {
           contentContainerStyle={{ paddingBottom: 120 + insets.bottom, paddingHorizontal: 16 }}
           renderItem={({ item }) => (
             <Pressable
-              onPress={() => router.push({ pathname: '/video-player', params: { uri: item.uri, title: item.title } })}
+              onPress={() => router.replace({ pathname: '/video-player', params: { uri: item.uri, title: item.title } })}
               style={{ width: SMALL_ITEM_W, marginBottom: SMALL_GAP }}
             >
-              <VideoThumb uri={item.thumbnail} width={SMALL_ITEM_W} height={SMALL_ITEM_W * 0.65} borderRadius={6} colors={colors} />
+              <VideoThumb uri={item.thumbnail} videoId={item.id} videoUri={item.uri} width={SMALL_ITEM_W} height={SMALL_ITEM_W * 0.65} borderRadius={6} colors={colors} />
             </Pressable>
           )}
           ListEmptyComponent={
@@ -218,10 +236,10 @@ export default function VideosScreen() {
           contentContainerStyle={{ paddingBottom: 120 + insets.bottom, paddingHorizontal: 16 }}
           renderItem={({ item }) => (
             <Pressable
-              onPress={() => router.push({ pathname: '/video-player', params: { uri: item.uri, title: item.title } })}
-              style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: colors.border }}
+              onPress={() => router.replace({ pathname: '/video-player', params: { uri: item.uri, title: item.title } })}
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 8 }}
             >
-              <VideoThumb uri={item.thumbnail} width={120} height={72} borderRadius={10} colors={colors} />
+              <VideoThumb uri={item.thumbnail} videoId={item.id} videoUri={item.uri} width={120} height={72} borderRadius={10} colors={colors} />
               <View style={{ flex: 1 }}>
                 <Text style={{ fontSize: 13, fontWeight: '500', color: colors.text }} numberOfLines={1}>{item.title}</Text>
                 <Text style={{ fontSize: 11, color: colors.textMuted, marginTop: 3 }}>
@@ -255,10 +273,10 @@ export default function VideosScreen() {
           const cardW = (SCREEN_WIDTH - 32 - 12) / 2;
           return (
             <Pressable
-              onPress={() => router.push({ pathname: '/video-player', params: { uri: item.uri, title: item.title } })}
+              onPress={() => router.replace({ pathname: '/video-player', params: { uri: item.uri, title: item.title } })}
               style={{ width: cardW, marginBottom: 16 }}
             >
-              <VideoThumb uri={item.thumbnail} width={cardW} height={cardW * 0.65} borderRadius={12} colors={colors} />
+              <VideoThumb uri={item.thumbnail} videoId={item.id} videoUri={item.uri} width={cardW} height={cardW * 0.65} borderRadius={12} colors={colors} />
               <Text style={{ fontSize: 13, fontWeight: '600', color: colors.text, marginTop: 8 }} numberOfLines={1}>{item.title}</Text>
               <Text style={{ fontSize: 11, color: colors.textMuted, marginTop: 2 }}>
                 {item.width}x{item.height} · {formatDuration(item.duration)}

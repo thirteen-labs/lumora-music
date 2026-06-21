@@ -143,7 +143,7 @@ export default function SettingsScreen() {
           <Section title="APPEARANCE" colors={colors}>
             <Pressable
               onPress={handleBackgroundImagePress}
-              style={[s.itemsCenter, s.justifyCenter, s.p4, { borderBottomWidth: 1, borderBottomColor: colors.border + '20' }]}
+              style={[s.itemsCenter, s.justifyCenter, s.p4]}
             >
               <View
                 style={{
@@ -184,7 +184,7 @@ export default function SettingsScreen() {
               </View>
               <Text style={[s.textSm, s.fontMedium, s.mt2, { color: colors.text }]}>Background Image</Text>
             </Pressable>
-            <View style={[s.flexRow, s.itemsCenter, s.gap4, s.p4, { borderBottomWidth: 1, borderBottomColor: colors.border + '20' }]}>
+            <View style={[s.flexRow, s.itemsCenter, s.gap4, s.p4]}>
               <View style={[s.w10, s.h10, s.roundedXl, s.itemsCenter, s.justifyCenter, { backgroundColor: colors.accent + '15' }]}>
                 <Palette size={20} color={colors.accent} />
               </View>
@@ -208,7 +208,7 @@ export default function SettingsScreen() {
               onPress={() => router.push('/accent-color' as any)}
               colors={colors}
             />
-            <View style={[s.flexRow, s.itemsCenter, s.gap4, s.p4, { borderBottomWidth: 1, borderBottomColor: colors.border + '20' }]}>
+            <View style={[s.flexRow, s.itemsCenter, s.gap4, s.p4]}>
               <View style={[s.w10, s.h10, s.roundedXl, s.itemsCenter, s.justifyCenter, { backgroundColor: colors.accent + '15' }]}>
                 <Sun size={20} color={colors.accent} />
               </View>
@@ -263,7 +263,7 @@ export default function SettingsScreen() {
               onPress={() => router.push('/crossfade-settings' as any)}
               colors={colors}
             />
-            <View style={[s.flexRow, s.itemsCenter, s.gap4, s.p4, { borderBottomWidth: 1, borderBottomColor: colors.border + '20' }]}>
+            <View style={[s.flexRow, s.itemsCenter, s.gap4, s.p4]}>
               <View style={[s.w10, s.h10, s.roundedXl, s.itemsCenter, s.justifyCenter, { backgroundColor: colors.accent + '15' }]}>
                 <Disc3 size={20} color={colors.accent} />
               </View>
@@ -273,7 +273,7 @@ export default function SettingsScreen() {
               </View>
               <Switch value={gaplessPlayback} onValueChange={setGaplessPlayback} trackColor={{ false: colors.card, true: colors.accent + '80' }} thumbColor="#fff" />
             </View>
-            <View style={[s.flexRow, s.itemsCenter, s.gap4, s.p4, { borderBottomWidth: 1, borderBottomColor: colors.border + '20' }]}>
+            <View style={[s.flexRow, s.itemsCenter, s.gap4, s.p4]}>
               <View style={[s.w10, s.h10, s.roundedXl, s.itemsCenter, s.justifyCenter, { backgroundColor: colors.accent + '15' }]}>
                 <Headphones size={20} color={colors.accent} />
               </View>
@@ -328,7 +328,7 @@ export default function SettingsScreen() {
               onPress={() => router.push('/hidden-files' as any)}
               colors={colors}
             />
-            <View style={[s.flexRow, s.itemsCenter, s.gap4, s.p4, { borderBottomWidth: 1, borderBottomColor: colors.border + '20' }]}>
+            <View style={[s.flexRow, s.itemsCenter, s.gap4, s.p4]}>
               <View style={[s.w10, s.h10, s.roundedXl, s.itemsCenter, s.justifyCenter, { backgroundColor: colors.accent + '15' }]}>
                 <EyeOff size={20} color={colors.accent} />
               </View>
@@ -362,7 +362,7 @@ export default function SettingsScreen() {
               onPress={() => router.push('/privacy' as any)}
               colors={colors}
             />
-            <View style={[s.flexRow, s.itemsCenter, s.gap4, s.p4, { borderBottomWidth: 1, borderBottomColor: colors.border + '20' }]}>
+            <View style={[s.flexRow, s.itemsCenter, s.gap4, s.p4]}>
               <View style={[s.w10, s.h10, s.roundedXl, s.itemsCenter, s.justifyCenter, { backgroundColor: colors.accent + '15' }]}>
                 <Shield size={20} color={colors.accent} />
               </View>
@@ -414,7 +414,7 @@ function Section({ title, colors, children }: { title: string; colors: any; chil
 
 function SettingRow({ icon: Icon, label, subtitle, onPress, colors }: { icon: any; label: string; subtitle: string; onPress: () => void; colors: any }) {
   return (
-    <Pressable onPress={onPress} style={[s.flexRow, s.itemsCenter, s.gap4, s.p4, { borderBottomWidth: 1, borderBottomColor: colors.border + '20' }]}>
+    <Pressable onPress={onPress} style={[s.flexRow, s.itemsCenter, s.gap4, s.p4]}>
       <View style={[s.w10, s.h10, s.roundedXl, s.itemsCenter, s.justifyCenter, { backgroundColor: colors.accent + '15' }]}>
         <Icon size={20} color={colors.accent} />
       </View>

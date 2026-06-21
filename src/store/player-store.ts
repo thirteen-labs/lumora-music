@@ -21,6 +21,16 @@ function shuffleArray(length: number): number[] {
   return arr;
 }
 
+export function generateRandomQueue(track: Song, allSongs: Song[], maxSize = 50): Song[] {
+  const others = allSongs.filter((s) => s.id !== track.id);
+  for (let i = others.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [others[i], others[j]] = [others[j], others[i]];
+  }
+  const count = Math.min(maxSize - 1, others.length);
+  return [track, ...others.slice(0, count)];
+}
+
 interface PlayerState {
   currentTrack: Song | null;
   queue: Song[];

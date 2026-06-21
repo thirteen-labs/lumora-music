@@ -76,7 +76,7 @@ export default function SmartPlaylistsScreen() {
                   <Pressable
                     key={playlist.id}
                     onPress={() => handlePlayPlaylist(playlist)}
-                    style={[s.flexRow, s.itemsCenter, s.gap3, s.p4, { borderBottomWidth: i < BUILT_IN_PLAYLISTS.length - 1 ? 1 : 0, borderBottomColor: colors.border }]}
+                    style={[s.flexRow, s.itemsCenter, s.gap3, s.p4]}
                   >
                     {builtInIcon(playlist.icon)}
                     <View style={s.flex1}>
@@ -105,7 +105,7 @@ export default function SmartPlaylistsScreen() {
                   return (
                     <View
                       key={playlist.id}
-                      style={[s.flexRow, s.itemsCenter, s.gap3, s.p4, { borderBottomWidth: i < customPlaylists.length - 1 ? 1 : 0, borderBottomColor: colors.border }]}
+                      style={[s.flexRow, s.itemsCenter, s.gap3, s.p4]}
                     >
                       <Zap size={20} color={colors.accent} />
                       <Pressable style={s.flex1} onPress={() => handlePlayPlaylist(playlist)}>

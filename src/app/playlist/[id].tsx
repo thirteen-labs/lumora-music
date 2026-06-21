@@ -143,7 +143,7 @@ export default function PlaylistDetailScreen() {
             <Pressable
               onPress={() => toggleSelect(item.id)}
               onLongPress={() => toggleSelect(item.id)}
-              style={[s.flexRow, s.itemsCenter, s.gap3, s.px4, s.py3, { borderBottomWidth: 1, borderBottomColor: colors.border, backgroundColor: isSelected ? colors.accent + '10' : 'transparent' }]}
+              style={[s.flexRow, s.itemsCenter, s.gap3, s.px4, s.py3, { backgroundColor: isSelected ? colors.accent + '10' : 'transparent' }]}
             >
               <Text style={[s.textXs, { width: 24, textAlign: 'center', color: colors.textMuted }]}>
                 {index + 1}

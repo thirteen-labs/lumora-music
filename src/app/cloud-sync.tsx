@@ -142,10 +142,7 @@ export default function CloudSyncScreen() {
                   <Pressable
                     key={provider.id}
                     onPress={() => handleConnect(provider.id as CloudProviderId)}
-                    style={[s.flexRow, s.itemsCenter, s.gap3, s.p4, {
-                      borderBottomWidth: i < CLOUD_PROVIDERS.length - 1 ? 1 : 0,
-                      borderBottomColor: colors.border,
-                    }]}
+                    style={[s.flexRow, s.itemsCenter, s.gap3, s.p4]}
                   >
                     <View style={[s.w11, s.h11, s.roundedXl, s.itemsCenter, s.justifyCenter, { backgroundColor: provider.color + '18' }]}>
                       <Icon size={20} color={provider.color} />
@@ -185,7 +182,7 @@ export default function CloudSyncScreen() {
               <Pressable
                 onPress={handleExportBackup}
                 disabled={isExporting}
-                style={[s.flexRow, s.itemsCenter, s.gap3, s.p4, { borderBottomWidth: 1, borderBottomColor: colors.border, opacity: isExporting ? 0.5 : 1 }]}
+                style={[s.flexRow, s.itemsCenter, s.gap3, s.p4, { opacity: isExporting ? 0.5 : 1 }]}
               >
                 <View style={[s.w11, s.h11, s.roundedXl, s.itemsCenter, s.justifyCenter, { backgroundColor: colors.accent + '15' }]}>
                   <Upload size={20} color={colors.accent} />
@@ -227,7 +224,7 @@ export default function CloudSyncScreen() {
               AUTO BACKUP
             </Text>
             <View style={[s.rounded3xl, s.overflowHidden, { backgroundColor: colors.surface }]}>
-              <View style={[s.flexRow, s.itemsCenter, s.gap3, s.p4, { borderBottomWidth: 1, borderBottomColor: colors.border }]}>
+              <View style={[s.flexRow, s.itemsCenter, s.gap3, s.p4]}>
                 <View style={[s.w11, s.h11, s.roundedXl, s.itemsCenter, s.justifyCenter, { backgroundColor: colors.accent + '15' }]}>
                   <RefreshCw size={20} color={colors.accent} />
                 </View>
@@ -251,8 +248,6 @@ export default function CloudSyncScreen() {
                       key={opt.value}
                       onPress={() => setAutoBackupInterval(opt.value as any)}
                       style={[s.flexRow, s.itemsCenter, s.gap3, s.p4, {
-                        borderBottomWidth: i < INTERVAL_OPTIONS.length - 1 ? 1 : 0,
-                        borderBottomColor: colors.border,
                         paddingLeft: 56,
                       }]}
                     >

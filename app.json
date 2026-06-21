@@ -46,14 +46,14 @@
         {
           "backgroundColor": "#020008",
           "image": "./assets/splash.png",
-          "resizeMode": "contain",
+          "resizeMode": "cover",
           "android": {
             "image": "./assets/splash.png",
             "resizeMode": "cover"
           },
           "ios": {
             "image": "./assets/splash.png",
-            "resizeMode": "contain"
+            "resizeMode": "cover"
           }
         }
       ],
@@ -100,7 +100,9 @@
             "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"
           ],
           "androidForegroundService": true,
-          "androidFSTypes": ["mediaPlayback"]
+          "androidFSTypes": [
+            "mediaPlayback"
+          ]
         }
       ],
       "expo-task-manager",
