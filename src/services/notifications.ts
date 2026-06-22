@@ -7,6 +7,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 import type { Song, Video } from '@/types/media';
 import { usePlayerStore } from '@/store/player-store';
 import { useFavoritesStore } from '@/store/favorites-store';
+import { useSettingsStore } from '@/store/settings-store';
 import { extractColorsFromImage } from '@/services/color-extraction';
 import { reportWarning } from '@/utils/error-handler';
 
@@ -279,7 +280,16 @@ export async function cancelAllNotifications(): Promise<void> {
   }
 }
 
+function shouldNotify(): boolean {
+  try {
+    return useSettingsStore.getState().newMediaNotification;
+  } catch {
+    return true;
+  }
+}
+
 export async function showScanningNotification(): Promise<void> {
+  if (!shouldNotify()) return;
   try {
     await ExpoNotifications.scheduleNotificationAsync({
       content: {
@@ -296,6 +306,7 @@ export async function showScanningNotification(): Promise<void> {
 }
 
 export async function showScanCompleteNotification(songCount: number, videoCount: number): Promise<void> {
+  if (!shouldNotify()) return;
   try {
     const parts: string[] = [];
     if (songCount > 0) parts.push(`${songCount} songs`);

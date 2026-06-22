@@ -2,7 +2,7 @@ import { View, Text, Pressable, Dimensions, StyleSheet, Alert, ActivityIndicator
 import Slider from "@react-native-community/slider";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { s } from "@/styles";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter, useFocusEffect } from "expo-router";
 import { useTheme } from "@/hooks/use-theme";
 import {
   ChevronLeft,
@@ -942,7 +942,13 @@ export default function VideoPlayerScreen() {
     };
   }, [currentVideo]);
 
-  const gestureSettings = useMemo(() => loadGestureSettings(), []);
+  const [gestureSettings, setGestureSettings] = useState<GestureSettings>({ swipeSeek: true, swipeVolume: true, swipeBrightness: true, doubleTapSeek: true });
+
+  useFocusEffect(
+    useCallback(() => {
+      setGestureSettings(loadGestureSettings());
+    }, [])
+  );
 
   const swipeX = useSharedValue(0);
   const swipeY = useSharedValue(0);

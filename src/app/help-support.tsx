@@ -6,9 +6,9 @@ import { ChevronLeft, BookOpen, MessageCircle, Bug } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const LINKS = [
-  { icon: BookOpen, label: 'FAQs', desc: 'Frequently asked questions', url: '' },
+  { icon: BookOpen, label: 'FAQs', desc: 'Frequently asked questions', url: 'https://lumora.app/faq' },
   { icon: MessageCircle, label: 'Contact Support', desc: 'Get help from our team', url: 'mailto:support@lumora.app' },
-  { icon: Bug, label: 'Report a Bug', desc: 'Found something wrong?', url: '' },
+  { icon: Bug, label: 'Report a Bug', desc: 'Found something wrong?', url: 'https://github.com/lumora-app/lumora/issues/new' },
 ];
 
 export default function HelpSupportScreen() {
@@ -27,10 +27,10 @@ export default function HelpSupportScreen() {
       <ScrollView contentContainerStyle={{ paddingBottom: 120 + insets.bottom, paddingTop: 8 }} showsVerticalScrollIndicator={false}>
         <View style={s.px5}>
           <View style={{ backgroundColor: colors.surface, borderRadius: 16, overflow: 'hidden' }}>
-            {LINKS.map((link, i) => (
+            {LINKS.map((link) => (
               <Pressable
                 key={link.label}
-                onPress={() => link.url && Linking.openURL(link.url)}
+                onPress={() => Linking.openURL(link.url)}
                 style={[s.flexRow, s.itemsCenter, s.gap4, s.p4]}
               >
                 <View style={[s.w10, s.h10, s.roundedXl, s.itemsCenter, s.justifyCenter, { backgroundColor: colors.accent + '15' }]}>

@@ -1,4 +1,4 @@
-import { View, Text, TextInput, Pressable } from "react-native";
+import { View, Text, TextInput, Pressable, ScrollView } from "react-native";
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FlashList } from "@shopify/flash-list";
 import { useTheme } from "@/hooks/use-theme";
@@ -6,7 +6,7 @@ import { useMusicStore } from "@/store/music-store";
 import { useVideoStore } from "@/store/video-store";
 import { usePlayerStore } from "@/store/player-store";
 import { TopBar } from "@/components/top-bar";
-import { Search, X, Clock } from "lucide-react-native";
+import { Search, X, Clock, SlidersHorizontal, ChevronDown, ChevronUp } from "lucide-react-native";
 import { Artwork } from "@/components/artwork";
 import { useState, useMemo, useCallback, useEffect } from "react";
 import { formatDuration } from "@/utils/cn";
@@ -44,6 +44,17 @@ function saveRecent(items: string[]): void {
   }
 }
 
+function FilterChip({ label, selected, onPress, colors }: { label: string; selected: boolean; onPress: () => void; colors: any }) {
+  return (
+    <Pressable
+      onPress={onPress}
+      style={[s.px3, s.py1, s.roundedFull, { marginRight: 4, backgroundColor: selected ? colors.accent + '30' : colors.card }]}
+    >
+      <Text style={[s.textXs, s.fontMedium, { color: selected ? colors.accent : colors.textMuted }]}>{label}</Text>
+    </Pressable>
+  );
+}
+
 export default function SearchScreen() {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
@@ -52,6 +63,13 @@ export default function SearchScreen() {
   const [query, setQuery] = useState("");
   const debouncedQuery = useDebounce(query, 200);
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
+  const [showFilters, setShowFilters] = useState(false);
+  const [filterYear, setFilterYear] = useState<string | null>(null);
+  const [filterGenre, setFilterGenre] = useState<string | null>(null);
+  const [filterExt, setFilterExt] = useState<string | null>(null);
+  const [minDuration, setMinDuration] = useState('');
+  const [maxDuration, setMaxDuration] = useState('');
+  const allGenres = useMemo(() => [...new Set(genres.map((g) => g.name))].sort(), [genres]);
   const router = useRouter();
 
   useFocusEffect(
@@ -95,12 +113,12 @@ export default function SearchScreen() {
 
   const results = useMemo(() => {
     let q = debouncedQuery.trim();
-    if (!q)
+    if (!q && !filterYear && !filterGenre && !filterExt && !minDuration && !maxDuration)
       return { songs: [], videos: [], albums: [], artists: [], genres: [] };
 
-    let yearFilter: string | null = null;
-    let genreFilter: string | null = null;
-    let extFilter: string | null = null;
+    let yearFilter: string | null = filterYear;
+    let genreFilter: string | null = filterGenre;
+    let extFilter: string | null = filterExt;
 
     const tokens = q.toLowerCase().split(/\s+/);
     const cleanedTokens = [];
@@ -117,11 +135,13 @@ export default function SearchScreen() {
     }
 
     const baseQuery = cleanedTokens.join(' ').trim();
+    const minDur = minDuration ? Number(minDuration) : 0;
+    const maxDur = maxDuration ? Number(maxDuration) : Infinity;
 
     let filteredSongs = songs;
     let filteredVideos = videos;
 
-    if (yearFilter || genreFilter || extFilter) {
+    if (yearFilter || genreFilter || extFilter || minDur > 0 || maxDur < Infinity) {
       filteredSongs = songs.filter((s) => {
         let match = true;
         if (yearFilter) {
@@ -133,6 +153,8 @@ export default function SearchScreen() {
           const ext = s.uri ? s.uri.split('.').pop()?.toLowerCase() || '' : '';
           if (ext !== extFilter) match = false;
         }
+        if (minDur > 0 && s.duration < minDur) match = false;
+        if (maxDur < Infinity && s.duration > maxDur) match = false;
         return match;
       });
 
@@ -142,11 +164,12 @@ export default function SearchScreen() {
           const year = v.dateAdded ? new Date(v.dateAdded).getFullYear().toString() : '';
           if (year !== yearFilter) match = false;
         }
-        // Videos don't have genre in our app, skip genre filter
         if (extFilter) {
           const ext = v.uri ? v.uri.split('.').pop()?.toLowerCase() || '' : '';
           if (ext !== extFilter) match = false;
         }
+        if (minDur > 0 && v.duration < minDur) match = false;
+        if (maxDur < Infinity && v.duration > maxDur) match = false;
         return match;
       });
     }
@@ -189,7 +212,7 @@ export default function SearchScreen() {
       artists: matchedArtists.map((r) => r.item),
       genres: matchedGenres.map((r) => r.item),
     };
-  }, [debouncedQuery, songs, videos, albums, artists, genres]);
+  }, [debouncedQuery, filterYear, filterGenre, filterExt, minDuration, maxDuration, songs, videos, albums, artists, genres]);
 
   const totalResults =
     results.songs.length +
@@ -310,6 +333,90 @@ export default function SearchScreen() {
           )}
         </View>
       </View>
+
+      <Pressable
+        onPress={() => setShowFilters(!showFilters)}
+        style={[s.flexRow, s.itemsCenter, s.gap2, s.px4, s.py2]}
+      >
+        <SlidersHorizontal size={14} color={colors.textMuted} />
+        <Text style={[s.textXs, { color: colors.textMuted }]}>Filters</Text>
+        {showFilters ? <ChevronUp size={14} color={colors.textMuted} /> : <ChevronDown size={14} color={colors.textMuted} />}
+      </Pressable>
+
+      {showFilters && (
+        <View style={[s.px4, s.py2, s.gap3, { backgroundColor: colors.surface, marginHorizontal: 16, borderRadius: 16, marginBottom: 8 }]}>
+          <View>
+            <Text style={[s.textXs, s.fontSemibold, s.mb1, { color: colors.textMuted }]}>Year</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.gap1}>
+              {Array.from({ length: 10 }, (_, i) => String(new Date().getFullYear() - i)).map((y) => (
+                <FilterChip
+                  key={y}
+                  label={y}
+                  selected={filterYear === y}
+                  onPress={() => setFilterYear(filterYear === y ? null : y)}
+                  colors={colors}
+                />
+              ))}
+            </ScrollView>
+          </View>
+          <View>
+            <Text style={[s.textXs, s.fontSemibold, s.mb1, { color: colors.textMuted }]}>Genre</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.gap1}>
+              {allGenres.map((g) => (
+                <FilterChip
+                  key={g}
+                  label={g}
+                  selected={filterGenre === g}
+                  onPress={() => setFilterGenre(filterGenre === g ? null : g)}
+                  colors={colors}
+                />
+              ))}
+            </ScrollView>
+          </View>
+          <View>
+            <Text style={[s.textXs, s.fontSemibold, s.mb1, { color: colors.textMuted }]}>Extension</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.gap1}>
+              {['mp3', 'flac', 'wav', 'aac', 'ogg', 'wma', 'm4a', 'mp4', 'mkv', 'avi'].map((ext) => (
+                <FilterChip
+                  key={ext}
+                  label={ext}
+                  selected={filterExt === ext}
+                  onPress={() => setFilterExt(filterExt === ext ? null : ext)}
+                  colors={colors}
+                />
+              ))}
+            </ScrollView>
+          </View>
+          <View>
+            <Text style={[s.textXs, s.fontSemibold, s.mb1, { color: colors.textMuted }]}>Duration (seconds)</Text>
+            <View style={[s.flexRow, s.itemsCenter, s.gap2]}>
+              <TextInput
+                value={minDuration}
+                onChangeText={setMinDuration}
+                placeholder="Min"
+                placeholderTextColor={colors.textMuted}
+                keyboardType="numeric"
+                style={[s.flex1, s.px3, s.py2, s.roundedXl, { backgroundColor: colors.card, color: colors.text, fontSize: 13 }]}
+              />
+              <Text style={{ color: colors.textMuted }}>—</Text>
+              <TextInput
+                value={maxDuration}
+                onChangeText={setMaxDuration}
+                placeholder="Max"
+                placeholderTextColor={colors.textMuted}
+                keyboardType="numeric"
+                style={[s.flex1, s.px3, s.py2, s.roundedXl, { backgroundColor: colors.card, color: colors.text, fontSize: 13 }]}
+              />
+              <Pressable
+                onPress={() => { setMinDuration(''); setMaxDuration(''); }}
+                style={[{ padding: 8 }, s.roundedFull, { backgroundColor: colors.card }]}
+              >
+                <X size={14} color={colors.textMuted} />
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      )}
 
       {activeFilters.length > 0 && (
         <View style={[s.flexRow, s.flexWrap, s.gap2, s.px4, s.pb2]}>

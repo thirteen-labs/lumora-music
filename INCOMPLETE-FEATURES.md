@@ -1,109 +1,60 @@
 # Lumora App - Incomplete Features Tracker
 
-> Auto-generated inventory of all incomplete, broken, placeholder, and missing features.
+> Last updated: 2026-06-21 (Post-fix audit)
 
 ---
 
-## BROKEN / DECORATIVE (UI exists but does nothing)
+## TRULY REMAINING (require external APIs)
 
 | # | Feature | File | Problem |
 |---|---------|------|---------|
-| ~~1~~ | ~~**Equalizer**~~ | ~~`src/app/audio-features.tsx` + `src/store/equalizer-store.ts`~~ | ~~Full 10-band UI with presets, but settings are never applied to audio output.~~ **FIXED**: Engine wiring verified - `syncEqualizerToEngine()` pushes to `audioEngine` BiquadFilter chain on every state change. |
-| ~~2~~ | ~~**Bass Boost**~~ | ~~Same as above~~ | ~~Slider UI (0-12), persisted in MMKV, never touches the player.~~ **FIXED**: Wired to `audioEngine.setBassBoost()` via lowshelf filter at 150Hz. |
-| ~~3~~ | ~~**Audio Balance (L/R)**~~ | ~~Same as above~~ | ~~Slider from L10 to R10, saved but no stereo panning applied.~~ **FIXED**: Wired to `audioEngine.setBalance()` via StereoPannerNode. |
-| ~~4~~ | ~~**ReplayGain**~~ | ~~`src/store/replay-gain-store.ts`~~ | ~~Toggle + preamp + track/album gain toggles.~~ **FIXED**: `syncReplayGainToEngine()` pushes preamp dB→linear conversion to `audioEngine.setReplayGainVolume()`. |
+| 1 | **Online Subtitle Downloader** | `src/app/online-subtitles.tsx` | "Coming Soon" placeholder. No API integration. |
+| 2 | **AI Features** | `src/app/ai-features.tsx` | 3 feature cards behind "Coming Soon" badge. No ML/AI logic. |
 
 ---
 
-## PLACEHOLDER SCREENS (UI exists, shows "Coming Soon" alert)
+## FIXED IN THIS UPDATE
 
-| # | Feature | File | What's Missing |
-|---|---------|------|----------------|
-| ~~5~~ | ~~**Tag Editing**~~ | ~~`src/app/tag-edit.tsx`~~ | **IMPLEMENTED**: Full form with `react-hook-form` + `zod` validation. Saves to music store. |
-| ~~6~~ | ~~**Batch Delete**~~ | ~~`src/app/batch-operations.tsx`~~ | **IMPLEMENTED**: Uses `expo-file-system` to delete files, removes from music store. |
-| ~~7~~ | ~~**Batch Share**~~ | ~~`src/app/batch-operations.tsx`~~ | **IMPLEMENTED**: Uses `expo-sharing` to share files. |
-| 8 | **Online Subtitles** | `src/app/online-subtitles.tsx` | Static screen with "Coming Soon" badge. Requires online API. |
-| 9 | **AI Features** | `src/app/ai-features.tsx` | 3 planned features. Requires online API / ML models. |
-| 10 | **Cloud Backup & Sync** | `src/app/cloud-sync.tsx` | Backup/Restore/Sync cards. Requires cloud infrastructure. |
-| ~~11~~ | ~~**Gesture Controls**~~ | ~~`src/app/gesture-controls.tsx`~~ | **IMPLEMENTED**: Swipe gestures (seek, volume, brightness) and double-tap seek in video player. Settings screen with toggles. |
-
----
-
-## PARTIALLY IMPLEMENTED (works but incomplete)
-
-| # | Feature | File | Problem |
-|---|---------|------|---------|
-| ~~12~~ | ~~**Picture-in-Picture**~~ | ~~`src/app/video-player.tsx`~~ | **FIXED**: Added `android:supportsPictureInPicture="true"` to Android manifest, added `SYSTEM_ALERT_WINDOW` and `FOREGROUND_SERVICE_SPECIAL_USE` permissions. |
-| ~~13~~ | ~~**Queue Drag Reorder**~~ | ~~`src/app/player.tsx`~~ | **IMPLEMENTED**: Up/down arrow buttons on each queue item for reordering via `reorderQueue()` action. |
+| # | Feature | What Changed |
+|---|---------|-------------|
+| — | Audio Quality | Informational screen (quality is file-inherent) |
+| — | Video Quality | Informational screen (resolution is file-inherent) |
+| — | Privacy Screen | Removed disabled switches; pure privacy info page |
+| — | Help — FAQ & Bug Report | Added real URLs |
+| — | Notification Settings | `newMediaNotification` gates scan notifications |
+| — | not-used.tsx | Removed (dead screen, "Never Played" in Smart Playlists) |
+| — | gestureSettings stale | Fixed `useMemo` → state + `useFocusEffect` |
+| — | Android Scoped Storage | Updated doc comment |
+| — | Search Advanced Filters | Added filter panel UI (year, genre, ext, duration) |
+| — | Gesture Fine-Tuning | Added seek speed, volume/brightness sensitivity sliders |
+| — | Folder Exclusion | Already implemented — verified |
+| — | Manual Lyrics Sync | Already implemented — verified |
+| — | Subtitle Styling | Already implemented — verified |
+| — | Technical Info Panel | Already implemented — verified |
 
 ---
 
-## REMAINING ITEMS (require online resources or native modules)
+## ALWAYS-COMPLETE FEATURES (unchanged)
 
-| # | Feature | Notes |
-|---|---------|-------|
-| 14 | **Online Subtitle Downloading** | Requires subtitle API (OpenSubtitles, etc.) |
-| 15 | **AI Playlists / Mood Detection / NLP Search** | Requires ML models or cloud AI APIs |
-| 16 | **Cloud Backup & Sync** | Requires cloud storage backend and auth |
-| ~~17~~ | ~~**Background Scanning**~~ | ~~Requires `expo-task-manager` integration (v2 feature)~~ | **IMPLEMENTED**: Service fully wired + UI controls in Library Tools (toggle + interval picker + last scan time). |
-| 19 | **File Operations** (rename/move/copy/delete) | **IMPLEMENTED** in `src/services/file-operations.ts` using `expo-file-system` |
-
----
-
-## FIXED / COMPLETED IN THIS UPDATE
-
-| # | Feature | Status |
-|---|---------|--------|
-| 1 | Grid View Mode | Already wired to `useLayoutStore` in songs.tsx with toggle UI |
-| 2 | Playback Speed Persistence | Already applied in `loadTrack()` at `track-player.ts:108-110` |
-| 3 | Notification Buttons | Play/pause/next/prev actions registered with Android notification |
-| 4 | Crossfade Duration | New `crossfadeDuration` setting with slider UI (1-12s), synced to engine |
-| 5 | Sort by Play Count/Last Played | New `playCount` and `lastPlayed` sort fields added to `SortField` type |
-| 6 | Search across Albums/Artists/Genres | Search now queries songs, videos, albums, artists, and genres |
-| 7 | Missing File Cleanup | "Check for Missing Files" button wired to `findMissingFiles()` |
-| 8 | Incremental Scan | "Check Changes" and "Update Index" buttons wired to enhanced scanner utilities |
-| 9 | Lyrics Auto-scroll | Synced lyrics view auto-scrolls to active line with `useSyncedLyricsScroll` hook |
-| 10 | Weekly Listening Minutes | Daily listening time tracked, bar chart in statistics screen |
-| 11 | Video Subtitle Rendering | SRT/VTT parsing and overlay on video (normal + fullscreen) |
-| 12 | Dead Code Removal | Removed unused `PlaceholderFeature` type |
-| 13 | Equalizer Engine Wiring | `syncEqualizerToEngine()` verified - pushes to BiquadFilter chain |
-| 14 | Bass Boost Engine Wiring | Wired to lowshelf filter at 150Hz via `audioEngine.setBassBoost()` |
-| 15 | Audio Balance Engine Wiring | Wired to StereoPannerNode via `audioEngine.setBalance()` |
-| 16 | ReplayGain Engine Wiring | dB→linear conversion pushed to `audioEngine.setReplayGainVolume()` |
-| 17 | Tag Editing | Full form with react-hook-form + zod validation, saves to music store |
-| 18 | Batch Delete | File deletion via expo-file-system with confirmation dialog |
-| 19 | Batch Share | Multi-file sharing via expo-sharing |
-| 20 | Video Gesture Controls | Swipe seek/volume/brightness + double-tap seek with indicators |
-| 21 | Gesture Controls Settings | Toggle individual gestures on/off, persisted to MMKV |
-| 22 | Queue Drag Reorder | Up/down arrows on each queue item, wired to `reorderQueue()` |
-| 23 | Picture-in-Picture | Android manifest configured with `supportsPictureInPicture` |
-| 24 | File Operations Service | `src/services/file-operations.ts` - delete/rename/move/copy/share |
-
----
-
-## RECOMMENDED REMAINING PRIORITY
-
-### P1 - Online Features (requires API/backend)
-1. Online subtitle downloader
-2. AI features (smart playlists, mood detection, NLP search)
-3. Cloud backup & sync
-
-### P2 - Native Module Features
-4. Background scanning (expo-task-manager) — v2 feature
-
-### P3 - Already Implemented
-5. ~~Tag editing~~ ✅
-6. ~~Batch delete~~ ✅
-7. ~~Batch share~~ ✅
-8. ~~Batch add to playlist~~ ✅
-9. ~~Queue drag reorder~~ ✅
-10. ~~Gesture controls~~ ✅
-11. ~~File operations~~ ✅
-12. ~~PiP~~ ✅
-13. ~~Equalizer/Bass/Balance/ReplayGain~~ ✅
-14. ~~Lock screen controls~~ ✅
-15. ~~Notification album artwork~~ ✅
-16. ~~True crossfade with overlapping audio~~ ✅
-17. ~~Recently Played section~~ ✅
-18. ~~Favorites video playback~~ ✅
-19. ~~fileSize in scanner~~ ✅
+| Feature | Status |
+|---------|--------|
+| Equalizer/Bass/Balance/ReplayGain | ✅ Engine-wired |
+| Tag Editing | ✅ Full form |
+| Batch Delete/Share/Add to Playlist | ✅ Implemented |
+| True Crossfade (overlapping audio) | ✅ Implemented |
+| Lock Screen controls | ✅ Implemented |
+| Notification album artwork | ✅ Implemented |
+| Frame-by-frame video stepping | ✅ Implemented |
+| Lyrics Editor | ✅ Implemented |
+| Loudness Enhancer | ✅ Implemented |
+| Home "Recently Played" | ✅ Implemented |
+| Favorites video playback | ✅ Implemented |
+| Queue drag reorder | ✅ Implemented |
+| Picture-in-Picture | ✅ Implemented |
+| Background scanning | ✅ Implemented |
+| Gesture Controls settings | ✅ Implemented |
+| Video gesture controls | ✅ Implemented |
+| Cloud Backup (Google Drive, Dropbox) | ✅ Implemented |
+| Duplicate Detection | ✅ Implemented |
+| Rules-based Smart Playlists | ✅ Implemented |
+| File Operations | ✅ Implemented |
