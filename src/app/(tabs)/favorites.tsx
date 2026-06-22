@@ -22,7 +22,9 @@ export default function FavoritesScreen() {
   const { colors } = useTheme();
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
-  const { songs, hydrateFavorites, toggleSongFavorite } = useFavoritesStore();
+  const songs = useFavoritesStore((s) => s.songs);
+  const hydrateFavorites = useFavoritesStore((s) => s.hydrateFavorites);
+  const toggleSongFavorite = useFavoritesStore((s) => s.toggleSongFavorite);
   const { bottomSheetRef, present, song } = useSongContextMenu();
 
   useFocusEffect(

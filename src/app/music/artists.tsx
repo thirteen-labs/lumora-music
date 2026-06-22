@@ -11,7 +11,7 @@ import { useRouter } from 'expo-router';
 
 export default function ArtistsScreen() {
   const { colors } = useTheme();
-  const { artists } = useMusicStore();
+  const artists = useMusicStore((s) => s.artists);
   const router = useRouter();
 
   return (

@@ -10,7 +10,7 @@ import { usePlaylistStore } from '@/store/playlist-store';
 import { useMusicStore } from '@/store/music-store';
 import { usePlayerStore } from '@/store/player-store';
 import { formatDuration } from '@/utils/cn';
-import { Music, Play, Plus } from 'lucide-react-native';
+import { Music, Play, Plus, Shuffle } from 'lucide-react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
   BottomSheetModal,
@@ -24,7 +24,9 @@ export default function PlaylistDetailScreen() {
   const router = useRouter();
   const songs = useMusicStore((s) => s.songs);
   const play = usePlayerStore((s) => s.play);
-  const { playlists, removeSongFromPlaylist } = usePlaylistStore();
+  const setShuffle = usePlayerStore((s) => s.setShuffle);
+  const playlists = usePlaylistStore((s) => s.playlists);
+  const removeSongFromPlaylist = usePlaylistStore((s) => s.removeSongFromPlaylist);
 
   const playlist = playlists.find((p) => p.id === id);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -42,7 +44,7 @@ export default function PlaylistDetailScreen() {
     return songs.filter((s) => !idSet.has(s.id));
   }, [playlist, songs]);
 
-  const { addSongsToPlaylist } = usePlaylistStore();
+  const addSongsToPlaylist = usePlaylistStore((s) => s.addSongsToPlaylist);
 
   if (!playlist) {
     return (
@@ -58,6 +60,15 @@ export default function PlaylistDetailScreen() {
   const handlePlayAll = () => {
     if (playlistSongs.length > 0) {
       play(playlistSongs[0], playlistSongs);
+      router.push('/player');
+    }
+  };
+
+  const handleShufflePlay = () => {
+    if (playlistSongs.length > 0) {
+      const randomIndex = Math.floor(Math.random() * playlistSongs.length);
+      play(playlistSongs[randomIndex], playlistSongs);
+      setShuffle(true);
       router.push('/player');
     }
   };
@@ -114,6 +125,16 @@ export default function PlaylistDetailScreen() {
                 <Play size={18} color={playlistSongs.length > 0 ? colors.background : colors.textMuted} fill={playlistSongs.length > 0 ? colors.background : colors.textMuted} />
                 <Text style={[s.textSm, s.fontSemibold, { color: playlistSongs.length > 0 ? colors.background : colors.textMuted }]}>
                   Play All
+                </Text>
+              </Pressable>
+              <Pressable
+                onPress={handleShufflePlay}
+                disabled={playlistSongs.length === 0}
+                style={[s.flex1, { paddingVertical: 12, borderRadius: 16, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 8, backgroundColor: playlistSongs.length > 0 ? colors.accent : colors.card }]}
+              >
+                <Shuffle size={18} color={playlistSongs.length > 0 ? colors.background : colors.textMuted} />
+                <Text style={[s.textSm, s.fontSemibold, { color: playlistSongs.length > 0 ? colors.background : colors.textMuted }]}>
+                  Shuffle
                 </Text>
               </Pressable>
               <Pressable

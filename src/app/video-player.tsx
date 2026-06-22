@@ -354,7 +354,8 @@ export default function VideoPlayerScreen() {
   const scrubValue = useRef(0);
   const seekTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const { isVideoFavorite, toggleVideoFavorite } = useFavoritesStore();
+  const isVideoFavorite = useFavoritesStore((s) => s.isVideoFavorite);
+  const toggleVideoFavorite = useFavoritesStore((s) => s.toggleVideoFavorite);
   const videos = useVideoStore((s) => s.videos);
   const sortField = useVideoStore((s) => s.sortField);
   const sortOrder = useVideoStore((s) => s.sortOrder);

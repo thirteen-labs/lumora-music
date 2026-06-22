@@ -8,7 +8,8 @@ import { FlashList } from '@shopify/flash-list';
 
 export function ThemeSelector() {
   const { colors } = useTheme();
-  const { currentThemeId, setTheme } = useThemeStore();
+  const currentThemeId = useThemeStore((s) => s.currentThemeId);
+  const setTheme = useThemeStore((s) => s.setTheme);
 
   return (
     <FlashList

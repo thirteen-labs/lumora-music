@@ -18,6 +18,15 @@ import { useTranslation } from '@/hooks/use-translation';
 import { getCachedVideoThumbnail, generateVideoThumbnail } from '@/services/video-thumbnails';
 import type { VideoThumbnail as ExpoVideoThumbnail } from 'expo-video';
 
+function useDebounce<T>(value: T, delay: number): T {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedValue(value), delay);
+    return () => clearTimeout(timer);
+  }, [value, delay]);
+  return debouncedValue;
+}
+
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 function extractFolder(uri: string): string {
@@ -84,9 +93,10 @@ export default function VideosScreen() {
   const sortOrder = useVideoStore((s) => s.sortOrder);
   const setSort = useVideoStore((s) => s.setSort);
   const scanVideos = useVideoStore((s) => s.scanVideos);
-  const { fileSizeTheme } = useLayoutStore();
+  const fileSizeTheme = useLayoutStore((s) => s.fileSizeTheme);
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
+  const debouncedSearch = useDebounce(searchQuery, 300);
   const [groupByFolder, setGroupByFolder] = useState(false);
 
   useEffect(() => {
@@ -98,13 +108,13 @@ export default function VideosScreen() {
   const activeSort = SORT_OPTIONS.find((o) => o.field === sortField && o.order === sortOrder) ?? SORT_OPTIONS[0];
 
   const filtered = useMemo(() => {
-    if (!searchQuery.trim()) return sortedVideos;
-    const q = searchQuery.toLowerCase();
+    if (!debouncedSearch.trim()) return sortedVideos;
+    const q = debouncedSearch.toLowerCase();
     return sortedVideos.filter((v) =>
       v.title.toLowerCase().includes(q) ||
       extractFolder(v.uri).toLowerCase().includes(q),
     );
-  }, [sortedVideos, searchQuery]);
+  }, [sortedVideos, debouncedSearch]);
 
   const grouped = useMemo(() => {
     if (!groupByFolder) return null;

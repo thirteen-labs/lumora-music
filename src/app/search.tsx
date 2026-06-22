@@ -58,10 +58,13 @@ function FilterChip({ label, selected, onPress, colors }: { label: string; selec
 export default function SearchScreen() {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
-  const { songs, albums, artists, genres } = useMusicStore();
-  const { videos } = useVideoStore();
+  const songs = useMusicStore((s) => s.songs);
+  const albums = useMusicStore((s) => s.albums);
+  const artists = useMusicStore((s) => s.artists);
+  const genres = useMusicStore((s) => s.genres);
+  const videos = useVideoStore((s) => s.videos);
   const [query, setQuery] = useState("");
-  const debouncedQuery = useDebounce(query, 200);
+  const debouncedQuery = useDebounce(query, 300);
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
   const [showFilters, setShowFilters] = useState(false);
   const [filterYear, setFilterYear] = useState<string | null>(null);
@@ -316,10 +319,8 @@ export default function SearchScreen() {
           <Search size={20} color={colors.textMuted} />
           <TextInput
             value={query}
-            onChangeText={(text) => {
-              setQuery(text);
-              if (text.trim()) addRecent(text);
-            }}
+            onChangeText={setQuery}
+            onSubmitEditing={() => { if (query.trim()) addRecent(query); }}
             placeholder="Search files..."
             placeholderTextColor={colors.textMuted}
             style={[s.flex1, s.textBase, { color: colors.text }]}

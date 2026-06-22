@@ -71,7 +71,7 @@ export default function LyricsEditorScreen() {
     const result = await fetchLyrics(targetSong.artist, targetSong.title);
     setSearchLoading(false);
     if (result) {
-      saveLyrics(targetSong.id, result.lyrics);
+      saveLyrics(targetSong.id, result.raw || result.lyrics);
       Alert.alert('Success', 'Lyrics found and saved!');
     } else {
       Alert.alert('Not Found', 'No lyrics found for this song.');

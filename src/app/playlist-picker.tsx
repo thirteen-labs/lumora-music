@@ -12,7 +12,9 @@ export default function PlaylistPickerScreen() {
   const { colors } = useTheme();
   const router = useRouter();
   const { songId } = useLocalSearchParams<{ songId: string }>();
-  const { playlists, createPlaylist, addSongToPlaylist } = usePlaylistStore();
+  const playlists = usePlaylistStore((s) => s.playlists);
+  const createPlaylist = usePlaylistStore((s) => s.createPlaylist);
+  const addSongToPlaylist = usePlaylistStore((s) => s.addSongToPlaylist);
   const showToast = useToastStore(s => s.showToast);
 
   const [modalVisible, setModalVisible] = useState(false);

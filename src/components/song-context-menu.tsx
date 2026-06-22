@@ -41,8 +41,10 @@ interface SongContextMenuProps {
 
 export function SongContextMenu({ bottomSheetRef, song, onDismiss }: SongContextMenuProps) {
   const { colors } = useTheme();
-  const { play, addToQueue } = usePlayerStore();
-  const { favoriteSongIds, toggleSongFavorite } = useFavoritesStore();
+  const play = usePlayerStore((s) => s.play);
+  const addToQueue = usePlayerStore((s) => s.addToQueue);
+  const favoriteSongIds = useFavoritesStore((s) => s.favoriteSongIds);
+  const toggleSongFavorite = useFavoritesStore((s) => s.toggleSongFavorite);
   const showToast = useToastStore((s) => s.showToast);
   const router = useRouter();
 

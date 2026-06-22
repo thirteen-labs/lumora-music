@@ -13,7 +13,7 @@ import { useRouter } from 'expo-router';
 export default function AlbumsScreen() {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
-  const { albums } = useMusicStore();
+  const albums = useMusicStore((s) => s.albums);
   const router = useRouter();
 
   return (

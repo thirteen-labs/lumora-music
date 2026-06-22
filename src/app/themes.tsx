@@ -15,7 +15,8 @@ const ITEM_SIZE = (SCREEN_WIDTH - PADDING - GAP * 2) / 3;
 export default function ThemesScreen() {
   const { colors } = useTheme();
   const router = useRouter();
-  const { currentThemeId, setTheme } = useThemeStore();
+  const currentThemeId = useThemeStore((s) => s.currentThemeId);
+  const setTheme = useThemeStore((s) => s.setTheme);
   const insets = useSafeAreaInsets();
 
   return (

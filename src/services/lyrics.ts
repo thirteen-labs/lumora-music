@@ -10,13 +10,26 @@ export interface LyricsResult {
   lyrics: string;
   synced: SyncedLine[];
   source: string;
+  raw: string;
 }
 
 let cache = new Map<string, LyricsResult | null>();
 const CACHE_MAX_SIZE = 200;
+const inflightRequests = new Map<string, Promise<LyricsResult | null>>();
+
+function cleanArtist(artist: string): string {
+  return artist.replace(/[-–—].*$/, "").trim();
+}
+
+function cleanTitle(title: string): string {
+  return title
+    .replace(/\s*\(.*?\)\s*/g, "")
+    .replace(/\s*\[.*?\]\s*/g, "")
+    .trim();
+}
 
 function cacheKey(artist: string, title: string): string {
-  return `${artist}|||${title}`.toLowerCase().trim();
+  return `${cleanArtist(artist)}|||${cleanTitle(title)}`.toLowerCase();
 }
 
 function trimCache(): void {
@@ -69,14 +82,8 @@ async function fetchFromLrclib(
   title: string,
 ): Promise<LyricsResult | null> {
   try {
-    const cleanArtist = artist.replace(/[-–—].*$/, "").trim();
-    const cleanTitle = title
-      .replace(/\s*\(.*?\)\s*/g, "")
-      .replace(/\s*\[.*?\]\s*/g, "")
-      .trim();
-
     const response = await fetch(
-      `${LRCLIB_API}/get?artist_name=${encodeURIComponent(cleanArtist)}&track_name=${encodeURIComponent(cleanTitle)}`,
+      `${LRCLIB_API}/get?artist_name=${encodeURIComponent(cleanArtist(artist))}&track_name=${encodeURIComponent(cleanTitle(title))}`,
       { signal: AbortSignal.timeout(5000) },
     );
 
@@ -89,11 +96,11 @@ async function fetchFromLrclib(
     if (syncedLrc) {
       const synced = parseLRC(syncedLrc);
       const plainText = stripLRCMetadata(syncedLrc);
-      return { lyrics: plainText, synced, source: "lrclib" };
+      return { lyrics: plainText, synced, source: "lrclib", raw: syncedLrc };
     }
 
     if (plainLyrics) {
-      return { lyrics: plainLyrics, synced: [], source: "lrclib" };
+      return { lyrics: plainLyrics, synced: [], source: "lrclib", raw: plainLyrics };
     }
 
     return null;
@@ -107,28 +114,23 @@ async function fetchFromLyricsOvh(
   title: string,
 ): Promise<LyricsResult | null> {
   try {
-    const cleanArtist = artist.replace(/[-–—].*$/, "").trim();
-    const cleanTitle = title
-      .replace(/\s*\(.*?\)\s*/g, "")
-      .replace(/\s*\[.*?\]\s*/g, "")
-      .trim();
-
     const response = await fetch(
-      `${LYRICS_API}/${encodeURIComponent(cleanArtist)}/${encodeURIComponent(cleanTitle)}`,
+      `${LYRICS_API}/${encodeURIComponent(cleanArtist(artist))}/${encodeURIComponent(cleanTitle(title))}`,
       { signal: AbortSignal.timeout(5000) },
     );
 
     if (!response.ok) return null;
 
     const data = await response.json();
-    const raw: string = data.lyrics ?? "";
-    const synced = parseLRC(raw);
-    const plainText = stripLRCMetadata(raw);
+    const original: string = data.lyrics ?? "";
+    const synced = parseLRC(original);
+    const plainText = stripLRCMetadata(original);
 
     return {
       lyrics: plainText,
       synced,
       source: "lyrics.ovh",
+      raw: original,
     };
   } catch {
     return null;
@@ -143,6 +145,24 @@ export async function fetchLyrics(
   const key = cacheKey(artist, title);
   if (cache.has(key)) return cache.get(key) ?? null;
 
+  // Deduplicate concurrent requests for the same song
+  const inFlight = inflightRequests.get(key);
+  if (inFlight) return inFlight;
+
+  const promise = doFetch(artist, title, key);
+  inflightRequests.set(key, promise);
+  try {
+    return await promise;
+  } finally {
+    inflightRequests.delete(key);
+  }
+}
+
+async function doFetch(
+  artist: string,
+  title: string,
+  key: string,
+): Promise<LyricsResult | null> {
   const lrclibResult = await fetchFromLrclib(artist, title);
   if (lrclibResult) {
     cache.set(key, lrclibResult);
@@ -165,7 +185,7 @@ export async function fetchLyrics(
 export function parseSyncedLyrics(lrcContent: string): LyricsResult {
   const synced = parseLRC(lrcContent);
   const plainText = stripLRCMetadata(lrcContent);
-  return { lyrics: plainText, synced, source: "local" };
+  return { lyrics: plainText, synced, source: "local", raw: lrcContent };
 }
 
 export function clearLyricsCache(): void {

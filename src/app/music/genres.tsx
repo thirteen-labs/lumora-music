@@ -10,7 +10,7 @@ import { useRouter } from 'expo-router';
 
 export default function GenresScreen() {
   const { colors } = useTheme();
-  const { genres } = useMusicStore();
+  const genres = useMusicStore((s) => s.genres);
   const router = useRouter();
 
   return (

@@ -36,7 +36,8 @@ export default function BatchOperationsScreen() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [operating, setOperating] = useState(false);
   const playlistSheetRef = useRef<BottomSheetModal>(null);
-  const { playlists, addSongsToPlaylist } = usePlaylistStore();
+  const playlists = usePlaylistStore((s) => s.playlists);
+  const addSongsToPlaylist = usePlaylistStore((s) => s.addSongsToPlaylist);
 
   const toggleSelect = (id: string) => {
     setSelected((prev) => {

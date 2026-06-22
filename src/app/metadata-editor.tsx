@@ -12,8 +12,10 @@ export default function MetadataEditorScreen() {
   const { colors } = useTheme();
   const router = useRouter();
   const { songId } = useLocalSearchParams<{ songId: string }>();
-  const { songs } = useMusicStore();
-  const { overrides, setOverride, removeOverride } = useMetadataStore();
+  const songs = useMusicStore((s) => s.songs);
+  const overrides = useMetadataStore((s) => s.overrides);
+  const setOverride = useMetadataStore((s) => s.setOverride);
+  const removeOverride = useMetadataStore((s) => s.removeOverride);
 
   const originalSong = songs.find(song => song.id === songId);
   const currentOverride = overrides[songId ?? ''];

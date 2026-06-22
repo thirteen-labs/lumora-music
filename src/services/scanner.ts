@@ -71,6 +71,7 @@ let cachedAlbums: LumoraAlbum[] = [];
 let cachedArtists: Artist[] = [];
 let cachedGenres: Genre[] = [];
 let cachedVideos: Video[] = [];
+let _cacheLoaded = false;
 
 function loadCachedDataFromStorage(): void {
   const tryParse = <T>(key: string, fallback: T): T => {
@@ -102,14 +103,18 @@ function saveCachedDataToStorage(): void {
   }
 }
 
-// Load persisted cache on module init so stores can skip re-scan
-loadCachedDataFromStorage();
+function ensureCacheLoaded(): void {
+  if (!_cacheLoaded) {
+    _cacheLoaded = true;
+    loadCachedDataFromStorage();
+  }
+}
 
-export function getCachedSongs(): Song[] { return cachedSongs; }
-export function getCachedAlbums(): LumoraAlbum[] { return cachedAlbums; }
-export function getCachedArtists(): Artist[] { return cachedArtists; }
-export function getCachedGenres(): Genre[] { return cachedGenres; }
-export function getCachedVideos(): Video[] { return cachedVideos; }
+export function getCachedSongs(): Song[] { ensureCacheLoaded(); return cachedSongs; }
+export function getCachedAlbums(): LumoraAlbum[] { ensureCacheLoaded(); return cachedAlbums; }
+export function getCachedArtists(): Artist[] { ensureCacheLoaded(); return cachedArtists; }
+export function getCachedGenres(): Genre[] { ensureCacheLoaded(); return cachedGenres; }
+export function getCachedVideos(): Video[] { ensureCacheLoaded(); return cachedVideos; }
 
 export async function requestPermissions(options?: { audio?: boolean; video?: boolean }, force = false): Promise<boolean> {
   if (!MediaLibrary) return false;
@@ -480,6 +485,7 @@ export async function scanMediaLibrary(
   onStatusChange?.('scanning');
   onProgress?.(0, 1);
 
+  ensureCacheLoaded();
   const loaded = await ensureModulesLoaded();
   if (!loaded) {
     console.warn('Media scanner modules failed to load');

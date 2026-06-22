@@ -43,14 +43,17 @@ function sortSongs(songs: any[], sortField: SortField, sortOrder: SortOrder, sta
 export default function MusicScreen() {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
-  const { songs, scan } = useMusicStore();
+  const songs = useMusicStore((s) => s.songs);
+  const scan = useMusicStore((s) => s.scan);
   const sortField = useMusicStore((s) => s.sortField);
   const sortOrder = useMusicStore((s) => s.sortOrder);
   const setSort = useMusicStore((s) => s.setSort);
   const trackStats = useStatsStore((s) => s.trackStats);
   const resolveSongs = useSmartPlaylistStore((s) => s.resolveSongs);
   const lyricsMap = useLyricsStore((s) => s.lyricsMap);
-  const { fileSizeTheme, libraryViewMode, setLibraryViewMode } = useLayoutStore();
+  const fileSizeTheme = useLayoutStore((s) => s.fileSizeTheme);
+  const libraryViewMode = useLayoutStore((s) => s.libraryViewMode);
+  const setLibraryViewMode = useLayoutStore((s) => s.setLibraryViewMode);
 
   useEffect(() => {
     if (songs.length === 0) scan();

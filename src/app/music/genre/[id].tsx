@@ -15,8 +15,9 @@ import { useLocalSearchParams } from 'expo-router';
 export default function GenreDetailScreen() {
   const { colors } = useTheme();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { songs, genres } = useMusicStore();
-  const { fileSizeTheme } = useLayoutStore();
+  const songs = useMusicStore((s) => s.songs);
+  const genres = useMusicStore((s) => s.genres);
+  const fileSizeTheme = useLayoutStore((s) => s.fileSizeTheme);
   const { bottomSheetRef, present, song } = useSongContextMenu();
 
   const genre = genres.find((g) => g.id === id);

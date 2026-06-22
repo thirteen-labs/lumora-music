@@ -61,21 +61,43 @@ export function fuzzySearch<T>(
   query: string,
   getFields: (item: T) => string[],
   threshold: number = 20,
+  maxResults: number = 50,
 ): FuzzyResult<T>[] {
   if (!query.trim()) return [];
   const qLower = query.toLowerCase();
   const results: FuzzyResult<T>[] = [];
+  const minScoreToInsert = threshold;
+  let worstScoreInResults = -1;
+
   for (const item of items) {
     const fields = getFields(item);
     let bestScore = -1;
     for (const field of fields) {
       const score = fuzzyScore(qLower, field.toLowerCase());
       if (score > bestScore) bestScore = score;
+      if (score >= 100) break;
     }
-    if (bestScore >= threshold) {
-      results.push({ item, score: bestScore });
+    if (bestScore >= minScoreToInsert) {
+      if (results.length < maxResults) {
+        results.push({ item, score: bestScore });
+        if (bestScore < worstScoreInResults || worstScoreInResults === -1) {
+          worstScoreInResults = bestScore;
+        }
+      } else if (bestScore > worstScoreInResults) {
+        let replaceIdx = 0;
+        let minScore = results[0].score;
+        for (let i = 1; i < results.length; i++) {
+          if (results[i].score < minScore) {
+            minScore = results[i].score;
+            replaceIdx = i;
+          }
+        }
+        results[replaceIdx] = { item, score: bestScore };
+        worstScoreInResults = bestScore;
+      }
     }
   }
+
   results.sort((a, b) => b.score - a.score);
-  return results;
+  return results.slice(0, maxResults);
 }

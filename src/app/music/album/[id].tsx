@@ -16,8 +16,9 @@ import { useLocalSearchParams } from 'expo-router';
 export default function AlbumDetailScreen() {
   const { colors } = useTheme();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { songs, albums } = useMusicStore();
-  const { fileSizeTheme } = useLayoutStore();
+  const songs = useMusicStore((s) => s.songs);
+  const albums = useMusicStore((s) => s.albums);
+  const fileSizeTheme = useLayoutStore((s) => s.fileSizeTheme);
   const { bottomSheetRef, present, song } = useSongContextMenu();
 
   const album = albums.find((a) => a.id === id);

@@ -38,7 +38,9 @@ export default function PlaylistsScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { t } = useTranslation();
-  const { playlists, createPlaylist, deletePlaylist } = usePlaylistStore();
+  const playlists = usePlaylistStore((s) => s.playlists);
+  const createPlaylist = usePlaylistStore((s) => s.createPlaylist);
+  const deletePlaylist = usePlaylistStore((s) => s.deletePlaylist);
   const songs = useMusicStore((s) => s.songs);
   const albums = useMusicStore((s) => s.albums);
   const artists = useMusicStore((s) => s.artists);

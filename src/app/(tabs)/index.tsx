@@ -34,10 +34,12 @@ export default function HomeScreen() {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const { t } = useTranslation();
-  const { songs, scan } = useMusicStore();
-  const { favoriteSongIds, hydrateFavorites } = useFavoritesStore();
-  const { currentTrack } = usePlayerStore();
-  const { playlists } = usePlaylistStore();
+  const songs = useMusicStore((s) => s.songs);
+  const scan = useMusicStore((s) => s.scan);
+  const favoriteSongIds = useFavoritesStore((s) => s.favoriteSongIds);
+  const hydrateFavorites = useFavoritesStore((s) => s.hydrateFavorites);
+  const currentTrack = usePlayerStore((s) => s.currentTrack);
+  const playlists = usePlaylistStore((s) => s.playlists);
   const router = useRouter();
   const { bottomSheetRef, present, song } = useSongContextMenu();
   const trackStats = useStatsStore((s) => s.trackStats);

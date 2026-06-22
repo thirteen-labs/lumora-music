@@ -11,7 +11,8 @@ const SIZES = [
 
 export function FileSizeSelector() {
   const { colors } = useTheme();
-  const { fileSizeTheme, setFileSizeTheme } = useLayoutStore();
+  const fileSizeTheme = useLayoutStore((s) => s.fileSizeTheme);
+  const setFileSizeTheme = useLayoutStore((s) => s.setFileSizeTheme);
 
   return (
     <View style={[s.flexRow, s.gap2]}>
