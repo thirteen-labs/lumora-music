@@ -1154,11 +1154,15 @@ const LyricsLayout = React.memo((props: LayoutProps) => {
 
   useEffect(() => {
     rotation.value = 0;
-    rotation.value = withRepeat(
+    const anim = withRepeat(
       withTiming(360, { duration: 4000, easing: Easing.linear }),
       -1,
       false,
     );
+    rotation.value = anim;
+    return () => {
+      rotation.value = 0;
+    };
   }, [rotation]);
 
   const discAnimatedStyle = useAnimatedStyle(() => ({

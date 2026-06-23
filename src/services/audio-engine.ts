@@ -7,12 +7,75 @@ import {
   StereoPannerNode,
   AudioManager,
 } from 'react-native-audio-api';
+import type { AudioEventSubscription } from 'react-native-audio-api';
 import type { EqualizerBand } from '@/types/audio';
 import { reportWarning } from '@/utils/error-handler';
 
 const EQ_FREQUENCIES = [60, 170, 310, 600, 1000, 3000, 6000, 12000, 14000, 16000];
 const BASS_BOOST_FREQUENCY = 150;
 const EQ_Q = 1.4;
+
+/** Bounded LRU pool for decoded audio buffers. Avoids re-decoding recently played tracks. */
+class AudioBufferPool {
+  private cache = new Map<string, AudioBuffer>();
+  private maxSize: number;
+  private decodeTimes = new Map<string, number>();
+  private hits = 0;
+  private misses = 0;
+
+  constructor(maxSize = 6) {
+    this.maxSize = maxSize;
+  }
+
+  has(uri: string): boolean {
+    return this.cache.has(uri);
+  }
+
+  get(uri: string): AudioBuffer | undefined {
+    const buf = this.cache.get(uri);
+    if (buf) {
+      this.hits++;
+      this.cache.delete(uri);
+      this.cache.set(uri, buf);
+    } else {
+      this.misses++;
+    }
+    return buf;
+  }
+
+  set(uri: string, buffer: AudioBuffer, decodeTimeMs: number): void {
+    if (this.cache.has(uri)) {
+      this.cache.delete(uri);
+    } else if (this.cache.size >= this.maxSize) {
+      const oldest = this.cache.keys().next().value;
+      if (oldest) {
+        this.cache.delete(oldest);
+        this.decodeTimes.delete(oldest);
+      }
+    }
+    this.cache.set(uri, buffer);
+    this.decodeTimes.set(uri, decodeTimeMs);
+  }
+
+  remove(uri: string): void {
+    this.cache.delete(uri);
+    this.decodeTimes.delete(uri);
+  }
+
+  getStats(): { size: number; maxSize: number; hitRate: number; avgDecodeMs: number } {
+    const total = this.hits + this.misses || 1;
+    const times = Array.from(this.decodeTimes.values());
+    const avg = times.length > 0 ? times.reduce((a, b) => a + b, 0) / times.length : 0;
+    return { size: this.cache.size, maxSize: this.maxSize, hitRate: Math.round((this.hits / total) * 100), avgDecodeMs: Math.round(avg) };
+  }
+
+  clear(): void {
+    this.cache.clear();
+    this.decodeTimes.clear();
+    this.hits = 0;
+    this.misses = 0;
+  }
+}
 
 interface AudioEngineState {
   playing: boolean;
@@ -59,6 +122,15 @@ class AudioEngine {
 
   private stateCallbacks: Set<StateChangeCallback> = new Set();
   private positionInterval: ReturnType<typeof setInterval> | null = null;
+  private loadingLock = false;
+  private interruptionSubscription: AudioEventSubscription | null = null;
+
+  /** Bounded buffer pool for decoded audio */
+  private bufferPool = new AudioBufferPool(6);
+
+  /** Preloaded buffer awaiting activation */
+  private preloadedUri: string | null = null;
+  private preloadedBuffer: AudioBuffer | null = null;
 
   async init(): Promise<void> {
     if (this.context) return;
@@ -68,7 +140,7 @@ class AudioEngine {
     try {
       AudioManager.setAudioSessionActivity(true);
       AudioManager.observeAudioInterruptions(true);
-      AudioManager.addSystemEventListener('interruption', (event) => {
+      this.interruptionSubscription = AudioManager.addSystemEventListener('interruption', (event) => {
         if (event.type === 'began') {
           if (this._playing) {
             this.context?.suspend();
@@ -208,14 +280,49 @@ class AudioEngine {
   }
 
   async loadTrack(uri: string): Promise<void> {
-    await this.init();
-    if (!this.context) return;
-
-    this.stopCurrentSource();
-    this._currentTrackUri = uri;
+    if (this.loadingLock) {
+      reportWarning('AudioEngine', 'loadTrack called while already loading');
+      return;
+    }
+    this.loadingLock = true;
 
     try {
+      await this.init();
+      if (!this.context) return;
+
+      this.cancelCrossfade();
+      this.stopCurrentSource();
+
+      // Check buffer pool first
+      const pooled = this.bufferPool.get(uri);
+      if (pooled) {
+        this.currentBuffer = pooled;
+        this._currentTrackUri = uri;
+        this._duration = pooled.duration;
+        this._currentTime = 0;
+        this._startOffset = 0;
+        this.emitState();
+        return;
+      }
+
+      // Check preloaded buffer
+      if (this.preloadedUri === uri && this.preloadedBuffer) {
+        this.currentBuffer = this.preloadedBuffer;
+        this.preloadedBuffer = null;
+        this.preloadedUri = null;
+        this._currentTrackUri = uri;
+        this._duration = this.currentBuffer.duration;
+        this._currentTime = 0;
+        this._startOffset = 0;
+        this.emitState();
+        return;
+      }
+
+      this._currentTrackUri = uri;
+
+      const startTs = Date.now();
       const buffer = await this.context.decodeAudioData(uri);
+      this.bufferPool.set(uri, buffer, Date.now() - startTs);
       this.currentBuffer = buffer;
       this._duration = buffer.duration;
       this._currentTime = 0;
@@ -225,8 +332,36 @@ class AudioEngine {
       console.warn('Failed to decode audio data:', e);
       this.currentBuffer = null;
       this._duration = 0;
+      this._currentTrackUri = null;
       this.emitState();
+    } finally {
+      this.loadingLock = false;
     }
+  }
+
+  /** Pre-decode a track into the buffer pool so a subsequent loadTrack is instant. */
+  async preloadTrack(uri: string): Promise<void> {
+    if (this._crossfading) return;
+    if (this.bufferPool.has(uri)) return;
+    if (this.preloadedUri === uri && this.preloadedBuffer) return;
+    if (!this.context) await this.init();
+    if (!this.context) return;
+    try {
+      const startTs = Date.now();
+      const buffer = await this.context.decodeAudioData(uri);
+      const elapsed = Date.now() - startTs;
+      // If the track was already loaded via a direct call while we were decoding,
+      // still store in pool (pool handles duplicate-URI silently).
+      this.bufferPool.set(uri, buffer, elapsed);
+      this.preloadedUri = uri;
+      this.preloadedBuffer = buffer;
+    } catch (e) {
+      console.warn('[AudioEngine] Preload failed for', uri, e);
+    }
+  }
+
+  getBufferPoolStats(): { size: number; maxSize: number; hitRate: number; avgDecodeMs: number } {
+    return this.bufferPool.getStats();
   }
 
   private createSource(
@@ -250,7 +385,7 @@ class AudioEngine {
     if (!this.context || !this.currentBuffer) return;
 
     if (this._paused && this.currentSource) {
-      this.context.resume();
+      this.context.resume().catch(() => {});
       this._paused = false;
       this._playing = true;
       this.startPositionTracking();
@@ -258,6 +393,7 @@ class AudioEngine {
       return;
     }
 
+    this.cancelCrossfade();
     this.stopCurrentSource();
     const source = this.createSource(this.currentBuffer, this._pitchCorrection);
     if (!source) return;
@@ -280,10 +416,14 @@ class AudioEngine {
   }
 
   pause(): void {
-    if (!this._playing) return;
+    if (!this._playing && !this._paused) return;
     this._seeking = false;
     if (this.context) {
-      this.context.suspend();
+      try {
+        this.context.suspend();
+      } catch (e) {
+        reportWarning('AudioEngine', e);
+      }
     }
     this._paused = true;
     this._playing = false;
@@ -300,16 +440,11 @@ class AudioEngine {
     this.emitState();
   }
 
-  private stopCurrentSource(): void {
-    if (this.currentSource) {
-      try {
-        this.currentSource.onEnded = null;
-        this.currentSource.disconnect();
-        this.currentSource.stop();
-      } catch (e) {
-        reportWarning('AudioEngine', e);
-      }
-      this.currentSource = null;
+  private cancelCrossfade(): void {
+    this._crossfading = false;
+    if (this._crossfadeInterval) {
+      clearInterval(this._crossfadeInterval);
+      this._crossfadeInterval = null;
     }
     if (this.crossfadeSource) {
       try {
@@ -321,6 +456,22 @@ class AudioEngine {
       }
       this.crossfadeSource = null;
     }
+    this.crossfadeBuffer = null;
+    this.crossfadeGain = null;
+  }
+
+  private stopCurrentSource(): void {
+    if (this.currentSource) {
+      try {
+        this.currentSource.onEnded = null;
+        this.currentSource.disconnect();
+        this.currentSource.stop();
+      } catch (e) {
+        reportWarning('AudioEngine', e);
+      }
+      this.currentSource = null;
+    }
+    this.cancelCrossfade();
   }
 
   seekTo(position: number): void {
@@ -337,7 +488,7 @@ class AudioEngine {
       if (source) {
         this.currentSource = source;
         this.currentSource.onEnded = () => {
-          if (this._playing && !this._seeking) {
+          if (this._playing) {
             this._playing = false;
             this._currentTime = this._duration;
             this.stopPositionTracking();
@@ -473,7 +624,7 @@ class AudioEngine {
 
   async startCrossfade(newUri: string, durationSec: number): Promise<void> {
     if (!this.context || !this.currentBuffer || !this.currentSource) return;
-    if (this._crossfading) return;
+    if (this._crossfading || this.loadingLock) return;
 
     this._crossfading = true;
 
@@ -483,17 +634,24 @@ class AudioEngine {
         this._crossfading = false;
         return;
       }
+      if (!this._crossfading) {
+        this._crossfading = false;
+        return;
+      }
 
       this.crossfadeBuffer = newBuffer;
 
       const newGain = this.context.createGain();
       newGain.gain.value = 0;
-      this.crossfadeGain = newGain;
 
       const oldGain = this.context.createGain();
       oldGain.gain.value = 1;
 
-      this.currentSource.disconnect();
+      try {
+        this.currentSource.disconnect();
+      } catch (e) {
+        reportWarning('AudioEngine', e);
+      }
       this.currentSource.connect(oldGain);
       oldGain.connect(this.eqFilters[0]);
 
@@ -505,6 +663,7 @@ class AudioEngine {
       crossfadeSource.start(0, 0);
 
       this.crossfadeSource = crossfadeSource;
+      this.crossfadeGain = newGain;
 
       const steps = 20;
       const stepMs = (durationSec * 1000) / steps;
@@ -512,31 +671,22 @@ class AudioEngine {
 
       this._crossfadeInterval = setInterval(() => {
         if (!this._crossfading || !this.context) {
-          if (this._crossfadeInterval) {
-            clearInterval(this._crossfadeInterval);
-            this._crossfadeInterval = null;
-          }
-          this._crossfading = false;
+          this.cancelCrossfade();
           return;
         }
 
         step++;
         const progress = step / steps;
 
-        if (this.context) {
-          try {
-            oldGain.gain.setValueAtTime(1 - progress, this.context.currentTime);
-            newGain.gain.setValueAtTime(progress, this.context.currentTime);
-          } catch (e) {
-            reportWarning('AudioEngine', e);
-          }
+        try {
+          oldGain.gain.setValueAtTime(1 - progress, this.context.currentTime);
+          newGain.gain.setValueAtTime(progress, this.context.currentTime);
+        } catch (e) {
+          reportWarning('AudioEngine', e);
         }
 
         if (step >= steps) {
-          if (this._crossfadeInterval) {
-            clearInterval(this._crossfadeInterval);
-            this._crossfadeInterval = null;
-          }
+          this.cancelCrossfade();
 
           try {
             oldGain.disconnect();
@@ -547,18 +697,17 @@ class AudioEngine {
             reportWarning('AudioEngine', e);
           }
 
-          this.currentSource = this.crossfadeSource;
+          this.currentSource = crossfadeSource;
           this.crossfadeSource = null;
           this.currentBuffer = newBuffer;
           this._duration = newBuffer.duration;
           this._currentTime = 0;
           this._startOffset = 0;
           this._startContextTime = this.context?.currentTime ?? 0;
-          this._crossfading = false;
 
           if (this.currentSource) {
             this.currentSource.onEnded = () => {
-              if (this._playing && !this._seeking) {
+              if (this._playing) {
                 this._playing = false;
                 this._currentTime = this._duration;
                 this.stopPositionTracking();
@@ -613,15 +762,22 @@ class AudioEngine {
   }
 
   destroy(): void {
-    this.stopCurrentSource();
     this.stopPositionTracking();
-    if (this._crossfadeInterval) {
-      clearInterval(this._crossfadeInterval);
-      this._crossfadeInterval = null;
+    this.stopCurrentSource();
+    if (this.interruptionSubscription) {
+      try {
+        this.interruptionSubscription.remove();
+      } catch (e) {
+        reportWarning('AudioEngine', e);
+      }
+      this.interruptionSubscription = null;
     }
-    this._crossfading = false;
     if (this.context) {
-      this.context.close();
+      try {
+        this.context.close();
+      } catch (e) {
+        reportWarning('AudioEngine', e);
+      }
       this.context = null;
     }
     this.eqFilters = [];
@@ -633,8 +789,12 @@ class AudioEngine {
     this.crossfadeGain = null;
     this.currentBuffer = null;
     this.crossfadeBuffer = null;
+    this.preloadedBuffer = null;
+    this.preloadedUri = null;
     this.loudnessFilters = [];
     this.stateCallbacks.clear();
+    this.loadingLock = false;
+    this.bufferPool.clear();
   }
 }
 

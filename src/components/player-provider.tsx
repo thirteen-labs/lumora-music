@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef, ReactNode } from 'react';
-import { View, ActivityIndicator, Platform, AppState } from 'react-native';
+import { View, Text, Pressable, ActivityIndicator, Platform, AppState } from 'react-native';
 import { setupPlayer, setCrossfadeEnabled, setCrossfadeDuration, loadTrack, pausePlayback, seekTo as serviceSeekTo, ensurePlayerAlive } from '@/services/track-player';
 import { useTrackPlayerSync } from '@/hooks/use-track-player-sync';
 import { useSettingsStore } from '@/store/settings-store';
@@ -21,6 +21,7 @@ function PlayerSync() {
 
 export function PlayerProvider({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(false);
+  const [initError, setInitError] = useState<string | null>(null);
   const crossfade = useSettingsStore((s) => s.crossfade);
   const crossfadeDuration = useSettingsStore((s) => s.crossfadeDuration);
   const restoreAttemptedRef = useRef(false);
@@ -61,7 +62,13 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       }
     }
 
-    init();
+    init().catch((e) => {
+      if (!cancelled) {
+        console.error('PlayerProvider init failed:', e);
+        setInitError('Failed to initialize player');
+        setReady(true);
+      }
+    });
 
     return () => { cancelled = true; };
   }, []);
@@ -170,6 +177,20 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background }}>
         <ActivityIndicator size="large" color={colors.accent} />
+      </View>
+    );
+  }
+
+  if (initError) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background, padding: 24 }}>
+        <Text style={{ color: colors.text, fontSize: 16, textAlign: 'center', marginBottom: 16 }}>{initError}</Text>
+        <Pressable
+          onPress={() => { setInitError(null); setReady(false); }}
+          style={{ paddingHorizontal: 24, paddingVertical: 12, borderRadius: 12, backgroundColor: colors.accent }}
+        >
+          <Text style={{ color: '#fff', fontWeight: '600' }}>Retry</Text>
+        </Pressable>
       </View>
     );
   }

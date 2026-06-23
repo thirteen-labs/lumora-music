@@ -13,7 +13,8 @@ import { reportWarning } from '@/utils/error-handler';
 
 let initialized = false;
 const colorCache = new Map<string, number | null>();
-const COLOR_CACHE_MAX = 100;
+const COLOR_CACHE_MAX = 50;
+const ARTWORK_URI_CACHE_MAX = 50;
 
 const SCAN_CHANNEL = 'media-scan';
 const SLEEP_TIMER_CHANNEL = 'sleep-timer';
@@ -120,6 +121,24 @@ export async function initializeNotifications(): Promise<void> {
     },
   );
 
+  (PlaybackNotificationManager.addEventListener as (event: string, handler: () => void) => void)(
+    'playbackNotificationClose',
+    () => {
+      const state = usePlayerStore.getState();
+      state.pause();
+      dismissNowPlayingNotification();
+    },
+  );
+
+  (PlaybackNotificationManager.addEventListener as (event: string, handler: () => void) => void)(
+    'playbackNotificationDismiss',
+    () => {
+      const state = usePlayerStore.getState();
+      state.pause();
+      dismissNowPlayingNotification();
+    },
+  );
+
   await Promise.all([
     ensureChannel(SCAN_CHANNEL, 'Media Scan'),
     ensureChannel(SLEEP_TIMER_CHANNEL, 'Sleep Timer'),
@@ -137,15 +156,22 @@ async function ensureCacheDir(): Promise<void> {
 }
 
 async function cacheRemoteArtwork(uri: string): Promise<string> {
-  if (!uri.startsWith('http://') && !uri.startsWith('https://')) return uri;
-  const ext = uri.split('.').pop()?.split('?')[0] ?? 'jpg';
+  const isContent = uri.startsWith('content://');
+  if (!uri.startsWith('http://') && !uri.startsWith('https://') && !isContent) return uri;
+  const parts = uri.split('.');
+  let ext = parts.length > 1 ? (parts.pop()?.split('?')[0] ?? 'jpg') : 'jpg';
+  if (ext.length > 10 || ext.includes('/')) ext = 'jpg';
   const hash = uri.split('').reduce((h, c) => ((h << 5) - h + c.charCodeAt(0)) | 0, 0);
   const cachePath = `${ARTWORK_CACHE_DIR}${hash}.${ext}`;
   try {
     const info = await FileSystem.getInfoAsync(cachePath);
     if (info.exists) return cachePath;
     await ensureCacheDir();
-    await FileSystem.downloadAsync(uri, cachePath);
+    if (isContent) {
+      await FileSystem.copyAsync({ from: uri, to: cachePath });
+    } else {
+      await FileSystem.downloadAsync(uri, cachePath);
+    }
     return cachePath;
   } catch {
     return uri;
@@ -190,22 +216,36 @@ function cacheArtworkColor(uri: string, color: number | null): void {
 
 const artworkUriCache = new Map<string, string>();
 
+function cacheArtworkUri(key: string, value: string): void {
+  if (artworkUriCache.size >= ARTWORK_URI_CACHE_MAX) {
+    const firstKey = artworkUriCache.keys().next().value;
+    if (firstKey) artworkUriCache.delete(firstKey);
+  }
+  artworkUriCache.set(key, value);
+}
+
 export async function showNowPlayingNotification(
   track: Song,
   isPlaying: boolean,
+  position?: number,
 ): Promise<void> {
   try {
     const isFav = useFavoritesStore.getState().isSongFavorite(track.id);
     let artwork = resolveArtworkUri(track.artwork);
     if (track.artwork) {
       const rawUri = getArtworkUri(track.artwork);
-      if (rawUri && (rawUri.startsWith('http://') || rawUri.startsWith('https://'))) {
-        let cached = artworkUriCache.get(rawUri);
-        if (!cached) {
-          cached = await cacheRemoteArtwork(rawUri);
-          artworkUriCache.set(rawUri, cached);
+      if (rawUri) {
+        if (rawUri.startsWith('http://') || rawUri.startsWith('https://')) {
+          let cached = artworkUriCache.get(rawUri);
+          if (!cached) {
+            cached = await cacheRemoteArtwork(rawUri);
+            cacheArtworkUri(rawUri, cached);
+          }
+          artwork = { uri: cached };
+        } else if (rawUri.startsWith('content://')) {
+          const cached = await cacheRemoteArtwork(rawUri);
+          artwork = { uri: cached };
         }
-        artwork = { uri: cached };
       }
     }
     const info: Record<string, unknown> = {
@@ -214,7 +254,7 @@ export async function showNowPlayingNotification(
       album: track.album ?? undefined,
       artwork,
       duration: track.duration,
-      elapsedTime: Math.floor(track.duration * 0),
+      elapsedTime: position != null ? Math.floor(position) : 0,
       speed: 1,
       state: isPlaying ? 'playing' : 'paused',
       stopWithApp: false,
@@ -225,11 +265,14 @@ export async function showNowPlayingNotification(
     if (track.artwork) {
       const uri = getArtworkUri(track.artwork);
       if (uri) {
-        if (!colorCache.has(uri)) {
-          const extracted = await extractColorsFromImage(uri);
-          cacheArtworkColor(uri, extracted ? hexToNumber(extracted.background) : null);
+        const cacheUri = uri.startsWith('content://')
+          ? ((artwork as { uri: string })?.uri ?? uri)
+          : uri;
+        if (!colorCache.has(cacheUri)) {
+          const extracted = await extractColorsFromImage(cacheUri);
+          cacheArtworkColor(cacheUri, extracted ? hexToNumber(extracted.background) : null);
         }
-        const color = colorCache.get(uri);
+        const color = colorCache.get(cacheUri);
         if (color != null) {
           info.color = color;
           info.colorized = true;
@@ -246,6 +289,7 @@ export async function showNowPlayingNotification(
     await (PlaybackNotificationManager.enableControl as (name: string, enabled: boolean) => Promise<void>)('fastForward', true);
     await (PlaybackNotificationManager.enableControl as (name: string, enabled: boolean) => Promise<void>)('stop', true);
     await (PlaybackNotificationManager.enableControl as (name: string, enabled: boolean) => Promise<void>)('favorite', true);
+    await (PlaybackNotificationManager.enableControl as (name: string, enabled: boolean) => Promise<void>)('close', true);
   } catch (e) {
     reportWarning('Notifications', e);
   }
@@ -254,9 +298,10 @@ export async function showNowPlayingNotification(
 export async function updateNotificationPlaybackState(
   isPlaying: boolean,
   track: Song | null,
+  position?: number,
 ): Promise<void> {
   if (!track) return;
-  await showNowPlayingNotification(track, isPlaying);
+  await showNowPlayingNotification(track, isPlaying, position);
 }
 
 export async function dismissNowPlayingNotification(): Promise<void> {

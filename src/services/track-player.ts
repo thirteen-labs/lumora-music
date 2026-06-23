@@ -6,10 +6,14 @@ import {
   dismissNowPlayingNotification,
 } from "@/services/notifications";
 import { reportWarning } from "@/utils/error-handler";
+import {
+  useTelemetryStore,
+} from "@/store/telemetry-store";
 
 let crossfadeEnabled = false;
 let crossfadeDuration = 5;
 let currentVolume = 1;
+let crossfadeInProgress = false;
 
 const playerAdapter = {
   get playing(): boolean {
@@ -128,12 +132,22 @@ export async function setupPlayer(): Promise<void> {
 }
 
 export async function loadTrack(track: Song): Promise<void> {
-  if (crossfadeEnabled && audioEngine.getState().playing) {
+  if (crossfadeEnabled && audioEngine.getState().playing && !crossfadeInProgress) {
+    useTelemetryStore.getState().record('crossfade', track.id);
     await crossfadeToTrack(track);
     return;
   }
 
-  await audioEngine.loadTrack(track.uri);
+  const startTs = Date.now();
+  try {
+    await audioEngine.loadTrack(track.uri);
+  } catch (e) {
+    useTelemetryStore.getState().recordError('loadTrack', String(e));
+    throw e;
+  }
+  const elapsed = Date.now() - startTs;
+  useTelemetryStore.getState().recordPlay(track.id, elapsed);
+
   const speedState = (
     await import("@/store/playback-speed-store")
   ).usePlaybackSpeedStore.getState();
@@ -145,9 +159,25 @@ export async function loadTrack(track: Song): Promise<void> {
   setLockScreenMetadata(track);
 }
 
+export async function preloadNextTrack(track: Song): Promise<void> {
+  if (crossfadeInProgress) return;
+  audioEngine.preloadTrack(track.uri);
+}
+
 async function crossfadeToTrack(track: Song): Promise<void> {
-  await audioEngine.startCrossfade(track.uri, crossfadeDuration);
-  setLockScreenMetadata(track);
+  if (crossfadeInProgress) {
+    await audioEngine.loadTrack(track.uri);
+    audioEngine.play();
+    setLockScreenMetadata(track);
+    return;
+  }
+  crossfadeInProgress = true;
+  try {
+    await audioEngine.startCrossfade(track.uri, crossfadeDuration);
+    setLockScreenMetadata(track);
+  } finally {
+    crossfadeInProgress = false;
+  }
 }
 
 export async function pausePlayback(): Promise<void> {
@@ -191,5 +221,6 @@ export function destroyPlayer(): void {
 }
 
 export async function ensurePlayerAlive(): Promise<boolean> {
+  useTelemetryStore.getState().recordEnsureAlive();
   return audioEngine.ensureAlive();
 }

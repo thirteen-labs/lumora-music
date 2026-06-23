@@ -2,7 +2,7 @@ import { View, Text, Pressable, Dimensions, StyleSheet, Alert, ActivityIndicator
 import Slider from "@react-native-community/slider";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { s } from "@/styles";
-import { useLocalSearchParams, useRouter, useFocusEffect } from "expo-router";
+import { useLocalSearchParams, useRouter, useFocusEffect, useNavigation } from "expo-router";
 import { useTheme } from "@/hooks/use-theme";
 import {
   ChevronLeft,
@@ -353,6 +353,8 @@ export default function VideoPlayerScreen() {
   const isScrubbing = useRef(false);
   const scrubValue = useRef(0);
   const seekTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pollingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const isMountedRef = useRef(true);
 
   const isVideoFavorite = useFavoritesStore((s) => s.isVideoFavorite);
   const toggleVideoFavorite = useFavoritesStore((s) => s.toggleVideoFavorite);
@@ -600,6 +602,7 @@ export default function VideoPlayerScreen() {
         ScreenOrientation.lockAsync(
           ScreenOrientation.OrientationLock.LANDSCAPE,
         ).catch(() => {});
+        setControlsVisible(true);
       } else {
         ScreenOrientation.lockAsync(
           ScreenOrientation.OrientationLock.PORTRAIT,
@@ -659,7 +662,7 @@ export default function VideoPlayerScreen() {
     const gap = fullscreen ? 8 : 6;
     const overlayStyle = fullscreen ? styles.controlsOverlayFullscreen : styles.controlsOverlay;
     return (
-      <Pressable style={overlayStyle}>
+      <View style={overlayStyle}>
         <View style={[s.flexRow, s.itemsCenter, { gap }]}>
           {sortedVideos.length > 1 && (
             <Pressable onPress={goToPrev} style={navStyle}>
@@ -679,7 +682,7 @@ export default function VideoPlayerScreen() {
             </Pressable>
           )}
         </View>
-      </Pressable>
+      </View>
     );
   }, [isLocked, showResume, controlsVisible, sortedVideos, goToPrev, goToNext, handlePlayPause, player?.playing]);
 
@@ -857,38 +860,53 @@ export default function VideoPlayerScreen() {
     }
   }, [activeSubtitle]);
 
+  // Consolidated polling interval - handles position, progress save, and subtitles
   useEffect(() => {
     if (!uri || !playerRef.current) return;
-    const interval = setInterval(() => {
-      if (playerRef.current) {
-        const pos = playerRef.current.currentTime;
-        const dur = playerRef.current.duration;
-        if (pos > 0 && dur > 0) {
-          saveVideoPosition(uri, pos, dur);
-        }
-      }
-    }, 5000);
-    return () => clearInterval(interval);
-  }, [uri, saveVideoPosition]);
 
-  // Real-time position polling for seek bar
-  useEffect(() => {
-    const interval = setInterval(() => {
-      if (playerRef.current && !isScrubbing.current) {
-        const pos = playerRef.current.currentTime ?? 0;
-        const dur = playerRef.current.duration ?? 0;
+    if (pollingIntervalRef.current) {
+      clearInterval(pollingIntervalRef.current);
+    }
+
+    pollingIntervalRef.current = setInterval(() => {
+      if (!playerRef.current || !isMountedRef.current) return;
+
+      const pos = playerRef.current.currentTime ?? 0;
+      const dur = playerRef.current.duration ?? 0;
+
+      // UI position update
+      if (!isScrubbing.current) {
         setCurrentPosition(pos);
         if (dur > 0 && dur !== videoDuration) setVideoDuration(dur);
       }
-    }, 200);
-    return () => clearInterval(interval);
-  }, [videoDuration]);
+
+      // Video progress save (throttled to every 5s)
+      if (pos > 0 && dur > 0 && Math.floor(pos) % 5 === 0) {
+        saveVideoPosition(uri, pos, dur);
+      }
+
+      // Subtitle cue update
+      if (parsedCuesRef.current.length > 0 && activeSubtitle) {
+        const cue = getActiveCue(parsedCuesRef.current, pos);
+        setCurrentCueText(cue?.text ?? null);
+      }
+    }, 250);
+
+    return () => {
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+        pollingIntervalRef.current = null;
+      }
+    };
+  }, [uri, saveVideoPosition, videoDuration, activeSubtitle]);
 
   // Buffering detection via status change
   useEffect(() => {
     if (!player) return;
     const sub = player.addListener('statusChange', (event: any) => {
-      setIsBuffering(event.status === 'loading');
+      if (isMountedRef.current) {
+        setIsBuffering(event.status === 'loading');
+      }
     });
     return () => sub.remove();
   }, [player]);
@@ -908,18 +926,6 @@ export default function VideoPlayerScreen() {
   }, [uri, clearVideoProgress]);
 
   useEffect(() => {
-    if (parsedCuesRef.current.length === 0 && !activeSubtitle) return;
-    const interval = setInterval(() => {
-      if (playerRef.current) {
-        const pos = playerRef.current.currentTime;
-        const cue = getActiveCue(parsedCuesRef.current, pos);
-        setCurrentCueText(cue?.text ?? null);
-      }
-    }, 250);
-    return () => clearInterval(interval);
-  }, [activeSubtitle]);
-
-  useEffect(() => {
     const { isPlaying, pause } = usePlayerStore.getState();
     if (isPlaying) {
       pause();
@@ -927,21 +933,50 @@ export default function VideoPlayerScreen() {
   }, []);
 
   useEffect(() => {
+    isMountedRef.current = true;
     return () => {
+      isMountedRef.current = false;
       try {
         playerRef.current?.pause();
       } catch {}
       if (currentVideo) {
         showResumeWatchingNotification(currentVideo);
       }
-      playerRef.current = null;
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+        pollingIntervalRef.current = null;
+      }
       if (seekTimerRef.current) clearTimeout(seekTimerRef.current);
       if (controlsTimerRef.current) clearTimeout(controlsTimerRef.current);
-      ScreenOrientation.lockAsync(
-        ScreenOrientation.OrientationLock.PORTRAIT,
-      ).catch(() => {});
+      playerRef.current = null;
+      try {
+        ScreenOrientation.lockAsync(
+          ScreenOrientation.OrientationLock.PORTRAIT,
+        ).catch(() => {});
+      } catch {}
     };
   }, [currentVideo]);
+
+  const fullscreenRef = useRef(isFullscreen);
+
+  useEffect(() => {
+    fullscreenRef.current = isFullscreen;
+  }, [isFullscreen]);
+
+  const navigation = useNavigation();
+
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('beforeRemove', (e: any) => {
+      if (fullscreenRef.current) {
+        e.preventDefault();
+        ScreenOrientation.lockAsync(
+          ScreenOrientation.OrientationLock.PORTRAIT,
+        ).catch(() => {});
+        setIsFullscreen(false);
+      }
+    });
+    return unsubscribe;
+  }, [navigation]);
 
   const [gestureSettings, setGestureSettings] = useState<GestureSettings>({ swipeSeek: true, swipeVolume: true, swipeBrightness: true, doubleTapSeek: true });
 
@@ -1184,7 +1219,7 @@ export default function VideoPlayerScreen() {
 
           {renderCenterControls(true)}
 
-          {!isLocked && (
+          {controlsVisible && !isLocked && (
             <View
               style={[styles.fullscreenControls, { paddingTop: insets.top + 4 }]}
             >
@@ -1251,10 +1286,10 @@ export default function VideoPlayerScreen() {
                 </Pressable>
               )}
               <Pressable
-                onPress={() => router.back()}
-                style={styles.backButton}
+                onPress={() => moreSheetRef.current?.present()}
+                style={styles.fullscreenButton}
               >
-                <ChevronLeft size={28} color="#fff" />
+                <MoreHorizontal size={24} color="#fff" />
               </Pressable>
             </View>
           </View>

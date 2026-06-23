@@ -16,7 +16,7 @@ import { useRouter } from 'expo-router';
 import { s } from '@/styles';
 import { useTranslation } from '@/hooks/use-translation';
 import { getCachedVideoThumbnail, generateVideoThumbnail } from '@/services/video-thumbnails';
-import type { VideoThumbnail as ExpoVideoThumbnail } from 'expo-video';
+import type { VideoThumbnail } from 'expo-video';
 
 function useDebounce<T>(value: T, delay: number): T {
   const [debouncedValue, setDebouncedValue] = useState(value);
@@ -53,20 +53,19 @@ function sortVideos(videos: any[], sortField: SortField, sortOrder: SortOrder) {
 
 function VideoThumb({ uri, videoId, videoUri, width, height, borderRadius, colors }: { uri: string | null; videoId: string; videoUri: string; width: number; height: number; borderRadius: number; colors: any }) {
   const [hasError, setHasError] = useState(false);
-  const [generatedThumb, setGeneratedThumb] = useState<ExpoVideoThumbnail | null | undefined>(
-    getCachedVideoThumbnail(videoId) ?? undefined,
+  const [generatedThumb, setGeneratedThumb] = useState<VideoThumbnail | null | undefined>(
+    getCachedVideoThumbnail(videoId),
   );
 
   useEffect(() => {
-    if (!uri && !generatedThumb) {
+    if (!generatedThumb && (!uri || hasError)) {
       generateVideoThumbnail(videoId, videoUri).then(setGeneratedThumb);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [uri, videoId, videoUri]);
+  }, [uri, videoId, videoUri, generatedThumb, hasError]);
 
-  const imageSource: string | ExpoVideoThumbnail | null = generatedThumb ?? uri;
+  const imageSource = generatedThumb ?? (hasError ? null : uri);
 
-  if (!imageSource || hasError) {
+  if (!imageSource) {
     return (
       <View style={{ width, height, borderRadius, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center' }}>
         <VideoIcon size={width * 0.4} color={colors.accent} />

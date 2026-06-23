@@ -67,6 +67,26 @@ interface PlayerState {
   syncFromPlayer: () => void;
 }
 
+let trackLoadingLock = false;
+
+async function guardedLoadTrack(track: Song): Promise<void> {
+  if (trackLoadingLock) {
+    reportWarning('PlayerStore', 'loadTrack called while already loading, queuing');
+    // Small yield to let current load finish
+    await new Promise(r => setTimeout(r, 100));
+    if (trackLoadingLock) {
+      reportWarning('PlayerStore', 'loadTrack still locked after wait, forcing release');
+      trackLoadingLock = false;
+    }
+  }
+  trackLoadingLock = true;
+  try {
+    await loadTrack(track);
+  } finally {
+    trackLoadingLock = false;
+  }
+}
+
 export const usePlayerStore = create<PlayerState>()(
   immer((set, get) => ({
     currentTrack: null,
@@ -107,7 +127,7 @@ export const usePlayerStore = create<PlayerState>()(
           0,
         );
 
-      await loadTrack(track);
+      await guardedLoadTrack(track);
     },
 
     pause: async () => {
@@ -196,7 +216,7 @@ export const usePlayerStore = create<PlayerState>()(
           s.currentTrack = nextTrack;
           s.isPlaying = true;
         });
-        await loadTrack(nextTrack);
+        await guardedLoadTrack(nextTrack);
         const s = get();
         useQueuePersistStore
           .getState()
@@ -248,7 +268,7 @@ export const usePlayerStore = create<PlayerState>()(
           s.currentTrack = prevTrack;
           s.isPlaying = true;
         });
-        await loadTrack(prevTrack);
+        await guardedLoadTrack(prevTrack);
         const s = get();
         useQueuePersistStore
           .getState()
@@ -264,10 +284,10 @@ export const usePlayerStore = create<PlayerState>()(
     },
 
     seekTo: async (position) => {
+      await serviceSeekTo(position);
       set((s) => {
         s.position = position;
       });
-      await serviceSeekTo(position);
     },
 
     setShuffle: (shuffle) => {
@@ -338,7 +358,7 @@ export const usePlayerStore = create<PlayerState>()(
       if (wasCurrent) {
         const newState = get();
         if (newState.currentTrack) {
-          loadTrack(newState.currentTrack).catch((e) => reportWarning('Player', e, 'Failed to load next track after queue removal'));
+          guardedLoadTrack(newState.currentTrack).catch((e) => reportWarning('Player', e, 'Failed to load next track after queue removal'));
         } else {
           pausePlayback().catch((e) => reportWarning('Player', e, 'Failed to pause after queue removal'));
         }

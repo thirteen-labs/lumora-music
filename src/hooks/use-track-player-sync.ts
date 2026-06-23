@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
+import { AppState } from 'react-native';
 import { usePlayerStore } from '@/store/player-store';
-import { getPlayer, isCrossfadeEnabled, getCrossfadeDuration } from '@/services/track-player';
+import { getPlayer, isCrossfadeEnabled, getCrossfadeDuration, preloadNextTrack } from '@/services/track-player';
 import { showNowPlayingNotification, updateNotificationPlaybackState, dismissNowPlayingNotification } from '@/services/notifications';
 import { useSleepTimerStore } from '@/store/sleep-timer-store';
 import { useStatsStore } from '@/store/stats-store';
@@ -16,7 +17,8 @@ export function useTrackPlayerSync() {
   const playTimeAccumRef = useRef(0);
   const lastQueueSaveRef = useRef(0);
   const lastNotifUpdateRef = useRef(0);
-  const isProcessingRef = useRef(false);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const appStateRef = useRef(AppState.currentState);
 
   useEffect(() => {
     syncFromPlayerRef.current = usePlayerStore.getState().syncFromPlayer;
@@ -123,31 +125,26 @@ export function useTrackPlayerSync() {
   const crossfadeEnabled = isCrossfadeEnabled();
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      if (isProcessingRef.current) return;
-      isProcessingRef.current = true;
+    function tick() {
+      const player = getPlayer();
+      if (!player) return;
 
-      try {
-        const player = getPlayer();
-        if (!player) return;
+      syncFromPlayerRef.current();
 
-        syncFromPlayerRef.current();
+      const state = usePlayerStore.getState();
+      const isNowPlaying = player.playing;
+      const currentTime = player.currentTime;
+      const duration = player.duration;
+      const now = Date.now();
 
-        const state = usePlayerStore.getState();
-        const isNowPlaying = player.playing;
-        const currentTime = player.currentTime;
-        const duration = player.duration;
-        const now = Date.now();
-
-      // Notification handling (throttled to once per second)
       if (now - lastNotifUpdateRef.current >= 1000) {
         if (state.currentTrack && state.currentTrack.id !== lastTrackIdRef.current) {
           lastTrackIdRef.current = state.currentTrack.id;
           playTimeAccumRef.current = 0;
-          showNowPlayingNotification(state.currentTrack, isNowPlaying);
+          showNowPlayingNotification(state.currentTrack, isNowPlaying, currentTime);
           lastNotifUpdateRef.current = now;
         } else if (state.currentTrack && isNowPlaying !== wasPlayingRef.current) {
-          updateNotificationPlaybackState(isNowPlaying, state.currentTrack);
+          updateNotificationPlaybackState(isNowPlaying, state.currentTrack, currentTime);
           lastNotifUpdateRef.current = now;
         }
       }
@@ -157,12 +154,21 @@ export function useTrackPlayerSync() {
         dismissNowPlayingNotification();
       }
 
-      // Crossfade
       if (crossfadeEnabled && isNowPlaying) {
         handleCrossfade();
       }
 
-      // Track end
+      if (isNowPlaying && duration > 0 && state.currentTrack) {
+        const pct = currentTime / duration;
+        if (pct > 0.8 && pct < 0.99) {
+          const queue = state.queue;
+          const nextIdx = state.queueIndex + 1;
+          if (nextIdx < queue.length) {
+            preloadNextTrack(queue[nextIdx]);
+          }
+        }
+      }
+
       if (
         wasPlayingRef.current &&
         !isNowPlaying &&
@@ -175,15 +181,12 @@ export function useTrackPlayerSync() {
         }
       }
 
-      // Sleep timer
       handleSleepTimer();
 
-      // Play time recording
       if (isNowPlaying && state.currentTrack) {
         recordPlayTime(currentTime, lastTimeRef.current, true, state.currentTrack.id);
       }
 
-      // Periodic queue save (every 10 seconds)
       if (isNowPlaying && currentTime - lastQueueSaveRef.current >= 10) {
         saveQueueState();
         lastQueueSaveRef.current = currentTime;
@@ -203,12 +206,38 @@ export function useTrackPlayerSync() {
         crossfadeTriggeredRef.current = false;
       }
 
-        lastTimeRef.current = currentTime;
-      } finally {
-        isProcessingRef.current = false;
-      }
-    }, 250);
+      lastTimeRef.current = currentTime;
+    }
 
-    return () => clearInterval(interval);
+    function startInterval() {
+      if (intervalRef.current) return;
+      intervalRef.current = setInterval(tick, 250);
+    }
+
+    function stopInterval() {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+    }
+
+    const appStateSub = AppState.addEventListener('change', (nextState) => {
+      appStateRef.current = nextState;
+      if (nextState === 'active' || nextState === 'background') {
+        startInterval();
+      } else {
+        stopInterval();
+      }
+      if (nextState === 'background') {
+        saveQueueState();
+      }
+    });
+
+    startInterval();
+
+    return () => {
+      stopInterval();
+      appStateSub.remove();
+    };
   }, [crossfadeEnabled]);
 }
