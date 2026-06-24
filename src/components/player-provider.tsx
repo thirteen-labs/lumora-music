@@ -133,12 +133,29 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const handleAppState = async (nextState: string) => {
       if (nextState === 'active') {
-        await ensurePlayerAlive();
+        try {
+          await ensurePlayerAlive();
+        } catch (e) {
+          console.warn('[PlayerProvider] ensurePlayerAlive on foreground failed:', e);
+        }
       }
     };
     const sub = AppState.addEventListener('change', handleAppState);
     return () => sub.remove();
   }, []);
+
+  // Periodic health watchdog – checks audio engine every 30s during playback
+  useEffect(() => {
+    if (!ready) return;
+    const interval = setInterval(async () => {
+      try {
+        await ensurePlayerAlive();
+      } catch (e) {
+        console.warn('[PlayerProvider] Periodic health check failed:', e);
+      }
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [ready]);
 
   // Re-check when music store songs change
   useEffect(() => {
@@ -186,7 +203,17 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background, padding: 24 }}>
         <Text style={{ color: colors.text, fontSize: 16, textAlign: 'center', marginBottom: 16 }}>{initError}</Text>
         <Pressable
-          onPress={() => { setInitError(null); setReady(false); }}
+          onPress={async () => {
+            setInitError(null);
+            setReady(false);
+            try {
+              const { destroyPlayer, setupPlayer } = await import('@/services/track-player');
+              destroyPlayer();
+              await setupPlayer();
+            } catch (e) {
+              console.warn('[PlayerProvider] Retry cleanup failed:', e);
+            }
+          }}
           style={{ paddingHorizontal: 24, paddingVertical: 12, borderRadius: 12, backgroundColor: colors.accent }}
         >
           <Text style={{ color: '#fff', fontWeight: '600' }}>Retry</Text>

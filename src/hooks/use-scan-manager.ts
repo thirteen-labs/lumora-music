@@ -8,25 +8,45 @@ import {
   isBackgroundScanRegistered,
   isBackgroundScanEnabled,
 } from '@/services/background-scanner';
+import { reportWarning } from '@/utils/error-handler';
 
-const FOREGROUND_SCAN_COOLDOWN = 5000;
+const FOREGROUND_SCAN_COOLDOWN = 15000;
+const INITIAL_SCAN_COOLDOWN = 3000;
 
 export function useScanManager() {
   const scan = useMusicStore((s) => s.scan);
   const songs = useMusicStore((s) => s.songs);
+  const scanStatus = useMusicStore((s) => s.scanStatus);
   const fetchVideos = useVideoStore((s) => s.fetchVideos);
   const videos = useVideoStore((s) => s.videos);
   const scanDocuments = useDocumentStore((s) => s.scanDocuments);
   const docFiles = useDocumentStore((s) => s.files);
   const lastForegroundScan = useRef(0);
 
+  const runSafeScans = useCallback(async () => {
+    const results = await Promise.allSettled([
+      scan(),
+      fetchVideos(),
+      scanDocuments(),
+    ]);
+    for (const result of results) {
+      if (result.status === 'rejected') {
+        reportWarning('ScanManager', result.reason, 'A background scan task failed');
+      }
+    }
+  }, [scan, fetchVideos, scanDocuments]);
+
   useEffect(() => {
     const setup = async () => {
-      if (isBackgroundScanEnabled()) {
-        const registered = await isBackgroundScanRegistered();
-        if (!registered) {
-          await registerBackgroundScan();
+      try {
+        if (isBackgroundScanEnabled()) {
+          const registered = await isBackgroundScanRegistered();
+          if (!registered) {
+            await registerBackgroundScan();
+          }
         }
+      } catch (e) {
+        reportWarning('ScanManager', e, 'Failed to setup background scan');
       }
     };
     setup();
@@ -38,28 +58,31 @@ export function useScanManager() {
         const now = Date.now();
         if (now - lastForegroundScan.current < FOREGROUND_SCAN_COOLDOWN) return;
         lastForegroundScan.current = now;
-        await Promise.all([scan(), fetchVideos(), scanDocuments()]);
+        await runSafeScans();
       }
     };
     const subscription = AppState.addEventListener('change', handleAppState);
     return () => subscription?.remove();
-  }, [scan, fetchVideos, scanDocuments]);
+  }, [runSafeScans]);
 
   useEffect(() => {
     if (songs.length > 0) return;
     let cancelled = false;
-    (async () => {
-      if (!cancelled) {
-        await Promise.all([scan(), fetchVideos(), scanDocuments()]);
+    const timeout = setTimeout(async () => {
+      if (!cancelled && scanStatus !== 'scanning') {
+        await runSafeScans();
       }
-    })();
-    return () => { cancelled = true; };
+    }, INITIAL_SCAN_COOLDOWN);
+    return () => {
+      cancelled = true;
+      clearTimeout(timeout);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const manualScan = useCallback(async () => {
-    await Promise.all([scan(), fetchVideos(), scanDocuments()]);
-  }, [scan, fetchVideos, scanDocuments]);
+    await runSafeScans();
+  }, [runSafeScans]);
 
   return {
     manualScan,

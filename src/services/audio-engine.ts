@@ -15,6 +15,25 @@ const EQ_FREQUENCIES = [60, 170, 310, 600, 1000, 3000, 6000, 12000, 14000, 16000
 const BASS_BOOST_FREQUENCY = 150;
 const EQ_Q = 1.4;
 
+const DECODE_TIMEOUT_MS = 15000;
+const WATCHDOG_INTERVAL_MS = 30000;
+
+async function decodeWithTimeout(context: AudioContext, uri: string, timeoutMs: number): Promise<AudioBuffer> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error(`Decode timeout after ${timeoutMs}ms: ${uri.slice(0, 80)}`)), timeoutMs);
+  });
+  try {
+    const result = await Promise.race([
+      context.decodeAudioData(uri),
+      timeoutPromise,
+    ]);
+    return result;
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
 /** Total decoded PCM bytes above which pool refuses new entries. ~100MB. */
 const MAX_POOL_TOTAL_BYTES = 100 * 1024 * 1024;
 /** Per-buffer threshold – skip pooling for huge lossless files (>30MB decoded). */
@@ -177,6 +196,7 @@ class AudioEngine {
   private positionInterval: ReturnType<typeof setInterval> | null = null;
   private loadingLock = false;
   private interruptionSubscription: AudioEventSubscription | null = null;
+  private _watchdogTimer: ReturnType<typeof setInterval> | null = null;
 
   /** Bounded buffer pool for decoded audio */
   private bufferPool = new AudioBufferPool(6);
@@ -186,9 +206,24 @@ class AudioEngine {
   private preloadedBuffer: AudioBuffer | null = null;
 
   async init(): Promise<void> {
-    if (this.context) return;
+    if (this.context) {
+      if (this.context.state === 'closed') {
+        console.warn('[AudioEngine] Context was closed, creating new one');
+        this.context = null;
+      } else {
+        try {
+          if (this.context.state !== 'running') {
+            await this.context.resume();
+          }
+        } catch {
+          this.destroy();
+        }
+        if (this.context) return;
+      }
+    }
     this.context = new AudioContext();
     this.buildProcessingChain();
+    this.startWatchdog();
 
     try {
       AudioManager.setAudioSessionActivity(true);
@@ -299,6 +334,29 @@ class AudioEngine {
     return () => this.stateCallbacks.delete(callback);
   }
 
+  private startWatchdog(): void {
+    this.stopWatchdog();
+    this._watchdogTimer = setInterval(() => {
+      if (this.context && this._playing && !this._paused) {
+        try {
+          if (this.context.state !== 'running') {
+            console.warn('[AudioEngine] Watchdog: context not running, attempting resume');
+            this.context.resume().catch(() => {});
+          }
+        } catch (e) {
+          console.warn('[AudioEngine] Watchdog health check failed:', e);
+        }
+      }
+    }, WATCHDOG_INTERVAL_MS);
+  }
+
+  private stopWatchdog(): void {
+    if (this._watchdogTimer) {
+      clearInterval(this._watchdogTimer);
+      this._watchdogTimer = null;
+    }
+  }
+
   private emitState(): void {
     const state: AudioEngineState = {
       playing: this._playing,
@@ -334,8 +392,11 @@ class AudioEngine {
 
   async loadTrack(uri: string): Promise<void> {
     if (this.loadingLock) {
-      reportWarning('AudioEngine', 'loadTrack called while already loading');
-      return;
+      console.warn('[AudioEngine] loadTrack called while already loading, queuing retry');
+      await new Promise(r => setTimeout(r, 100));
+      if (this.loadingLock) {
+        this.loadingLock = false;
+      }
     }
     this.loadingLock = true;
 
@@ -374,7 +435,17 @@ class AudioEngine {
       this._currentTrackUri = uri;
 
       const startTs = Date.now();
-      const buffer = await this.context.decodeAudioData(uri);
+      let buffer: AudioBuffer;
+      try {
+        buffer = await decodeWithTimeout(this.context, uri, DECODE_TIMEOUT_MS);
+      } catch (decodeError) {
+        console.warn('[AudioEngine] Decode failed for', uri.slice(0, 80), ':', decodeError);
+        this._currentTrackUri = null;
+        this.currentBuffer = null;
+        this._duration = 0;
+        this.emitState();
+        return;
+      }
       this.bufferPool.set(uri, buffer, Date.now() - startTs);
       this.currentBuffer = buffer;
       this._duration = buffer.duration;
@@ -382,7 +453,7 @@ class AudioEngine {
       this._startOffset = 0;
       this.emitState();
     } catch (e) {
-      console.warn('Failed to decode audio data:', e);
+      console.warn('[AudioEngine] loadTrack error:', e);
       this.currentBuffer = null;
       this._duration = 0;
       this._currentTrackUri = null;
@@ -401,7 +472,7 @@ class AudioEngine {
     if (!this.context) return;
     try {
       const startTs = Date.now();
-      const buffer = await this.context.decodeAudioData(uri);
+      const buffer = await decodeWithTimeout(this.context!, uri, DECODE_TIMEOUT_MS);
       const elapsed = Date.now() - startTs;
       // set() returns false for oversized buffers (>30MB decoded PCM) – skip the pool but
       // still keep the preloaded reference so the immediate next loadTrack is fast.
@@ -409,7 +480,7 @@ class AudioEngine {
       this.preloadedUri = uri;
       this.preloadedBuffer = buffer;
     } catch (e) {
-      console.warn('[AudioEngine] Preload failed for', uri, e);
+      console.warn('[AudioEngine] Preload failed for', uri.slice(0, 80), e);
     }
   }
 
@@ -815,6 +886,7 @@ class AudioEngine {
   }
 
   destroy(): void {
+    this.stopWatchdog();
     this.stopPositionTracking();
     this.stopCurrentSource();
     if (this.interruptionSubscription) {

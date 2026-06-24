@@ -63,19 +63,36 @@ export function reportWarning(context: string, error: unknown, userMessage?: str
   }
 }
 
-// Global JS error handler for uncaught exceptions
+// Global JS error handler for uncaught exceptions & promise rejections
 let globalErrorHandlerInstalled = false;
 
 export function installGlobalErrorHandler(): void {
   if (globalErrorHandlerInstalled) return;
   globalErrorHandlerInstalled = true;
 
-  const defaultHandler = ErrorUtils.getGlobalHandler();
-  ErrorUtils.setGlobalHandler((error: Error, isFatal?: boolean) => {
-    reportError('UnhandledException', error, isFatal ? 'Fatal error occurred' : undefined);
-    // Still call default handler so RN can do its thing
-    defaultHandler(error, isFatal);
-  });
+  // Handle uncaught synchronous exceptions
+  try {
+    const defaultHandler = ErrorUtils.getGlobalHandler();
+    ErrorUtils.setGlobalHandler((error: Error, isFatal?: boolean) => {
+      reportError('UnhandledException', error, isFatal ? 'Fatal error occurred' : undefined);
+      defaultHandler(error, isFatal);
+    });
+  } catch (e) {
+    console.warn('[ErrorHandler] Failed to install sync handler:', e);
+  }
+
+  // Handle unhandled promise rejections (leading cause of native crashes)
+  try {
+    if (globalThis?.addEventListener) {
+      globalThis.addEventListener('unhandledrejection', (event: PromiseRejectionEvent) => {
+        const reason = event.reason;
+        reportError('UnhandledRejection', reason, 'A background task failed');
+        event.preventDefault();
+      });
+    }
+  } catch (e) {
+    console.warn('[ErrorHandler] Failed to install rejection handler:', e);
+  }
 
   if (Platform.OS !== 'web') {
     const originalConsoleWarn = console.warn;

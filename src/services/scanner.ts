@@ -7,6 +7,50 @@ const CACHED_SONGS_KEY = 'lumora-cached-songs';
 const CACHED_ALBUMS_KEY = 'lumora-cached-albums';
 const CACHED_ARTISTS_KEY = 'lumora-cached-artists';
 const CACHED_GENRES_KEY = 'lumora-cached-genres';
+const CACHED_VERSION_KEY = 'lumora-cache-version';
+const SCANNER_LAST_SCAN_KEY = 'lumora-scanner-last-scan';
+
+const CACHE_VERSION = 2;
+
+const MEDIA_FETCH_TIMEOUT = 30000;
+const SCAN_MAX_RETRIES = 2;
+const SCAN_RETRY_DELAY = 2000;
+
+interface AssetsResult {
+  assets: any[];
+  hasNextPage: boolean;
+  endCursor: string | undefined;
+  totalCount?: number;
+}
+
+async function fetchWithTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error(`Timeout after ${ms}ms: ${label}`)), ms);
+  });
+  try {
+    return await Promise.race([promise, timeout]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
+async function retryWithBackoff<T>(fn: () => Promise<T>, label: string, maxRetries = SCAN_MAX_RETRIES): Promise<T> {
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (e) {
+      if (attempt < maxRetries) {
+        const delay = SCAN_RETRY_DELAY * Math.pow(2, attempt);
+        console.warn(`[Scanner] Retry ${attempt + 1}/${maxRetries} for ${label} in ${delay}ms:`, e);
+        await new Promise(r => setTimeout(r, delay));
+      } else {
+        throw e;
+      }
+    }
+  }
+  throw new Error(`All ${maxRetries + 1} attempts failed for ${label}`);
+}
 
 let MediaLibrary: any = null;
 let MetadataRetriever: any = null;
@@ -351,6 +395,13 @@ async function processAsset(asset: any, excludedFolders: string[] = []): Promise
   }
 }
 
+function markCacheValid(): void {
+  try {
+    storage.set(CACHED_VERSION_KEY, CACHE_VERSION);
+    storage.set(SCANNER_LAST_SCAN_KEY, Date.now());
+  } catch {}
+}
+
 async function processBatch(assets: any[], concurrency = 10, excludedFolders: string[] = []): Promise<Song[]> {
   const results: Song[] = [];
   const queue = [...assets];
@@ -380,17 +431,24 @@ async function fetchSongs(
   const allSongs: Song[] = [];
   const MediaType = MediaLibrary.MediaType;
 
-  // Fetch first page
-  let result = await MediaLibrary.getAssetsAsync({
+  const fetchPage = async (params: any): Promise<AssetsResult> => {
+    const raw = await fetchWithTimeout(
+      retryWithBackoff(() => MediaLibrary.getAssetsAsync(params), 'getAssetsAsync'),
+      MEDIA_FETCH_TIMEOUT,
+      'getAssetsAsync',
+    );
+    return raw as AssetsResult;
+  };
+
+  let result: AssetsResult = await fetchPage({
     first: batch,
     mediaType: MediaType?.audio ?? 'audio',
     sortBy: 'default',
   });
 
-  // Start fetching next page in parallel with processing current page
-  let nextPagePromise: Promise<any> | null = null;
+  let nextPagePromise: Promise<AssetsResult> | null = null;
   if (result.hasNextPage && result.endCursor) {
-    nextPagePromise = MediaLibrary.getAssetsAsync({
+    nextPagePromise = fetchPage({
       first: batch,
       after: result.endCursor,
       mediaType: MediaType?.audio ?? 'audio',
@@ -409,7 +467,7 @@ async function fetchSongs(
     nextPagePromise = null;
 
     if (result.hasNextPage && result.endCursor) {
-      nextPagePromise = MediaLibrary.getAssetsAsync({
+      nextPagePromise = fetchPage({
         first: batch,
         after: result.endCursor,
         mediaType: MediaType?.audio ?? 'audio',
@@ -521,12 +579,19 @@ export async function scanMediaLibrary(
     cachedArtists = artists;
     cachedGenres = genres;
     saveCachedDataToStorage();
+    markCacheValid();
 
     onProgress?.(songs.length, songs.length);
     onStatusChange?.('complete');
     return { songs, albums, artists, genres };
   } catch (error) {
     console.error('Media scan error:', error);
+    if (cachedSongs.length > 0) {
+      console.warn('[Scanner] Scan failed – returning cached data as fallback');
+      onStatusChange?.('complete');
+      onProgress?.(cachedSongs.length, cachedSongs.length);
+      return { songs: cachedSongs, albums: cachedAlbums, artists: cachedArtists, genres: cachedGenres };
+    }
     onStatusChange?.('error');
     return { songs: [], albums: [], artists: [], genres: [] };
   }

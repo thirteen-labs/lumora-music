@@ -83,19 +83,28 @@ export const useMusicStore = create<MusicState>()(
         return;
       }
 
-      if (!force) {
-        const cached = getCachedSongs();
-        if (cached.length > 0) {
-          set((state) => {
-            state.songs = cached;
-            state.albums = getCachedAlbums();
-            state.artists = getCachedArtists();
-            state.genres = getCachedGenres();
-            state.scanStatus = "complete";
-            state.scanProgress = null;
-          });
-          return;
-        }
+      const cached = getCachedSongs();
+      const stale = force || cached.length === 0;
+
+      if (!stale && cached.length > 0) {
+        set((state) => {
+          state.songs = cached;
+          state.albums = getCachedAlbums();
+          state.artists = getCachedArtists();
+          state.genres = getCachedGenres();
+          state.scanStatus = "complete";
+          state.scanProgress = null;
+        });
+        return;
+      }
+
+      if (cached.length > 0) {
+        set((state) => {
+          state.songs = cached;
+          state.albums = getCachedAlbums();
+          state.artists = getCachedArtists();
+          state.genres = getCachedGenres();
+        });
       }
 
       useToastStore.getState().showToast("Scanning media library...", "music");

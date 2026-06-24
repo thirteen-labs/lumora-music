@@ -16,6 +16,7 @@ function ensureTaskDefined(): void {
     const BackgroundFetch = require('expo-background-fetch');
 
     TaskManager.defineTask(BACKGROUND_SCAN_TASK, async () => {
+      let hasData = false;
       try {
         const { scanMediaLibrary } = require('./scanner');
         const { fetchVideos } = require('./video-fetcher');
@@ -27,33 +28,45 @@ function ensureTaskDefined(): void {
         }
 
         console.log('[BackgroundScanner] Starting background scan');
-        const result = await scanMediaLibrary();
-        console.log('[BackgroundScanner] Audio scan complete:', result.songs.length, 'songs');
 
-        const videoResult = await fetchVideos();
-        console.log('[BackgroundScanner] Video scan complete:', videoResult.length, 'videos');
+        const results = await Promise.allSettled([
+          (async () => {
+            const r = await scanMediaLibrary(undefined, undefined);
+            if (r.songs.length > 0) {
+              updateKnownFiles(r.songs);
+              hasData = true;
+            }
+            return r;
+          })(),
+          (async () => {
+            const v = await fetchVideos();
+            if (v.length > 0) hasData = true;
+            return v;
+          })(),
+          (async () => {
+            const { scanRootDirectories } = require('./document-scanner');
+            const docs = await scanRootDirectories();
+            if (docs.length > 0) {
+              hasData = true;
+              try {
+                const storage = require('./mmkv').storage;
+                storage.set('lumora-documents', JSON.stringify(docs));
+                storage.set('lumora-documents-time', new Date().toISOString());
+              } catch (e) {
+                reportWarning('BackgroundScanner', e, 'Failed to persist document scan results');
+              }
+            }
+            return docs;
+          })(),
+        ]);
 
-        if (result.songs.length > 0) {
-          updateKnownFiles(result.songs);
-        }
-
-        const { scanRootDirectories } = require('./document-scanner');
-        const docs = await scanRootDirectories();
-        console.log('[BackgroundScanner] Document scan complete:', docs.length, 'documents');
-
-        if (docs.length > 0) {
-          try {
-            const storage = require('./mmkv').storage;
-            storage.set('lumora-documents', JSON.stringify(docs));
-            storage.set('lumora-documents-time', new Date().toISOString());
-          } catch (e) {
-            reportWarning('BackgroundScanner', e, 'Failed to persist document scan results');
+        for (const result of results) {
+          if (result.status === 'rejected') {
+            reportWarning('BackgroundScanner', result.reason, 'Background scan sub-task failed');
           }
         }
 
         storage.set(LAST_BG_SCAN_KEY, Date.now());
-
-        const hasData = result.songs.length > 0 || videoResult.length > 0 || docs.length > 0;
         return hasData
           ? BackgroundFetch.BackgroundFetchResult.NewData
           : BackgroundFetch.BackgroundFetchResult.NoData;
