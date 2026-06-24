@@ -4,7 +4,7 @@ import {
 } from 'react-native-audio-api';
 import * as ExpoNotifications from 'expo-notifications';
 import * as FileSystem from 'expo-file-system/legacy';
-import type { Song, Video } from '@/types/media';
+import type { Song } from '@/types/media';
 import { usePlayerStore } from '@/store/player-store';
 import { useFavoritesStore } from '@/store/favorites-store';
 import { useSettingsStore } from '@/store/settings-store';
@@ -22,14 +22,6 @@ const RESUME_WATCHING_CHANNEL = 'resume-watching';
 
 function hexToNumber(hex: string): number {
   return parseInt(hex.replace('#', ''), 16);
-}
-
-function formatDuration(seconds: number): string {
-  const h = Math.floor(seconds / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  const s = Math.floor(seconds % 60);
-  if (h > 0) return `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
-  return `${m}:${s.toString().padStart(2, '0')}`;
 }
 
 async function ensureChannel(channelId: string, channelName: string): Promise<void> {
@@ -339,7 +331,7 @@ export async function showScanningNotification(): Promise<void> {
     await ExpoNotifications.scheduleNotificationAsync({
       content: {
         title: 'Scanning media...',
-        body: 'Looking for songs and videos',
+        body: 'Looking for songs',
         data: { type: 'scan' },
         ...(Platform.OS === 'android' ? { channelId: SCAN_CHANNEL } : {}),
       },
@@ -350,13 +342,10 @@ export async function showScanningNotification(): Promise<void> {
   }
 }
 
-export async function showScanCompleteNotification(songCount: number, videoCount: number): Promise<void> {
+export async function showScanCompleteNotification(songCount: number): Promise<void> {
   if (!shouldNotify()) return;
   try {
-    const parts: string[] = [];
-    if (songCount > 0) parts.push(`${songCount} songs`);
-    if (videoCount > 0) parts.push(`${videoCount} videos`);
-    const body = parts.length > 0 ? `${parts.join(', ')} found` : 'No new media found';
+    const body = songCount > 0 ? `${songCount} songs found` : 'No new media found';
     await ExpoNotifications.scheduleNotificationAsync({
       content: {
         title: 'Scan Complete',
@@ -403,29 +392,4 @@ export async function dismissSleepTimerNotification(): Promise<void> {
   sleepTimerNotificationId = null;
 }
 
-export async function showResumeWatchingNotification(video: Video): Promise<void> {
-  try {
-    const { useVideoProgressStore } = await import('@/store/video-progress-store');
-    const pos = useVideoProgressStore.getState().getVideoPosition(video.id);
-    if (pos <= 0) return;
-    await ExpoNotifications.scheduleNotificationAsync({
-      content: {
-        title: 'Continue Watching',
-        body: `${video.title}\nLast watched at ${formatDuration(pos)}`,
-        data: { type: 'resume_watching', videoId: video.id, videoUri: video.uri },
-        ...(Platform.OS === 'android' ? { channelId: RESUME_WATCHING_CHANNEL } : {}),
-      },
-      trigger: null,
-    });
-  } catch (e) {
-    reportWarning('Notifications', e);
-  }
-}
 
-export async function dismissResumeWatchingNotification(videoId: string): Promise<void> {
-  try {
-    await ExpoNotifications.cancelAllScheduledNotificationsAsync();
-  } catch (e) {
-    reportWarning('Notifications', e);
-  }
-}

@@ -6,19 +6,17 @@ import { useTheme } from '@/hooks/use-theme';
 import { TopBar } from '@/components/top-bar';
 import { SectionHeader } from '@/components/section-header';
 import { useMusicStore } from '@/store/music-store';
-import { useVideoStore } from '@/store/video-store';
 import { calculateStorageInfo } from '@/scanner/enhanced-scanner';
 import { formatFileSize } from '@/utils/cn';
-import { HardDrive, Music, Video as VideoIcon2, FileText, Tag } from 'lucide-react-native';
+import { HardDrive, Music, FileText, Tag } from 'lucide-react-native';
 
 export default function StorageScreen() {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const songs = useMusicStore((s) => s.songs);
-  const videos = useVideoStore((s) => s.videos);
 
-  const info = useMemo(() => calculateStorageInfo(songs, videos), [songs, videos]);
-  const totalSize = info.totalAudioSize + info.totalVideoSize;
+  const info = useMemo(() => calculateStorageInfo(songs), [songs]);
+  const totalSize = info.totalAudioSize;
 
   return (
     <View style={[s.flex1, { backgroundColor: colors.background }]}>
@@ -39,11 +37,6 @@ export default function StorageScreen() {
                 <Text style={[s.textXl, s.fontBold, s.mt2, { color: colors.text }]}>{formatFileSize(info.totalAudioSize)}</Text>
                 <Text style={[s.textXs, s.mt1, { color: colors.textMuted }]}>Audio</Text>
               </View>
-              <View style={[s.flex1, s.rounded3xl, s.p4, s.itemsCenter, { backgroundColor: colors.surface }]}>
-                <VideoIcon2 size={24} color={colors.accent} />
-                <Text style={[s.textXl, s.fontBold, s.mt2, { color: colors.text }]}>{formatFileSize(info.totalVideoSize)}</Text>
-                <Text style={[s.textXs, s.mt1, { color: colors.textMuted }]}>Video</Text>
-              </View>
             </View>
           </View>
 
@@ -62,14 +55,9 @@ export default function StorageScreen() {
                     key={`${file.name}-${i}`}
                     style={[s.flexRow, s.itemsCenter, s.gap3, s.p4]}
                   >
-                    {file.type === 'audio' ? (
-                      <Music size={16} color={colors.accent} />
-                    ) : (
-                      <VideoIcon2 size={16} color={colors.accent} />
-                    )}
+                    <Music size={16} color={colors.accent} />
                     <View style={s.flex1}>
                       <Text style={[s.textSm, { color: colors.text }]} numberOfLines={1}>{file.name}</Text>
-                      <Text style={[s.textXs, { color: colors.textMuted }]}>{file.type}</Text>
                     </View>
                     <Text style={[s.textSm, s.fontMedium, { color: colors.textMuted }]}>{formatFileSize(file.size)}</Text>
                   </View>

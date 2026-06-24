@@ -88,7 +88,7 @@ export default function GestureControlsScreen() {
                 Gesture Controls
               </Text>
               <Text style={[s.textXs, s.mt05, { color: colors.textMuted }]}>
-                Enable, disable, and fine-tune video player gestures
+                Enable, disable, and fine-tune player gestures
               </Text>
             </View>
           </View>
@@ -181,7 +181,7 @@ export default function GestureControlsScreen() {
 
           <View style={[s.rounded3xl, s.p4, { backgroundColor: colors.surface }]}>
             <Text style={[s.textXs, { color: colors.textMuted, lineHeight: 20 }]}>
-              Gesture sensitivity values are applied in the video player. Higher values make gestures more responsive. Changes take effect on the next video playback.
+              Gesture sensitivity values affect how responsive gestures are. Changes take effect on the next playback.
             </Text>
           </View>
         </View>

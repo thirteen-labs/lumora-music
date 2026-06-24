@@ -52,7 +52,6 @@ export interface BackupData {
   playlists: Playlist[];
   smartPlaylists: SmartPlaylist[];
   favoriteSongIds: string[];
-  favoriteVideoIds: string[];
   trackStats: Record<string, TrackStats>;
   themeId: ThemeId;
   settings: Record<string, string | boolean | number | null>;
@@ -79,7 +78,6 @@ function getSettingsSnapshot(): Record<string, string | boolean | number | null>
     fontFamily: s.fontFamily,
     showSystemHiddenFiles: s.showSystemHiddenFiles,
     audioQuality: s.audioQuality,
-    videoQuality: s.videoQuality,
     gaplessPlayback: s.gaplessPlayback,
     playTogether: s.playTogether,
     newMediaNotification: s.newMediaNotification,
@@ -105,7 +103,6 @@ export async function collectBackupData(songs: Song[]): Promise<BackupData> {
     playlists: usePlaylistStore.getState().playlists as Playlist[],
     smartPlaylists: useSmartPlaylistStore.getState().playlists,
     favoriteSongIds: useFavoritesStore.getState().favoriteSongIds,
-    favoriteVideoIds: useFavoritesStore.getState().favoriteVideoIds,
     trackStats: useStatsStore.getState().trackStats,
     themeId: useThemeStore.getState().currentThemeId,
     settings: getSettingsSnapshot(),
@@ -229,10 +226,6 @@ export async function restoreFromBackup(data: BackupData): Promise<boolean> {
     if (data.favoriteSongIds) {
       storage.set('lumora-fav-songs', JSON.stringify(data.favoriteSongIds));
     }
-    if (data.favoriteVideoIds) {
-      storage.set('lumora-fav-videos', JSON.stringify(data.favoriteVideoIds));
-    }
-
     if (data.trackStats) {
       storage.set('lumora-track-stats', JSON.stringify(data.trackStats));
     }

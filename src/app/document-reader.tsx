@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { View, Text, ScrollView, Pressable, ActivityIndicator } from 'react-native';
+import { View, Text, ScrollView, Pressable, ActivityIndicator, TextInput } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { s } from '@/styles';
 import { useTheme } from '@/hooks/use-theme';
@@ -8,11 +8,12 @@ import { useRouter } from 'expo-router';
 import {
   FileText, Table, Presentation, BookOpen, File,
   FileArchive, ChevronRight, Files, RefreshCw,
+  Search, ArrowUpDown, SortAsc, SortDesc,
 } from 'lucide-react-native';
 import {
-  type DocCategory, type DocFile,
-  getDocCategory, formatFileSize,
-} from '@/services/document-scanner';
+  getDocCategory, formatFileSize, searchDocuments, sortDocuments,
+  type DocCategory, type DocFile, type SortField, type SortOrder,
+} from '@/services/document-engine';
 import { useDocumentStore } from '@/store/document-store';
 
 const CATEGORY_ICONS: Record<string, typeof FileText> = {
@@ -27,12 +28,22 @@ const CATEGORY_ICONS: Record<string, typeof FileText> = {
 
 type ViewMode = 'categories' | 'category' | 'all';
 
+const SORT_OPTIONS: { field: SortField; label: string }[] = [
+  { field: 'date', label: 'Date' },
+  { field: 'name', label: 'Name' },
+  { field: 'size', label: 'Size' },
+];
+
 export default function DocumentReaderScreen() {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const [viewMode, setViewMode] = useState<ViewMode>('categories');
   const [selectedCategory, setSelectedCategory] = useState<DocCategory | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sortField, setSortField] = useState<SortField>('date');
+  const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
+  const [showSortPicker, setShowSortPicker] = useState(false);
 
   const files = useDocumentStore((s) => s.files);
   const scanStatus = useDocumentStore((s) => s.scanStatus);
@@ -54,11 +65,13 @@ export default function DocumentReaderScreen() {
   const handleCategoryPress = useCallback((category: DocCategory) => {
     setSelectedCategory(category);
     setViewMode('category');
+    setSearchQuery('');
   }, []);
 
   const handleAllPress = useCallback(() => {
     setSelectedCategory(null);
     setViewMode('all');
+    setSearchQuery('');
   }, []);
 
   const handleDocPress = useCallback((doc: DocFile) => {
@@ -69,16 +82,31 @@ export default function DocumentReaderScreen() {
     if (viewMode === 'category' || viewMode === 'all') {
       setViewMode('categories');
       setSelectedCategory(null);
+      setSearchQuery('');
     } else {
       router.back();
     }
   }, [viewMode, router]);
 
+  const toggleSortOrder = useCallback(() => {
+    setSortOrder((o) => (o === 'desc' ? 'asc' : 'desc'));
+  }, []);
+
   const currentDocs = useMemo(() => {
-    if (viewMode === 'all') return files;
-    if (viewMode === 'category' && selectedCategory) return categorized.categorized[selectedCategory.id] || [];
-    return [];
-  }, [viewMode, selectedCategory, categorized, files]);
+    let docs: DocFile[];
+    if (viewMode === 'all') {
+      docs = files;
+    } else if (viewMode === 'category' && selectedCategory) {
+      docs = categorized.categorized[selectedCategory.id] || [];
+    } else {
+      docs = [];
+    }
+    docs = searchDocuments(docs, searchQuery);
+    docs = sortDocuments(docs, sortField, sortOrder);
+    return docs;
+  }, [viewMode, selectedCategory, categorized, files, searchQuery, sortField, sortOrder]);
+
+  const hasDocsForCategory = (id: string) => (categorized.counts[id] || 0) > 0;
 
   return (
     <View style={[s.flex1, { backgroundColor: colors.background }]}>
@@ -109,7 +137,7 @@ export default function DocumentReaderScreen() {
                 </View>
                 {scanning && <ActivityIndicator size="small" color={colors.accent} />}
                 {!scanning && (
-                  <Pressable onPress={handleRefresh} style={{ padding: 6, borderRadius: 6 }}>
+                  <Pressable onPress={handleRefresh} style={s.iconButton}>
                     <RefreshCw size={18} color={colors.textMuted} />
                   </Pressable>
                 )}
@@ -151,10 +179,11 @@ export default function DocumentReaderScreen() {
                 {categories.map((category) => {
                   const Icon = CATEGORY_ICONS[category.id] || File;
                   const count = categorized.counts[category.id] || 0;
+                  const hasDocs = hasDocsForCategory(category.id);
                   return (
                     <Pressable
                       key={category.id}
-                      onPress={() => handleCategoryPress(category)}
+                      onPress={() => hasDocs && handleCategoryPress(category)}
                       style={[{
                         width: '48%',
                         backgroundColor: colors.surface,
@@ -162,6 +191,7 @@ export default function DocumentReaderScreen() {
                         padding: 16,
                         borderLeftWidth: 3,
                         borderLeftColor: category.color,
+                        opacity: hasDocs ? 1 : 0.4,
                       }]}
                     >
                       <View style={[s.flexRow, s.itemsCenter, s.gap3]}>
@@ -209,14 +239,68 @@ export default function DocumentReaderScreen() {
                 </View>
               </View>
 
+              <View style={[s.flexRow, s.itemsCenter, s.gap2]}>
+                <View style={[s.flex1, s.flexRow, s.itemsCenter, s.gap2, s.px3, { backgroundColor: colors.surface, borderRadius: 12, height: 40 }]}>
+                  <Search size={16} color={colors.textMuted} />
+                  <TextInput
+                    style={[s.flex1, { color: colors.text, fontSize: 14, paddingVertical: 0 }]}
+                    placeholder="Search documents..."
+                    placeholderTextColor={colors.textMuted}
+                    value={searchQuery}
+                    onChangeText={setSearchQuery}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                  />
+                </View>
+                <Pressable
+                  onPress={toggleSortOrder}
+                  style={[s.w10, s.h10, s.itemsCenter, s.justifyCenter, { backgroundColor: colors.surface, borderRadius: 12 }]}
+                >
+                  {sortOrder === 'desc' ? <SortDesc size={18} color={colors.textMuted} /> : <SortAsc size={18} color={colors.textMuted} />}
+                </Pressable>
+                <Pressable
+                  onPress={() => setShowSortPicker(!showSortPicker)}
+                  style={[s.flexRow, s.itemsCenter, s.gap1, { paddingHorizontal: 10, height: 40, backgroundColor: colors.surface, borderRadius: 12 }]}
+                >
+                  <ArrowUpDown size={16} color={colors.accent} />
+                  <Text style={[s.textXs, s.fontSemibold, { color: colors.accent }]}>
+                    {SORT_OPTIONS.find((o) => o.field === sortField)?.label}
+                  </Text>
+                </Pressable>
+              </View>
+
+              {showSortPicker && (
+                <View style={[s.flexRow, s.gap2]}>
+                  {SORT_OPTIONS.map((opt) => (
+                    <Pressable
+                      key={opt.field}
+                      onPress={() => { setSortField(opt.field); setShowSortPicker(false); }}
+                      style={[{
+                        flex: 1,
+                        paddingVertical: 8,
+                        borderRadius: 10,
+                        alignItems: 'center',
+                        backgroundColor: sortField === opt.field ? colors.accent : colors.surface,
+                      }]}
+                    >
+                      <Text style={[s.textXs, s.fontSemibold, { color: sortField === opt.field ? colors.background : colors.text }]}>
+                        {opt.label}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+              )}
+
               {currentDocs.length === 0 ? (
-                <View style={[s.flex1, s.itemsCenter, s.justifyCenter, s.py20]}>
+                <View style={[s.itemsCenter, s.justifyCenter, s.py20]}>
                   <FileText size={48} color={colors.textMuted} />
                   <Text style={[s.textSm, s.mt4, { color: colors.textMuted }]}>No documents found</Text>
-                  <Text style={[s.textXs, s.mt1, { color: colors.textMuted }]}>Try checking your Download or Documents folders</Text>
+                  <Text style={[s.textXs, s.mt1, { color: colors.textMuted }]}>
+                    {searchQuery ? 'Try a different search term' : 'Try checking your Download or Documents folders'}
+                  </Text>
                 </View>
               ) : (
-                <View style={{ backgroundColor: colors.surface, borderRadius: 16, overflow: 'hidden', marginTop: 8 }}>
+                <View style={{ backgroundColor: colors.surface, borderRadius: 16, overflow: 'hidden', marginTop: 4 }}>
                   {currentDocs.map((doc, i) => {
                     const cat = getDocCategory(doc.name);
                     const Icon = cat ? (CATEGORY_ICONS[cat.id] || File) : File;

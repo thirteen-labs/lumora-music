@@ -7,6 +7,7 @@ export type LibraryViewMode = 'list' | 'grid';
 
 const FILE_SIZE_KEY = 'lumora-file-size-theme';
 const LIBRARY_VIEW_KEY = 'lumora-library-view';
+const VIDEO_VIEW_KEY = 'lumora-video-view';
 
 function loadFileSize(): FileSizeTheme {
   try {
@@ -20,17 +21,26 @@ function loadLibraryView(): LibraryViewMode {
   } catch { return 'list'; }
 }
 
+function loadVideoView(): LibraryViewMode {
+  try {
+    return (storage.getString(VIDEO_VIEW_KEY) as LibraryViewMode) ?? 'grid';
+  } catch { return 'grid'; }
+}
+
 interface LayoutState {
   fileSizeTheme: FileSizeTheme;
   libraryViewMode: LibraryViewMode;
+  videoViewMode: LibraryViewMode;
   setFileSizeTheme: (theme: FileSizeTheme) => void;
   setLibraryViewMode: (mode: LibraryViewMode) => void;
+  setVideoViewMode: (mode: LibraryViewMode) => void;
 }
 
 export const useLayoutStore = create<LayoutState>()(
   immer((set) => ({
     fileSizeTheme: loadFileSize(),
     libraryViewMode: loadLibraryView(),
+    videoViewMode: loadVideoView(),
     setFileSizeTheme: (theme) => {
       set((s) => { s.fileSizeTheme = theme; });
       try { storage.set(FILE_SIZE_KEY, theme); } catch {}
@@ -38,6 +48,10 @@ export const useLayoutStore = create<LayoutState>()(
     setLibraryViewMode: (mode) => {
       set((s) => { s.libraryViewMode = mode; });
       try { storage.set(LIBRARY_VIEW_KEY, mode); } catch {}
+    },
+    setVideoViewMode: (mode) => {
+      set((s) => { s.videoViewMode = mode; });
+      try { storage.set(VIDEO_VIEW_KEY, mode); } catch {}
     },
   })),
 );

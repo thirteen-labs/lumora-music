@@ -4,12 +4,12 @@ import { storage } from '@/services/mmkv';
 import {
   scanRootDirectories,
   scanAllPersistedDirectories,
-  getPersistedDocumentUris,
   categorizeAndCount,
   type DocFile,
   type CategorizedResult,
   DOC_CATEGORIES,
-} from '@/services/document-scanner';
+} from '@/services/document-engine';
+import { getPersistedDocumentUris } from '@/services/document-scanner';
 
 const DOC_CACHE_KEY = 'lumora-documents';
 const DOC_CACHE_TIME_KEY = 'lumora-documents-time';
@@ -66,7 +66,7 @@ export const useDocumentStore = create<DocumentState>()(
         const persistedUris = getPersistedDocumentUris();
         let docs: DocFile[];
         if (persistedUris.length > 0) {
-          docs = await scanAllPersistedDirectories();
+          docs = await scanAllPersistedDirectories(persistedUris);
           const rootDocs = await scanRootDirectories();
           const seen = new Set(docs.map((d) => d.uri));
           for (const doc of rootDocs) {

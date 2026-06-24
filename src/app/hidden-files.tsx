@@ -8,8 +8,7 @@ import { TopBar } from '@/components/top-bar';
 import { SectionHeader } from '@/components/section-header';
 import { useHiddenFilesStore } from '@/store/hidden-files-store';
 import { useMusicStore } from '@/store/music-store';
-import { useVideoStore } from '@/store/video-store';
-import { EyeOff, Music, Film, Trash2, ScanEye, ChevronRight } from 'lucide-react-native';
+import { EyeOff, Music, Trash2, ScanEye, ChevronRight } from 'lucide-react-native';
 
 export default function HiddenFilesScreen() {
   const { colors } = useTheme();
@@ -17,26 +16,15 @@ export default function HiddenFilesScreen() {
   const { t } = useTranslation();
   const router = useRouter();
   const songs = useMusicStore((s) => s.songs);
-  const videos = useVideoStore((s) => s.videos);
   const hiddenSongIds = useHiddenFilesStore((s) => s.hiddenSongIds);
-  const hiddenVideoIds = useHiddenFilesStore((s) => s.hiddenVideoIds);
   const unhideSong = useHiddenFilesStore((s) => s.unhideSong);
-  const unhideVideo = useHiddenFilesStore((s) => s.unhideVideo);
 
   const hiddenSongs = songs.filter((s) => hiddenSongIds.has(s.id));
-  const hiddenVideos = videos.filter((v) => hiddenVideoIds.has(v.id));
 
   const handleUnhideSong = (id: string, title: string) => {
     Alert.alert(t('hidden.unhide'), t('hidden.unhide.song', { title }), [
       { text: t('common.cancel'), style: 'cancel' },
       { text: t('hidden.unhide'), onPress: () => unhideSong(id) },
-    ]);
-  };
-
-  const handleUnhideVideo = (id: string, title: string) => {
-    Alert.alert(t('hidden.unhide'), t('hidden.unhide.video', { title }), [
-      { text: t('common.cancel'), style: 'cancel' },
-      { text: t('hidden.unhide'), onPress: () => unhideVideo(id) },
     ]);
   };
 
@@ -59,7 +47,7 @@ export default function HiddenFilesScreen() {
             <ChevronRight size={18} color={colors.textMuted} />
           </Pressable>
 
-          {hiddenSongs.length === 0 && hiddenVideos.length === 0 ? (
+          {hiddenSongs.length === 0 ? (
             <View style={[s.itemsCenter, s.py12]}>
               <EyeOff size={48} color={colors.textMuted} />
               <Text style={[s.textSm, s.mt4, { color: colors.textMuted }]}>
@@ -88,29 +76,6 @@ export default function HiddenFilesScreen() {
                           </Text>
                           <Text style={[s.textXs, { color: colors.textMuted }]} numberOfLines={1}>
                             {song.artist}
-                          </Text>
-                        </View>
-                        <Trash2 size={16} color={colors.textMuted} />
-                      </Pressable>
-                    ))}
-                  </View>
-                </View>
-              )}
-
-              {hiddenVideos.length > 0 && (
-                <View>
-                  <SectionHeader title={t('hidden.videos', { count: hiddenVideos.length })} />
-                  <View style={[s.rounded3xl, s.overflowHidden, { backgroundColor: colors.surface }]}>
-                    {hiddenVideos.map((video, i) => (
-                      <Pressable
-                        key={video.id}
-                        onPress={() => handleUnhideVideo(video.id, video.title)}
-                        style={[s.flexRow, s.itemsCenter, s.gap3, s.p4]}
-                      >
-                        <Film size={18} color={colors.accent} />
-                        <View style={s.flex1}>
-                          <Text style={[s.textSm, s.fontMedium, { color: colors.text }]} numberOfLines={1}>
-                            {video.title}
                           </Text>
                         </View>
                         <Trash2 size={16} color={colors.textMuted} />

@@ -4,15 +4,16 @@ import { FlashList } from "@shopify/flash-list";
 import { useTheme } from "@/hooks/use-theme";
 import { useMusicStore } from "@/store/music-store";
 import { useVideoStore } from "@/store/video-store";
+import { useHiddenFilesStore } from "@/store/hidden-files-store";
 import { usePlayerStore } from "@/store/player-store";
 import { TopBar } from "@/components/top-bar";
 import { Search, X, Clock, SlidersHorizontal, ChevronDown, ChevronUp } from "lucide-react-native";
 import { Artwork } from "@/components/artwork";
 import { useState, useMemo, useCallback, useEffect } from "react";
-import { formatDuration } from "@/utils/cn";
 import { fuzzySearch } from "@/utils/fuzzy";
 import { useRouter, useFocusEffect } from "expo-router";
 import { storage } from "@/services/mmkv";
+import { formatDuration } from "@/utils/cn";
 import { s } from "@/styles";
 
 const RECENT_KEY = "lumora-recent-searches";
@@ -59,10 +60,12 @@ export default function SearchScreen() {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const songs = useMusicStore((s) => s.songs);
+  const videos = useVideoStore((s) => s.videos);
+  const hiddenVideoIds = useHiddenFilesStore((s) => s.hiddenVideoIds);
   const albums = useMusicStore((s) => s.albums);
   const artists = useMusicStore((s) => s.artists);
   const genres = useMusicStore((s) => s.genres);
-  const videos = useVideoStore((s) => s.videos);
+
   const [query, setQuery] = useState("");
   const debouncedQuery = useDebounce(query, 300);
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
@@ -142,7 +145,7 @@ export default function SearchScreen() {
     const maxDur = maxDuration ? Number(maxDuration) : Infinity;
 
     let filteredSongs = songs;
-    let filteredVideos = videos;
+    let filteredVideos = videos.filter((v) => !hiddenVideoIds.has(v.id));
 
     if (yearFilter || genreFilter || extFilter || minDur > 0 || maxDur < Infinity) {
       filteredSongs = songs.filter((s) => {
@@ -189,12 +192,11 @@ export default function SearchScreen() {
       return [v.title, year, ext];
     };
 
-    // If there's no base query but we have filters, just return all filtered
     if (!baseQuery && (yearFilter || genreFilter || extFilter)) {
       return {
         songs: filteredSongs,
         videos: filteredVideos,
-        albums: genreFilter || extFilter ? [] : albums, // albums don't match ext well
+        albums: genreFilter || extFilter ? [] : albums,
         artists: genreFilter || extFilter ? [] : artists,
         genres: yearFilter || extFilter ? [] : genres,
       };
@@ -215,7 +217,7 @@ export default function SearchScreen() {
       artists: matchedArtists.map((r) => r.item),
       genres: matchedGenres.map((r) => r.item),
     };
-  }, [debouncedQuery, filterYear, filterGenre, filterExt, minDuration, maxDuration, songs, videos, albums, artists, genres]);
+  }, [debouncedQuery, filterYear, filterGenre, filterExt, minDuration, maxDuration, songs, videos, albums, artists, genres, hiddenVideoIds]);
 
   const totalResults =
     results.songs.length +
@@ -291,14 +293,6 @@ export default function SearchScreen() {
       artwork: null,
       thumbnail: null,
     })),
-    ...results.songs.map((s) => ({
-      type: "song" as const,
-      id: s.id,
-      title: s.title,
-      subtitle: s.artist,
-      artwork: s.artwork,
-      thumbnail: null,
-    })),
     ...results.videos.map((v) => ({
       type: "video" as const,
       id: v.id,
@@ -306,6 +300,14 @@ export default function SearchScreen() {
       subtitle: formatDuration(v.duration),
       artwork: null,
       thumbnail: v.thumbnail,
+    })),
+    ...results.songs.map((s) => ({
+      type: "song" as const,
+      id: s.id,
+      title: s.title,
+      subtitle: s.artist,
+      artwork: s.artwork,
+      thumbnail: null,
     })),
   ], [results]);
 
@@ -489,6 +491,11 @@ export default function SearchScreen() {
                 if (item.type === "song") {
                   const song = songs.find((s) => s.id === item.id);
                   if (song) usePlayerStore.getState().play(song, results.songs);
+                } else if (item.type === "video") {
+                  const video = videos.find((v) => v.id === item.id);
+                  if (video) {
+                    router.push({ pathname: '/video-player', params: { videoId: video.id } });
+                  }
                 } else if (item.type === "album") {
                   router.push({
                     pathname: "/music/album/[id]",
@@ -504,14 +511,6 @@ export default function SearchScreen() {
                     pathname: "/music/genre/[id]",
                     params: { id: item.id },
                   });
-                } else if (item.type === "video") {
-                  const video = videos.find((v) => v.id === item.id);
-                  if (video) {
-                    router.replace({
-                      pathname: "/video-player",
-                      params: { uri: video.uri, title: video.title },
-                    });
-                  }
                 }
               }}
               style={[s.flexRow, s.itemsCenter, s.gap3, s.px4, s.py3]}

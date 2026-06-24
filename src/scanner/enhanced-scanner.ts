@@ -121,23 +121,13 @@ export function findNewSongs(songs: Song[], knownUris: Set<string>): Song[] {
 
 export function calculateStorageInfo(
   songs: Song[],
-  videos: { fileSize: number; title: string }[],
 ) {
   const totalAudioSize = songs.reduce((sum, s) => sum + s.fileSize, 0);
-  const totalVideoSize = videos.reduce((sum, v) => sum + v.fileSize, 0);
 
-  const allFiles = [
-    ...songs.map((s) => ({
-      name: s.title,
-      size: s.fileSize,
-      type: "audio" as const,
-    })),
-    ...videos.map((v) => ({
-      name: v.title,
-      size: v.fileSize,
-      type: "video" as const,
-    })),
-  ].sort((a, b) => b.size - a.size);
+  const allFiles = songs.map((s) => ({
+    name: s.title,
+    size: s.fileSize,
+  })).sort((a, b) => b.size - a.size);
 
   const genreMap = new Map<string, { count: number; size: number }>();
   for (const song of songs) {
@@ -150,9 +140,7 @@ export function calculateStorageInfo(
 
   return {
     totalSongs: songs.length,
-    totalVideos: videos.length,
     totalAudioSize,
-    totalVideoSize,
     largestFiles: allFiles.slice(0, 20),
     genreBreakdown: Array.from(genreMap.entries())
       .map(([genre, data]) => ({ genre, ...data }))

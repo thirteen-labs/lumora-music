@@ -39,7 +39,7 @@ export const useColorAwareStore = create<ColorAwareState>()(
       set((state) => {
         state.extractedColors = colors;
         state.sourceUri = sourceUri;
-        if (colors) {
+        if (colors?.background) {
           const light = isLight(colors.background);
           const textColor = light ? '#1A1A1A' : '#F0F0F0';
           state.dynamicThemeColors = {

@@ -15,16 +15,26 @@ const EQ_FREQUENCIES = [60, 170, 310, 600, 1000, 3000, 6000, 12000, 14000, 16000
 const BASS_BOOST_FREQUENCY = 150;
 const EQ_Q = 1.4;
 
-/** Bounded LRU pool for decoded audio buffers. Avoids re-decoding recently played tracks. */
+/** Total decoded PCM bytes above which pool refuses new entries. ~100MB. */
+const MAX_POOL_TOTAL_BYTES = 100 * 1024 * 1024;
+/** Per-buffer threshold – skip pooling for huge lossless files (>30MB decoded). */
+const MAX_POOL_ENTRY_BYTES = 30 * 1024 * 1024;
+
+function bufferByteSize(buf: AudioBuffer): number {
+  return buf.length * buf.numberOfChannels * 4; // Float32
+}
+
+/** Bounded LRU pool for decoded audio buffers with total-byte cap. */
 class AudioBufferPool {
   private cache = new Map<string, AudioBuffer>();
-  private maxSize: number;
+  private maxCount: number;
   private decodeTimes = new Map<string, number>();
   private hits = 0;
   private misses = 0;
+  private _totalBytes = 0;
 
-  constructor(maxSize = 6) {
-    this.maxSize = maxSize;
+  constructor(maxCount = 6) {
+    this.maxCount = maxCount;
   }
 
   has(uri: string): boolean {
@@ -43,30 +53,72 @@ class AudioBufferPool {
     return buf;
   }
 
-  set(uri: string, buffer: AudioBuffer, decodeTimeMs: number): void {
-    if (this.cache.has(uri)) {
-      this.cache.delete(uri);
-    } else if (this.cache.size >= this.maxSize) {
-      const oldest = this.cache.keys().next().value;
-      if (oldest) {
-        this.cache.delete(oldest);
-        this.decodeTimes.delete(oldest);
-      }
+  /** Evict oldest entries until total bytes fits under limit. */
+  private evictDownTo(limitBytes: number): void {
+    const keys = Array.from(this.cache.keys());
+    for (const k of keys) {
+      if (this._totalBytes <= limitBytes) break;
+      const buf = this.cache.get(k)!;
+      this._totalBytes -= bufferByteSize(buf);
+      this.cache.delete(k);
+      this.decodeTimes.delete(k);
     }
+  }
+
+  /**
+   * Insert a buffer. Returns false if the buffer was too large to pool or
+   * total pool memory exceeded the cap.
+   */
+  set(uri: string, buffer: AudioBuffer, decodeTimeMs: number): boolean {
+    const bytes = bufferByteSize(buffer);
+    if (bytes > MAX_POOL_ENTRY_BYTES) return false;
+
+    // Remove existing entry for this URI first
+    if (this.cache.has(uri)) {
+      const old = this.cache.get(uri)!;
+      this._totalBytes -= bufferByteSize(old);
+      this.cache.delete(uri);
+      this.decodeTimes.delete(uri);
+    }
+
+    // Evict until we have room for the new buffer
+    this.evictDownTo(MAX_POOL_TOTAL_BYTES - bytes);
+
+    // Also respect max count
+    while (this.cache.size >= this.maxCount) {
+      const oldest = this.cache.keys().next().value;
+      if (!oldest) break;
+      const oldBuf = this.cache.get(oldest)!;
+      this._totalBytes -= bufferByteSize(oldBuf);
+      this.cache.delete(oldest);
+      this.decodeTimes.delete(oldest);
+    }
+
     this.cache.set(uri, buffer);
+    this._totalBytes += bytes;
     this.decodeTimes.set(uri, decodeTimeMs);
+    return true;
   }
 
   remove(uri: string): void {
-    this.cache.delete(uri);
-    this.decodeTimes.delete(uri);
+    const buf = this.cache.get(uri);
+    if (buf) {
+      this._totalBytes -= bufferByteSize(buf);
+      this.cache.delete(uri);
+      this.decodeTimes.delete(uri);
+    }
   }
 
-  getStats(): { size: number; maxSize: number; hitRate: number; avgDecodeMs: number } {
+  /** Estimated total PCM memory of all pooled buffers. */
+  get totalBytes(): number {
+    return this._totalBytes;
+  }
+
+  getStats(): { size: number; maxCount: number; hitRate: number; avgDecodeMs: number; totalBytes: number } {
     const total = this.hits + this.misses || 1;
     const times = Array.from(this.decodeTimes.values());
     const avg = times.length > 0 ? times.reduce((a, b) => a + b, 0) / times.length : 0;
-    return { size: this.cache.size, maxSize: this.maxSize, hitRate: Math.round((this.hits / total) * 100), avgDecodeMs: Math.round(avg) };
+    return { size: this.cache.size, maxCount: this.maxCount, hitRate: Math.round((this.hits / total) * 100), avgDecodeMs: Math.round(avg), totalBytes: this._totalBytes };
   }
 
   clear(): void {
@@ -74,6 +126,7 @@ class AudioBufferPool {
     this.decodeTimes.clear();
     this.hits = 0;
     this.misses = 0;
+    this._totalBytes = 0;
   }
 }
 
@@ -350,8 +403,8 @@ class AudioEngine {
       const startTs = Date.now();
       const buffer = await this.context.decodeAudioData(uri);
       const elapsed = Date.now() - startTs;
-      // If the track was already loaded via a direct call while we were decoding,
-      // still store in pool (pool handles duplicate-URI silently).
+      // set() returns false for oversized buffers (>30MB decoded PCM) – skip the pool but
+      // still keep the preloaded reference so the immediate next loadTrack is fast.
       this.bufferPool.set(uri, buffer, elapsed);
       this.preloadedUri = uri;
       this.preloadedBuffer = buffer;
@@ -360,7 +413,7 @@ class AudioEngine {
     }
   }
 
-  getBufferPoolStats(): { size: number; maxSize: number; hitRate: number; avgDecodeMs: number } {
+  getBufferPoolStats(): ReturnType<AudioBufferPool['getStats']> {
     return this.bufferPool.getStats();
   }
 

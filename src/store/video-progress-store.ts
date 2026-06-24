@@ -1,88 +1,73 @@
-import { create } from 'zustand';
-import { immer } from 'zustand/middleware/immer';
-import { storage } from '@/services/mmkv';
+import { create } from "zustand";
+import { immer } from "zustand/middleware/immer";
+import { storage } from "@/services/mmkv";
 
-const VIDEO_PROGRESS_KEY = 'lumora-video-progress';
+const PROGRESS_KEY = "lumora-video-progress";
 
 interface VideoProgress {
-  [videoId: string]: {
-    position: number;
-    duration: number;
-    lastPlayed: number;
-  };
+  videoId: string;
+  position: number;
+  duration: number;
+  updatedAt: number;
 }
 
-function loadProgress(): VideoProgress {
+interface VideoProgressState {
+  progresses: Record<string, VideoProgress>;
+  getProgress: (videoId: string) => VideoProgress | null;
+  setProgress: (videoId: string, position: number, duration: number) => void;
+  removeProgress: (videoId: string) => void;
+  clearAll: () => void;
+}
+
+function loadProgresses(): Record<string, VideoProgress> {
   try {
-    const raw = storage.getString(VIDEO_PROGRESS_KEY);
+    const raw = storage.getString(PROGRESS_KEY);
     return raw ? JSON.parse(raw) : {};
   } catch {
     return {};
   }
 }
 
-function saveProgress(progress: VideoProgress): void {
+function saveProgresses(progresses: Record<string, VideoProgress>): void {
   try {
-    storage.set(VIDEO_PROGRESS_KEY, JSON.stringify(progress));
-  } catch {}
-}
-
-interface VideoProgressState {
-  progress: VideoProgress;
-  saveVideoPosition: (videoId: string, position: number, duration: number) => void;
-  getVideoPosition: (videoId: string) => number;
-  getVideoDuration: (videoId: string) => number;
-  hasResumePoint: (videoId: string) => boolean;
-  clearVideoProgress: (videoId: string) => void;
-  getResumeVideos: () => { videoId: string; position: number; duration: number; lastPlayed: number }[];
+    storage.set(PROGRESS_KEY, JSON.stringify(progresses));
+  } catch (e) {
+    console.warn("[VideoProgressStore] Failed to save:", e);
+  }
 }
 
 export const useVideoProgressStore = create<VideoProgressState>()(
   immer((set, get) => ({
-    progress: loadProgress(),
+    progresses: loadProgresses(),
 
-    saveVideoPosition: (videoId, position, duration) => {
-      set((s) => {
-        s.progress[videoId] = {
+    getProgress: (videoId: string) => {
+      return get().progresses[videoId] ?? null;
+    },
+
+    setProgress: (videoId: string, position: number, duration: number) => {
+      set((state) => {
+        state.progresses[videoId] = {
+          videoId,
           position,
           duration,
-          lastPlayed: Date.now(),
+          updatedAt: Date.now(),
         };
-        saveProgress(s.progress);
+        saveProgresses(state.progresses);
       });
     },
 
-    getVideoPosition: (videoId) => {
-      return get().progress[videoId]?.position ?? 0;
-    },
-
-    getVideoDuration: (videoId) => {
-      return get().progress[videoId]?.duration ?? 0;
-    },
-
-    hasResumePoint: (videoId) => {
-      const p = get().progress[videoId];
-      if (!p) return false;
-      const percentComplete = p.duration > 0 ? p.position / p.duration : 0;
-      return percentComplete > 0.05 && percentComplete < 0.95;
-    },
-
-    clearVideoProgress: (videoId) => {
-      set((s) => {
-        delete s.progress[videoId];
-        saveProgress(s.progress);
+    removeProgress: (videoId: string) => {
+      set((state) => {
+        delete state.progresses[videoId];
+        saveProgresses(state.progresses);
       });
     },
 
-    getResumeVideos: () => {
-      const progress = get().progress;
-      return Object.entries(progress)
-        .filter(([_, p]) => {
-          const percent = p.duration > 0 ? p.position / p.duration : 0;
-          return percent > 0.05 && percent < 0.95;
-        })
-        .map(([videoId, p]) => ({ videoId, ...p }))
-        .sort((a, b) => b.lastPlayed - a.lastPlayed);
+    clearAll: () => {
+      set((state) => {
+        state.progresses = {};
+        saveProgresses({});
+      });
     },
   })),
 );

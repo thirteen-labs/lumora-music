@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
-import { storage } from '@/services/mmkv';
+import { storage, removeItem } from '@/services/mmkv';
 import { reportWarning } from '@/utils/error-handler';
 import type { Song } from '@/types/media';
 
@@ -44,7 +44,7 @@ export const useQueuePersistStore = create<QueuePersistState>()(
     },
 
     clearQueue: () => {
-      try { storage.set(QUEUE_KEY, ''); } catch (e) { reportWarning('QueuePersist', e); }
+      try { removeItem(QUEUE_KEY); } catch (e) { reportWarning('QueuePersist', e); }
     },
   })),
 );

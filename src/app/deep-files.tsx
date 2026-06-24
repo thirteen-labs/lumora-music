@@ -8,7 +8,6 @@ import {
   ChevronLeft, 
   FolderPlus, 
   Music, 
-  Film, 
   ChevronRight,
   Boxes,
   Info
@@ -87,31 +86,22 @@ export default function DeepFilesScreen() {
   };
 
   const handlePlayFile = async (file: ClusteredFile) => {
-    const isVideo = file.name.match(/\.(mp4|mkv|mov|avi|webm)$/i);
-    
-    if (isVideo) {
-      router.push({
-        pathname: "/video-player",
-        params: { uri: file.uri, title: file.name }
-      });
-    } else {
-      const song: Song = {
-        id: file.uri,
-        uri: file.uri,
-        title: file.name,
-        artist: 'Deep File',
-        album: 'Unrestricted',
-        albumId: 'deep',
-        duration: 0,
-        fileSize: file.size,
-        dateAdded: 0,
-        artwork: null,
-        genre: null,
-        bitrate: null,
-        sampleRate: null,
-      };
-      await play(song, [song]);
-    }
+    const song: Song = {
+      id: file.uri,
+      uri: file.uri,
+      title: file.name,
+      artist: 'Deep File',
+      album: 'Unrestricted',
+      albumId: 'deep',
+      duration: 0,
+      fileSize: file.size,
+      dateAdded: 0,
+      artwork: null,
+      genre: null,
+      bitrate: null,
+      sampleRate: null,
+    };
+    await play(song, [song]);
   };
 
   const toggleCluster = (id: string) => {
@@ -233,7 +223,6 @@ export default function DeepFilesScreen() {
 }
 
 function FileItemRow({ file, onPress, colors }: { file: ClusteredFile; onPress: () => void; colors: any }) {
-  const isVideo = file.name.match(/\.(mp4|mkv|mov|avi|webm)$/i);
   return (
     <Pressable 
       onPress={onPress}
@@ -243,7 +232,7 @@ function FileItemRow({ file, onPress, colors }: { file: ClusteredFile; onPress: 
       ]}
     >
       <View style={[{ width: 32, height: 32 }, s.roundedLg, s.itemsCenter, s.justifyCenter, { backgroundColor: colors.accent + '10' }]}>
-        {isVideo ? <Film size={14} color={colors.accent} /> : <Music size={14} color={colors.accent} />}
+        <Music size={14} color={colors.accent} />
       </View>
       <View style={s.flex1}>
         <Text style={[s.textSm, { color: colors.text }]} numberOfLines={1}>{file.name}</Text>

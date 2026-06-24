@@ -1,87 +1,43 @@
-import { createVideoPlayer, type VideoPlayer, type VideoThumbnail } from 'expo-video';
+import { createVideoPlayer } from 'expo-video';
+import type { VideoThumbnail } from 'expo-video';
 
-const thumbCache = new Map<string, VideoThumbnail>();
-const playerMap = new Map<string, VideoPlayer>();
-const pendingGenerations = new Map<string, Promise<VideoThumbnail | null>>();
-const MAX_CACHE_SIZE = 100;
+const thumbnailCache = new Map<string, VideoThumbnail>();
 
-function trimCache(): void {
-  if (thumbCache.size > MAX_CACHE_SIZE) {
-    const keys = Array.from(thumbCache.keys());
-    const toDelete = keys.slice(0, thumbCache.size - MAX_CACHE_SIZE);
-    for (const key of toDelete) {
-      thumbCache.delete(key);
-      const player = playerMap.get(key);
-      if (player) {
-        try { player.release(); } catch {}
-        playerMap.delete(key);
-      }
-    }
-  }
+export function getCachedThumbnail(videoId: string): VideoThumbnail | null {
+  return thumbnailCache.get(videoId) ?? null;
 }
 
-export function setThumbnailUri(mediaId: string, uri: string): void {
-  // Legacy compatibility - no-op, thumbnails are now stored as VideoThumbnail refs
-}
+export async function generateThumbnail(videoUri: string, videoId: string): Promise<VideoThumbnail | null> {
+  if (thumbnailCache.has(videoId)) return thumbnailCache.get(videoId)!;
 
-export function getCachedThumbnailUri(mediaId: string): string | null {
-  return null;
-}
-
-export function getVideoThumbnailUri(
-  videoUri: string,
-  mediaId: string,
-): string | null {
   try {
-    return `content://media/external/video/thumbnails/${mediaId}`;
-  } catch {
-    return null;
-  }
-}
-
-export function getCachedVideoThumbnail(
-  videoId: string,
-): VideoThumbnail | null | undefined {
-  return thumbCache.get(videoId);
-}
-
-export async function generateVideoThumbnail(
-  videoId: string,
-  videoUri: string,
-): Promise<VideoThumbnail | null> {
-  const cached = thumbCache.get(videoId);
-  if (cached) return cached;
-
-  if (pendingGenerations.has(videoId)) {
-    return pendingGenerations.get(videoId)!;
-  }
-
-  const promise = generateThumbnailInternal(videoId, videoUri);
-  pendingGenerations.set(videoId, promise);
-  const result = await promise;
-  pendingGenerations.delete(videoId);
-  return result;
-}
-
-async function generateThumbnailInternal(
-  videoId: string,
-  videoUri: string,
-): Promise<VideoThumbnail | null> {
-  const player = createVideoPlayer({ uri: videoUri });
-  try {
-    const thumbnails = await player.generateThumbnailsAsync(0, {
-      maxWidth: 320,
+    const player = createVideoPlayer(videoUri);
+    await new Promise<void>((resolve, reject) => {
+      const timeout = setTimeout(() => reject(new Error('Player ready timeout')), 10000);
+      const sub = player.addListener('statusChange', (payload) => {
+        if (payload.status === 'readyToPlay') {
+          clearTimeout(timeout);
+          sub.remove();
+          resolve();
+        }
+      });
     });
-    const thumb = thumbnails[0] ?? null;
-    if (thumb) {
-      thumbCache.set(videoId, thumb);
-      playerMap.set(videoId, player);
-      trimCache();
+
+    const thumbnails = await player.generateThumbnailsAsync(1, { maxWidth: 480 });
+    player.replay();
+    player.pause();
+
+    if (thumbnails.length > 0) {
+      thumbnailCache.set(videoId, thumbnails[0]);
+      return thumbnails[0];
     }
-    return thumb;
+    return null;
   } catch (e) {
-    console.warn('[VideoThumbnails] Failed to generate thumbnail:', e);
-    try { player.release(); } catch {}
+    console.warn('[VideoThumbnails] Failed for:', videoUri, e);
     return null;
   }
+}
+
+export function clearThumbnailCache(): void {
+  thumbnailCache.clear();
 }

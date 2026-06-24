@@ -62,14 +62,6 @@ function RootStack() {
               options={{ animation: "slide_from_right" }}
             />
             <Stack.Screen
-              name="player"
-              options={{ animation: "slide_from_bottom" }}
-            />
-            <Stack.Screen
-              name="video-player"
-              options={{ animation: "slide_from_bottom" }}
-            />
-            <Stack.Screen
               name="audio-features"
               options={{ animation: "slide_from_right" }}
             />
@@ -146,14 +138,6 @@ function RootStack() {
               options={{ animation: "slide_from_right" }}
             />
             <Stack.Screen
-              name="audio-quality"
-              options={{ animation: "slide_from_right" }}
-            />
-            <Stack.Screen
-              name="video-quality"
-              options={{ animation: "slide_from_right" }}
-            />
-            <Stack.Screen
               name="crossfade-settings"
               options={{ animation: "slide_from_right" }}
             />
@@ -207,6 +191,18 @@ function RootStack() {
             />
             <Stack.Screen
               name="background-image-adjuster"
+              options={{ animation: "slide_from_right" }}
+            />
+            <Stack.Screen
+              name="video-folder"
+              options={{ animation: "slide_from_right" }}
+            />
+            <Stack.Screen
+              name="video-player"
+              options={{ animation: "slide_from_bottom" }}
+            />
+            <Stack.Screen
+              name="video-edit"
               options={{ animation: "slide_from_right" }}
             />
           </Stack>

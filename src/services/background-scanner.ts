@@ -18,6 +18,7 @@ function ensureTaskDefined(): void {
     TaskManager.defineTask(BACKGROUND_SCAN_TASK, async () => {
       try {
         const { scanMediaLibrary } = require('./scanner');
+        const { fetchVideos } = require('./video-fetcher');
         const { updateKnownFiles } = require('../scanner/enhanced-scanner');
 
         const enabled = storage.getString(BG_SCAN_ENABLED_KEY);
@@ -27,7 +28,10 @@ function ensureTaskDefined(): void {
 
         console.log('[BackgroundScanner] Starting background scan');
         const result = await scanMediaLibrary();
-        console.log('[BackgroundScanner] Media scan complete:', result.songs.length, 'songs,', result.videos.length, 'videos');
+        console.log('[BackgroundScanner] Audio scan complete:', result.songs.length, 'songs');
+
+        const videoResult = await fetchVideos();
+        console.log('[BackgroundScanner] Video scan complete:', videoResult.length, 'videos');
 
         if (result.songs.length > 0) {
           updateKnownFiles(result.songs);
@@ -49,7 +53,7 @@ function ensureTaskDefined(): void {
 
         storage.set(LAST_BG_SCAN_KEY, Date.now());
 
-        const hasData = result.songs.length > 0 || result.videos.length > 0 || docs.length > 0;
+        const hasData = result.songs.length > 0 || videoResult.length > 0 || docs.length > 0;
         return hasData
           ? BackgroundFetch.BackgroundFetchResult.NewData
           : BackgroundFetch.BackgroundFetchResult.NoData;

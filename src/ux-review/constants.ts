@@ -29,7 +29,6 @@ export const SCREENSHOT_FILES = [
   'index.tsx',
   'player.tsx',
   'search.tsx',
-  'videos.tsx',
   'favorites.tsx',
   'settings.tsx',
   'music.tsx',

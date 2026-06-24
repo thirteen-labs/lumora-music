@@ -131,7 +131,7 @@ export const useMusicStore = create<MusicState>()(
         } catch {
           console.warn('[MusicStore] Failed to save last scan time');
         }
-        showScanCompleteNotification(result.songs.length, 0);
+        showScanCompleteNotification(result.songs.length);
 
         if (newSongs.length > 0) {
           useToastStore.getState().showToast(`Found ${newSongs.length} new song${newSongs.length !== 1 ? 's' : ''}`, "check");

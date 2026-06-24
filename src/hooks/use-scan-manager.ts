@@ -14,7 +14,8 @@ const FOREGROUND_SCAN_COOLDOWN = 5000;
 export function useScanManager() {
   const scan = useMusicStore((s) => s.scan);
   const songs = useMusicStore((s) => s.songs);
-  const scanVideos = useVideoStore((s) => s.scanVideos);
+  const fetchVideos = useVideoStore((s) => s.fetchVideos);
+  const videos = useVideoStore((s) => s.videos);
   const scanDocuments = useDocumentStore((s) => s.scanDocuments);
   const docFiles = useDocumentStore((s) => s.files);
   const lastForegroundScan = useRef(0);
@@ -37,21 +38,19 @@ export function useScanManager() {
         const now = Date.now();
         if (now - lastForegroundScan.current < FOREGROUND_SCAN_COOLDOWN) return;
         lastForegroundScan.current = now;
-        await scan();
-        await scanVideos();
-        await scanDocuments();
+        await Promise.all([scan(), fetchVideos(), scanDocuments()]);
       }
     };
     const subscription = AppState.addEventListener('change', handleAppState);
     return () => subscription?.remove();
-  }, [scan, scanVideos, scanDocuments]);
+  }, [scan, fetchVideos, scanDocuments]);
 
   useEffect(() => {
     if (songs.length > 0) return;
     let cancelled = false;
     (async () => {
       if (!cancelled) {
-        await Promise.all([scan(), scanVideos(), scanDocuments()]);
+        await Promise.all([scan(), fetchVideos(), scanDocuments()]);
       }
     })();
     return () => { cancelled = true; };
@@ -59,14 +58,13 @@ export function useScanManager() {
   }, []);
 
   const manualScan = useCallback(async () => {
-    await scan();
-    await scanVideos();
-    await scanDocuments();
-  }, [scan, scanVideos, scanDocuments]);
+    await Promise.all([scan(), fetchVideos(), scanDocuments()]);
+  }, [scan, fetchVideos, scanDocuments]);
 
   return {
     manualScan,
     songCount: songs.length,
+    videoCount: videos.length,
     docCount: docFiles.length,
   };
 }

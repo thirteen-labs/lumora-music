@@ -31,7 +31,7 @@ export default function FavoritesScreen() {
     useCallback(() => {
       const allSongs = useMusicStore.getState().songs;
       if (allSongs.length > 0) {
-        hydrateFavorites(allSongs, []);
+        hydrateFavorites(allSongs);
       }
     }, [hydrateFavorites])
   );

@@ -4,7 +4,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StorageAccessFramework } from 'expo-file-system/legacy';
 import { s } from '@/styles';
 import { useTheme } from '@/hooks/use-theme';
-import { useRouter } from 'expo-router';
 import { TopBar } from '@/components/top-bar';
 import { MiniPlayer } from '@/components/mini-player';
 import { listMediaContents, getParentPath, getRootPath, type FileItem, type MediaFolderItem } from '@/services/file-browser';
@@ -40,7 +39,6 @@ type ViewState =
 export default function FilesScreen() {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
-  const router = useRouter();
   const [viewState, setViewState] = useState<ViewState>({ screen: 'locations' });
   const play = usePlayerStore((s) => s.play);
   const currentTrack = usePlayerStore((s) => s.currentTrack);
@@ -202,34 +200,27 @@ export default function FilesScreen() {
   }, []);
 
   const playFile = useCallback(async (file: FileItem) => {
-    if (filterType === 'video') {
-      router.push({
-        pathname: "/video-player",
-        params: { uri: file.uri, title: file.name }
-      });
-    } else {
-      const songQueue: Song[] = mediaFiles.map((f: FileItem) => ({
-        id: f.uri,
-        uri: f.uri,
-        title: f.name,
-        artist: 'Unknown Artist',
-        album: 'Unknown Album',
-        albumId: 'unknown',
-        duration: 0,
-        fileSize: f.size,
-        dateAdded: f.modificationTime,
-        artwork: null,
-        genre: null,
-        bitrate: null,
-        sampleRate: null,
-      }));
-      
-      const currentSong = songQueue.find((s: Song) => s.uri === file.uri);
-      if (currentSong) {
-        await play(currentSong, songQueue);
-      }
+    const songQueue: Song[] = mediaFiles.map((f: FileItem) => ({
+      id: f.uri,
+      uri: f.uri,
+      title: f.name,
+      artist: 'Unknown Artist',
+      album: 'Unknown Album',
+      albumId: 'unknown',
+      duration: 0,
+      fileSize: f.size,
+      dateAdded: f.modificationTime,
+      artwork: null,
+      genre: null,
+      bitrate: null,
+      sampleRate: null,
+    }));
+    
+    const currentSong = songQueue.find((s: Song) => s.uri === file.uri);
+    if (currentSong) {
+      await play(currentSong, songQueue);
     }
-  }, [filterType, mediaFiles, play, router]);
+  }, [mediaFiles, play]);
 
   const pickMusicFolder = useCallback(async () => {
     try {

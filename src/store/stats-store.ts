@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
-import { storage } from '@/services/mmkv';
+import { getCachedJSON, setCachedJSON } from '@/services/mmkv';
 import type { TrackStats, ListeningStats } from '@/types/audio';
 import type { Song } from '@/types/media';
 
@@ -18,11 +18,11 @@ let _pendingDaily: DailyListening | null = null;
 function flushSaves() {
   _saveTimer = null;
   if (_pendingTrackStats) {
-    try { storage.set(STATS_KEY, JSON.stringify(_pendingTrackStats)); } catch {}
+    setCachedJSON(STATS_KEY, _pendingTrackStats);
     _pendingTrackStats = null;
   }
   if (_pendingDaily) {
-    try { storage.set(DAILY_KEY, JSON.stringify(_pendingDaily)); } catch {}
+    setCachedJSON(DAILY_KEY, _pendingDaily);
     _pendingDaily = null;
   }
 }
@@ -32,29 +32,16 @@ function scheduleSave() {
   _saveTimer = setTimeout(flushSaves, 500);
 }
 
-function loadStats(): Record<string, TrackStats> {
-  try {
-    const raw = storage.getString(STATS_KEY);
-    if (raw) return JSON.parse(raw);
-  } catch {}
-  return {};
-}
-
-function loadDailyListening(): DailyListening {
-  try {
-    const raw = storage.getString(DAILY_KEY);
-    if (raw) return JSON.parse(raw);
-  } catch {}
-  return {};
-}
-
 function getTodayKey(): string {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
+const emptyStats = { songId: '', playCount: 0, skipCount: 0, lastPlayed: 0, totalPlayTime: 0 };
+
 interface StatsState {
   trackStats: Record<string, TrackStats>;
+  dailyListening: DailyListening;
   recordPlay: (songId: string) => void;
   recordSkip: (songId: string) => void;
   addPlayTime: (songId: string, seconds: number) => void;
@@ -71,16 +58,15 @@ interface StatsState {
 
 export const useStatsStore = create<StatsState>()(
   immer((set, get) => ({
-    trackStats: loadStats(),
+    trackStats: getCachedJSON(STATS_KEY, {} as Record<string, TrackStats>),
+    dailyListening: getCachedJSON(DAILY_KEY, {} as DailyListening),
 
     recordPlay: (songId) => {
       set((s) => {
-        const existing = s.trackStats[songId] || {
-          songId, playCount: 0, skipCount: 0, lastPlayed: 0, totalPlayTime: 0,
-        };
+        const existing = s.trackStats[songId] || { ...emptyStats, songId };
         existing.playCount++;
         existing.lastPlayed = Date.now();
-        s.trackStats[songId] = existing;
+        s.trackStats[songId] = { ...existing };
       });
       _pendingTrackStats = get().trackStats;
       scheduleSave();
@@ -88,11 +74,9 @@ export const useStatsStore = create<StatsState>()(
 
     recordSkip: (songId) => {
       set((s) => {
-        const existing = s.trackStats[songId] || {
-          songId, playCount: 0, skipCount: 0, lastPlayed: 0, totalPlayTime: 0,
-        };
+        const existing = s.trackStats[songId] || { ...emptyStats, songId };
         existing.skipCount++;
-        s.trackStats[songId] = existing;
+        s.trackStats[songId] = { ...existing };
       });
       _pendingTrackStats = get().trackStats;
       scheduleSave();
@@ -100,27 +84,25 @@ export const useStatsStore = create<StatsState>()(
 
     addPlayTime: (songId, seconds) => {
       set((s) => {
-        const existing = s.trackStats[songId] || {
-          songId, playCount: 0, skipCount: 0, lastPlayed: 0, totalPlayTime: 0,
-        };
+        const existing = s.trackStats[songId] || { ...emptyStats, songId };
         existing.totalPlayTime += seconds;
-        s.trackStats[songId] = existing;
+        s.trackStats[songId] = { ...existing };
       });
       _pendingTrackStats = get().trackStats;
       scheduleSave();
     },
 
     recordDailyListening: (seconds) => {
-      if (!_pendingDaily) _pendingDaily = loadDailyListening();
-      const key = getTodayKey();
-      _pendingDaily[key] = (_pendingDaily[key] || 0) + seconds;
+      set((s) => {
+        const key = getTodayKey();
+        s.dailyListening[key] = (s.dailyListening[key] || 0) + seconds;
+      });
+      _pendingDaily = get().dailyListening;
       scheduleSave();
     },
 
     getTrackStats: (songId) => {
-      return get().trackStats[songId] || {
-        songId, playCount: 0, skipCount: 0, lastPlayed: 0, totalPlayTime: 0,
-      };
+      return get().trackStats[songId] || { ...emptyStats, songId };
     },
 
     getMostPlayed: (songs, limit = 20) => {
@@ -154,7 +136,7 @@ export const useStatsStore = create<StatsState>()(
 
     getListeningStats: (songs) => {
       const stats = get().trackStats;
-      const daily = loadDailyListening();
+      const daily = get().dailyListening;
       let totalPlayTime = 0;
       let totalTracksPlayed = 0;
       const artistCounts: Record<string, number> = {};
@@ -182,7 +164,7 @@ export const useStatsStore = create<StatsState>()(
         .sort((a, b) => b.count - a.count)
         .slice(0, 10);
 
-      const topSongs = Object.entries(songCounts)
+      const topSongsList = Object.entries(songCounts)
         .map(([name, count]) => ({ name, count }))
         .sort((a, b) => b.count - a.count)
         .slice(0, 10);
@@ -195,7 +177,7 @@ export const useStatsStore = create<StatsState>()(
         weeklyMinutes.push(Math.round((daily[key] || 0) / 60));
       }
 
-      return { totalPlayTime, totalTracksPlayed, topArtists, topAlbums, topSongs, weeklyMinutes };
+      return { totalPlayTime, totalTracksPlayed, topArtists, topAlbums, topSongs: topSongsList, weeklyMinutes };
     },
 
     getTotalPlayCount: () => {

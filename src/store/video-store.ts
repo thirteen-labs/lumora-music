@@ -1,88 +1,82 @@
-import { create } from 'zustand';
-import { immer } from 'zustand/middleware/immer';
-import type { Video, SortField, SortOrder, MediaScanStatus } from '@/types/media';
-import { scanMediaLibrary, getCachedVideos } from '@/services/scanner';
-import { useToastStore } from '@/store/toast-store';
+import { create } from "zustand";
+import { immer } from "zustand/middleware/immer";
+import type { Video, MediaScanStatus } from "@/types/media";
+import { fetchVideos, getCachedVideos } from "@/services/video-fetcher";
+import { clearThumbnailCache } from "@/services/video-thumbnails";
+import { useToastStore } from "@/store/toast-store";
 
 interface VideoState {
   videos: Video[];
   scanStatus: MediaScanStatus;
   scanProgress: { processed: number; total: number } | null;
-  sortField: SortField;
-  sortOrder: SortOrder;
-  scanVideos: (force?: boolean) => Promise<void>;
-  setSort: (field: SortField, order: SortOrder) => void;
-  getSortedVideos: () => Video[];
+  fetchVideos: (force?: boolean) => Promise<void>;
+  clearVideos: () => void;
 }
 
 export const useVideoStore = create<VideoState>()(
   immer((set, get) => ({
     videos: [],
-    scanStatus: getCachedVideos().length > 0 ? 'complete' : 'idle',
+    scanStatus: getCachedVideos().length > 0 ? "complete" : "idle",
     scanProgress: null,
-    sortField: 'dateAdded',
-    sortOrder: 'desc',
 
-    scanVideos: async (force?: boolean) => {
+    fetchVideos: async (force?: boolean) => {
       const currentStatus = get().scanStatus;
-      if (currentStatus === 'scanning') {
-        return;
-      }
+      if (currentStatus === "scanning") return;
 
       if (!force) {
         const cached = getCachedVideos();
         if (cached.length > 0) {
-          set((s) => {
-            s.videos = cached;
-            s.scanStatus = 'complete';
-            s.scanProgress = null;
+          set((state) => {
+            state.videos = cached;
+            state.scanStatus = "complete";
+            state.scanProgress = null;
           });
           return;
         }
       }
+
+      useToastStore.getState().showToast("Scanning videos...", "video");
       try {
-        const result = await scanMediaLibrary(
+        const videos = await fetchVideos(
           (status) => {
-            set((s) => { s.scanStatus = status; });
+            set((state) => {
+              state.scanStatus = status;
+            });
           },
           (processed, total) => {
-            set((s) => { s.scanProgress = { processed, total }; });
+            set((state) => {
+              state.scanProgress = { processed, total };
+            });
           },
-          { audio: false },
         );
-        set((s) => {
-          s.videos = result.videos;
-          s.scanStatus = 'complete';
-          s.scanProgress = null;
+
+        if (videos.length > 0) {
+          useToastStore.getState().showToast(`Found ${videos.length} video${videos.length !== 1 ? 's' : ''}`, "check");
+        } else {
+          useToastStore.getState().showToast("No videos found", "video");
+        }
+
+        set((state) => {
+          state.videos = videos;
+          state.scanStatus = "complete";
+          state.scanProgress = null;
         });
       } catch {
-        set((s) => {
-          s.scanStatus = 'error';
-          s.scanProgress = null;
+        set((state) => {
+          state.scanStatus = "error";
+          state.scanProgress = null;
         });
-        useToastStore.getState().showToast('Video scan failed. Please try again.');
+        useToastStore.getState().showToast("Video scan failed", "error");
       }
     },
 
-    setSort: (field, order) => {
-      set((s) => { s.sortField = field; s.sortOrder = order; });
-    },
-
-    getSortedVideos: () => {
-      const state = get();
-      const sorted = [...state.videos];
-      sorted.sort((a, b) => {
-        let cmp = 0;
-        switch (state.sortField) {
-          case 'title': cmp = a.title.localeCompare(b.title); break;
-          case 'dateAdded': cmp = a.dateAdded - b.dateAdded; break;
-          case 'duration': cmp = a.duration - b.duration; break;
-          case 'fileSize': cmp = a.fileSize - b.fileSize; break;
-          default: cmp = a.dateAdded - b.dateAdded;
-        }
-        return state.sortOrder === 'desc' ? -cmp : cmp;
+    clearVideos: () => {
+      clearThumbnailCache();
+      set((state) => {
+        state.videos = [];
+        state.scanStatus = "idle";
+        state.scanProgress = null;
       });
-      return sorted;
     },
   })),
 );

@@ -80,6 +80,14 @@ function loadString(key: string, fallback: string): string {
     return fallback;
   }
 }
+function loadNumber(key: string, fallback: number): number {
+  try {
+    return storage.getNumber(key) ?? fallback;
+  } catch (e) {
+    reportWarning("Settings", e, `Failed to load number setting: ${key}`);
+    return fallback;
+  }
+}
 
 interface SettingsState {
   defaultShuffle: boolean;
@@ -137,7 +145,7 @@ function persistSetting(key: string, value: unknown): void {
     } else if (typeof value === "string") {
       storage.set(key, value);
     } else if (typeof value === "number") {
-      storage.set(key, String(value));
+      storage.set(key, value);
     }
   } catch (e) {
     reportWarning("Settings", e, `Failed to save setting: ${key}`);
@@ -149,14 +157,7 @@ export const useSettingsStore = create<SettingsState>()(
     defaultShuffle: loadBool(SETTINGS_KEYS.defaultShuffle, false),
     defaultRepeat: loadString(SETTINGS_KEYS.defaultRepeat, "off") as RepeatMode,
     crossfade: loadBool(SETTINGS_KEYS.crossfade, false),
-    crossfadeDuration: (() => {
-      try {
-        return Number(storage.getString(SETTINGS_KEYS.crossfadeDuration)) || 5;
-      } catch (e) {
-        reportWarning("Settings", e);
-        return 5;
-      }
-    })(),
+    crossfadeDuration: loadNumber(SETTINGS_KEYS.crossfadeDuration, 5),
     colorAware: loadBool(SETTINGS_KEYS.colorAware, false),
     accentOverride: (() => {
       const v = loadString(SETTINGS_KEYS.accentOverride, "");
@@ -166,15 +167,9 @@ export const useSettingsStore = create<SettingsState>()(
       const v = loadString(SETTINGS_KEYS.backgroundImage, "");
       return v || null;
     })(),
-    backgroundBrightness: (() => {
-      try { return Number(storage.getString(SETTINGS_KEYS.backgroundBrightness)) || 100; } catch { return 100; }
-    })(),
-    backgroundBlur: (() => {
-      try { return Number(storage.getString(SETTINGS_KEYS.backgroundBlur)) || 0; } catch { return 0; }
-    })(),
-    backgroundHue: (() => {
-      try { return Number(storage.getString(SETTINGS_KEYS.backgroundHue)) || 0; } catch { return 0; }
-    })(),
+    backgroundBrightness: loadNumber(SETTINGS_KEYS.backgroundBrightness, 100),
+    backgroundBlur: loadNumber(SETTINGS_KEYS.backgroundBlur, 0),
+    backgroundHue: loadNumber(SETTINGS_KEYS.backgroundHue, 0),
     nowPlayingLayout:
       (loadString(
         SETTINGS_KEYS.nowPlayingLayout,

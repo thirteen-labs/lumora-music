@@ -2,10 +2,9 @@ import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 import { storage } from '@/services/mmkv';
 import { reportWarning } from '@/utils/error-handler';
-import type { Song, Video } from '@/types/media';
+import type { Song } from '@/types/media';
 
 const FAV_SONGS_KEY = 'lumora-fav-songs';
-const FAV_VIDEOS_KEY = 'lumora-fav-videos';
 
 function loadIds(key: string): string[] {
   try {
@@ -20,28 +19,19 @@ function saveIds(key: string, ids: string[]): void {
 
 interface FavoritesState {
   favoriteSongIds: string[];
-  favoriteVideoIds: string[];
   songs: Song[];
-  videos: Video[];
   toggleSongFavorite: (song: Song) => void;
-  toggleVideoFavorite: (video: Video) => void;
   isSongFavorite: (id: string) => boolean;
-  isVideoFavorite: (id: string) => boolean;
   setSongs: (songs: Song[]) => void;
-  setVideos: (videos: Video[]) => void;
-  hydrateFavorites: (allSongs: Song[], allVideos: Video[]) => void;
-  refreshFavoriteVideos: (allVideos: Video[]) => void;
+  hydrateFavorites: (allSongs: Song[]) => void;
   clearSongFavorites: () => void;
-  clearVideoFavorites: () => void;
   clearAllFavorites: () => void;
 }
 
 export const useFavoritesStore = create<FavoritesState>()(
   immer((set, get) => ({
     favoriteSongIds: loadIds(FAV_SONGS_KEY),
-    favoriteVideoIds: loadIds(FAV_VIDEOS_KEY),
     songs: [],
-    videos: [],
 
     toggleSongFavorite: (song) => {
       set((state) => {
@@ -57,36 +47,13 @@ export const useFavoritesStore = create<FavoritesState>()(
       });
     },
 
-    toggleVideoFavorite: (video) => {
-      set((state) => {
-        const idx = state.favoriteVideoIds.indexOf(video.id);
-        if (idx >= 0) {
-          state.favoriteVideoIds.splice(idx, 1);
-          state.videos = state.videos.filter((v) => v.id !== video.id);
-        } else {
-          state.favoriteVideoIds.push(video.id);
-          state.videos.push(video);
-        }
-        saveIds(FAV_VIDEOS_KEY, state.favoriteVideoIds);
-      });
-    },
-
     isSongFavorite: (id) => get().favoriteSongIds.includes(id),
-    isVideoFavorite: (id) => get().favoriteVideoIds.includes(id),
 
     setSongs: (songs) => { set((s) => { s.songs = songs; }); },
-    setVideos: (videos) => { set((s) => { s.videos = videos; }); },
 
-    hydrateFavorites: (allSongs, allVideos) => {
+    hydrateFavorites: (allSongs) => {
       set((s) => {
         s.songs = allSongs.filter((song) => s.favoriteSongIds.includes(song.id));
-        s.videos = allVideos.filter((video) => s.favoriteVideoIds.includes(video.id));
-      });
-    },
-
-    refreshFavoriteVideos: (allVideos) => {
-      set((s) => {
-        s.videos = allVideos.filter((video) => s.favoriteVideoIds.includes(video.id));
       });
     },
 
@@ -98,22 +65,11 @@ export const useFavoritesStore = create<FavoritesState>()(
       });
     },
 
-    clearVideoFavorites: () => {
-      set((s) => {
-        s.favoriteVideoIds = [];
-        s.videos = [];
-        saveIds(FAV_VIDEOS_KEY, []);
-      });
-    },
-
     clearAllFavorites: () => {
       set((s) => {
         s.favoriteSongIds = [];
-        s.favoriteVideoIds = [];
         s.songs = [];
-        s.videos = [];
         saveIds(FAV_SONGS_KEY, []);
-        saveIds(FAV_VIDEOS_KEY, []);
       });
     },
   })),

@@ -164,6 +164,10 @@ export async function preloadNextTrack(track: Song): Promise<void> {
   audioEngine.preloadTrack(track.uri);
 }
 
+export function getBufferPoolStats() {
+  return audioEngine.getBufferPoolStats();
+}
+
 async function crossfadeToTrack(track: Song): Promise<void> {
   if (crossfadeInProgress) {
     await audioEngine.loadTrack(track.uri);

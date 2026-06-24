@@ -1,6 +1,5 @@
 import { Platform, PermissionsAndroid } from 'react-native';
-import type { Song, Album as LumoraAlbum, Artist, Genre, Video, MediaScanStatus } from '@/types/media';
-import { getVideoThumbnailUri } from '@/services/video-thumbnails';
+import type { Song, Album as LumoraAlbum, Artist, Genre, MediaScanStatus } from '@/types/media';
 import { storage } from '@/services/mmkv';
 import { reportWarning } from '@/utils/error-handler';
 
@@ -8,7 +7,6 @@ const CACHED_SONGS_KEY = 'lumora-cached-songs';
 const CACHED_ALBUMS_KEY = 'lumora-cached-albums';
 const CACHED_ARTISTS_KEY = 'lumora-cached-artists';
 const CACHED_GENRES_KEY = 'lumora-cached-genres';
-const CACHED_VIDEOS_KEY = 'lumora-cached-videos';
 
 let MediaLibrary: any = null;
 let MetadataRetriever: any = null;
@@ -66,12 +64,60 @@ async function ensureModulesLoaded(): Promise<boolean> {
   return modulesLoaded;
 }
 
+const METADATA_CACHE_KEY = 'lumora-metadata-cache';
+const METADATA_CACHE_MAX = 5000;
+
 let cachedSongs: Song[] = [];
 let cachedAlbums: LumoraAlbum[] = [];
 let cachedArtists: Artist[] = [];
 let cachedGenres: Genre[] = [];
-let cachedVideos: Video[] = [];
 let _cacheLoaded = false;
+let _metadataCache: Record<string, {
+  title: string | null;
+  artist: string | null;
+  album: string | null;
+  genre: string | null;
+  artwork: string | null;
+  bitrate: number | null;
+  sampleRate: number | null;
+}> = {};
+
+function loadMetadataCache(): void {
+  try {
+    const raw = storage.getString(METADATA_CACHE_KEY);
+    if (raw) _metadataCache = JSON.parse(raw);
+  } catch {}
+}
+
+function saveMetadataCache(): void {
+  trimMetadataCache();
+  try { storage.set(METADATA_CACHE_KEY, JSON.stringify(_metadataCache)); } catch {}
+}
+
+function trimMetadataCache(): void {
+  const keys = Object.keys(_metadataCache);
+  if (keys.length > METADATA_CACHE_MAX) {
+    const toRemove = keys.length - METADATA_CACHE_MAX;
+    const remove = new Set(keys.slice(0, toRemove));
+    for (const key of remove) delete _metadataCache[key];
+  }
+}
+
+function getCachedMetadata(uri: string) {
+  return _metadataCache[uri] ?? null;
+}
+
+function setCachedMetadata(uri: string, meta: {
+  title: string | null;
+  artist: string | null;
+  album: string | null;
+  genre: string | null;
+  artwork: string | null;
+  bitrate: number | null;
+  sampleRate: number | null;
+}): void {
+  _metadataCache[uri] = meta;
+}
 
 function loadCachedDataFromStorage(): void {
   const tryParse = <T>(key: string, fallback: T): T => {
@@ -88,7 +134,6 @@ function loadCachedDataFromStorage(): void {
   cachedAlbums = tryParse(CACHED_ALBUMS_KEY, cachedAlbums);
   cachedArtists = tryParse(CACHED_ARTISTS_KEY, cachedArtists);
   cachedGenres = tryParse(CACHED_GENRES_KEY, cachedGenres);
-  cachedVideos = tryParse(CACHED_VIDEOS_KEY, cachedVideos);
 }
 
 function saveCachedDataToStorage(): void {
@@ -97,7 +142,7 @@ function saveCachedDataToStorage(): void {
     storage.set(CACHED_ALBUMS_KEY, JSON.stringify(cachedAlbums));
     storage.set(CACHED_ARTISTS_KEY, JSON.stringify(cachedArtists));
     storage.set(CACHED_GENRES_KEY, JSON.stringify(cachedGenres));
-    storage.set(CACHED_VIDEOS_KEY, JSON.stringify(cachedVideos));
+    saveMetadataCache();
   } catch (error) {
     reportWarning('Scanner', error, 'Failed to save cached data to storage');
   }
@@ -106,6 +151,7 @@ function saveCachedDataToStorage(): void {
 function ensureCacheLoaded(): void {
   if (!_cacheLoaded) {
     _cacheLoaded = true;
+    loadMetadataCache();
     loadCachedDataFromStorage();
   }
 }
@@ -114,7 +160,6 @@ export function getCachedSongs(): Song[] { ensureCacheLoaded(); return cachedSon
 export function getCachedAlbums(): LumoraAlbum[] { ensureCacheLoaded(); return cachedAlbums; }
 export function getCachedArtists(): Artist[] { ensureCacheLoaded(); return cachedArtists; }
 export function getCachedGenres(): Genre[] { ensureCacheLoaded(); return cachedGenres; }
-export function getCachedVideos(): Video[] { ensureCacheLoaded(); return cachedVideos; }
 
 export async function requestPermissions(options?: { audio?: boolean; video?: boolean }, force = false): Promise<boolean> {
   if (!MediaLibrary) return false;
@@ -232,6 +277,9 @@ async function parseAudioMetadata(uri: string): Promise<{
   bitrate: number | null;
   sampleRate: number | null;
 }> {
+  const cached = getCachedMetadata(uri);
+  if (cached) return cached;
+
   if (!MetadataRetriever) {
     return { title: null, artist: null, album: null, genre: null, artwork: null, bitrate: null, sampleRate: null };
   }
@@ -248,7 +296,7 @@ async function parseAudioMetadata(uri: string): Promise<{
       MetadataRetriever.getArtwork(uri),
     ]);
 
-    return {
+    const result = {
       title: meta.title ?? null,
       artist: meta.artist ?? null,
       album: meta.albumTitle ?? null,
@@ -257,6 +305,8 @@ async function parseAudioMetadata(uri: string): Promise<{
       bitrate: meta.bitrate ?? null,
       sampleRate: meta.sampleRate ?? null,
     };
+    setCachedMetadata(uri, result);
+    return result;
   } catch (error) {
     console.warn('[Scanner] parseAudioMetadata failed for:', uri, error);
     return { title: null, artist: null, album: null, genre: null, artwork: null, bitrate: null, sampleRate: null };
@@ -371,116 +421,12 @@ async function fetchSongs(
   return allSongs;
 }
 
-async function processVideoAsset(asset: any, excludedFolders: string[] = []): Promise<Video | null> {
-  try {
-    const uri = asset.uri as string | undefined;
-    if (!uri) return null;
-
-    if (excludedFolders.some(folder => uri.includes(folder))) return null;
-
-    let fileSize = asset.fileSize ?? asset.size ?? 0;
-    if (fileSize <= 0) {
-      fileSize = await getAssetFileSize(uri, asset.id);
-    }
-    if (fileSize <= 0 && asset.duration && asset.width && asset.height) {
-      const bitrateEstimate = (asset.width ?? 1920) * (asset.height ?? 1080) * 3 * 8;
-      fileSize = estimateFileSizeFromBitrate(bitrateEstimate, null, asset.duration ?? 0);
-    }
-
-    const thumbnail = getVideoThumbnailUri(uri, asset.id);
-
-    return {
-      id: asset.id,
-      uri,
-      title: asset.filename?.replace(/\.[^/.]+$/, '') ?? 'Unknown',
-      duration: asset.duration ?? 0,
-      fileSize,
-      dateAdded: asset.creationTime ?? 0,
-      thumbnail,
-      width: asset.width ?? 0,
-      height: asset.height ?? 0,
-    };
-  } catch (error) {
-    console.warn('[Scanner] Failed to process video asset:', asset?.id, error);
-    return null;
-  }
-}
-
-async function processVideoBatch(assets: any[], concurrency = 10, excludedFolders: string[] = []): Promise<Video[]> {
-  const results: Video[] = [];
-  const queue = [...assets];
-
-  async function worker(): Promise<void> {
-    while (queue.length > 0) {
-      const asset = queue.shift()!;
-      const video = await processVideoAsset(asset, excludedFolders);
-      if (video) results.push(video);
-    }
-  }
-
-  const workers = Array(Math.min(concurrency, assets.length))
-    .fill(0)
-    .map(() => worker());
-
-  await Promise.all(workers);
-  return results;
-}
-
-async function fetchVideos(
-  excludedFolders: string[],
-  onProgress?: (batchCount: number) => void,
-): Promise<Video[]> {
-  if (!MediaLibrary || typeof MediaLibrary.getAssetsAsync !== 'function') return [];
-  const batch = 500;
-  const allVideos: Video[] = [];
-  const MediaType = MediaLibrary.MediaType;
-
-  let result = await MediaLibrary.getAssetsAsync({
-    first: batch,
-    mediaType: MediaType?.video ?? 'video',
-    sortBy: 'default',
-  });
-
-  let nextPagePromise: Promise<any> | null = null;
-  if (result.hasNextPage && result.endCursor) {
-    nextPagePromise = MediaLibrary.getAssetsAsync({
-      first: batch,
-      after: result.endCursor,
-      mediaType: MediaType?.video ?? 'video',
-      sortBy: 'default',
-    });
-  }
-
-  while (result.assets.length > 0) {
-    const videos = await processVideoBatch(result.assets, 20, excludedFolders);
-    allVideos.push(...videos);
-    onProgress?.(videos.length);
-
-    if (!nextPagePromise) break;
-
-    result = await nextPagePromise;
-    nextPagePromise = null;
-
-    if (result.hasNextPage && result.endCursor) {
-      nextPagePromise = MediaLibrary.getAssetsAsync({
-        first: batch,
-        after: result.endCursor,
-        mediaType: MediaType?.video ?? 'video',
-        sortBy: 'default',
-      });
-    }
-  }
-
-  return allVideos;
-}
-
 export async function scanMediaLibrary(
   onStatusChange?: (status: MediaScanStatus) => void,
   onProgress?: (processed: number, total: number) => void,
   options?: { audio?: boolean; video?: boolean },
-): Promise<{ songs: Song[]; albums: LumoraAlbum[]; artists: Artist[]; genres: Genre[]; videos: Video[] }> {
+): Promise<{ songs: Song[]; albums: LumoraAlbum[]; artists: Artist[]; genres: Genre[] }> {
   const scanAudio = options?.audio !== false;
-  const scanVideo = options?.video !== false;
 
   onStatusChange?.('scanning');
   onProgress?.(0, 1);
@@ -490,14 +436,14 @@ export async function scanMediaLibrary(
   if (!loaded) {
     console.warn('Media scanner modules failed to load');
     onStatusChange?.('error');
-    return { songs: [], albums: [], artists: [], genres: [], videos: [] };
+    return { songs: [], albums: [], artists: [], genres: [] };
   }
 
   try {
-    const hasPermission = await requestPermissions({ audio: scanAudio, video: scanVideo });
+    const hasPermission = await requestPermissions({ audio: scanAudio });
     if (!hasPermission) {
       onStatusChange?.('error');
-      return { songs: [], albums: [], artists: [], genres: [], videos: [] };
+      return { songs: [], albums: [], artists: [], genres: [] };
     }
 
     let excludedFolders: string[] = [];
@@ -508,41 +454,15 @@ export async function scanMediaLibrary(
       reportWarning('Scanner', e, 'Failed to load excluded folders');
     }
 
-    const MediaType = MediaLibrary.MediaType;
-    const countPromises: Promise<any>[] = [];
-    if (scanAudio) countPromises.push(MediaLibrary.getAssetsAsync({ first: 1, mediaType: MediaType?.audio ?? 'audio' }));
-    if (scanVideo) countPromises.push(MediaLibrary.getAssetsAsync({ first: 1, mediaType: MediaType?.video ?? 'video' }));
-    const counts = await Promise.all(countPromises);
-    const totalItems = counts.reduce((sum, c) => sum + (c.totalCount ?? 0), 0);
-
-    let songsProcessed = 0;
-    let videosProcessed = 0;
-
-    type SongsResult = { songs: Song[] };
-    type VideosResult = { videos: Video[] };
-    const scanPromises: Promise<SongsResult | VideosResult>[] = [];
-    if (scanAudio) {
-      scanPromises.push(
-        fetchSongs(excludedFolders, (count) => {
-          songsProcessed += count;
-          onProgress?.(songsProcessed + videosProcessed, totalItems);
-        }).then((songs) => ({ songs }) as SongsResult),
-      );
-    }
-    if (scanVideo) {
-      scanPromises.push(
-        fetchVideos(excludedFolders, (count) => {
-          videosProcessed += count;
-          onProgress?.(songsProcessed + videosProcessed, totalItems);
-        }).then((videos) => ({ videos }) as VideosResult),
-      );
-    }
-    const results = await Promise.all(scanPromises);
     const songs: Song[] = [];
-    const videos: Video[] = [];
-    for (const r of results) {
-      if ('songs' in r) songs.push(...r.songs);
-      if ('videos' in r) videos.push(...r.videos);
+
+    if (scanAudio) {
+      let songsProcessed = 0;
+      const fetchedSongs = await fetchSongs(excludedFolders, (count) => {
+        songsProcessed += count;
+        onProgress?.(songsProcessed, songsProcessed);
+      });
+      songs.push(...fetchedSongs);
     }
 
     const albumMap = new Map<string, LumoraAlbum>();
@@ -596,23 +516,18 @@ export async function scanMediaLibrary(
     }
     const genres = Array.from(genreMap.values());
 
-    if (scanAudio) {
-      cachedSongs = songs;
-      cachedAlbums = albums;
-      cachedArtists = artists;
-      cachedGenres = genres;
-    }
-    if (scanVideo) {
-      cachedVideos = videos;
-    }
+    cachedSongs = songs;
+    cachedAlbums = albums;
+    cachedArtists = artists;
+    cachedGenres = genres;
     saveCachedDataToStorage();
 
-    onProgress?.(totalItems, totalItems);
+    onProgress?.(songs.length, songs.length);
     onStatusChange?.('complete');
-    return { songs, albums, artists, genres, videos };
+    return { songs, albums, artists, genres };
   } catch (error) {
     console.error('Media scan error:', error);
     onStatusChange?.('error');
-    return { songs: [], albums: [], artists: [], genres: [], videos: [] };
+    return { songs: [], albums: [], artists: [], genres: [] };
   }
 }

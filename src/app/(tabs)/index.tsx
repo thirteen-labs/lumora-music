@@ -4,7 +4,6 @@ import { useTheme } from '@/hooks/use-theme';
 import { usePlayerStore } from '@/store/player-store';
 import { useFavoritesStore } from '@/store/favorites-store';
 import { useMusicStore } from '@/store/music-store';
-import { useVideoStore } from '@/store/video-store';
 import { useStatsStore } from '@/store/stats-store';
 import { usePlaylistStore } from '@/store/playlist-store';
 import { TopBar } from '@/components/top-bar';
@@ -47,12 +46,11 @@ export default function HomeScreen() {
   useEffect(() => {
     const init = async () => {
       let allSongs = useMusicStore.getState().songs;
-      const allVideos = useVideoStore.getState().videos;
       if (allSongs.length === 0) {
         await scan();
         allSongs = useMusicStore.getState().songs;
       }
-      hydrateFavorites(allSongs, allVideos);
+      hydrateFavorites(allSongs);
     };
     init();
     // eslint-disable-next-line react-hooks/exhaustive-deps

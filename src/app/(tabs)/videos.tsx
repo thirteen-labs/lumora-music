@@ -1,306 +1,305 @@
+import { useState, useEffect, useMemo } from 'react';
 import { View, Text, Pressable, Dimensions, TextInput } from 'react-native';
-import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FlashList } from '@shopify/flash-list';
+import { useRouter } from 'expo-router';
 import { useTheme } from '@/hooks/use-theme';
 import { useVideoStore } from '@/store/video-store';
+import { useHiddenFilesStore } from '@/store/hidden-files-store';
 import { useLayoutStore } from '@/store/layout-store';
 import { TopBar } from '@/components/top-bar';
 import { MiniPlayer } from '@/components/mini-player';
 import { SortMenu } from '@/components/sort-menu';
-import { Video as VideoIcon, Search, FolderOpen } from 'lucide-react-native';
-import { formatDuration } from '@/utils/cn';
-import { useEffect, useMemo, useState } from 'react';
-import { SORT_OPTIONS, type SortField, type SortOrder } from '@/types/media';
-import { useRouter } from 'expo-router';
+import { VideoThumbnailView } from '@/components/video-thumbnail-view';
+import { VideoContextMenu, useVideoContextMenu } from '@/components/video-context-menu';
+import { formatDuration, formatFileSize } from '@/utils/cn';
 import { s } from '@/styles';
-import { useTranslation } from '@/hooks/use-translation';
-import { getCachedVideoThumbnail, generateVideoThumbnail } from '@/services/video-thumbnails';
-import type { VideoThumbnail } from 'expo-video';
-
-function useDebounce<T>(value: T, delay: number): T {
-  const [debouncedValue, setDebouncedValue] = useState(value);
-  useEffect(() => {
-    const timer = setTimeout(() => setDebouncedValue(value), delay);
-    return () => clearTimeout(timer);
-  }, [value, delay]);
-  return debouncedValue;
-}
+import { Film, LayoutGrid, List, Search, X, FolderOpen } from 'lucide-react-native';
+import type { Video, SortField, SortOrder, SortOption } from '@/types/media';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
-function extractFolder(uri: string): string {
-  const parts = uri.replace('file://', '').split('/');
-  parts.pop();
-  return parts.pop() || 'Unknown';
-}
+const VIDEO_SORT_OPTIONS: SortOption[] = [
+  { field: 'title', order: 'asc', label: 'Name (A-Z)' },
+  { field: 'title', order: 'desc', label: 'Name (Z-A)' },
+  { field: 'dateAdded', order: 'desc', label: 'Newest First' },
+  { field: 'dateAdded', order: 'asc', label: 'Oldest First' },
+  { field: 'duration', order: 'desc', label: 'Longest First' },
+  { field: 'duration', order: 'asc', label: 'Shortest First' },
+  { field: 'fileSize', order: 'desc', label: 'Largest First' },
+  { field: 'fileSize', order: 'asc', label: 'Smallest First' },
+];
 
-function sortVideos(videos: any[], sortField: SortField, sortOrder: SortOrder) {
-  const sorted = [...videos];
-  sorted.sort((a, b) => {
-    let cmp = 0;
-    switch (sortField) {
-      case 'title': cmp = a.title.localeCompare(b.title); break;
-      case 'dateAdded': cmp = a.dateAdded - b.dateAdded; break;
-      case 'duration': cmp = a.duration - b.duration; break;
-      case 'fileSize': cmp = a.fileSize - b.fileSize; break;
-      default: cmp = a.dateAdded - b.dateAdded;
-    }
-    return sortOrder === 'desc' ? -cmp : cmp;
-  });
-  return sorted;
-}
+const GRID_COLUMNS = 3;
+const GRID_GAP = 8;
+const GRID_PADDING = 16;
+const GRID_ITEM_WIDTH = (SCREEN_WIDTH - GRID_PADDING * 2 - GRID_GAP * (GRID_COLUMNS - 1)) / GRID_COLUMNS;
 
-function VideoThumb({ uri, videoId, videoUri, width, height, borderRadius, colors }: { uri: string | null; videoId: string; videoUri: string; width: number; height: number; borderRadius: number; colors: any }) {
-  const [hasError, setHasError] = useState(false);
-  const [generatedThumb, setGeneratedThumb] = useState<VideoThumbnail | null | undefined>(
-    getCachedVideoThumbnail(videoId),
-  );
-
-  useEffect(() => {
-    if (!generatedThumb && (!uri || hasError)) {
-      generateVideoThumbnail(videoId, videoUri).then(setGeneratedThumb);
-    }
-  }, [uri, videoId, videoUri, generatedThumb, hasError]);
-
-  const imageSource = generatedThumb ?? (hasError ? null : uri);
-
-  if (!imageSource) {
-    return (
-      <View style={{ width, height, borderRadius, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center' }}>
-        <VideoIcon size={width * 0.4} color={colors.accent} />
-      </View>
-    );
-  }
-
-  return (
-    <Image
-      source={imageSource}
-      style={{ width, height, borderRadius }}
-      contentFit="cover"
-      onError={() => setHasError(true)}
-    />
-  );
+function formatResolution(video: Video): string {
+  if (!video.width || !video.height) return '';
+  return `${video.width}x${video.height}`;
 }
 
 export default function VideosScreen() {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
-  const { t } = useTranslation();
-  const videos = useVideoStore((s) => s.videos);
-  const sortField = useVideoStore((s) => s.sortField);
-  const sortOrder = useVideoStore((s) => s.sortOrder);
-  const setSort = useVideoStore((s) => s.setSort);
-  const scanVideos = useVideoStore((s) => s.scanVideos);
-  const fileSizeTheme = useLayoutStore((s) => s.fileSizeTheme);
   const router = useRouter();
-  const [searchQuery, setSearchQuery] = useState('');
-  const debouncedSearch = useDebounce(searchQuery, 300);
-  const [groupByFolder, setGroupByFolder] = useState(false);
+  const videos = useVideoStore((s) => s.videos);
+  const fetchVideos = useVideoStore((s) => s.fetchVideos);
+  const hiddenVideoIds = useHiddenFilesStore((s) => s.hiddenVideoIds);
+  const videoViewMode = useLayoutStore((s) => s.videoViewMode);
+  const setVideoViewMode = useLayoutStore((s) => s.setVideoViewMode);
+
+  const [query, setQuery] = useState('');
+  const [sortField, setSortField] = useState<SortField>('dateAdded');
+  const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
+  const { bottomSheetRef, present, video: contextVideo } = useVideoContextMenu();
 
   useEffect(() => {
-    scanVideos();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    if (videos.length === 0) fetchVideos();
+  }, [fetchVideos, videos.length]);
 
-  const sortedVideos = useMemo(() => sortVideos(videos, sortField, sortOrder), [videos, sortField, sortOrder]);
-  const activeSort = SORT_OPTIONS.find((o) => o.field === sortField && o.order === sortOrder) ?? SORT_OPTIONS[0];
-
-  const filtered = useMemo(() => {
-    if (!debouncedSearch.trim()) return sortedVideos;
-    const q = debouncedSearch.toLowerCase();
-    return sortedVideos.filter((v) =>
-      v.title.toLowerCase().includes(q) ||
-      extractFolder(v.uri).toLowerCase().includes(q),
-    );
-  }, [sortedVideos, debouncedSearch]);
-
-  const grouped = useMemo(() => {
-    if (!groupByFolder) return null;
-    const map = new Map<string, typeof filtered>();
-    for (const video of filtered) {
-      const folder = extractFolder(video.uri);
-      const group = map.get(folder) || [];
-      group.push(video);
-      map.set(folder, group);
+  const filteredVideos = useMemo(() => {
+    let result = videos.filter((v) => !hiddenVideoIds.has(v.id));
+    if (query.trim()) {
+      const q = query.toLowerCase();
+      result = result.filter((v) => v.title.toLowerCase().includes(q));
     }
-    return Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0]));
-  }, [filtered, groupByFolder]);
+    result.sort((a, b) => {
+      let cmp = 0;
+      switch (sortField) {
+        case 'title':
+          cmp = a.title.localeCompare(b.title);
+          break;
+        case 'dateAdded':
+          cmp = a.dateAdded - b.dateAdded;
+          break;
+        case 'duration':
+          cmp = a.duration - b.duration;
+          break;
+        case 'fileSize':
+          cmp = a.fileSize - b.fileSize;
+          break;
+      }
+      return sortOrder === 'desc' ? -cmp : cmp;
+    });
+    return result;
+  }, [videos, query, sortField, sortOrder, hiddenVideoIds]);
 
-  const SMALL_COLUMNS = 4;
-  const SMALL_GAP = 4;
-  const SMALL_ITEM_W = (SCREEN_WIDTH - 32 - (SMALL_COLUMNS - 1) * SMALL_GAP) / SMALL_COLUMNS;
+  const isGrid = videoViewMode === 'grid';
+  const activeSort = VIDEO_SORT_OPTIONS.find((o) => o.field === sortField && o.order === sortOrder) ?? VIDEO_SORT_OPTIONS[0];
 
-  const headerContent = (
-    <>
-      <View style={[s.flexRow, s.itemsCenter, s.gap2, s.mx4, s.mb2]}>
-        <View style={[s.flex1, s.flexRow, s.itemsCenter, s.rounded2xl, s.px3, { height: 36, backgroundColor: colors.surface }]}>
-          <Search size={14} color={colors.textMuted} />
-          <TextInput
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            placeholder="Search videos..."
-            placeholderTextColor={colors.textMuted}
-            style={[s.flex1, s.textSm, s.ml2, { color: colors.text, height: 36 }]}
-          />
-        </View>
-        <Pressable
-          onPress={() => setGroupByFolder((v) => !v)}
-          style={[s.w9, s.h9, s.roundedXl, s.itemsCenter, s.justifyCenter, { backgroundColor: groupByFolder ? colors.accent + '25' : colors.surface }]}
+  const handleFolderPress = () => {
+    router.push('/video-folder');
+  };
+
+  const renderGridItem = ({ item }: { item: Video }) => (
+    <Pressable
+      onPress={() => router.push({ pathname: '/video-player', params: { videoId: item.id } })}
+      onLongPress={() => present(item)}
+      style={{ width: GRID_ITEM_WIDTH, marginBottom: GRID_GAP }}
+    >
+      <View
+        style={{
+          width: GRID_ITEM_WIDTH,
+          height: GRID_ITEM_WIDTH * 0.6,
+          borderRadius: 12,
+          overflow: 'hidden',
+          backgroundColor: colors.surface,
+        }}
+      >
+        <VideoThumbnailView
+          videoUri={item.uri}
+          videoId={item.id}
+          size={GRID_ITEM_WIDTH}
+          borderRadius={12}
+          iconSize={24}
+          iconColor={colors.accent}
+          backgroundColor={colors.surface}
+        />
+        <View
+          style={{
+            position: 'absolute',
+            top: 6,
+            right: 6,
+            backgroundColor: 'rgba(0,0,0,0.7)',
+            borderRadius: 4,
+            paddingHorizontal: 5,
+            paddingVertical: 2,
+          }}
         >
-          <FolderOpen size={16} color={groupByFolder ? colors.accent : colors.textMuted} />
-        </Pressable>
+          <Text style={{ fontSize: 10, fontWeight: '600', color: '#fff' }}>
+            {formatDuration(item.duration)}
+          </Text>
+        </View>
       </View>
-      <SortMenu
-        options={SORT_OPTIONS.filter((o) => o.field !== 'artist')}
-        active={activeSort}
-        onSelect={(opt) => setSort(opt.field, opt.order)}
-        count={filtered.length}
-      />
-    </>
+    </Pressable>
   );
 
-  if (groupByFolder && grouped) {
-    return (
-      <View style={[s.flex1, { backgroundColor: colors.background }]}>
-        <TopBar />
-        <FlashList
-          data={grouped}
-          keyExtractor={([folder]) => folder}
-          contentContainerStyle={{ paddingBottom: 120 + insets.bottom }}
-          ListHeaderComponent={headerContent}
-          renderItem={({ item: [folder, folderVideos] }) => (
-            <View style={[s.px4, s.mb4]}>
-              <View style={[s.flexRow, s.itemsCenter, s.gap2, s.mb2]}>
-                <FolderOpen size={14} color={colors.accent} />
-                <Text style={[s.textSm, s.fontSemibold, { color: colors.text }]}>{folder}</Text>
-                <Text style={[s.textXs, { color: colors.textMuted }]}>{folderVideos.length}</Text>
-              </View>
-              <View style={[s.flexRow, s.flexWrap, { gap: 8 }]}>
-                {folderVideos.map((video: any) => {
-                  const cardW = (SCREEN_WIDTH - 48) / 3;
-                  return (
-                    <Pressable
-                      key={video.id}
-                      onPress={() => router.replace({ pathname: '/video-player', params: { uri: video.uri, title: video.title } })}
-                      style={{ width: cardW }}
-                    >
-                      <VideoThumb uri={video.thumbnail} videoId={video.id} videoUri={video.uri} width={cardW} height={cardW * 0.65} borderRadius={8} colors={colors} />
-                      <Text style={{ fontSize: 11, color: colors.text, marginTop: 4 }} numberOfLines={1}>{video.title}</Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
-            </View>
-          )}
-          ListEmptyComponent={
-            <View style={[s.itemsCenter, s.py20]}>
-              <VideoIcon size={40} color={colors.textMuted} />
-              <Text style={[s.mt3, { color: colors.textMuted }]}>{t('common.no.results')}</Text>
-            </View>
-          }
+  const renderListItem = ({ item }: { item: Video }) => (
+    <Pressable
+      onPress={() => router.push({ pathname: '/video-player', params: { videoId: item.id } })}
+      onLongPress={() => present(item)}
+      style={[s.flexRow, s.itemsCenter, s.gap3, s.px4, s.py3]}
+    >
+      <View
+        style={{
+          width: 56,
+          height: 40,
+          borderRadius: 8,
+          backgroundColor: colors.surface,
+          overflow: 'hidden',
+        }}
+      >
+        <VideoThumbnailView
+          videoUri={item.uri}
+          videoId={item.id}
+          size={56}
+          borderRadius={8}
+          iconSize={16}
+          iconColor={colors.accent}
+          backgroundColor={colors.surface}
         />
-        <MiniPlayer />
+        <View
+          style={{
+            position: 'absolute',
+            bottom: 2,
+            right: 3,
+            backgroundColor: 'rgba(0,0,0,0.7)',
+            borderRadius: 3,
+            paddingHorizontal: 3,
+            paddingVertical: 1,
+          }}
+        >
+          <Text style={{ fontSize: 8, fontWeight: '600', color: '#fff' }}>
+            {formatDuration(item.duration)}
+          </Text>
+        </View>
       </View>
-    );
-  }
-
-  if (fileSizeTheme === 'small') {
-    return (
-      <View style={[s.flex1, { backgroundColor: colors.background }]}>
-        <TopBar />
-        {headerContent}
-        <FlashList
-          data={filtered}
-          keyExtractor={(item) => item.id}
-          numColumns={SMALL_COLUMNS}
-          contentContainerStyle={{ paddingBottom: 120 + insets.bottom, paddingHorizontal: 16 }}
-          renderItem={({ item }) => (
-            <Pressable
-              onPress={() => router.replace({ pathname: '/video-player', params: { uri: item.uri, title: item.title } })}
-              style={{ width: SMALL_ITEM_W, marginBottom: SMALL_GAP }}
-            >
-              <VideoThumb uri={item.thumbnail} videoId={item.id} videoUri={item.uri} width={SMALL_ITEM_W} height={SMALL_ITEM_W * 0.65} borderRadius={6} colors={colors} />
-            </Pressable>
+      <View style={s.flex1}>
+        <Text style={[s.textSm, s.fontMedium, { color: colors.text }]} numberOfLines={1}>
+          {item.title}
+        </Text>
+        <View style={[s.flexRow, s.itemsCenter, s.gap2, s.mt05]}>
+          {item.duration > 0 && (
+            <Text style={[s.textXs, { color: colors.textMuted }]}>
+              {formatDuration(item.duration)}
+            </Text>
           )}
-          ListEmptyComponent={
-            <View style={[s.itemsCenter, s.py20]}>
-              <VideoIcon size={40} color={colors.textMuted} />
-              <Text style={[s.mt3, { color: colors.textMuted }]}>{t('common.no.results')}</Text>
-            </View>
-          }
-        />
-        <MiniPlayer />
-      </View>
-    );
-  }
-
-  if (fileSizeTheme === 'medium') {
-    return (
-      <View style={[s.flex1, { backgroundColor: colors.background }]}>
-        <TopBar />
-        {headerContent}
-        <FlashList
-          data={filtered}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={{ paddingBottom: 120 + insets.bottom, paddingHorizontal: 16 }}
-          renderItem={({ item }) => (
-            <Pressable
-              onPress={() => router.replace({ pathname: '/video-player', params: { uri: item.uri, title: item.title } })}
-              style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 8 }}
-            >
-              <VideoThumb uri={item.thumbnail} videoId={item.id} videoUri={item.uri} width={120} height={72} borderRadius={10} colors={colors} />
-              <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 13, fontWeight: '500', color: colors.text }} numberOfLines={1}>{item.title}</Text>
-                <Text style={{ fontSize: 11, color: colors.textMuted, marginTop: 3 }}>
-                  {formatDuration(item.duration)} · {item.width}x{item.height}
-                </Text>
-              </View>
-            </Pressable>
+          {formatResolution(item) ? (
+            <Text style={[s.textXs, { color: colors.textMuted }]}>
+              {formatResolution(item)}
+            </Text>
+          ) : null}
+          {item.fileSize > 0 && (
+            <Text style={[s.textXs, { color: colors.textMuted }]}>
+              {formatFileSize(item.fileSize)}
+            </Text>
           )}
-          ListEmptyComponent={
-            <View style={[s.itemsCenter, s.py20]}>
-              <VideoIcon size={40} color={colors.textMuted} />
-              <Text style={[s.mt3, { color: colors.textMuted }]}>{t('common.no.results')}</Text>
-            </View>
-          }
-        />
-        <MiniPlayer />
+        </View>
       </View>
-    );
-  }
+    </Pressable>
+  );
 
   return (
     <View style={[s.flex1, { backgroundColor: colors.background }]}>
-      <TopBar />
-      {headerContent}
-      <FlashList
-        data={filtered}
-        keyExtractor={(item) => item.id}
-        numColumns={2}
-        contentContainerStyle={{ paddingBottom: 120 + insets.bottom, paddingHorizontal: 16 }}
-        renderItem={({ item }) => {
-          const cardW = (SCREEN_WIDTH - 32 - 12) / 2;
-          return (
-            <Pressable
-              onPress={() => router.replace({ pathname: '/video-player', params: { uri: item.uri, title: item.title } })}
-              style={{ width: cardW, marginBottom: 16 }}
-            >
-              <VideoThumb uri={item.thumbnail} videoId={item.id} videoUri={item.uri} width={cardW} height={cardW * 0.65} borderRadius={12} colors={colors} />
-              <Text style={{ fontSize: 13, fontWeight: '600', color: colors.text, marginTop: 8 }} numberOfLines={1}>{item.title}</Text>
-              <Text style={{ fontSize: 11, color: colors.textMuted, marginTop: 2 }}>
-                {item.width}x{item.height} · {formatDuration(item.duration)}
-              </Text>
+      <TopBar title="Videos" />
+
+      <View style={[s.flexRow, s.itemsCenter, s.gap2, s.px4, s.py2]}>
+        <View
+          style={[
+            s.flex1,
+            s.flexRow,
+            s.itemsCenter,
+            s.gap2,
+            s.rounded2xl,
+            { backgroundColor: colors.surface, paddingHorizontal: 12, height: 40 },
+          ]}
+        >
+          <Search size={16} color={colors.textMuted} />
+          <TextInput
+            value={query}
+            onChangeText={setQuery}
+            placeholder="Search videos..."
+            placeholderTextColor={colors.textMuted}
+            style={[s.flex1, s.textSm, { color: colors.text }]}
+            returnKeyType="search"
+          />
+          {query.length > 0 && (
+            <Pressable onPress={() => setQuery('')} hitSlop={8}>
+              <X size={16} color={colors.textMuted} />
             </Pressable>
-          );
-        }}
-        ListEmptyComponent={
-          <View style={[s.itemsCenter, s.py20]}>
-            <VideoIcon size={40} color={colors.textMuted} />
-            <Text style={[s.mt3, { color: colors.textMuted }]}>{t('common.no.results')}</Text>
-          </View>
-        }
-      />
+          )}
+        </View>
+        <Pressable
+          onPress={handleFolderPress}
+          style={[
+            s.itemsCenter,
+            s.justifyCenter,
+            s.rounded2xl,
+            { width: 40, height: 40, backgroundColor: colors.surface },
+          ]}
+        >
+          <FolderOpen size={20} color={colors.accent} />
+        </Pressable>
+      </View>
+
+      <View style={[s.flexRow, s.itemsCenter, s.justifyBetween, s.px4, s.py1]}>
+        <Text style={[s.textXs, { color: colors.textMuted }]}>
+          {filteredVideos.length} video{filteredVideos.length !== 1 ? 's' : ''}
+        </Text>
+        <View style={[s.flexRow, s.itemsCenter, s.gap1]}>
+          <SortMenu
+            options={VIDEO_SORT_OPTIONS}
+            active={activeSort}
+            onSelect={(opt) => {
+              setSortField(opt.field);
+              setSortOrder(opt.order);
+            }}
+          />
+          <Pressable
+            onPress={() => setVideoViewMode(isGrid ? 'list' : 'grid')}
+            style={{ padding: 6, borderRadius: 6 }}
+          >
+            {isGrid ? (
+              <List size={18} color={colors.textMuted} />
+            ) : (
+              <LayoutGrid size={18} color={colors.textMuted} />
+            )}
+          </Pressable>
+        </View>
+      </View>
+
+      {filteredVideos.length > 0 ? (
+        isGrid ? (
+          <FlashList
+            data={filteredVideos}
+            keyExtractor={(item) => item.id}
+            numColumns={GRID_COLUMNS}
+            contentContainerStyle={{
+              paddingHorizontal: GRID_PADDING,
+              paddingBottom: 120 + insets.bottom,
+            }}
+            renderItem={renderGridItem}
+            showsVerticalScrollIndicator={false}
+          />
+        ) : (
+          <FlashList
+            data={filteredVideos}
+            keyExtractor={(item) => item.id}
+            contentContainerStyle={{ paddingBottom: 120 + insets.bottom }}
+            renderItem={renderListItem}
+            showsVerticalScrollIndicator={false}
+          />
+        )
+      ) : (
+        <View style={[s.flex1, s.itemsCenter, s.justifyCenter]}>
+          <Film size={48} color={colors.textMuted} />
+          <Text style={[s.textSm, s.mt3, { color: colors.textMuted }]}>No videos found</Text>
+        </View>
+      )}
+
+      <VideoContextMenu bottomSheetRef={bottomSheetRef} video={contextVideo} />
       <MiniPlayer />
     </View>
   );

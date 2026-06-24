@@ -41,12 +41,26 @@ export interface Video {
   id: string;
   uri: string;
   title: string;
+  artist: string | null;
   duration: number;
   fileSize: number;
   dateAdded: number;
   thumbnail: string | null;
   width: number;
   height: number;
+  codec: string | null;
+  frameRate: number | null;
+  bitrate: number | null;
+  language: string | null;
+  hasEmbeddedSubtitles: boolean;
+  subtitleLanguages: string[];
+}
+
+export interface SubtitleTrack {
+  index: number;
+  language: string | null;
+  title: string | null;
+  format: 'srt' | 'vtt' | 'ass' | 'embedded';
 }
 
 export type SortField = 'title' | 'artist' | 'dateAdded' | 'duration' | 'fileSize' | 'playCount' | 'lastPlayed';
@@ -61,8 +75,8 @@ export interface SortOption {
 export const SORT_OPTIONS: SortOption[] = [
   { field: 'title', order: 'asc', label: 'Name (A-Z)' },
   { field: 'title', order: 'desc', label: 'Name (Z-A)' },
-  { field: 'dateAdded', order: 'desc', label: 'Oldest First' },
-  { field: 'dateAdded', order: 'asc', label: 'Newest First' },
+  { field: 'dateAdded', order: 'desc', label: 'Newest First' },
+  { field: 'dateAdded', order: 'asc', label: 'Oldest First' },
   { field: 'duration', order: 'desc', label: 'Longest First' },
   { field: 'duration', order: 'asc', label: 'Shortest First' },
   { field: 'fileSize', order: 'desc', label: 'Largest First' },

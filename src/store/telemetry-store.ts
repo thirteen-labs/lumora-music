@@ -21,6 +21,7 @@ interface TelemetryState {
   decodeCount: number;
   bufferPoolHits: number;
   bufferPoolMisses: number;
+  poolTotalBytes: number;
   ensureAliveCount: number;
   interruptionCount: number;
 
@@ -41,9 +42,11 @@ interface TelemetryState {
     totalSkips: number;
     avgDecodeMs: number;
     bufferPoolHitRate: number;
+    poolTotalBytes: number;
     ensureAliveCount: number;
     interruptionCount: number;
   };
+  setPoolTotalBytes: (bytes: number) => void;
   clear: () => void;
 }
 
@@ -71,6 +74,7 @@ export const useTelemetryStore = create<TelemetryState>()(
     decodeCount: 0,
     bufferPoolHits: 0,
     bufferPoolMisses: 0,
+    poolTotalBytes: 0,
     ensureAliveCount: 0,
     interruptionCount: 0,
 
@@ -166,9 +170,14 @@ export const useTelemetryStore = create<TelemetryState>()(
         totalSkips: s.totalSkips,
         avgDecodeMs: Math.round(s.totalDecodeTimeMs / decodeCount),
         bufferPoolHitRate: Math.round((s.bufferPoolHits / totalPoolOps) * 100),
+        poolTotalBytes: s.poolTotalBytes,
         ensureAliveCount: s.ensureAliveCount,
         interruptionCount: s.interruptionCount,
       };
+    },
+
+    setPoolTotalBytes: (bytes) => {
+      set((s) => { s.poolTotalBytes = bytes; });
     },
 
     clear: () => {
@@ -181,6 +190,7 @@ export const useTelemetryStore = create<TelemetryState>()(
         s.decodeCount = 0;
         s.bufferPoolHits = 0;
         s.bufferPoolMisses = 0;
+        s.poolTotalBytes = 0;
         s.ensureAliveCount = 0;
         s.interruptionCount = 0;
       });

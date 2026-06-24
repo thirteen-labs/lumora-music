@@ -38,12 +38,12 @@ function getMediaType(name: string): 'audio' | 'video' | null {
 }
 
 const SYSTEM_PATHS: string[] = [
-  '/storage/emulated/0/Android/data',
-  '/storage/emulated/0/Android/obb',
-  '/storage/emulated/0/Android/media',
   '/storage/emulated/0/Download',
   '/storage/emulated/0/Documents',
-  '/storage/emulated/0/',
+  '/storage/emulated/0/DCIM',
+  '/storage/emulated/0/Music',
+  '/storage/emulated/0/Movies',
+  '/storage/emulated/0/Videos',
 ];
 
 // NOTE: Direct filesystem paths may fail on Android 11+ (Scoped Storage).

@@ -43,7 +43,6 @@ export const useHiddenFilesStore = create<HiddenFilesState>()(
       saveStringSet(HIDDEN_SONGS_KEY, get().hiddenSongIds);
     },
     isSongHidden: (id) => get().hiddenSongIds.has(id),
-
     hideVideo: (id) => {
       set((s) => { s.hiddenVideoIds.add(id); });
       saveStringSet(HIDDEN_VIDEOS_KEY, get().hiddenVideoIds);

@@ -7,7 +7,7 @@ import { useTranslation } from '@/hooks/use-translation';
 import { TopBar } from '@/components/top-bar';
 import { SectionHeader } from '@/components/section-header';
 import { useSystemHiddenStore } from '@/store/system-hidden-store';
-import { ScanEye, Folder, FileAudio, FileVideo, ChevronDown, ChevronRight, RefreshCw, HardDrive } from 'lucide-react-native';
+import { ScanEye, Folder, FileAudio, ChevronDown, ChevronRight, RefreshCw, HardDrive } from 'lucide-react-native';
 
 export default function SystemHiddenFilesScreen() {
   const { colors } = useTheme();
@@ -57,7 +57,6 @@ export default function SystemHiddenFilesScreen() {
 
   const getTypeIcon = (type: 'audio' | 'video' | 'mixed') => {
     if (type === 'audio') return FileAudio;
-    if (type === 'video') return FileVideo;
     return HardDrive;
   };
 
@@ -186,7 +185,7 @@ export default function SystemHiddenFilesScreen() {
                                   key={file.uri}
                                   style={[s.flexRow, s.itemsCenter, s.gap3, s.py2]}
                                 >
-                                  <TypeIcon size={16} color={group.type === 'audio' ? colors.accent : group.type === 'video' ? '#3B82F6' : colors.textMuted} />
+                                  <TypeIcon size={16} color={group.type === 'audio' ? colors.accent : colors.textMuted} />
                                   <View style={s.flex1}>
                                     <Text style={[s.textXs, { color: colors.text }]} numberOfLines={1}>
                                       {file.name}

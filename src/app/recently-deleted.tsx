@@ -7,7 +7,7 @@ import type { TranslationKey } from '@/i18n/translations';
 import { TopBar } from '@/components/top-bar';
 import { SectionHeader } from '@/components/section-header';
 import { useRecentlyDeletedStore } from '@/store/recently-deleted-store';
-import { Music, Film, Trash2, RotateCcw, X } from 'lucide-react-native';
+import { Music, Trash2, RotateCcw, X } from 'lucide-react-native';
 
 function formatTimeAgo(timestamp: number, t: (key: TranslationKey, params?: Record<string, string | number>) => string): string {
   const diff = Date.now() - timestamp;
@@ -36,7 +36,6 @@ export default function RecentlyDeletedScreen() {
   const clearAll = useRecentlyDeletedStore((s) => s.clearAll);
 
   const songs = items.filter((i) => i.type === 'song');
-  const videos = items.filter((i) => i.type === 'video');
 
   const handleRestore = (id: string, title: string) => {
     Alert.alert(t('deleted.restore', { title }), t('deleted.restore', { title }), [
@@ -117,41 +116,6 @@ export default function RecentlyDeletedScreen() {
                 </View>
               )}
 
-              {videos.length > 0 && (
-                <View>
-                  <SectionHeader title={t('deleted.videos', { count: videos.length })} />
-                  <View style={[s.rounded3xl, s.overflowHidden, { backgroundColor: colors.surface }]}>
-                    {videos.map((item, i) => (
-                      <View
-                        key={item.id}
-                        style={[s.flexRow, s.itemsCenter, s.gap3, s.p4]}
-                      >
-                        <Film size={18} color={colors.accent} />
-                        <View style={s.flex1}>
-                          <Text style={[s.textSm, s.fontMedium, { color: colors.text }]} numberOfLines={1}>
-                            {item.title}
-                          </Text>
-                          <Text style={[s.textXs, { color: colors.textMuted }]}>
-                            {formatFileSize(item.fileSize)} · {formatTimeAgo(item.deletedAt, t)}
-                          </Text>
-                        </View>
-                        <Pressable
-                          onPress={() => handleRestore(item.id, item.title)}
-                          style={[{ padding: 8, borderRadius: 9999, backgroundColor: colors.card }]}
-                        >
-                          <RotateCcw size={14} color={colors.accent} />
-                        </Pressable>
-                        <Pressable
-                          onPress={() => handlePermanentDelete(item.id, item.title)}
-                          style={[{ padding: 8, borderRadius: 9999, backgroundColor: colors.card }]}
-                        >
-                          <X size={14} color={colors.notification} />
-                        </Pressable>
-                      </View>
-                    ))}
-                  </View>
-                </View>
-              )}
             </>
           )}
         </View>
