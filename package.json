@@ -70,9 +70,7 @@
     "ios": "expo run:ios",
     "web": "expo start --web",
     "lint": "expo lint",
-    "typecheck": "tsc --noEmit",
-    "ux:review": "npx tsx src/scripts/ux-review.ts",
-    "ux:review:json": "npx tsx src/scripts/ux-review.ts --json"
+    "typecheck": "tsc --noEmit"
   },
   "private": true
 }

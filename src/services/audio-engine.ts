@@ -72,7 +72,6 @@ class AudioBufferPool {
     return buf;
   }
 
-  /** Evict oldest entries until total bytes fits under limit. */
   private evictDownTo(limitBytes: number): void {
     const keys = Array.from(this.cache.keys());
     for (const k of keys) {
@@ -392,9 +391,13 @@ class AudioEngine {
 
   async loadTrack(uri: string): Promise<void> {
     if (this.loadingLock) {
-      console.warn('[AudioEngine] loadTrack called while already loading, queuing retry');
-      await new Promise(r => setTimeout(r, 100));
+      console.warn('[AudioEngine] loadTrack called while already loading, waiting');
+      for (let i = 0; i < 50; i++) {
+        await new Promise(r => setTimeout(r, 50));
+        if (!this.loadingLock) break;
+      }
       if (this.loadingLock) {
+        console.warn('[AudioEngine] loadTrack force-releasing stale lock');
         this.loadingLock = false;
       }
     }
@@ -407,7 +410,6 @@ class AudioEngine {
       this.cancelCrossfade();
       this.stopCurrentSource();
 
-      // Check buffer pool first
       const pooled = this.bufferPool.get(uri);
       if (pooled) {
         this.currentBuffer = pooled;
@@ -419,7 +421,6 @@ class AudioEngine {
         return;
       }
 
-      // Check preloaded buffer
       if (this.preloadedUri === uri && this.preloadedBuffer) {
         this.currentBuffer = this.preloadedBuffer;
         this.preloadedBuffer = null;
@@ -466,6 +467,7 @@ class AudioEngine {
   /** Pre-decode a track into the buffer pool so a subsequent loadTrack is instant. */
   async preloadTrack(uri: string): Promise<void> {
     if (this._crossfading) return;
+    if (this.loadingLock) return;
     if (this.bufferPool.has(uri)) return;
     if (this.preloadedUri === uri && this.preloadedBuffer) return;
     if (!this.context) await this.init();
@@ -474,8 +476,6 @@ class AudioEngine {
       const startTs = Date.now();
       const buffer = await decodeWithTimeout(this.context!, uri, DECODE_TIMEOUT_MS);
       const elapsed = Date.now() - startTs;
-      // set() returns false for oversized buffers (>30MB decoded PCM) – skip the pool but
-      // still keep the preloaded reference so the immediate next loadTrack is fast.
       this.bufferPool.set(uri, buffer, elapsed);
       this.preloadedUri = uri;
       this.preloadedBuffer = buffer;

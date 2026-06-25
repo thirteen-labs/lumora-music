@@ -6,6 +6,12 @@ const SILENT_ERRORS = new Set([
   "Failed to hide notification",
   "Failed to cancel scheduled notification",
   "Player setup failed",
+  "Failed to load expo-media-library/legacy",
+  "Failed to load expo-media-library",
+  "Video metadata parsing disabled",
+  "Metadata parsing disabled",
+  "Failed to load expo-file-system/legacy",
+  "Media library module is required but failed to load",
 ]);
 
 type ErrorLevel = 'error' | 'warning' | 'info';
@@ -27,8 +33,6 @@ function addToErrorLog(context: string, message: string, level: ErrorLevel): voi
     errorLog.shift();
   }
 }
-
-
 
 function formatError(error: unknown): string {
   if (error instanceof Error) {

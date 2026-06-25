@@ -15,6 +15,9 @@ const CACHE_VERSION = 2;
 const MEDIA_FETCH_TIMEOUT = 30000;
 const SCAN_MAX_RETRIES = 2;
 const SCAN_RETRY_DELAY = 2000;
+const PAGE_BATCH_SIZE = 500;
+const WORKER_CONCURRENCY = 20;
+const META_CACHE_SAVE_DEBOUNCE_MS = 5000;
 
 interface AssetsResult {
   assets: any[];
@@ -126,6 +129,8 @@ let _metadataCache: Record<string, {
   sampleRate: number | null;
 }> = {};
 
+let _metadataCacheTimer: ReturnType<typeof setTimeout> | null = null;
+
 function loadMetadataCache(): void {
   try {
     const raw = storage.getString(METADATA_CACHE_KEY);
@@ -136,6 +141,14 @@ function loadMetadataCache(): void {
 function saveMetadataCache(): void {
   trimMetadataCache();
   try { storage.set(METADATA_CACHE_KEY, JSON.stringify(_metadataCache)); } catch {}
+}
+
+function scheduleMetadataCacheSave(): void {
+  if (_metadataCacheTimer) clearTimeout(_metadataCacheTimer);
+  _metadataCacheTimer = setTimeout(() => {
+    saveMetadataCache();
+    _metadataCacheTimer = null;
+  }, META_CACHE_SAVE_DEBOUNCE_MS);
 }
 
 function trimMetadataCache(): void {
@@ -161,6 +174,7 @@ function setCachedMetadata(uri: string, meta: {
   sampleRate: number | null;
 }): void {
   _metadataCache[uri] = meta;
+  scheduleMetadataCacheSave();
 }
 
 function loadCachedDataFromStorage(): void {
@@ -207,6 +221,7 @@ export function getCachedGenres(): Genre[] { ensureCacheLoaded(); return cachedG
 
 export async function requestPermissions(options?: { audio?: boolean; video?: boolean }, force = false): Promise<boolean> {
   if (!MediaLibrary) return false;
+  if (force) permissionCache = null;
   if (!force && permissionCache !== null) return permissionCache;
   const needAudio = options?.audio !== false;
   const needVideo = options?.video !== false;
@@ -427,7 +442,6 @@ async function fetchSongs(
   onProgress?: (batchCount: number) => void,
 ): Promise<Song[]> {
   if (!MediaLibrary || typeof MediaLibrary.getAssetsAsync !== 'function') return [];
-  const batch = 500;
   const allSongs: Song[] = [];
   const MediaType = MediaLibrary.MediaType;
 
@@ -441,7 +455,7 @@ async function fetchSongs(
   };
 
   let result: AssetsResult = await fetchPage({
-    first: batch,
+    first: PAGE_BATCH_SIZE,
     mediaType: MediaType?.audio ?? 'audio',
     sortBy: 'default',
   });
@@ -449,7 +463,7 @@ async function fetchSongs(
   let nextPagePromise: Promise<AssetsResult> | null = null;
   if (result.hasNextPage && result.endCursor) {
     nextPagePromise = fetchPage({
-      first: batch,
+      first: PAGE_BATCH_SIZE,
       after: result.endCursor,
       mediaType: MediaType?.audio ?? 'audio',
       sortBy: 'default',
@@ -457,7 +471,7 @@ async function fetchSongs(
   }
 
   while (result.assets.length > 0) {
-    const songs = await processBatch(result.assets, 20, excludedFolders);
+    const songs = await processBatch(result.assets, WORKER_CONCURRENCY, excludedFolders);
     allSongs.push(...songs);
     onProgress?.(songs.length);
 
@@ -468,7 +482,7 @@ async function fetchSongs(
 
     if (result.hasNextPage && result.endCursor) {
       nextPagePromise = fetchPage({
-        first: batch,
+        first: PAGE_BATCH_SIZE,
         after: result.endCursor,
         mediaType: MediaType?.audio ?? 'audio',
         sortBy: 'default',

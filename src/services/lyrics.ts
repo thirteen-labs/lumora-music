@@ -1,5 +1,8 @@
+import { storage } from '@/services/mmkv';
+
 const LYRICS_API = "https://api.lyrics.ovh/v1";
 const LRCLIB_API = "https://lrclib.net/api";
+const LYRICS_CACHE_KEY = "lumora-lyrics-fetch-cache";
 
 export interface SyncedLine {
   time: number;
@@ -16,6 +19,41 @@ export interface LyricsResult {
 let cache = new Map<string, LyricsResult | null>();
 const CACHE_MAX_SIZE = 200;
 const inflightRequests = new Map<string, Promise<LyricsResult | null>>();
+let persistenceTimer: ReturnType<typeof setTimeout> | null = null;
+
+function persistCacheToMMKV(): void {
+  if (cache.size === 0) return;
+  try {
+    const obj: Record<string, LyricsResult | null> = {};
+    cache.forEach((v, k) => { obj[k] = v; });
+    storage.set(LYRICS_CACHE_KEY, JSON.stringify(obj));
+  } catch {}
+}
+
+function schedulePersist(): void {
+  if (persistenceTimer) clearTimeout(persistenceTimer);
+  persistenceTimer = setTimeout(() => {
+    persistCacheToMMKV();
+    persistenceTimer = null;
+  }, 3000);
+}
+
+function loadPersistedCache(): void {
+  try {
+    const raw = storage.getString(LYRICS_CACHE_KEY);
+    if (!raw) return;
+    const obj: Record<string, LyricsResult | null> = JSON.parse(raw);
+    const keys = Object.keys(obj);
+    if (keys.length > CACHE_MAX_SIZE) {
+      const limited = keys.slice(keys.length - CACHE_MAX_SIZE);
+      for (const k of limited) cache.set(k, obj[k]);
+    } else {
+      for (const k of keys) cache.set(k, obj[k]);
+    }
+  } catch {}
+}
+
+loadPersistedCache();
 
 function cleanArtist(artist: string): string {
   return artist.replace(/[-–—].*$/, "").trim();
@@ -153,23 +191,16 @@ async function doFetch(
   title: string,
   key: string,
 ): Promise<LyricsResult | null> {
-  const lrclibResult = await fetchFromLrclib(artist, title);
-  if (lrclibResult) {
-    cache.set(key, lrclibResult);
-    trimCache();
-    return lrclibResult;
-  }
+  const [lrclibResult, ovhResult] = await Promise.all([
+    fetchFromLrclib(artist, title),
+    fetchFromLyricsOvh(artist, title),
+  ]);
 
-  const ovhResult = await fetchFromLyricsOvh(artist, title);
-  if (ovhResult) {
-    cache.set(key, ovhResult);
-    trimCache();
-    return ovhResult;
-  }
-
-  cache.set(key, null);
+  const result = lrclibResult ?? ovhResult;
+  cache.set(key, result);
   trimCache();
-  return null;
+  schedulePersist();
+  return result;
 }
 
 export function parseSyncedLyrics(lrcContent: string): LyricsResult {

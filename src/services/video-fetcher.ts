@@ -9,6 +9,9 @@ const VIDEO_META_CACHE_KEY = 'lumora-video-meta-cache';
 const MEDIA_FETCH_TIMEOUT = 30000;
 const SCAN_MAX_RETRIES = 2;
 const SCAN_RETRY_DELAY = 2000;
+const PAGE_BATCH_SIZE = 500;
+const WORKER_CONCURRENCY = 10;
+const META_CACHE_SAVE_DEBOUNCE_MS = 5000;
 
 interface AssetsResult {
   assets: any[];
@@ -109,6 +112,8 @@ let _videoMetaCache: Record<string, {
   subtitleLanguages: string[];
 }> = {};
 
+let _videoMetaCacheTimer: ReturnType<typeof setTimeout> | null = null;
+
 function loadVideoMetaCache(): void {
   try {
     const raw = storage.getString(VIDEO_META_CACHE_KEY);
@@ -120,12 +125,21 @@ function saveVideoMetaCache(): void {
   try { storage.set(VIDEO_META_CACHE_KEY, JSON.stringify(_videoMetaCache)); } catch {}
 }
 
+function scheduleVideoMetaCacheSave(): void {
+  if (_videoMetaCacheTimer) clearTimeout(_videoMetaCacheTimer);
+  _videoMetaCacheTimer = setTimeout(() => {
+    saveVideoMetaCache();
+    _videoMetaCacheTimer = null;
+  }, META_CACHE_SAVE_DEBOUNCE_MS);
+}
+
 function getCachedVideoMeta(uri: string) {
   return _videoMetaCache[uri] ?? null;
 }
 
 function setCachedVideoMeta(uri: string, meta: typeof _videoMetaCache[string]): void {
   _videoMetaCache[uri] = meta;
+  scheduleVideoMetaCacheSave();
 }
 
 function loadCachedVideos(): Video[] {
@@ -156,8 +170,12 @@ export function getCachedVideos(): Video[] {
   return loadCachedVideos();
 }
 
+let _videoPermCache: boolean | null = null;
+
 export async function requestVideoPermissions(force = false): Promise<boolean> {
   if (!MediaLibrary) return false;
+  if (force) _videoPermCache = null;
+  if (!force && _videoPermCache !== null) return _videoPermCache;
   try {
     const { status } = await MediaLibrary.requestPermissionsAsync();
     const granted = status === 'granted';
@@ -183,9 +201,11 @@ export async function requestVideoPermissions(force = false): Promise<boolean> {
       }
     }
 
+    _videoPermCache = granted;
     return granted;
   } catch (error) {
     console.error('[VideoFetcher] Permission request failed:', error);
+    _videoPermCache = false;
     return false;
   }
 }
@@ -342,7 +362,6 @@ async function fetchAllVideos(
   onProgress?: (batchCount: number) => void,
 ): Promise<Video[]> {
   if (!MediaLibrary || typeof MediaLibrary.getAssetsAsync !== 'function') return [];
-  const batch = 500;
   const allVideos: Video[] = [];
   const MediaType = MediaLibrary.MediaType;
 
@@ -356,7 +375,7 @@ async function fetchAllVideos(
   };
 
   let result: AssetsResult = await fetchPage({
-    first: batch,
+    first: PAGE_BATCH_SIZE,
     mediaType: MediaType?.video ?? 'video',
     sortBy: 'default',
   });
@@ -364,7 +383,7 @@ async function fetchAllVideos(
   let nextPagePromise: Promise<AssetsResult> | null = null;
   if (result.hasNextPage && result.endCursor) {
     nextPagePromise = fetchPage({
-      first: batch,
+      first: PAGE_BATCH_SIZE,
       after: result.endCursor,
       mediaType: MediaType?.video ?? 'video',
       sortBy: 'default',
@@ -372,7 +391,7 @@ async function fetchAllVideos(
   }
 
   while (result.assets.length > 0) {
-    const videos = await processVideoBatch(result.assets);
+    const videos = await processVideoBatch(result.assets, WORKER_CONCURRENCY);
     allVideos.push(...videos);
     onProgress?.(videos.length);
 
@@ -383,7 +402,7 @@ async function fetchAllVideos(
 
     if (result.hasNextPage && result.endCursor) {
       nextPagePromise = fetchPage({
-        first: batch,
+        first: PAGE_BATCH_SIZE,
         after: result.endCursor,
         mediaType: MediaType?.video ?? 'video',
         sortBy: 'default',

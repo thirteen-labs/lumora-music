@@ -1,9 +1,13 @@
 import { create } from "zustand";
 import { immer } from "zustand/middleware/immer";
+import { storage } from "@/services/mmkv";
 import type { Video } from "@/types/media";
 
 export type ScaleMode = '16:9' | 'fill' | 'fit' | '4:3';
 export type PlayMode = 'loop-one' | 'loop-all' | 'pause-after-play';
+
+const SCALE_MODE_KEY = "lumora-video-scale-mode";
+const PLAY_MODE_KEY = "lumora-video-play-mode";
 
 interface VideoPlayerState {
   currentVideo: Video | null;
@@ -46,8 +50,12 @@ export const useVideoPlayerStore = create<VideoPlayerState>()(
     isControlsLocked: false,
     isPortrait: true,
     isAudioOnly: false,
-    scaleMode: 'fit',
-    playMode: 'loop-all',
+    scaleMode: (() => {
+      try { return (storage.getString(SCALE_MODE_KEY) as ScaleMode) ?? 'fit'; } catch { return 'fit'; }
+    })(),
+    playMode: (() => {
+      try { return (storage.getString(PLAY_MODE_KEY) as PlayMode) ?? 'loop-all'; } catch { return 'loop-all'; }
+    })(),
     isFloatingWindow: false,
 
     play: (video, queue) => {
@@ -139,12 +147,14 @@ export const useVideoPlayerStore = create<VideoPlayerState>()(
       set((s) => {
         s.scaleMode = mode;
       });
+      try { storage.set(SCALE_MODE_KEY, mode); } catch {}
     },
 
     setPlayMode: (mode) => {
       set((s) => {
         s.playMode = mode;
       });
+      try { storage.set(PLAY_MODE_KEY, mode); } catch {}
     },
 
     toggleFloatingWindow: () => {

@@ -17,8 +17,5 @@
     ".expo/types/**/*.ts",
     "expo-env.d.ts"
   ],
-  "exclude": [
-    "src/scripts",
-    "src/ux-review"
-  ]
+  "exclude": []
 }

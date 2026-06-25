@@ -37,6 +37,8 @@ import {
 import { useToastStore } from "@/store/toast-store";
 
 const LAST_SCAN_TIME_KEY = "lumora-last-scan-time";
+const SORT_FIELD_KEY = "lumora-sort-field";
+const SORT_ORDER_KEY = "lumora-sort-order";
 
 interface MusicState {
   songs: Song[];
@@ -73,8 +75,12 @@ export const useMusicStore = create<MusicState>()(
     })(),
     newSongsCount: 0,
     removedSongsCount: 0,
-    sortField: "title",
-    sortOrder: "asc",
+    sortField: (() => {
+      try { return storage.getString(SORT_FIELD_KEY) as any ?? "title"; } catch { return "title"; }
+    })(),
+    sortOrder: (() => {
+      try { return storage.getString(SORT_ORDER_KEY) as any ?? "asc"; } catch { return "asc"; }
+    })(),
     backgroundScanEnabled: isBackgroundScanEnabled(),
 
     scan: async (force?: boolean) => {
@@ -175,6 +181,7 @@ export const useMusicStore = create<MusicState>()(
         state.sortField = field;
         state.sortOrder = order;
       });
+      try { storage.set(SORT_FIELD_KEY, field); storage.set(SORT_ORDER_KEY, order); } catch {}
     },
 
     getSortedSongs: () => {
