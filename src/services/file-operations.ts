@@ -1,13 +1,13 @@
 import { File } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 
-export interface FileOperationResult {
+interface FileOperationResult {
   success: boolean;
   error?: string;
   newUri?: string;
 }
 
-export async function deleteFile(uri: string): Promise<FileOperationResult> {
+async function deleteFile(uri: string): Promise<FileOperationResult> {
   try {
     const file = new File(uri);
     await file.delete();
@@ -33,54 +33,7 @@ export async function deleteFiles(uris: string[]): Promise<FileOperationResult> 
   return { success: true };
 }
 
-export async function renameFile(
-  uri: string,
-  newName: string
-): Promise<FileOperationResult> {
-  try {
-    const file = new File(uri);
-    const dirPath = uri.substring(0, uri.lastIndexOf('/') + 1);
-    const destFile = new File(dirPath + newName);
-    await file.move(destFile);
-    return { success: true, newUri: destFile.uri };
-  } catch (e: any) {
-    return { success: false, error: e?.message ?? 'Failed to rename file' };
-  }
-}
-
-export async function moveFile(
-  sourceUri: string,
-  destDirUri: string
-): Promise<FileOperationResult> {
-  try {
-    const file = new File(sourceUri);
-    const fileName = sourceUri.substring(sourceUri.lastIndexOf('/') + 1);
-    const destPath = destDirUri.endsWith('/') ? destDirUri + fileName : destDirUri + '/' + fileName;
-    const destFile = new File(destPath);
-    await file.move(destFile);
-    return { success: true, newUri: destFile.uri };
-  } catch (e: any) {
-    return { success: false, error: e?.message ?? 'Failed to move file' };
-  }
-}
-
-export async function copyFile(
-  sourceUri: string,
-  destDirUri: string
-): Promise<FileOperationResult> {
-  try {
-    const file = new File(sourceUri);
-    const fileName = sourceUri.substring(sourceUri.lastIndexOf('/') + 1);
-    const destPath = destDirUri.endsWith('/') ? destDirUri + fileName : destDirUri + '/' + fileName;
-    const destFile = new File(destPath);
-    await file.copy(destFile);
-    return { success: true, newUri: destFile.uri };
-  } catch (e: any) {
-    return { success: false, error: e?.message ?? 'Failed to copy file' };
-  }
-}
-
-export async function shareFile(uri: string): Promise<FileOperationResult> {
+async function shareFile(uri: string): Promise<FileOperationResult> {
   try {
     const available = await Sharing.isAvailableAsync();
     if (!available) {

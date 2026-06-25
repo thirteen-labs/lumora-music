@@ -19,21 +19,14 @@ interface TelemetryState {
   totalSkips: number;
   totalDecodeTimeMs: number;
   decodeCount: number;
-  bufferPoolHits: number;
-  bufferPoolMisses: number;
-  poolTotalBytes: number;
   ensureAliveCount: number;
-  interruptionCount: number;
 
   record: (type: string, detail?: string, payload?: Record<string, unknown>) => void;
   recordPlay: (trackId: string, decodeMs?: number) => void;
   recordError: (source: string, error: string) => void;
   recordSkip: (trackId: string) => void;
   recordDecode: (trackId: string, ms: number) => void;
-  recordBufferPoolHit: () => void;
-  recordBufferPoolMiss: () => void;
   recordEnsureAlive: () => void;
-  recordInterruption: (event: string) => void;
   getEvents: (limit?: number) => TelemetryEvent[];
   getRecentErrors: (limit?: number) => TelemetryEvent[];
   getStats: () => {
@@ -41,12 +34,8 @@ interface TelemetryState {
     totalErrors: number;
     totalSkips: number;
     avgDecodeMs: number;
-    bufferPoolHitRate: number;
-    poolTotalBytes: number;
     ensureAliveCount: number;
-    interruptionCount: number;
   };
-  setPoolTotalBytes: (bytes: number) => void;
   clear: () => void;
 }
 
@@ -72,11 +61,7 @@ export const useTelemetryStore = create<TelemetryState>()(
     totalSkips: 0,
     totalDecodeTimeMs: 0,
     decodeCount: 0,
-    bufferPoolHits: 0,
-    bufferPoolMisses: 0,
-    poolTotalBytes: 0,
     ensureAliveCount: 0,
-    interruptionCount: 0,
 
     record: (type, detail, payload) => {
       set((s) => {
@@ -122,31 +107,10 @@ export const useTelemetryStore = create<TelemetryState>()(
       });
     },
 
-    recordBufferPoolHit: () => {
-      set((s) => {
-        s.bufferPoolHits++;
-      });
-    },
-
-    recordBufferPoolMiss: () => {
-      set((s) => {
-        s.bufferPoolMisses++;
-      });
-    },
-
     recordEnsureAlive: () => {
       set((s) => {
         s.ensureAliveCount++;
       });
-    },
-
-    recordInterruption: (event) => {
-      set((s) => {
-        s.interruptionCount++;
-        s.events.push({ ts: Date.now(), type: 'interruption', detail: event });
-        if (s.events.length > MAX_EVENTS) s.events = s.events.slice(-MAX_EVENTS);
-      });
-      persistEvents(get().events);
     },
 
     getEvents: (limit) => {
@@ -163,21 +127,13 @@ export const useTelemetryStore = create<TelemetryState>()(
     getStats: () => {
       const s = get();
       const decodeCount = s.decodeCount || 1;
-      const totalPoolOps = s.bufferPoolHits + s.bufferPoolMisses || 1;
       return {
         totalPlays: s.totalPlays,
         totalErrors: s.totalErrors,
         totalSkips: s.totalSkips,
         avgDecodeMs: Math.round(s.totalDecodeTimeMs / decodeCount),
-        bufferPoolHitRate: Math.round((s.bufferPoolHits / totalPoolOps) * 100),
-        poolTotalBytes: s.poolTotalBytes,
         ensureAliveCount: s.ensureAliveCount,
-        interruptionCount: s.interruptionCount,
       };
-    },
-
-    setPoolTotalBytes: (bytes) => {
-      set((s) => { s.poolTotalBytes = bytes; });
     },
 
     clear: () => {
@@ -188,11 +144,7 @@ export const useTelemetryStore = create<TelemetryState>()(
         s.totalSkips = 0;
         s.totalDecodeTimeMs = 0;
         s.decodeCount = 0;
-        s.bufferPoolHits = 0;
-        s.bufferPoolMisses = 0;
-        s.poolTotalBytes = 0;
         s.ensureAliveCount = 0;
-        s.interruptionCount = 0;
       });
       try { storage.set(TELEMETRY_KEY, JSON.stringify([])); } catch {}
     },

@@ -28,13 +28,7 @@ function addToErrorLog(context: string, message: string, level: ErrorLevel): voi
   }
 }
 
-export function getErrorLog(): ErrorLogEntry[] {
-  return [...errorLog];
-}
 
-export function clearErrorLog(): void {
-  errorLog.length = 0;
-}
 
 function formatError(error: unknown): string {
   if (error instanceof Error) {

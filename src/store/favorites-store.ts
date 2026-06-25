@@ -24,8 +24,6 @@ interface FavoritesState {
   isSongFavorite: (id: string) => boolean;
   setSongs: (songs: Song[]) => void;
   hydrateFavorites: (allSongs: Song[]) => void;
-  clearSongFavorites: () => void;
-  clearAllFavorites: () => void;
 }
 
 export const useFavoritesStore = create<FavoritesState>()(
@@ -57,20 +55,5 @@ export const useFavoritesStore = create<FavoritesState>()(
       });
     },
 
-    clearSongFavorites: () => {
-      set((s) => {
-        s.favoriteSongIds = [];
-        s.songs = [];
-        saveIds(FAV_SONGS_KEY, []);
-      });
-    },
-
-    clearAllFavorites: () => {
-      set((s) => {
-        s.favoriteSongIds = [];
-        s.songs = [];
-        saveIds(FAV_SONGS_KEY, []);
-      });
-    },
   })),
 );

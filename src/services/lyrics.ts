@@ -67,16 +67,6 @@ function stripLRCMetadata(lrc: string): string {
     .trim();
 }
 
-export function getSyncedLine(synced: SyncedLine[], position: number): number {
-  if (!synced.length) return -1;
-  let idx = -1;
-  for (let i = 0; i < synced.length; i++) {
-    if (position >= synced[i].time) idx = i;
-    else break;
-  }
-  return idx;
-}
-
 async function fetchFromLrclib(
   artist: string,
   title: string,
@@ -186,10 +176,6 @@ export function parseSyncedLyrics(lrcContent: string): LyricsResult {
   const synced = parseLRC(lrcContent);
   const plainText = stripLRCMetadata(lrcContent);
   return { lyrics: plainText, synced, source: "local", raw: lrcContent };
-}
-
-export function clearLyricsCache(): void {
-  cache.clear();
 }
 
 export function hasCachedLyrics(artist: string, title: string): boolean | null {

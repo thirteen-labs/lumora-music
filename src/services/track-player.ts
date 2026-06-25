@@ -109,10 +109,6 @@ export function getCrossfadeDuration(): number {
   return crossfadeDuration;
 }
 
-export function getCurrentVolume(): number {
-  return currentVolume;
-}
-
 export async function setupPlayer(): Promise<void> {
   try {
     await audioEngine.init();
@@ -159,14 +155,16 @@ export async function loadTrack(track: Song): Promise<void> {
   setLockScreenMetadata(track);
 }
 
+function setLockScreenMetadata(track: Song): void {
+  showNowPlayingNotification(track, audioEngine.getState().playing);
+}
+
 export async function preloadNextTrack(track: Song): Promise<void> {
   if (crossfadeInProgress) return;
   audioEngine.preloadTrack(track.uri);
 }
 
-export function getBufferPoolStats() {
-  return audioEngine.getBufferPoolStats();
-}
+
 
 async function crossfadeToTrack(track: Song): Promise<void> {
   if (crossfadeInProgress) {
@@ -196,28 +194,10 @@ export async function seekTo(position: number): Promise<void> {
   audioEngine.seekTo(position);
 }
 
-export async function setVolume(volume: number): Promise<void> {
-  audioEngine.setVolume(volume);
-  currentVolume = volume;
-}
 
-export function setLockScreenMetadata(track: Song): void {
-  showNowPlayingNotification(track, audioEngine.getState().playing);
-}
 
 export function clearLockScreenControls(): void {
   dismissNowPlayingNotification();
-}
-
-export function getPlayerState() {
-  const state = audioEngine.getState();
-  return {
-    playing: state.playing,
-    currentTime: state.currentTime,
-    duration: state.duration,
-    isBuffering: state.isBuffering,
-    isLoaded: state.isLoaded,
-  };
 }
 
 export function destroyPlayer(): void {

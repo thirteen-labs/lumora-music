@@ -108,10 +108,6 @@ export async function scanSystemFolders(): Promise<ScannedFile[]> {
   return allFiles;
 }
 
-export async function scanDirectory(uri: string): Promise<ScannedFile[]> {
-  return scanDirectoryRecursive(uri, 0, new Set());
-}
-
 function tokenize(name: string): string[] {
   const base = name.replace(/\.[^.]+$/, '');
   return base

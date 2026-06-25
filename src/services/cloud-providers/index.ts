@@ -46,13 +46,7 @@ export function getDropboxAppKey(): string {
   return getStoredDropboxAppKey();
 }
 
-export function hasGoogleCredentials(): boolean {
-  return getStoredGoogleClientId().length > 0;
-}
 
-export function hasDropboxCredentials(): boolean {
-  return getStoredDropboxAppKey().length > 0;
-}
 
 export function getProviders(): CloudProvider[] {
   if (_providers) return _providers;

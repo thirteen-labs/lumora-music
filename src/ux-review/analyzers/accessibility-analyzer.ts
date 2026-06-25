@@ -43,13 +43,6 @@ function resolveColor(color: string, theme: Record<string, string>): { r: number
   return null;
 }
 
-function parseSizeFromClass(cls: string): number | null {
-  const match = cls.match(/(?:w|h)-(\d+(?:\.\d+)?)/);
-  if (!match) return null;
-  const val = parseFloat(match[1]);
-  return val * 4;
-}
-
 function parseSizeFromStyle(styleStr: string, prop: string): number | null {
   const regex = new RegExp(`${prop}\\s*:\\s*(\\d+(?:\\.\\d+)?)`);
   const match = styleStr.match(regex);
@@ -73,25 +66,6 @@ export const accessibilityAnalyzer: Analyzer = {
         const hasHitSlop = surroundingLines.includes('hitSlop');
 
         if (!line.includes('accessibilityLabel') && !line.includes('accessibilityRole') && !line.includes('accessible')) {
-          const classMatch = line.match(/className="([^"]*)"/);
-          if (classMatch) {
-            const classes = classMatch[1];
-            const w = parseSizeFromClass(classes);
-            const h = parseSizeFromClass(classes);
-            if (w !== null && w < MIN_TOUCH_TARGET_PX && !hasHitSlop) {
-              issues.push({
-                id: `touch-target-${relativePath}-${lineNum}`,
-                severity: 'critical',
-                category: 'accessibility',
-                file: relativePath,
-                line: lineNum,
-                message: `Touch target ${w}x${h ?? w}px is below ${MIN_TOUCH_TARGET_PX}px minimum`,
-                suggestion: `Increase size to at least ${MIN_TOUCH_TARGET_PX}x${MIN_TOUCH_TARGET_PX}px (e.g., w-11 h-11)`,
-                rule: 'touch-target-size',
-              });
-            }
-          }
-
           const widthMatch = parseSizeFromStyle(line, 'width');
           const heightMatch = parseSizeFromStyle(line, 'height');
           if (widthMatch !== null && heightMatch !== null && (widthMatch < MIN_TOUCH_TARGET_PX || heightMatch < MIN_TOUCH_TARGET_PX) && !hasHitSlop) {

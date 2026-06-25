@@ -27,7 +27,7 @@ A premium offline media player built with React Native and Expo. Scan your devic
 |---|---|
 | Framework | React Native 0.85 + Expo SDK 56 |
 | Routing | expo-router (file-based) |
-| Styling | NativeWind v4 (Tailwind CSS for React Native) |
+| Styling | React Native StyleSheet via `src/styles/index.ts` |
 | State | Zustand v5 with immer middleware |
 | Audio | expo-audio |
 | Video | expo-video |

@@ -2,24 +2,6 @@ import { createMMKV } from 'react-native-mmkv';
 
 export const storage = createMMKV({ id: 'lumora-storage' });
 
-export function getAllKeys(): string[] {
-  return storage.getAllKeys();
-}
-
-export function batchGet(keys: string[]): Record<string, string | undefined> {
-  const result: Record<string, string | undefined> = {};
-  for (const key of keys) {
-    result[key] = storage.getString(key) ?? undefined;
-  }
-  return result;
-}
-
-export function batchSet(entries: Record<string, string>): void {
-  for (const [key, value] of Object.entries(entries)) {
-    storage.set(key, value);
-  }
-}
-
 export function getCachedJSON<T>(key: string, fallback: T): T {
   try {
     const raw = storage.getString(key);

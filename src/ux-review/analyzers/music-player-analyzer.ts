@@ -50,19 +50,22 @@ export const musicPlayerAnalyzer: Analyzer = {
       }
 
       const hasHitSlop = content.includes('hitSlop');
-      const playButtonMatch = content.match(/className="[^"]*w-10\s+h-10[^"]*"[^>]*>[^]*?(?:Play|Pause)/);
-      if (playButtonMatch && !hasHitSlop) {
-        const size = 40;
-        if (size < MIN_TOUCH_TARGET_PX) {
-          issues.push({
-            id: 'mini-player-play-size',
-            severity: 'critical',
-            category: 'accessibility',
-            file: relativePath,
-            message: `MiniPlayer play button ${size}x${size}px is below ${MIN_TOUCH_TARGET_PX}px minimum`,
-            suggestion: `Increase to w-11 h-11 (${MIN_TOUCH_TARGET_PX}px) or larger, or add hitSlop`,
-            rule: 'miniplayer-touch-target',
-          });
+      if (!hasHitSlop) {
+        const playPauseMatch = content.match(/(?:Play|Pause)[\s\S]{0,300}s\.w(\d+)[\s\S]{0,50}s\.h(\d+)/);
+        if (playPauseMatch) {
+          const w = parseInt(playPauseMatch[1]) * 4;
+          const h = parseInt(playPauseMatch[2]) * 4;
+          if (w < MIN_TOUCH_TARGET_PX || h < MIN_TOUCH_TARGET_PX) {
+            issues.push({
+              id: 'mini-player-play-size',
+              severity: 'critical',
+              category: 'accessibility',
+              file: relativePath,
+              message: `MiniPlayer play button ${w}x${h}px is below ${MIN_TOUCH_TARGET_PX}px minimum`,
+              suggestion: `Increase to at least ${MIN_TOUCH_TARGET_PX}x${MIN_TOUCH_TARGET_PX}px or add hitSlop`,
+              rule: 'miniplayer-touch-target',
+            });
+          }
         }
       }
     }
