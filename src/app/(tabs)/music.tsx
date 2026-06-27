@@ -8,7 +8,7 @@ import { useSmartPlaylistStore } from '@/store/smart-playlist-store';
 import { useStatsStore } from '@/store/stats-store';
 import { useLyricsStore } from '@/store/lyrics-store';
 import { useLayoutStore } from '@/store/layout-store';
-import { hasCachedLyrics, fetchLyrics } from '@/services/lyrics';
+import { hasCachedLyrics } from '@/services/lyrics';
 import { TopBar } from '@/components/top-bar';
 import { MiniPlayer } from '@/components/mini-player';
 import { SortMenu } from '@/components/sort-menu';
@@ -63,22 +63,8 @@ export default function MusicScreen() {
       initialScanDone.current = true;
       scan();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  const lyricsFetchedRef = useRef(false);
-  useEffect(() => {
-    if (songs.length === 0 || lyricsFetchedRef.current) return;
-    lyricsFetchedRef.current = true;
-    const toFetch = songs.slice(0, 30);
-    for (let i = 0; i < toFetch.length; i++) {
-      const s = toFetch[i];
-      if (s.artist && s.title && hasCachedLyrics(s.artist, s.title) !== true) {
-        setTimeout(() => {
-          fetchLyrics(s.artist, s.title).catch(() => {});
-        }, i * 300);
-      }
-    }
-  }, [songs]);
 
   const sortedSongs = useMemo(() => sortSongs(songs, sortField, sortOrder, trackStats), [songs, sortField, sortOrder, trackStats]);
 

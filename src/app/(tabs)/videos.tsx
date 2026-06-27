@@ -63,6 +63,7 @@ export default function VideosScreen() {
       initialFetchDone.current = true;
       fetchVideos();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const filteredVideos = useMemo(() => {

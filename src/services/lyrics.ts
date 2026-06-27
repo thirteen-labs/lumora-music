@@ -193,23 +193,12 @@ async function doFetch(
   title: string,
   key: string,
 ): Promise<LyricsResult | null> {
-  const tryFetch = async (a: string, t: string) => {
-    const result = await fetchFromLrclib(a, t);
-    if (result) return result;
-    return await fetchFromLyricsOvh(a, t);
-  };
+  const [lrclibResult, ovhResult] = await Promise.all([
+    fetchFromLrclib(artist, title),
+    fetchFromLyricsOvh(artist, title),
+  ]);
 
-  const attempts = [
-    { artist: cleanArtist(artist), title: cleanTitle(title) },
-    { artist, title },
-  ];
-
-  let result: LyricsResult | null = null;
-  for (const { artist: a, title: t } of attempts) {
-    result = await tryFetch(a, t);
-    if (result) break;
-  }
-
+  const result = lrclibResult ?? ovhResult;
   cache.set(key, result);
   trimCache();
   schedulePersist();
