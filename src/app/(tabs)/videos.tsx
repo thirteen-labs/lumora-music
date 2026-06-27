@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { View, Text, Pressable, Dimensions, TextInput } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FlashList } from '@shopify/flash-list';
@@ -46,6 +46,8 @@ export default function VideosScreen() {
   const router = useRouter();
   const videos = useVideoStore((s) => s.videos);
   const fetchVideos = useVideoStore((s) => s.fetchVideos);
+  const scanStatus = useVideoStore((s) => s.scanStatus);
+  const scanProgress = useVideoStore((s) => s.scanProgress);
   const hiddenVideoIds = useHiddenFilesStore((s) => s.hiddenVideoIds);
   const videoViewMode = useLayoutStore((s) => s.videoViewMode);
   const setVideoViewMode = useLayoutStore((s) => s.setVideoViewMode);
@@ -55,9 +57,13 @@ export default function VideosScreen() {
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
   const { bottomSheetRef, present, video: contextVideo } = useVideoContextMenu();
 
+  const initialFetchDone = useRef(false);
   useEffect(() => {
-    if (videos.length === 0) fetchVideos();
-  }, [fetchVideos, videos.length]);
+    if (videos.length === 0 && !initialFetchDone.current) {
+      initialFetchDone.current = true;
+      fetchVideos();
+    }
+  }, []);
 
   const filteredVideos = useMemo(() => {
     let result = videos.filter((v) => !hiddenVideoIds.has(v.id));
@@ -244,6 +250,16 @@ export default function VideosScreen() {
         </Pressable>
       </View>
 
+      {scanStatus === 'scanning' && (
+        <View style={{ paddingHorizontal: 16, paddingBottom: 8 }}>
+          <View style={{ height: 3, borderRadius: 1.5, backgroundColor: colors.surface, overflow: 'hidden' }}>
+            <View style={{ height: '100%', borderRadius: 1.5, width: '100%', backgroundColor: colors.accent, opacity: 0.6 }} />
+          </View>
+          <Text style={{ fontSize: 10, color: colors.textMuted, marginTop: 4 }}>
+            Scanning... {scanProgress?.processed ?? 0} files found
+          </Text>
+        </View>
+      )}
       <View style={[s.flexRow, s.itemsCenter, s.justifyBetween, s.px4, s.py1]}>
         <Text style={[s.textXs, { color: colors.textMuted }]}>
           {filteredVideos.length} video{filteredVideos.length !== 1 ? 's' : ''}

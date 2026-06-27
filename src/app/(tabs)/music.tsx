@@ -8,11 +8,11 @@ import { useSmartPlaylistStore } from '@/store/smart-playlist-store';
 import { useStatsStore } from '@/store/stats-store';
 import { useLyricsStore } from '@/store/lyrics-store';
 import { useLayoutStore } from '@/store/layout-store';
-import { hasCachedLyrics } from '@/services/lyrics';
+import { hasCachedLyrics, fetchLyrics } from '@/services/lyrics';
 import { TopBar } from '@/components/top-bar';
 import { MiniPlayer } from '@/components/mini-player';
 import { SortMenu } from '@/components/sort-menu';
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { Music, Clock, LayoutGrid, List } from 'lucide-react-native';
 import { Artwork } from '@/components/artwork';
 import { formatDuration } from '@/utils/cn';
@@ -45,6 +45,8 @@ export default function MusicScreen() {
   const insets = useSafeAreaInsets();
   const songs = useMusicStore((s) => s.songs);
   const scan = useMusicStore((s) => s.scan);
+  const scanStatus = useMusicStore((s) => s.scanStatus);
+  const scanProgress = useMusicStore((s) => s.scanProgress);
   const sortField = useMusicStore((s) => s.sortField);
   const sortOrder = useMusicStore((s) => s.sortOrder);
   const setSort = useMusicStore((s) => s.setSort);
@@ -55,10 +57,28 @@ export default function MusicScreen() {
   const libraryViewMode = useLayoutStore((s) => s.libraryViewMode);
   const setLibraryViewMode = useLayoutStore((s) => s.setLibraryViewMode);
 
+  const initialScanDone = useRef(false);
   useEffect(() => {
-    if (songs.length === 0) scan();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    if (songs.length === 0 && !initialScanDone.current) {
+      initialScanDone.current = true;
+      scan();
+    }
   }, []);
+
+  const lyricsFetchedRef = useRef(false);
+  useEffect(() => {
+    if (songs.length === 0 || lyricsFetchedRef.current) return;
+    lyricsFetchedRef.current = true;
+    const toFetch = songs.slice(0, 30);
+    for (let i = 0; i < toFetch.length; i++) {
+      const s = toFetch[i];
+      if (s.artist && s.title && hasCachedLyrics(s.artist, s.title) !== true) {
+        setTimeout(() => {
+          fetchLyrics(s.artist, s.title).catch(() => {});
+        }, i * 300);
+      }
+    }
+  }, [songs]);
 
   const sortedSongs = useMemo(() => sortSongs(songs, sortField, sortOrder, trackStats), [songs, sortField, sortOrder, trackStats]);
 
@@ -88,6 +108,16 @@ export default function MusicScreen() {
         onSelect={(opt) => setSort(opt.field, opt.order)}
         count={sortedSongs.length}
       />
+      {scanStatus === 'scanning' && (
+        <View style={{ paddingHorizontal: 16, paddingBottom: 8 }}>
+          <View style={{ height: 3, borderRadius: 1.5, backgroundColor: colors.surface, overflow: 'hidden' }}>
+            <View style={{ height: '100%', borderRadius: 1.5, width: '100%', backgroundColor: colors.accent, opacity: 0.6 }} />
+          </View>
+          <Text style={{ fontSize: 10, color: colors.textMuted, marginTop: 4 }}>
+            Scanning... {scanProgress?.processed ?? 0} files found
+          </Text>
+        </View>
+      )}
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', paddingHorizontal: 16, paddingBottom: 8, gap: 8 }}>
         <Pressable
           onPress={() => setLibraryViewMode('list')}
@@ -157,7 +187,14 @@ export default function MusicScreen() {
                       <Artwork uri={item.artwork} size={40} borderRadius={8} iconSize={16} iconColor={colors.accent} backgroundColor={colors.card} />
                       <View style={s.flex1}>
                         <Text style={[s.textSm, s.fontSemibold, { color: colors.text }]} numberOfLines={1}>{item.title}</Text>
-                        <Text style={[s.textXs, s.mt05, { color: colors.textMuted }]} numberOfLines={1}>{item.artist}</Text>
+                        <View style={[s.flexRow, s.itemsCenter, s.gap1, s.mt05]}>
+                          {(!!lyricsMap[item.id] || hasCachedLyrics(item.artist, item.title) === true) && (
+                            <View style={{ backgroundColor: colors.accent + '20', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 }}>
+                              <Text style={{ fontSize: 9, fontWeight: '700', color: colors.accent }}>Lyrics</Text>
+                            </View>
+                          )}
+                          <Text style={[s.textXs, { color: colors.textMuted }]} numberOfLines={1}>{item.artist}</Text>
+                        </View>
                       </View>
                       <Text style={[s.textXs, { color: colors.textMuted }]}>{formatDuration(item.duration)}</Text>
                     </Pressable>
@@ -173,14 +210,14 @@ export default function MusicScreen() {
                 <Artwork uri={item.artwork} size={40} borderRadius={8} iconSize={16} iconColor={colors.accent} backgroundColor={colors.card} />
                 <View style={s.flex1}>
                   <Text style={[s.textSm, s.fontSemibold, { color: colors.text }]} numberOfLines={1}>{item.title}</Text>
-                  <View style={[s.flexRow, s.itemsCenter, s.mt05]}>
-                    <Text style={[s.textXs, { color: colors.textMuted }]} numberOfLines={1}>{item.artist}</Text>
-                    {(!!lyricsMap[item.id] || hasCachedLyrics(item.artist, item.title) === true) && (
-                      <View style={{ backgroundColor: colors.accent + '20', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2, marginLeft: 6 }}>
-                        <Text style={{ fontSize: 9, fontWeight: '700', color: colors.accent }}>Lyrics</Text>
-                      </View>
-                    )}
-                  </View>
+                    <View style={[s.flexRow, s.itemsCenter, s.gap1, s.mt05]}>
+                      {(!!lyricsMap[item.id] || hasCachedLyrics(item.artist, item.title) === true) && (
+                        <View style={{ backgroundColor: colors.accent + '20', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 }}>
+                          <Text style={{ fontSize: 9, fontWeight: '700', color: colors.accent }}>Lyrics</Text>
+                        </View>
+                      )}
+                      <Text style={[s.textXs, { color: colors.textMuted }]} numberOfLines={1}>{item.artist}</Text>
+                    </View>
                 </View>
                 <Text style={[s.textXs, { color: colors.textMuted }]}>{formatDuration(item.duration)}</Text>
               </Pressable>

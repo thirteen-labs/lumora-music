@@ -41,19 +41,18 @@ function sortSongs(songs: any[], sortField: SortField, sortOrder: SortOrder, sta
   return sorted;
 }
 
-function LyricsBadge({ colors, show }: { colors: any; show?: boolean }) {
+function LyricsBadge({ colors, show, size }: { colors: any; show?: boolean; size?: number }) {
   if (!show) return null;
   return (
     <View
       style={{
         backgroundColor: colors.accent + '20',
         borderRadius: 6,
-        paddingHorizontal: 6,
+        paddingHorizontal: size ?? 6,
         paddingVertical: 2,
-        marginLeft: 6,
       }}
     >
-      <Text style={{ fontSize: 9, fontWeight: '700', color: colors.accent }}>Lyrics</Text>
+      <Text style={{ fontSize: size ? size - 3 : 9, fontWeight: '700', color: colors.accent }}>Lyrics</Text>
     </View>
   );
 }
@@ -137,10 +136,10 @@ export default function SongsScreen() {
                     <Artwork uri={item.artwork} size={GRID_ITEM_WIDTH} borderRadius={14} iconSize={36} iconColor={colors.accent} backgroundColor={colors.surface} />
                   </View>
                   <Text style={{ fontSize: 13, fontWeight: '600', color: colors.text, marginTop: 8 }} numberOfLines={1}>{item.title}</Text>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 3 }}>
-                    <Text style={{ fontSize: 11, color: colors.textMuted }} numberOfLines={1}>{item.artist}</Text>
-                    <LyricsBadge colors={colors} show={!!lyricsMap[item.id] || hasCachedLyrics(item.artist, item.title) === true} />
-                  </View>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 3 }}>
+                      <LyricsBadge colors={colors} show={!!lyricsMap[item.id] || hasCachedLyrics(item.artist, item.title) === true} />
+                      <Text style={{ fontSize: 11, color: colors.textMuted }} numberOfLines={1}>{item.artist}</Text>
+                    </View>
                 </>
               ) : (
                 <>
@@ -156,10 +155,10 @@ export default function SongsScreen() {
                     <Artwork uri={item.artwork} size={GRID_ITEM_WIDTH} borderRadius={12} iconSize={24} iconColor={colors.accent} backgroundColor={colors.surface} />
                   </View>
                   <Text style={{ fontSize: 12, fontWeight: '500', color: colors.text, marginTop: 8 }} numberOfLines={1}>{item.title}</Text>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 2 }}>
-                    <Text style={{ fontSize: 11, color: colors.textMuted }} numberOfLines={1}>{item.artist}</Text>
-                    <LyricsBadge colors={colors} show={!!lyricsMap[item.id] || hasCachedLyrics(item.artist, item.title) === true} />
-                  </View>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 }}>
+                      <LyricsBadge colors={colors} show={!!lyricsMap[item.id] || hasCachedLyrics(item.artist, item.title) === true} />
+                      <Text style={{ fontSize: 11, color: colors.textMuted }} numberOfLines={1}>{item.artist}</Text>
+                    </View>
                 </>
               )}
             </Pressable>
@@ -191,13 +190,13 @@ export default function SongsScreen() {
                   <Artwork uri={item.artwork} size={artSize} borderRadius={artSize * 0.25} iconColor={colors.accent} backgroundColor={colors.surface} />
                   <View style={s.flex1}>
                     <Text style={[s.textSm, s.fontMedium, { color: colors.text }]} numberOfLines={1}>{item.title}</Text>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 2 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 }}>
+                      <LyricsBadge colors={colors} show={!!lyricsMap[item.id] || hasCachedLyrics(item.artist, item.title) === true} />
                       <Text style={[s.textXs, { color: colors.textMuted }]} numberOfLines={1}>
                         {item.artist}
                       </Text>
-                      <LyricsBadge colors={colors} show={!!lyricsMap[item.id] || hasCachedLyrics(item.artist, item.title) === true} />
                       {fileSizeTheme === 'big' && (
-                        <Text style={[s.textXs, { color: colors.textMuted, marginLeft: 6 }]}>
+                        <Text style={[s.textXs, { color: colors.textMuted }]}>
                           {formatFileSize(item.fileSize)}
                         </Text>
                       )}

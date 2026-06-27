@@ -168,14 +168,16 @@ async function fetchFromLyricsOvh(
 export async function fetchLyrics(
   artist: string,
   title: string,
+  force = false,
 ): Promise<LyricsResult | null> {
   if (!artist || !title) return null;
   const key = cacheKey(artist, title);
-  if (cache.has(key)) return cache.get(key) ?? null;
 
-  // Deduplicate concurrent requests for the same song
-  const inFlight = inflightRequests.get(key);
-  if (inFlight) return inFlight;
+  if (!force) {
+    if (cache.has(key)) return cache.get(key) ?? null;
+    const inFlight = inflightRequests.get(key);
+    if (inFlight) return inFlight;
+  }
 
   const promise = doFetch(artist, title, key);
   inflightRequests.set(key, promise);
@@ -191,12 +193,23 @@ async function doFetch(
   title: string,
   key: string,
 ): Promise<LyricsResult | null> {
-  const [lrclibResult, ovhResult] = await Promise.all([
-    fetchFromLrclib(artist, title),
-    fetchFromLyricsOvh(artist, title),
-  ]);
+  const tryFetch = async (a: string, t: string) => {
+    const result = await fetchFromLrclib(a, t);
+    if (result) return result;
+    return await fetchFromLyricsOvh(a, t);
+  };
 
-  const result = lrclibResult ?? ovhResult;
+  const attempts = [
+    { artist: cleanArtist(artist), title: cleanTitle(title) },
+    { artist, title },
+  ];
+
+  let result: LyricsResult | null = null;
+  for (const { artist: a, title: t } of attempts) {
+    result = await tryFetch(a, t);
+    if (result) break;
+  }
+
   cache.set(key, result);
   trimCache();
   schedulePersist();
