@@ -60,8 +60,7 @@ const SETTINGS_KEYS = {
   playTogether: "lumora-setting-play-together",
   newMediaNotification: "lumora-setting-new-media-notif",
   pushNotification: "lumora-setting-push-notif",
-  deepFilesEnabled: "lumora-setting-deep-files",
-  excludedFolders: "lumora-setting-excluded-folders",
+
 } as const;
 
 function loadBool(key: string, fallback: boolean): boolean {
@@ -111,8 +110,7 @@ interface SettingsState {
   playTogether: boolean;
   newMediaNotification: boolean;
   pushNotification: boolean;
-  deepFilesEnabled: boolean;
-  excludedFolders: string[];
+
   setShowSystemHiddenFiles: (v: boolean) => void;
   setDefaultShuffle: (v: boolean) => void;
   setDefaultRepeat: (v: RepeatMode) => void;
@@ -134,8 +132,7 @@ interface SettingsState {
   setPlayTogether: (v: boolean) => void;
   setNewMediaNotification: (v: boolean) => void;
   setPushNotification: (v: boolean) => void;
-  setDeepFilesEnabled: (v: boolean) => void;
-  setExcludedFolders: (folders: string[]) => void;
+
 }
 
 function persistSetting(key: string, value: unknown): void {
@@ -185,16 +182,6 @@ export const useSettingsStore = create<SettingsState>()(
     playTogether: loadBool(SETTINGS_KEYS.playTogether, false),
     newMediaNotification: loadBool(SETTINGS_KEYS.newMediaNotification, true),
     pushNotification: loadBool(SETTINGS_KEYS.pushNotification, true),
-    deepFilesEnabled: loadBool(SETTINGS_KEYS.deepFilesEnabled, false),
-    excludedFolders: (() => {
-      try {
-        const raw = storage.getString(SETTINGS_KEYS.excludedFolders);
-        return raw ? JSON.parse(raw) : [];
-      } catch (e) {
-        reportWarning("Settings", e);
-        return [];
-      }
-    })(),
 
     setShowSystemHiddenFiles: (v) => {
       set((s) => { s.showSystemHiddenFiles = v; });
@@ -279,14 +266,6 @@ export const useSettingsStore = create<SettingsState>()(
     setPushNotification: (v) => {
       set((s) => { s.pushNotification = v; });
       persistSetting(SETTINGS_KEYS.pushNotification, v);
-    },
-    setDeepFilesEnabled: (v) => {
-      set((s) => { s.deepFilesEnabled = v; });
-      persistSetting(SETTINGS_KEYS.deepFilesEnabled, v);
-    },
-    setExcludedFolders: (folders) => {
-      set((s) => { s.excludedFolders = folders; });
-      persistSetting(SETTINGS_KEYS.excludedFolders, JSON.stringify(folders));
     },
   })),
 );

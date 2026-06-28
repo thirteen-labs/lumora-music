@@ -227,7 +227,6 @@ export async function requestPermissions(options?: { audio?: boolean; video?: bo
   const needVideo = options?.video !== false;
   try {
     const { status, accessPrivileges } = await MediaLibrary.requestPermissionsAsync();
-    console.log('[Scanner] MediaLibrary permission status:', status, 'accessPrivileges:', accessPrivileges);
     let mediaLibraryGranted = status === 'granted';
 
     if (Platform.OS === 'android' && Platform.Version >= 33) {
@@ -253,7 +252,6 @@ export async function requestPermissions(options?: { audio?: boolean; video?: bo
           const storageResult = await PermissionsAndroid.request(
             'android.permission.READ_EXTERNAL_STORAGE' as any,
           );
-          console.log('[Scanner] Legacy storage permission:', storageResult);
           if (storageResult !== 'granted') {
             console.warn('[Scanner] READ_EXTERNAL_STORAGE was denied');
           }
@@ -372,12 +370,10 @@ async function parseAudioMetadata(uri: string): Promise<{
   }
 }
 
-async function processAsset(asset: any, excludedFolders: string[] = []): Promise<Song | null> {
+async function processAsset(asset: any): Promise<Song | null> {
   try {
     const uri = asset.uri as string | undefined;
     if (!uri) return null;
-
-    if (excludedFolders.some(folder => uri.includes(folder))) return null;
 
     const meta = await parseAudioMetadata(uri);
     let fileSize = asset.fileSize ?? asset.size ?? 0;
@@ -417,7 +413,7 @@ function markCacheValid(): void {
   } catch {}
 }
 
-async function processBatch(assets: any[], concurrency = 10, excludedFolders: string[] = []): Promise<Song[]> {
+async function processBatch(assets: any[], concurrency = 10): Promise<Song[]> {
   const results: Song[] = [];
   const queue = [...assets];
 
@@ -425,7 +421,7 @@ async function processBatch(assets: any[], concurrency = 10, excludedFolders: st
     while (queue.length > 0) {
       const asset = queue.shift();
       if (!asset) continue;
-      const song = await processAsset(asset, excludedFolders);
+      const song = await processAsset(asset);
       if (song) results.push(song);
     }
   }
@@ -439,7 +435,6 @@ async function processBatch(assets: any[], concurrency = 10, excludedFolders: st
 }
 
 async function fetchSongs(
-  excludedFolders: string[],
   onProgress?: (batchCount: number) => void,
 ): Promise<Song[]> {
   if (!MediaLibrary || typeof MediaLibrary.getAssetsAsync !== 'function') return [];
@@ -472,7 +467,7 @@ async function fetchSongs(
   }
 
   while (result.assets.length > 0) {
-    const songs = await processBatch(result.assets, WORKER_CONCURRENCY, excludedFolders);
+    const songs = await processBatch(result.assets, WORKER_CONCURRENCY);
     allSongs.push(...songs);
     onProgress?.(songs.length);
 
@@ -519,23 +514,26 @@ export async function scanMediaLibrary(
       return { songs: [], albums: [], artists: [], genres: [] };
     }
 
-    let excludedFolders: string[] = [];
-    try {
-      const raw = storage.getString('lumora-setting-excluded-folders');
-      if (raw) excludedFolders = JSON.parse(raw);
-    } catch (e) {
-      reportWarning('Scanner', e, 'Failed to load excluded folders');
-    }
-
     const songs: Song[] = [];
 
     if (scanAudio) {
       let songsProcessed = 0;
-      const fetchedSongs = await fetchSongs(excludedFolders, (count) => {
+      const fetchedSongs = await fetchSongs((count) => {
         songsProcessed += count;
         onProgress?.(songsProcessed, songsProcessed);
       });
       songs.push(...fetchedSongs);
+    }
+
+    const existingSongMap = new Map<string, number>(
+      cachedSongs.filter((s) => s.dateAdded > 0).map((s) => [s.uri, s.dateAdded]),
+    );
+    for (const song of songs) {
+      if (existingSongMap.has(song.uri)) {
+        song.dateAdded = existingSongMap.get(song.uri)!;
+      } else {
+        song.dateAdded = Date.now();
+      }
     }
 
     const albumMap = new Map<string, LumoraAlbum>();

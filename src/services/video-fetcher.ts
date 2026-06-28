@@ -453,6 +453,18 @@ export async function fetchVideos(
       onProgress?.(processed, totalCount);
     });
 
+    loadCachedVideos();
+    const existingVideoMap = new Map<string, number>(
+      cachedVideos.filter((v) => v.dateAdded > 0).map((v) => [v.uri, v.dateAdded]),
+    );
+    for (const video of videos) {
+      if (existingVideoMap.has(video.uri)) {
+        video.dateAdded = existingVideoMap.get(video.uri)!;
+      } else {
+        video.dateAdded = Date.now();
+      }
+    }
+
     cachedVideos = videos;
     saveCachedVideos();
 

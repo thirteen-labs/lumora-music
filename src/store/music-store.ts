@@ -76,10 +76,10 @@ export const useMusicStore = create<MusicState>()(
     newSongsCount: 0,
     removedSongsCount: 0,
     sortField: (() => {
-      try { return storage.getString(SORT_FIELD_KEY) as any ?? "title"; } catch { return "title"; }
+      try { return storage.getString(SORT_FIELD_KEY) as any ?? "dateAdded"; } catch { return "dateAdded"; }
     })(),
     sortOrder: (() => {
-      try { return storage.getString(SORT_ORDER_KEY) as any ?? "asc"; } catch { return "asc"; }
+      try { return storage.getString(SORT_ORDER_KEY) as any ?? "desc"; } catch { return "desc"; }
     })(),
     backgroundScanEnabled: isBackgroundScanEnabled(),
 

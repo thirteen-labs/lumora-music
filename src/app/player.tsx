@@ -1,5 +1,5 @@
 import React, { useCallback, useRef, useState, useEffect, useMemo } from 'react';
-import { View, Text, Pressable, Dimensions, ActivityIndicator, ScrollView, TextInput } from 'react-native';
+import { View, Text, Pressable, Dimensions, ActivityIndicator, ScrollView, TextInput, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@/hooks/use-theme';
 import { usePlayerStore } from '@/store/player-store';
@@ -99,7 +99,7 @@ const SeekBar = React.memo(({
         thumbTintColor={thumbColor ?? colors.text}
         style={{ width: '100%', height: sliderHeight }}
       />
-      <View style={[s.flexRow, s.justifyBetween, s.px1]}>
+      <View style={[s.flexRow, s.justifyBetween, s.px3]}>
         <Text style={[s.textXs, { color: colors.textMuted }]}>{formatDuration(position)}</Text>
         {showPercentage && (
           <Text style={[s.textXs, s.fontMedium, { color: sliderAccent ?? colors.accent }]}>
@@ -130,6 +130,7 @@ export default function PlayerScreen() {
   const queueIndex = usePlayerStore((s) => s.queueIndex);
   const reorderQueue = usePlayerStore((s) => s.reorderQueue);
   const removeFromQueue = usePlayerStore((s) => s.removeFromQueue);
+  const play = usePlayerStore((s) => s.play);
   const hideFullPlayer = usePlayerStore((s) => s.hideFullPlayer);
   const favoriteSongIds = useFavoritesStore((s) => s.favoriteSongIds);
   const toggleSongFavorite = useFavoritesStore((s) => s.toggleSongFavorite);
@@ -140,6 +141,16 @@ export default function PlayerScreen() {
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const dragTranslateY = useSharedValue(0);
   const isDragging = useSharedValue(false);
+
+  const dragAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: isDragging.value ? dragTranslateY.value : 0 }],
+    zIndex: isDragging.value ? 999 : 0,
+    elevation: isDragging.value ? 10 : 0,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: isDragging.value ? 8 : 0 },
+    shadowOpacity: isDragging.value ? 0.25 : 0,
+    shadowRadius: isDragging.value ? 12 : 0,
+  }));
   const showToast = useToastStore((s) => s.showToast);
   const lyricsMap = useLyricsStore((s) => s.lyricsMap);
   const saveLyrics = useLyricsStore((s) => s.saveLyrics);
@@ -203,10 +214,24 @@ export default function PlayerScreen() {
     [],
   );
 
+  const handlePlayFromQueue = useCallback((index: number) => {
+    const state = usePlayerStore.getState();
+    const track = state.queue[index];
+    if (track) {
+      play(track, state.queue);
+    }
+  }, [play]);
+
   const renderQueueItem = useCallback(
     ({ item, index }: { item: any; index: number }) => {
       const isCurrent = index === queueIndex;
       const isBeingDragged = draggedIndex === index;
+
+      const tapGesture = Gesture.Tap().onEnd(() => {
+        if (index !== queueIndex) {
+          runOnJS(handlePlayFromQueue)(index);
+        }
+      });
 
       const gripGesture = Gesture.Pan()
         .activateAfterLongPress(200)
@@ -229,17 +254,22 @@ export default function PlayerScreen() {
           runOnJS(setDraggedIndex)(null);
         });
 
+      const composedGesture = Gesture.Exclusive(gripGesture, tapGesture);
+
       return (
-        <GestureDetector gesture={gripGesture}>
-          <View
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: 8,
-              paddingHorizontal: 16,
-              paddingVertical: 8,
-              backgroundColor: isCurrent ? colors.accent + '18' : 'transparent',
-            }}
+        <GestureDetector gesture={composedGesture}>
+          <Animated.View
+            style={[
+              {
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 8,
+                paddingHorizontal: 16,
+                paddingVertical: 8,
+                backgroundColor: isCurrent ? colors.accent + '18' : 'transparent',
+              },
+              isBeingDragged && dragAnimatedStyle,
+            ]}
           >
             <View style={{ padding: 4 }}>
               <GripVertical size={14} color={isBeingDragged ? colors.accent : colors.textMuted} />
@@ -288,11 +318,11 @@ export default function PlayerScreen() {
             {isBeingDragged && (
               <View style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, backgroundColor: colors.accent + '15', borderRadius: 12 }} pointerEvents="none" />
             )}
-          </View>
+          </Animated.View>
         </GestureDetector>
       );
     },
-    [queueIndex, queue.length, colors, removeFromQueue, reorderQueue, draggedIndex, isDragging, dragTranslateY, setDraggedIndex],
+    [queueIndex, queue.length, colors, removeFromQueue, reorderQueue, draggedIndex, isDragging, dragTranslateY, setDraggedIndex, dragAnimatedStyle, handlePlayFromQueue],
   );
 
   const isFav = currentTrack ? favoriteSongIds.includes(currentTrack.id) : false;
@@ -317,7 +347,7 @@ export default function PlayerScreen() {
   }, [hideFullPlayer, router]);
 
   const onQueuePress = useCallback(() => queueSheetRef.current?.present(), []);
-  const onLyricsPress = useCallback(() => lyricsSheetRef.current?.present(), []);
+  const onLyricsPress = useCallback(() => queueSheetRef.current?.present(), []);
   const onInfoPress = useCallback(() => infoSheetRef.current?.present(), []);
 
   const translateY = useSharedValue(0);
@@ -1136,6 +1166,8 @@ const DISC_IMAGES = [
 const LyricsLayout = React.memo((props: LayoutProps) => {
   const { currentTrack, isPlaying, shuffle, repeat, lyrics = null, isLyricsLoading = false } = props;
   const insets = useSafeAreaInsets();
+  const { width: winW, height: winH } = useWindowDimensions();
+  const isLandscape = winW > winH;
 
   const discIndex = useMemo(() => {
     if (!currentTrack) return 0;
@@ -1169,7 +1201,7 @@ const LyricsLayout = React.memo((props: LayoutProps) => {
     transform: [{ rotate: `${rotation.value}deg` }],
   }));
 
-  const discSize = SCREEN_WIDTH * 0.7;
+  const discSize = isLandscape ? Math.min(winH * 0.5, winW * 0.4) : winW * 0.7;
 
   return (
     <View style={[s.flex1, { backgroundColor: disc.color }]}>
@@ -1185,8 +1217,14 @@ const LyricsLayout = React.memo((props: LayoutProps) => {
         </Pressable>
       </View>
 
-      <View style={[s.flex1, { flexDirection: 'row', alignItems: 'center' }]}>
-        <View style={{ width: discSize * 0.65, height: discSize, justifyContent: 'center', alignItems: 'flex-start', marginLeft: -discSize * 0.25 }}>
+      <View style={[s.flex1, { flexDirection: isLandscape ? 'row' : 'row', alignItems: 'center' }]}>
+        <View style={{
+          width: discSize * 0.65,
+          height: discSize,
+          justifyContent: 'center',
+          alignItems: 'flex-start',
+          marginLeft: isLandscape ? -discSize * 0.15 : -discSize * 0.25,
+        }}>
           <Animated.View style={[discAnimatedStyle, { width: discSize, height: discSize }]}>
             <Image
               source={disc.image}
@@ -1196,32 +1234,32 @@ const LyricsLayout = React.memo((props: LayoutProps) => {
           </Animated.View>
         </View>
 
-        <View style={[s.flex1, { paddingRight: 16, paddingLeft: 8, gap: 12 }]}>
+        <View style={[s.flex1, { paddingRight: 16, paddingLeft: 8, gap: isLandscape ? 8 : 12 }]}>
           <View>
-            <Text style={[s.textXl, s.fontBold, { color: '#fff' }]} numberOfLines={1}>
+            <Text style={[isLandscape ? s.textBase : s.textXl, s.fontBold, { color: '#fff' }]} numberOfLines={1}>
               {currentTrack?.title}
             </Text>
-            <Text style={[s.textSm, s.mt05, { color: 'rgba(255,255,255,0.7)' }]} numberOfLines={1}>
+            <Text style={[isLandscape ? s.textXs : s.textSm, s.mt05, { color: 'rgba(255,255,255,0.7)' }]} numberOfLines={1}>
               {currentTrack?.artist}
             </Text>
           </View>
 
           <View style={[s.flexRow, s.itemsCenter, s.gap3]}>
             <Pressable onPress={() => props.setShuffle(!shuffle)}>
-              <Shuffle size={18} color={shuffle ? '#fff' : 'rgba(255,255,255,0.5)'} />
+              <Shuffle size={isLandscape ? 16 : 18} color={shuffle ? '#fff' : 'rgba(255,255,255,0.5)'} />
             </Pressable>
             <Pressable onPress={props.previous}>
-              <SkipBack size={22} color="#fff" fill="#fff" />
+              <SkipBack size={isLandscape ? 18 : 22} color="#fff" fill="#fff" />
             </Pressable>
-            <Pressable onPress={props.togglePlay} style={[{ width: 48, height: 48, borderRadius: 24, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' }]}>
+            <Pressable onPress={props.togglePlay} style={[{ width: isLandscape ? 40 : 48, height: isLandscape ? 40 : 48, borderRadius: isLandscape ? 20 : 24, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' }]}>
               {isPlaying ? (
-                <Pause size={22} color="#fff" fill="#fff" />
+                <Pause size={isLandscape ? 18 : 22} color="#fff" fill="#fff" />
               ) : (
-                <Play size={22} color="#fff" fill="#fff" />
+                <Play size={isLandscape ? 18 : 22} color="#fff" fill="#fff" />
               )}
             </Pressable>
             <Pressable onPress={props.next}>
-              <SkipForward size={22} color="#fff" fill="#fff" />
+              <SkipForward size={isLandscape ? 18 : 22} color="#fff" fill="#fff" />
             </Pressable>
             <RepeatButton repeat={repeat} setRepeat={props.setRepeat} colors={{ accent: '#fff', textMuted: 'rgba(255,255,255,0.5)' }} />
           </View>
@@ -1233,14 +1271,14 @@ const LyricsLayout = React.memo((props: LayoutProps) => {
               sliderTrack="rgba(255,255,255,0.3)"
               thumbColor="#fff"
               showPercentage={false}
-              sliderHeight={32}
+              sliderHeight={isLandscape ? 28 : 32}
             />
           </View>
         </View>
       </View>
 
       {/* Inline lyrics */}
-      <View style={{ height: SCREEN_WIDTH * 0.35, marginBottom: insets.bottom + 8 }}>
+      <View style={{ height: isLandscape ? winH * 0.3 : winW * 0.35, marginBottom: insets.bottom + 8 }}>
         {isLyricsLoading ? (
           <View style={[s.flex1, s.itemsCenter, s.justifyCenter]}>
             <ActivityIndicator size="small" color="rgba(255,255,255,0.6)" />

@@ -66,10 +66,10 @@ export interface SortOption {
 }
 
 export const SORT_OPTIONS: SortOption[] = [
-  { field: 'title', order: 'asc', label: 'Name (A-Z)' },
-  { field: 'title', order: 'desc', label: 'Name (Z-A)' },
   { field: 'dateAdded', order: 'desc', label: 'Newest First' },
   { field: 'dateAdded', order: 'asc', label: 'Oldest First' },
+  { field: 'title', order: 'asc', label: 'Name (A-Z)' },
+  { field: 'title', order: 'desc', label: 'Name (Z-A)' },
   { field: 'duration', order: 'desc', label: 'Longest First' },
   { field: 'duration', order: 'asc', label: 'Shortest First' },
   { field: 'fileSize', order: 'desc', label: 'Largest First' },

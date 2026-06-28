@@ -23,7 +23,6 @@ import {
   Play,
   SlidersHorizontal,
   Volume2,
-  FolderMinus,
   RefreshCw,
   Database,
   EyeOff,
@@ -39,7 +38,6 @@ import {
   Headphones,
   Disc3,
   Cloud,
-  SearchCode,
   Smartphone,
 } from 'lucide-react-native';
 import { s } from '@/styles';
@@ -324,13 +322,6 @@ export default function SettingsScreen() {
 
           <Section title="LIBRARY" colors={colors}>
             <SettingRow
-              icon={FolderMinus}
-              label="Excluded Folders"
-              subtitle={`${useSettingsStore(s => s.excludedFolders).length} folders ignored`}
-              onPress={() => router.push('/excluded-folders' as any)}
-              colors={colors}
-            />
-            <SettingRow
               icon={RefreshCw}
               label="Rescan Library"
               subtitle={lastScanLabel}
@@ -361,13 +352,6 @@ export default function SettingsScreen() {
               </View>
               <Switch value={showSystemHiddenFiles} onValueChange={setShowSystemHiddenFiles} trackColor={{ false: colors.card, true: colors.accent + '80' }} thumbColor="#fff" />
             </View>
-            <SettingRow
-              icon={SearchCode}
-              label="Deep Files"
-              subtitle="Access restricted folders & auto-group files"
-              onPress={() => router.push('/deep-files' as any)}
-              colors={colors}
-            />
           </Section>
 
           <Section title="GENERAL" colors={colors}>

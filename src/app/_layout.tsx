@@ -197,6 +197,30 @@ function RootStack() {
               name="video-edit"
               options={{ animation: "slide_from_right" }}
             />
+            <Stack.Screen
+              name="audio-quality"
+              options={{ animation: "slide_from_right" }}
+            />
+            <Stack.Screen
+              name="metadata-editor"
+              options={{ animation: "slide_from_right" }}
+            />
+            <Stack.Screen
+              name="music/songs"
+              options={{ animation: "slide_from_right" }}
+            />
+            <Stack.Screen
+              name="player"
+              options={{ animation: "slide_from_bottom" }}
+            />
+            <Stack.Screen
+              name="playlist-picker"
+              options={{ animation: "slide_from_right" }}
+            />
+            <Stack.Screen
+              name="system-hidden-files"
+              options={{ animation: "slide_from_right" }}
+            />
           </Stack>
         </View>
       </ErrorBoundary>

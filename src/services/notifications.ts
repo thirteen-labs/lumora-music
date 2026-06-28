@@ -176,19 +176,8 @@ function normalizeUri(value: string): string {
   return `file://${value}`;
 }
 
-function resolveArtworkUri(
-  artwork: string | null,
-): string | { uri: string } | undefined {
+function resolveArtworkUri(artwork: string | null): string | undefined {
   if (!artwork) return undefined;
-  const uri = normalizeUri(artwork);
-  if (uri.startsWith('file://') || uri.startsWith('content://')) {
-    return { uri };
-  }
-  return uri;
-}
-
-function getArtworkUri(artwork: string | null): string | null {
-  if (!artwork) return null;
   return normalizeUri(artwork);
 }
 
@@ -218,20 +207,16 @@ export async function showNowPlayingNotification(
   try {
     const isFav = useFavoritesStore.getState().isSongFavorite(track.id);
     let artwork = resolveArtworkUri(track.artwork);
-    if (track.artwork) {
-      const rawUri = getArtworkUri(track.artwork);
-      if (rawUri) {
-        if (rawUri.startsWith('http://') || rawUri.startsWith('https://')) {
-          let cached = artworkUriCache.get(rawUri);
-          if (!cached) {
-            cached = await cacheRemoteArtwork(rawUri);
-            cacheArtworkUri(rawUri, cached);
-          }
-          artwork = { uri: cached };
-        } else if (rawUri.startsWith('content://')) {
-          const cached = await cacheRemoteArtwork(rawUri);
-          artwork = { uri: cached };
+    if (track.artwork && artwork) {
+      if (artwork.startsWith('http://') || artwork.startsWith('https://')) {
+        let cached = artworkUriCache.get(artwork);
+        if (!cached) {
+          cached = await cacheRemoteArtwork(artwork);
+          cacheArtworkUri(artwork, cached);
         }
+        artwork = cached;
+      } else if (artwork.startsWith('content://')) {
+        artwork = await cacheRemoteArtwork(artwork);
       }
     }
     const info: Record<string, unknown> = {
@@ -248,21 +233,16 @@ export async function showNowPlayingNotification(
       isFavorite: isFav,
     };
 
-    if (track.artwork) {
-      const uri = getArtworkUri(track.artwork);
-      if (uri) {
-        const cacheUri = uri.startsWith('content://')
-          ? ((artwork as { uri: string })?.uri ?? uri)
-          : uri;
-        if (!colorCache.has(cacheUri)) {
-          const extracted = await extractColorsFromImage(cacheUri);
-          cacheArtworkColor(cacheUri, extracted ? hexToNumber(extracted.background) : null);
-        }
-        const color = colorCache.get(cacheUri);
-        if (color != null) {
-          info.color = color;
-          info.colorized = true;
-        }
+    if (artwork) {
+      const cacheUri = artwork;
+      if (!colorCache.has(cacheUri)) {
+        const extracted = await extractColorsFromImage(cacheUri);
+        cacheArtworkColor(cacheUri, extracted ? hexToNumber(extracted.background) : null);
+      }
+      const color = colorCache.get(cacheUri);
+      if (color != null) {
+        info.color = color;
+        info.colorized = true;
       }
     }
 

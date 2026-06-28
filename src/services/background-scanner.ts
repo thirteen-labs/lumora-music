@@ -27,8 +27,6 @@ function ensureTaskDefined(): void {
           return BackgroundFetch.BackgroundFetchResult.NoData;
         }
 
-        console.log('[BackgroundScanner] Starting background scan');
-
         const bgIntervalMs = 2000;
 
         try {
@@ -75,7 +73,6 @@ export async function registerBackgroundScan(): Promise<void> {
       startOnBoot: true,
       enableWakeLock: true,
     });
-    console.log('[BackgroundScanner] Registered successfully');
   } catch (error) {
     reportWarning('BackgroundScanner', error, 'Failed to register background scan');
   }
@@ -86,7 +83,6 @@ export async function unregisterBackgroundScan(): Promise<void> {
   try {
     const BackgroundFetch = require('expo-background-fetch');
     await BackgroundFetch.unregisterTaskAsync(BACKGROUND_SCAN_TASK);
-    console.log('[BackgroundScanner] Unregistered successfully');
   } catch (error) {
     reportWarning('BackgroundScanner', error, 'Failed to unregister background scan');
   }

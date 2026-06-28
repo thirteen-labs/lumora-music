@@ -2,7 +2,7 @@ import { View, Text } from 'react-native';
 import { s } from '@/styles';
 import { useTheme } from '@/hooks/use-theme';
 import { TopBar } from '@/components/top-bar';
-import { Brain, Sparkles, Sparkles as Wand2, Lock } from 'lucide-react-native';
+import { Brain, Sparkles, Wand2, Lock } from 'lucide-react-native';
 
 export default function AIFeaturesScreen() {
   const { colors } = useTheme();

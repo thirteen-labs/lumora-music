@@ -1,7 +1,7 @@
 import { useEffect, useState, memo } from 'react';
 import { View } from 'react-native';
 import { Image } from 'expo-image';
-import { generateThumbnail, getCachedThumbnail } from '@/services/video-thumbnails';
+import { generateThumbnail, getCachedThumbnail, cancelThumbnailGeneration } from '@/services/video-thumbnails';
 import { Film } from 'lucide-react-native';
 
 interface VideoThumbnailViewProps {
@@ -31,7 +31,10 @@ export const VideoThumbnailView = memo(function VideoThumbnailView({
     generateThumbnail(videoUri, videoId).then((t) => {
       if (!cancelled && t) setThumb(t);
     });
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+      cancelThumbnailGeneration(videoId);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [videoUri, videoId]);
 
