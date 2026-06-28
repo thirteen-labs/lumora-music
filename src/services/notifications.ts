@@ -50,85 +50,79 @@ export async function initializeNotifications(): Promise<void> {
     }
   }
 
+  const wrapHandler = (fn: () => void) => {
+    try { fn(); } catch (e) { reportWarning('Notifications', e); }
+  };
+
   PlaybackNotificationManager.addEventListener(
     'playbackNotificationPlay',
-    () => {
-      usePlayerStore.getState().resume();
-    },
+    () => wrapHandler(() => { usePlayerStore.getState().resume(); }),
   );
 
   PlaybackNotificationManager.addEventListener(
     'playbackNotificationPause',
-    () => {
-      usePlayerStore.getState().pause();
-    },
+    () => wrapHandler(() => { usePlayerStore.getState().pause(); }),
   );
 
   PlaybackNotificationManager.addEventListener(
     'playbackNotificationNextTrack',
-    () => {
-      usePlayerStore.getState().next();
-    },
+    () => wrapHandler(() => { usePlayerStore.getState().next(); }),
   );
 
   PlaybackNotificationManager.addEventListener(
     'playbackNotificationPreviousTrack',
-    () => {
-      usePlayerStore.getState().previous();
-    },
+    () => wrapHandler(() => { usePlayerStore.getState().previous(); }),
   );
 
   (PlaybackNotificationManager.addEventListener as (event: string, handler: () => void) => void)(
     'playbackNotificationSeekForward',
-    () => {
+    () => wrapHandler(() => {
       const state = usePlayerStore.getState();
       state.seekTo(Math.min(state.position + 10, state.duration));
-    },
+    }),
   );
 
   (PlaybackNotificationManager.addEventListener as (event: string, handler: () => void) => void)(
     'playbackNotificationSeekBackward',
-    () => {
+    () => wrapHandler(() => {
       const state = usePlayerStore.getState();
       state.seekTo(Math.max(state.position - 10, 0));
-    },
+    }),
   );
 
   PlaybackNotificationManager.addEventListener(
     'playbackNotificationStop',
-    () => {
-      usePlayerStore.getState().stop();
-    },
+    () => wrapHandler(() => { usePlayerStore.getState().stop(); }),
   );
 
   (PlaybackNotificationManager.addEventListener as (event: string, handler: () => void) => void)(
     'playbackNotificationFavorite',
-    () => {
+    () => wrapHandler(() => {
       const state = usePlayerStore.getState();
       const track = state.currentTrack;
       if (track) {
         useFavoritesStore.getState().toggleSongFavorite(track);
         showNowPlayingNotification(track, state.isPlaying);
       }
-    },
+    }),
   );
 
   (PlaybackNotificationManager.addEventListener as (event: string, handler: () => void) => void)(
     'playbackNotificationClose',
-    () => {
+    () => wrapHandler(() => {
       const state = usePlayerStore.getState();
       state.pause();
       dismissNowPlayingNotification();
-    },
+    }),
   );
 
   (PlaybackNotificationManager.addEventListener as (event: string, handler: () => void) => void)(
     'playbackNotificationDismiss',
-    () => {
+    () => wrapHandler(() => {
       const state = usePlayerStore.getState();
       state.pause();
       dismissNowPlayingNotification();
-    },
+    }),
   );
 
   await Promise.all([

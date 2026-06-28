@@ -114,20 +114,18 @@ export const usePlayerStore = create<PlayerState>()(
         }
       });
 
-      useStatsStore.getState().recordPlay(track.id);
+      try { useStatsStore.getState().recordPlay(track.id); } catch {}
       const state = get();
-      useQueuePersistStore
-        .getState()
-        .saveQueue(
-          track,
-          state.queue,
-          state.queueIndex,
-          state.shuffle,
-          state.repeat,
-          0,
-        );
+      try {
+        useQueuePersistStore.getState().saveQueue(track, state.queue, state.queueIndex, state.shuffle, state.repeat, 0);
+      } catch {}
 
-      await guardedLoadTrack(track);
+      try {
+        await guardedLoadTrack(track);
+      } catch (e) {
+        reportWarning('PlayerStore', e, 'Failed to load track');
+        set((s) => { s.isPlaying = false; });
+      }
     },
 
     pause: async () => {
@@ -156,10 +154,14 @@ export const usePlayerStore = create<PlayerState>()(
 
     togglePlay: async () => {
       const { isPlaying } = get();
-      if (isPlaying) {
-        await get().pause();
-      } else {
-        await get().resume();
+      try {
+        if (isPlaying) {
+          await get().pause();
+        } else {
+          await get().resume();
+        }
+      } catch (e) {
+        reportWarning('PlayerStore', e, 'Failed to toggle playback');
       }
     },
 
@@ -169,7 +171,7 @@ export const usePlayerStore = create<PlayerState>()(
 
       const currentTrack = get().currentTrack;
       if (currentTrack) {
-        useStatsStore.getState().recordSkip(currentTrack.id);
+        try { useStatsStore.getState().recordSkip(currentTrack.id); } catch {}
       }
 
       let nextOriginalIndex: number;
@@ -180,11 +182,11 @@ export const usePlayerStore = create<PlayerState>()(
 
         if (nextShuffledIdx >= shuffledOrder.length) {
           if (repeat === "all") {
-            const newOrder = shuffleArray(queue.length);
+            const newOrder = queue.length > 0 ? shuffleArray(queue.length) : [];
             set((s) => {
               s.shuffledOrder = newOrder;
             });
-            nextOriginalIndex = newOrder[0];
+            nextOriginalIndex = newOrder[0] ?? 0;
           } else {
             set((s) => {
               s.isPlaying = false;
@@ -216,18 +218,16 @@ export const usePlayerStore = create<PlayerState>()(
           s.currentTrack = nextTrack;
           s.isPlaying = true;
         });
-        await guardedLoadTrack(nextTrack);
+        try {
+          await guardedLoadTrack(nextTrack);
+        } catch (e) {
+          reportWarning('PlayerStore', e, 'Failed to load next track');
+          set((s) => { s.isPlaying = false; });
+        }
         const s = get();
-        useQueuePersistStore
-          .getState()
-          .saveQueue(
-            nextTrack,
-            s.queue,
-            nextOriginalIndex,
-            s.shuffle,
-            s.repeat,
-            0,
-          );
+        try {
+          useQueuePersistStore.getState().saveQueue(nextTrack, s.queue, nextOriginalIndex, s.shuffle, s.repeat, 0);
+        } catch {}
       }
     },
 
@@ -268,23 +268,21 @@ export const usePlayerStore = create<PlayerState>()(
           s.currentTrack = prevTrack;
           s.isPlaying = true;
         });
-        await guardedLoadTrack(prevTrack);
+        try {
+          await guardedLoadTrack(prevTrack);
+        } catch (e) {
+          reportWarning('PlayerStore', e, 'Failed to load previous track');
+          set((s) => { s.isPlaying = false; });
+        }
         const s = get();
-        useQueuePersistStore
-          .getState()
-          .saveQueue(
-            prevTrack,
-            s.queue,
-            prevOriginalIndex,
-            s.shuffle,
-            s.repeat,
-            0,
-          );
+        try {
+          useQueuePersistStore.getState().saveQueue(prevTrack, s.queue, prevOriginalIndex, s.shuffle, s.repeat, 0);
+        } catch {}
       }
     },
 
     seekTo: async (position) => {
-      await serviceSeekTo(position);
+      try { await serviceSeekTo(position); } catch {}
       set((s) => {
         s.position = position;
       });
@@ -299,6 +297,7 @@ export const usePlayerStore = create<PlayerState>()(
       if (!state.currentTrack || state.queue.length === 0) return;
 
       if (shuffle) {
+        if (state.queue.length === 0) return;
         const order = shuffleArray(state.queue.length);
         const currentQueueIdx = state.queueIndex;
         const currentShuffledIdx = order.indexOf(currentQueueIdx);
@@ -309,7 +308,7 @@ export const usePlayerStore = create<PlayerState>()(
         }
         set((s) => {
           s.shuffledOrder = order;
-          s.queueIndex = order[0];
+          s.queueIndex = order[0] ?? 0;
         });
       } else {
         set((s) => {

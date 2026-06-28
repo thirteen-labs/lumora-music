@@ -423,7 +423,8 @@ async function processBatch(assets: any[], concurrency = 10, excludedFolders: st
 
   async function worker(): Promise<void> {
     while (queue.length > 0) {
-      const asset = queue.shift()!;
+      const asset = queue.shift();
+      if (!asset) continue;
       const song = await processAsset(asset, excludedFolders);
       if (song) results.push(song);
     }

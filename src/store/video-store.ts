@@ -77,7 +77,7 @@ export const useVideoStore = create<VideoState>()(
     },
 
     clearVideos: async () => {
-      await clearThumbnailCache();
+      try { await clearThumbnailCache(); } catch {}
       set((state) => {
         state.videos = [];
         state.scanStatus = "idle";

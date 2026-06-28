@@ -340,7 +340,8 @@ async function processVideoBatch(assets: any[], concurrency = 10): Promise<Video
 
   async function worker(): Promise<void> {
     while (queue.length > 0) {
-      const asset = queue.shift()!;
+      const asset = queue.shift();
+      if (!asset) continue;
       try {
         const video = await processVideoAsset(asset);
         if (video) results.push(video);

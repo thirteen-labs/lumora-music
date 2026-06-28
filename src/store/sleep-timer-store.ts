@@ -88,7 +88,7 @@ export const useSleepTimerStore = create<SleepTimerState>()(
       const remaining = state.endTime - Date.now();
       if (remaining <= 0) {
         set((s) => { s.expiredFlag = true; });
-        usePlayerStore.getState().pause();
+        try { usePlayerStore.getState().pause(); } catch {}
         dismissSleepTimerNotification();
         get().cancel();
         return true;

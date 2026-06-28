@@ -112,7 +112,8 @@ export const useEqualizerStore = create<EQState>()(
       set((s) => {
         s.preset = preset;
         if (preset !== 'custom') {
-          s.bands = PRESET_BANDS[preset].map((b) => ({ ...b }));
+          const bands = PRESET_BANDS[preset];
+          s.bands = bands ? bands.map((b) => ({ ...b })) : DEFAULT_BANDS.map((b) => ({ ...b }));
         }
       });
       saveEQ(get());

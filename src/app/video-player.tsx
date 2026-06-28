@@ -176,7 +176,9 @@ export default function VideoPlayerScreen() {
       if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
       const vid = videoRef.current;
       if (playerRef.current && vid) {
-        useVideoProgressStore.getState().setProgress(vid.id, playerRef.current.currentTime, playerRef.current.duration);
+        try {
+          useVideoProgressStore.getState().setProgress(vid.id, playerRef.current.currentTime, playerRef.current.duration);
+        } catch {}
       }
     };
   }, []);
@@ -253,7 +255,7 @@ export default function VideoPlayerScreen() {
 
   useEffect(() => {
     if (!video) return;
-    setupPlayer(video.uri);
+    const cleanup = setupPlayer(video.uri);
 
     const saved = useVideoProgressStore.getState().getProgress(video.id);
     if (saved && saved.position > 3 && saved.position < saved.duration - 3) {
@@ -266,7 +268,7 @@ export default function VideoPlayerScreen() {
             text: 'Resume',
             onPress: () => {
               if (playerRef.current) {
-                playerRef.current.currentTime = saved.position;
+                try { playerRef.current.currentTime = saved.position; } catch {}
                 setCurrentTime(saved.position);
               }
             },
@@ -274,6 +276,7 @@ export default function VideoPlayerScreen() {
         ],
       );
     }
+    return cleanup;
   }, [video, setupPlayer]);
 
   const progressIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
