@@ -150,10 +150,6 @@ function RootStack() {
               options={{ animation: "slide_from_right" }}
             />
             <Stack.Screen
-              name="scan-locations"
-              options={{ animation: "slide_from_right" }}
-            />
-            <Stack.Screen
               name="privacy"
               options={{ animation: "slide_from_right" }}
             />
@@ -182,15 +178,11 @@ function RootStack() {
               options={{ animation: "slide_from_right" }}
             />
             <Stack.Screen
-              name="document-reader"
-              options={{ animation: "slide_from_right" }}
-            />
-            <Stack.Screen
-              name="document-viewer"
-              options={{ animation: "slide_from_right" }}
-            />
-            <Stack.Screen
               name="background-image-adjuster"
+              options={{ animation: "slide_from_right" }}
+            />
+            <Stack.Screen
+              name="output-devices"
               options={{ animation: "slide_from_right" }}
             />
             <Stack.Screen

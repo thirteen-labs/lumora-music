@@ -6,6 +6,7 @@ import { showNowPlayingNotification, updateNotificationPlaybackState, dismissNow
 import { useSleepTimerStore } from '@/store/sleep-timer-store';
 import { useStatsStore } from '@/store/stats-store';
 import { useQueuePersistStore } from '@/store/queue-persist-store';
+import { useToastStore } from '@/store/toast-store';
 
 export function useTrackPlayerSync() {
   const syncFromPlayerRef = useRef(usePlayerStore.getState().syncFromPlayer);
@@ -17,12 +18,13 @@ export function useTrackPlayerSync() {
   const playTimeAccumRef = useRef(0);
   const lastQueueSaveRef = useRef(0);
   const lastNotifUpdateRef = useRef(0);
+  const lastZeroVolNotifRef = useRef(0);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const appStateRef = useRef(AppState.currentState);
 
   useEffect(() => {
     syncFromPlayerRef.current = usePlayerStore.getState().syncFromPlayer;
-  });
+  }, []);
 
   function handleTrackEnd() {
     const state = usePlayerStore.getState();
@@ -136,6 +138,13 @@ export function useTrackPlayerSync() {
       const currentTime = player.currentTime;
       const duration = player.duration;
       const now = Date.now();
+
+      if (isNowPlaying && player.volume === 0) {
+        if (now - lastZeroVolNotifRef.current > 12000) {
+          lastZeroVolNotifRef.current = now;
+          useToastStore.getState().showToast("Volume is muted — turn it up", "volume");
+        }
+      }
 
       if (now - lastNotifUpdateRef.current >= 1000) {
         if (state.currentTrack && state.currentTrack.id !== lastTrackIdRef.current) {

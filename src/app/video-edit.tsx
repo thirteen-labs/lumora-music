@@ -3,6 +3,7 @@ import { View, Text, Pressable, TextInput, ScrollView, Alert } from 'react-nativ
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useTheme } from '@/hooks/use-theme';
 import { useVideoStore } from '@/store/video-store';
+import type { VideoUpdate } from '@/store/video-store';
 import { useToastStore } from '@/store/toast-store';
 import { formatDuration, formatFileSize } from '@/utils/cn';
 import { s } from '@/styles';
@@ -31,6 +32,11 @@ export default function VideoEditScreen() {
     if (!trimmed) {
       Alert.alert('Validation', 'Title cannot be empty');
       return;
+    }
+    const updates: VideoUpdate = {};
+    if (trimmed !== video.title) updates.title = trimmed;
+    if (Object.keys(updates).length > 0) {
+      useVideoStore.getState().updateVideo(video.id, updates);
     }
     useToastStore.getState().showToast('Changes saved', 'check');
     router.back();
@@ -90,6 +96,9 @@ export default function VideoEditScreen() {
           <InfoRow label="Frame Rate" value={video.frameRate ? `${video.frameRate} fps` : 'Unknown'} colors={colors} />
           <InfoRow label="Bitrate" value={video.bitrate ? `${(video.bitrate / 1000).toFixed(0)} kbps` : 'Unknown'} colors={colors} />
           <InfoRow label="Language" value={video.language ?? 'Unknown'} colors={colors} />
+          {video.hasEmbeddedSubtitles && video.subtitleLanguages.length > 0 && (
+            <InfoRow label="Subtitles" value={video.subtitleLanguages.join(', ')} colors={colors} />
+          )}
         </View>
       </ScrollView>
     </View>

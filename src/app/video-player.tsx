@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { View, Text, Pressable, Dimensions, StatusBar, PanResponder, Alert, ScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { createVideoPlayer, VideoView } from 'expo-video';
+import { createVideoPlayer, VideoView, isPictureInPictureSupported } from 'expo-video';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import Slider from '@react-native-community/slider';
 import { useTheme } from '@/hooks/use-theme';
@@ -11,6 +11,7 @@ import { useVideoProgressStore } from '@/store/video-progress-store';
 import { useHiddenFilesStore } from '@/store/hidden-files-store';
 import { useRecentlyDeletedStore } from '@/store/recently-deleted-store';
 import { useToastStore } from '@/store/toast-store';
+import { useTranslation } from '@/hooks/use-translation';
 import { formatDuration } from '@/utils/cn';
 import { s } from '@/styles';
 import {
@@ -37,6 +38,8 @@ import {
   Trash2,
   Film,
   Info,
+  Camera,
+  Captions,
 } from 'lucide-react-native';
 import {
   BottomSheetModal,
@@ -45,7 +48,28 @@ import {
   BottomSheetBackdrop,
 } from '@gorhom/bottom-sheet';
 import * as Sharing from 'expo-sharing';
+import * as FileSystem from 'expo-file-system/legacy';
+import { storage } from '@/services/mmkv';
 import type { Video } from '@/types/media';
+
+const GESTURE_STORAGE_KEY = 'lumora-gesture-settings';
+const SENSITIVITY_KEY = 'lumora-gesture-sensitivity';
+
+function loadGestureSettings() {
+  try {
+    const raw = storage.getString(GESTURE_STORAGE_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch {}
+  return { swipeSeek: true, swipeVolume: true, swipeBrightness: true, doubleTapSeek: true };
+}
+
+function loadSensitivity() {
+  try {
+    const raw = storage.getString(SENSITIVITY_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch {}
+  return { seekSpeed: 1, volumeSensitivity: 1, brightnessSensitivity: 1 };
+}
 
 const PLAYBACK_SPEEDS = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0];
 const CONTROLS_HIDE_DELAY = 4000;
@@ -54,6 +78,7 @@ const SEEK_AMOUNT = 10;
 
 export default function VideoPlayerScreen() {
   const { colors } = useTheme();
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { videoId } = useLocalSearchParams<{ videoId?: string }>();
@@ -97,6 +122,9 @@ export default function VideoPlayerScreen() {
   const [duration, setDuration] = useState(0);
   const [slidingValue, setSlidingValue] = useState<number | null>(null);
   const [windowDims, setWindowDims] = useState(() => Dimensions.get('window'));
+  const [pipSupported] = useState(() => isPictureInPictureSupported());
+  const [availableAudioTracks, setAvailableAudioTracks] = useState<any[]>([]);
+  const [selectedAudioTrack, setSelectedAudioTrack] = useState<any | null>(null);
 
   const speedSheetRef = useRef<BottomSheetModal>(null);
   const menuSheetRef = useRef<BottomSheetModal>(null);
@@ -200,10 +228,26 @@ export default function VideoPlayerScreen() {
       }
     });
 
+    if (p.availableAudioTracks) {
+      setAvailableAudioTracks(p.availableAudioTracks);
+    }
+    if (p.audioTrack) {
+      setSelectedAudioTrack(p.audioTrack);
+    }
+
+    const audioTracksSub = p.addListener('availableAudioTracksChange', (e) => {
+      setAvailableAudioTracks(e.availableAudioTracks);
+    });
+    const audioTrackSub = p.addListener('audioTrackChange', (e) => {
+      setSelectedAudioTrack(e.audioTrack);
+    });
+
     return () => {
       statusSub.remove();
       timeSub.remove();
       endSub.remove();
+      audioTracksSub.remove();
+      audioTrackSub.remove();
     };
   }, []);
 
@@ -295,8 +339,15 @@ export default function VideoPlayerScreen() {
     } else {
       videoViewRef.current?.startPictureInPicture();
     }
+  }, [isFloatingWindow]);
+
+  const onPipStart = useCallback(() => {
     toggleFloatingWindow();
-  }, [isFloatingWindow, toggleFloatingWindow]);
+  }, [toggleFloatingWindow]);
+
+  const onPipStop = useCallback(() => {
+    toggleFloatingWindow();
+  }, [toggleFloatingWindow]);
 
   const handleSpeedPress = useCallback(() => {
     speedSheetRef.current?.present();
@@ -349,6 +400,7 @@ export default function VideoPlayerScreen() {
 
   const seekByRef = useRef(seekBy);
   const isControlsLockedRef = useRef(isControlsLocked);
+  const windowDimsRef = useRef(windowDims);
 
   useEffect(() => {
     seekByRef.current = seekBy;
@@ -358,20 +410,59 @@ export default function VideoPlayerScreen() {
     isControlsLockedRef.current = isControlsLocked;
   }, [isControlsLocked]);
 
+  useEffect(() => {
+    windowDimsRef.current = windowDims;
+  }, [windowDims]);
+
+  const lastTapRef = useRef({ x: 0, time: 0 });
+
   const [swipePanResponder, setSwipePanResponder] = useState<ReturnType<typeof PanResponder.create> | null>(null);
 
   useEffect(() => {
+    const gestureSettings = loadGestureSettings();
+    const sensitivity = loadSensitivity();
+
     setSwipePanResponder(PanResponder.create({
-      onStartShouldSetPanResponder: () => false,
+      onStartShouldSetPanResponder: (evt) => {
+        if (isControlsLockedRef.current) return false;
+        if (!gestureSettings.doubleTapSeek) return false;
+        const now = Date.now();
+        const { pageX } = evt.nativeEvent;
+        const tap = lastTapRef.current;
+        if (now - tap.time < 300 && Math.abs(pageX - tap.x) < 50) {
+          const half = windowDimsRef.current.width / 2;
+          seekByRef.current(pageX < half ? -SEEK_AMOUNT : SEEK_AMOUNT);
+          lastTapRef.current = { x: 0, time: 0 };
+        } else {
+          lastTapRef.current = { x: pageX, time: now };
+        }
+        return false;
+      },
       onMoveShouldSetPanResponder: (_, gs) => {
         if (isControlsLockedRef.current) return false;
-        return Math.abs(gs.dx) > 10 && Math.abs(gs.dx) > Math.abs(gs.dy);
+        const horiz = Math.abs(gs.dx) > 10 && Math.abs(gs.dx) > Math.abs(gs.dy);
+        const vert = Math.abs(gs.dy) > 10 && Math.abs(gs.dy) > Math.abs(gs.dx);
+        if (horiz && gestureSettings.swipeSeek) return true;
+        if (vert) {
+          const half = windowDimsRef.current.width / 2;
+          if (gs.x0 < half && gestureSettings.swipeBrightness) return true;
+          if (gs.x0 >= half && gestureSettings.swipeVolume) return true;
+        }
+        return false;
       },
       onPanResponderRelease: (_, gs) => {
-        if (gs.dx > SWIPE_SEEK_THRESHOLD) {
-          seekByRef.current(SEEK_AMOUNT);
-        } else if (gs.dx < -SWIPE_SEEK_THRESHOLD) {
-          seekByRef.current(-SEEK_AMOUNT);
+        const horiz = Math.abs(gs.dx) > Math.abs(gs.dy);
+        if (horiz && gestureSettings.swipeSeek && Math.abs(gs.dx) > SWIPE_SEEK_THRESHOLD) {
+          const amount = Math.round(SEEK_AMOUNT * sensitivity.seekSpeed);
+          seekByRef.current(gs.dx > 0 ? amount : -amount);
+        } else if (!horiz) {
+          const half = windowDimsRef.current.width / 2;
+          const pct = Math.round(Math.abs(gs.dy) / 10);
+          if (gs.x0 < half && gestureSettings.swipeBrightness) {
+            useToastStore.getState().showToast(`Brightness ${gs.dy < 0 ? '+' : '-'}${pct}%`, 'video');
+          } else if (gs.x0 >= half && gestureSettings.swipeVolume) {
+            useToastStore.getState().showToast(`Volume ${gs.dy < 0 ? '+' : '-'}${pct}%`, 'video');
+          }
         }
       },
     }));
@@ -380,9 +471,9 @@ export default function VideoPlayerScreen() {
   if (!video) {
     return (
       <View style={[s.flex1, s.itemsCenter, s.justifyCenter, { backgroundColor: '#000' }]}>
-        <Text style={{ color: '#fff', fontSize: 16 }}>No video selected</Text>
+        <Text style={{ color: '#fff', fontSize: 16 }}>{t('video.empty')}</Text>
         <Pressable onPress={goBack} style={{ marginTop: 16 }}>
-          <Text style={{ color: colors.accent, fontSize: 15 }}>Go Back</Text>
+          <Text style={{ color: colors.accent, fontSize: 15 }}>{t('common.back')}</Text>
         </Pressable>
       </View>
     );
@@ -393,16 +484,27 @@ export default function VideoPlayerScreen() {
       <StatusBar hidden />
 
       <View style={s.flex1}>
-        <VideoView
-          ref={videoViewRef}
-          player={player}
-          style={{
-            width: isPortrait ? windowDims.width : windowDims.height,
-            height: isPortrait ? windowDims.height : windowDims.width,
-          }}
-          nativeControls={false}
-          contentFit={videoContentFit}
-        />
+        <View style={[
+          s.flex1,
+          s.itemsCenter,
+          s.justifyCenter,
+          scaleMode === '16:9' && { aspectRatio: 16/9, height: undefined, flex: 0, width: isPortrait ? windowDims.width : windowDims.height, alignSelf: 'center' },
+          scaleMode === '4:3' && { aspectRatio: 4/3, height: undefined, flex: 0, width: isPortrait ? windowDims.width : windowDims.height, alignSelf: 'center' },
+        ]}>
+          <VideoView
+            ref={videoViewRef}
+            player={player}
+            style={scaleMode === '16:9' || scaleMode === '4:3' ? s.flex1 : {
+              width: isPortrait ? windowDims.width : windowDims.height,
+              height: isPortrait ? windowDims.height : windowDims.width,
+            }}
+            nativeControls={false}
+            contentFit={videoContentFit}
+            allowsPictureInPicture
+            onPictureInPictureStart={onPipStart}
+            onPictureInPictureStop={onPipStop}
+          />
+        </View>
 
         {showControls && (
           <View
@@ -502,7 +604,7 @@ export default function VideoPlayerScreen() {
                   >
                     <Headphones size={22} color={isAudioOnly ? colors.accent : '#fff'} />
                     <Text style={{ fontSize: 10, color: isAudioOnly ? colors.accent : 'rgba(255,255,255,0.7)' }}>
-                      Audio
+                      {t('video.audio.only')}
                     </Text>
                   </Pressable>
                   <Pressable
@@ -512,7 +614,7 @@ export default function VideoPlayerScreen() {
                   >
                     <RotateCw size={22} color="#fff" />
                     <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.7)' }}>
-                      {isPortrait ? 'Rotate' : 'Fit'}
+                      {isPortrait ? t('video.rotate') : t('video.fit')}
                     </Text>
                   </Pressable>
                   <Pressable
@@ -526,7 +628,7 @@ export default function VideoPlayerScreen() {
                       <Lock size={22} color="#fff" />
                     )}
                     <Text style={{ fontSize: 10, color: isControlsLocked ? colors.accent : 'rgba(255,255,255,0.7)' }}>
-                      {isControlsLocked ? 'Unlock' : 'Lock'}
+                      {isControlsLocked ? t('video.unlock') : t('video.lock')}
                     </Text>
                   </Pressable>
                 </View>
@@ -544,7 +646,7 @@ export default function VideoPlayerScreen() {
       >
         <BottomSheetView style={{ paddingHorizontal: 20, paddingTop: 8 }}>
           <Text style={[s.textBase, s.fontSemibold, { color: colors.text, marginBottom: 16 }]}>
-            Playback Speed
+            {t('video.speed')}
           </Text>
           <View style={[s.flexRow, s.flexWrap, s.gap3, { justifyContent: 'center' }]}>
             {PLAYBACK_SPEEDS.map((speed) => (
@@ -589,7 +691,7 @@ export default function VideoPlayerScreen() {
       >
         <BottomSheetView style={{ flex: 1, paddingHorizontal: 20, paddingTop: 8 }}>
           <Text style={[s.textBase, s.fontSemibold, { color: colors.text, marginBottom: 12 }]}>
-            More Options
+            {t('video.options')}
           </Text>
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 24 }}>
             {video && (
@@ -602,6 +704,11 @@ export default function VideoPlayerScreen() {
                   <Text style={[s.textXs, { color: colors.textMuted }]}>
                     {formatDuration(video.duration)}{video.width && video.height ? ` · ${video.width}x${video.height}` : ''}
                   </Text>
+                  {video.hasEmbeddedSubtitles && video.subtitleLanguages.length > 0 && (
+                    <Text style={[s.textXs, { color: colors.textMuted, marginTop: 2 }]}>
+                      {video.subtitleLanguages.join(', ')}
+                    </Text>
+                  )}
                 </View>
                 <Pressable
                   onPress={() => {
@@ -617,23 +724,25 @@ export default function VideoPlayerScreen() {
             )}
 
             <Text style={[s.textXs, s.fontSemibold, s.uppercase, { letterSpacing: 1, color: colors.textMuted, marginBottom: 8 }]}>
-              Display
+              {t('video.display')}
             </Text>
-            <View style={[s.flexRow, s.itemsCenter, s.justifyBetween, s.p3, s.rounded2xl, { backgroundColor: colors.card, marginBottom: 16 }]}>
-              <View style={[s.flexRow, s.itemsCenter, s.gap3]}>
-                <PictureInPicture size={20} color={colors.text} />
-                <Text style={[s.textSm, { color: colors.text }]}>Floating Window</Text>
+            {pipSupported && (
+              <View style={[s.flexRow, s.itemsCenter, s.justifyBetween, s.p3, s.rounded2xl, { backgroundColor: colors.card, marginBottom: 16 }]}>
+                <View style={[s.flexRow, s.itemsCenter, s.gap3]}>
+                  <PictureInPicture size={20} color={colors.text} />
+                  <Text style={[s.textSm, { color: colors.text }]}>{t('video.floating.window')}</Text>
+                </View>
+                <Pressable
+                  onPress={handleFloatingWindow}
+                  style={[s.rounded2xl, { width: 44, height: 24, backgroundColor: isFloatingWindow ? colors.accent : colors.border, justifyContent: 'center', paddingHorizontal: 3 }]}
+                >
+                  <View style={[s.roundedFull, { width: 18, height: 18, backgroundColor: '#fff', alignSelf: isFloatingWindow ? 'flex-end' : 'flex-start' }]} />
+                </Pressable>
               </View>
-              <Pressable
-                onPress={handleFloatingWindow}
-                style={[s.rounded2xl, { width: 44, height: 24, backgroundColor: isFloatingWindow ? colors.accent : colors.border, justifyContent: 'center', paddingHorizontal: 3 }]}
-              >
-                <View style={[s.roundedFull, { width: 18, height: 18, backgroundColor: '#fff', alignSelf: isFloatingWindow ? 'flex-end' : 'flex-start' }]} />
-              </Pressable>
-            </View>
+            )}
 
             <Text style={[s.textXs, s.fontSemibold, s.uppercase, { letterSpacing: 1, color: colors.textMuted, marginBottom: 8 }]}>
-              Scale
+              {t('video.scale')}
             </Text>
             <View style={[s.flexRow, s.gap2, { marginBottom: 16 }]}>
               {(['16:9', 'fill', 'fit', '4:3'] as ScaleMode[]).map((mode) => (
@@ -657,39 +766,25 @@ export default function VideoPlayerScreen() {
             </View>
 
             <Text style={[s.textXs, s.fontSemibold, s.uppercase, { letterSpacing: 1, color: colors.textMuted, marginBottom: 8 }]}>
-              Video Quality
+              {t('video.quality')}
             </Text>
-            <View style={[s.flexRow, s.flexWrap, s.gap2, { marginBottom: 16 }]}>
-              {['144p', '240p', '360p', '480p', '720p', '1080p', '2160p'].map((q) => {
-                const height = parseInt(q);
-                const isCurrent = video ? Math.abs((video.height ?? 0) - height) < 50 : false;
-                return (
-                  <Pressable
-                    key={q}
-                    onPress={() => useToastStore.getState().showToast(`Quality: ${q}`, 'video')}
-                    style={[
-                      s.itemsCenter,
-                      s.justifyCenter,
-                      s.px3,
-                      s.py2,
-                      s.rounded2xl,
-                      { backgroundColor: isCurrent ? colors.accent : colors.card },
-                    ]}
-                  >
-                    <Text style={[s.textXs, s.fontSemibold, { color: isCurrent ? '#fff' : colors.text }]}>{q}</Text>
-                  </Pressable>
-                );
-              })}
+            <View style={[s.flexRow, s.itemsCenter, s.gap3, s.p3, s.rounded2xl, { backgroundColor: colors.card, marginBottom: 16 }]}>
+              <Maximize size={20} color={colors.text} />
+              <Text style={[s.textSm, { color: colors.text }]}>{t('video.quality')}</Text>
+              <Text style={[s.textXs, s.flex1, { color: colors.textMuted, textAlign: 'right' }]}>
+                {video?.width && video?.height ? `${video.width}x${video.height}` : 'Unknown'}
+                {video?.frameRate ? ` @ ${video.frameRate}fps` : ''}
+              </Text>
             </View>
 
             <Text style={[s.textXs, s.fontSemibold, s.uppercase, { letterSpacing: 1, color: colors.textMuted, marginBottom: 8 }]}>
-              Play Mode
+              {t('video.play.mode')}
             </Text>
             <View style={[s.rounded2xl, { backgroundColor: colors.card, marginBottom: 16, overflow: 'hidden' }]}>
               {([
-                { key: 'loop-one' as PlayMode, icon: Repeat1, label: 'Loop One' },
-                { key: 'loop-all' as PlayMode, icon: Repeat, label: 'Loop All' },
-                { key: 'pause-after-play' as PlayMode, icon: StopCircle, label: 'Pause After Play' },
+                { key: 'loop-one' as PlayMode, icon: Repeat1, label: t('video.loop.one') },
+                { key: 'loop-all' as PlayMode, icon: Repeat, label: t('video.loop.all') },
+                { key: 'pause-after-play' as PlayMode, icon: StopCircle, label: t('video.pause.after') },
               ]).map((item) => (
                 <Pressable
                   key={item.key}
@@ -708,18 +803,45 @@ export default function VideoPlayerScreen() {
             </View>
 
             <Text style={[s.textXs, s.fontSemibold, s.uppercase, { letterSpacing: 1, color: colors.textMuted, marginBottom: 8 }]}>
-              Audio
+              {t('video.audio.track')}
             </Text>
-            <View style={[s.flexRow, s.itemsCenter, s.gap3, s.p3, s.rounded2xl, { backgroundColor: colors.card, marginBottom: 16 }]}>
-              <Languages size={20} color={colors.text} />
-              <Text style={[s.textSm, { color: colors.text }]}>Audio Track</Text>
-              <Text style={[s.textXs, s.flex1, { color: colors.textMuted, textAlign: 'right' }]}>
-                {video?.language ?? 'Default'}
-              </Text>
-            </View>
+            {availableAudioTracks.length > 1 ? (
+              <View style={[s.rounded2xl, { backgroundColor: colors.card, marginBottom: 16, overflow: 'hidden' }]}>
+                {availableAudioTracks.map((track: any, idx: number) => {
+                  const isSelected = selectedAudioTrack?.language === track.language;
+                  return (
+                    <Pressable
+                      key={track.language ?? idx}
+                      onPress={() => {
+                        if (playerRef.current) {
+                          playerRef.current.audioTrack = track;
+                        }
+                      }}
+                      style={[s.flexRow, s.itemsCenter, s.gap3, s.p3, idx < availableAudioTracks.length - 1 && { borderBottomWidth: 1, borderBottomColor: colors.border }]}
+                    >
+                      <Languages size={20} color={isSelected ? colors.accent : colors.text} />
+                      <Text style={[s.textSm, s.flex1, { color: isSelected ? colors.accent : colors.text }]}>
+                        {track.label ?? track.language ?? track.name ?? `Track ${idx + 1}`}
+                      </Text>
+                      {isSelected && (
+                        <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: colors.accent }} />
+                      )}
+                    </Pressable>
+                  );
+                })}
+              </View>
+            ) : (
+              <View style={[s.flexRow, s.itemsCenter, s.gap3, s.p3, s.rounded2xl, { backgroundColor: colors.card, marginBottom: 16 }]}>
+                <Languages size={20} color={colors.text} />
+                <Text style={[s.textSm, { color: colors.text }]}>{t('video.audio.track.title')}</Text>
+                <Text style={[s.textXs, s.flex1, { color: colors.textMuted, textAlign: 'right' }]}>
+                  {selectedAudioTrack?.label ?? selectedAudioTrack?.language ?? video?.language ?? 'Default'}
+                </Text>
+              </View>
+            )}
 
             <Text style={[s.textXs, s.fontSemibold, s.uppercase, { letterSpacing: 1, color: colors.textMuted, marginBottom: 8 }]}>
-              Actions
+              {t('video.actions')}
             </Text>
             <View style={[s.rounded2xl, { backgroundColor: colors.card, marginBottom: 16, overflow: 'hidden' }]}>
               <Pressable
@@ -727,23 +849,59 @@ export default function VideoPlayerScreen() {
                   if (!video) return;
                   try {
                     const avail = await Sharing.isAvailableAsync();
-                    if (!avail) { Alert.alert('Sharing not available'); return; }
-                    await Sharing.shareAsync(video.uri, { mimeType: 'video/*', dialogTitle: `Share ${video.title}` });
-                  } catch { Alert.alert('Error', 'Could not share'); }
+                    if (!avail) { Alert.alert(t('common.error'), t('video.share.not.available')); return; }
+                    await Sharing.shareAsync(video.uri, { mimeType: 'video/*', dialogTitle: `${t('video.share')} ${video.title}` });
+                  } catch { Alert.alert(t('common.error'), t('video.share.failed')); }
                   menuSheetRef.current?.dismiss();
                 }}
                 style={[s.flexRow, s.itemsCenter, s.gap3, s.p3]}
               >
                 <Share2 size={20} color={colors.text} />
-                <Text style={[s.textSm, { color: colors.text }]}>Share</Text>
+                <Text style={[s.textSm, { color: colors.text }]}>{t('video.share')}</Text>
+              </Pressable>
+              <Pressable
+                onPress={async () => {
+                  if (!video || !playerRef.current) return;
+                  try {
+                    const thumbnails = await playerRef.current.generateThumbnailsAsync(currentTime, { maxWidth: 1920 });
+                    if (thumbnails.length > 0) {
+                      const thumb = thumbnails[0] as any;
+                      const src = thumb.uri;
+                      const ext = src.split('.').pop() || 'jpg';
+                      const dest = FileSystem.cacheDirectory + `screenshot_${video.id}_${Date.now()}.${ext}`;
+                      await FileSystem.copyAsync({ from: src, to: dest });
+                      useToastStore.getState().showToast(t('video.screenshot.captured'), 'check');
+                      const avail = await Sharing.isAvailableAsync();
+                      if (avail) {
+                        await Sharing.shareAsync(dest, { mimeType: 'image/*', dialogTitle: `${t('video.screenshot')} - ${video.title}` });
+                      }
+                    }
+                  } catch { Alert.alert(t('common.error'), t('video.screenshot.failed')); }
+                  menuSheetRef.current?.dismiss();
+                }}
+                style={[s.flexRow, s.itemsCenter, s.gap3, s.p3]}
+              >
+                <Camera size={20} color={colors.text} />
+                <Text style={[s.textSm, { color: colors.text }]}>{t('video.screenshot')}</Text>
               </Pressable>
               <Pressable
                 onPress={() => {
                   if (!video) return;
-                  Alert.alert('Hide Video', `Hide "${video.title}"?`, [
-                    { text: 'Cancel', style: 'cancel' },
+                  menuSheetRef.current?.dismiss();
+                  router.push({ pathname: '/online-subtitles', params: { videoId: video.id, videoTitle: video.title } });
+                }}
+                style={[s.flexRow, s.itemsCenter, s.gap3, s.p3]}
+              >
+                <Captions size={20} color={colors.text} />
+                <Text style={[s.textSm, { color: colors.text }]}>{t('video.subtitles')}</Text>
+              </Pressable>
+              <Pressable
+                onPress={() => {
+                  if (!video) return;
+                  Alert.alert(t('video.hide.title'), `${t('video.hide.title')} "${video.title}"?`, [
+                    { text: t('common.cancel'), style: 'cancel' },
                     {
-                      text: 'Hide', style: 'destructive',
+                      text: t('video.hide'), style: 'destructive',
                       onPress: () => {
                         useHiddenFilesStore.getState().hideVideo(video.id);
                         useToastStore.getState().showToast('Video hidden', 'eye-off');
@@ -756,7 +914,7 @@ export default function VideoPlayerScreen() {
                 style={[s.flexRow, s.itemsCenter, s.gap3, s.p3]}
               >
                 <EyeOff size={20} color={colors.text} />
-                <Text style={[s.textSm, { color: colors.text }]}>Hide</Text>
+                <Text style={[s.textSm, { color: colors.text }]}>{t('video.hide')}</Text>
               </Pressable>
               <Pressable
                 onPress={() => {
@@ -767,15 +925,15 @@ export default function VideoPlayerScreen() {
                 style={[s.flexRow, s.itemsCenter, s.gap3, s.p3, { borderTopWidth: 1, borderTopColor: colors.border }]}
               >
                 <Info size={20} color={colors.text} />
-                <Text style={[s.textSm, { color: colors.text }]}>Info</Text>
+                <Text style={[s.textSm, { color: colors.text }]}>{t('video.info')}</Text>
               </Pressable>
               <Pressable
                 onPress={() => {
                   if (!video) return;
-                  Alert.alert('Delete Video', `Move "${video.title}" to recently deleted?`, [
-                    { text: 'Cancel', style: 'cancel' },
+                  Alert.alert(t('video.delete.title'), `Move "${video.title}" to recently deleted?`, [
+                    { text: t('common.cancel'), style: 'cancel' },
                     {
-                      text: 'Delete', style: 'destructive',
+                      text: t('video.delete'), style: 'destructive',
                       onPress: () => {
                         useRecentlyDeletedStore.getState().addDeleted({
                           id: video.id, title: video.title, uri: video.uri,
@@ -791,7 +949,7 @@ export default function VideoPlayerScreen() {
                 style={[s.flexRow, s.itemsCenter, s.gap3, s.p3, { borderTopWidth: 1, borderTopColor: colors.border }]}
               >
                 <Trash2 size={20} color="#ef4444" />
-                <Text style={[s.textSm, { color: '#ef4444' }]}>Delete</Text>
+                <Text style={[s.textSm, { color: '#ef4444' }]}>{t('video.delete')}</Text>
               </Pressable>
             </View>
           </ScrollView>
@@ -807,7 +965,7 @@ export default function VideoPlayerScreen() {
       >
         <BottomSheetView style={{ flex: 1, paddingHorizontal: 20, paddingTop: 8 }}>
           <Text style={[s.textBase, s.fontSemibold, { color: colors.text, marginBottom: 12 }]}>
-            Playlist Queue ({queue.length})
+            {t('video.playlist.queue')} ({queue.length})
           </Text>
           <BottomSheetFlatList
             data={queue}

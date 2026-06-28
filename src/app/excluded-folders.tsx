@@ -3,10 +3,9 @@ import { View, Text, ScrollView, Pressable, TextInput, Modal, Alert } from 'reac
 import { s } from '@/styles';
 import { useTheme } from '@/hooks/use-theme';
 import { useRouter } from 'expo-router';
-import { ChevronLeft, FolderMinus, Plus, Trash2, FolderOpen } from 'lucide-react-native';
+import { ChevronLeft, FolderMinus, Plus, Trash2 } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSettingsStore } from '@/store/settings-store';
-import { requestDocumentDirectoryPermission } from '@/services/document-scanner';
 
 export default function ExcludedFoldersScreen() {
   const { colors } = useTheme();
@@ -36,18 +35,6 @@ export default function ExcludedFoldersScreen() {
     setNewPath('');
     setShowModal(false);
   }, [folders, newPath, setFolders]);
-
-  const addSAFFolder = useCallback(async () => {
-    const uri = await requestDocumentDirectoryPermission();
-    if (uri) {
-      if (folders.includes(uri)) {
-        Alert.alert('Duplicate', 'This folder is already in the excluded list.');
-        return;
-      }
-      const next = [...folders, uri];
-      setFolders(next);
-    }
-  }, [folders, setFolders]);
 
   return (
     <View style={[s.flex1, { backgroundColor: colors.background }]}>
@@ -95,14 +82,6 @@ export default function ExcludedFoldersScreen() {
               })}
             </View>
           )}
-
-          <Pressable
-            onPress={addSAFFolder}
-            style={[s.flexRow, s.itemsCenter, s.justifyCenter, s.gap2, s.mt4, { paddingVertical: 12, borderRadius: 16, backgroundColor: colors.accent + '20' }]}
-          >
-            <FolderOpen size={18} color={colors.accent} />
-            <Text style={[s.textSm, s.fontSemibold, { color: colors.accent }]}>Pick Folder (SAF)</Text>
-          </Pressable>
 
           <Pressable
             onPress={() => setShowModal(true)}

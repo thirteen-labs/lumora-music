@@ -75,7 +75,8 @@ export default function SystemHiddenFilesScreen() {
     update();
     const id = setInterval(update, 60000);
     return () => clearInterval(id);
-  }, [lastScanTime, t]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lastScanTime]);
 
   const ungroupedCount = files.length - groups.reduce((sum, g) => sum + g.files.length, 0);
 

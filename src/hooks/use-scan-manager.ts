@@ -2,7 +2,6 @@ import { useEffect, useCallback, useRef } from 'react';
 import { AppState, AppStateStatus } from 'react-native';
 import { useMusicStore } from '@/store/music-store';
 import { useVideoStore } from '@/store/video-store';
-import { useDocumentStore } from '@/store/document-store';
 import {
   registerBackgroundScan,
   isBackgroundScanRegistered,
@@ -19,22 +18,24 @@ export function useScanManager() {
   const scanStatus = useMusicStore((s) => s.scanStatus);
   const fetchVideos = useVideoStore((s) => s.fetchVideos);
   const videos = useVideoStore((s) => s.videos);
-  const scanDocuments = useDocumentStore((s) => s.scanDocuments);
-  const docFiles = useDocumentStore((s) => s.files);
   const lastForegroundScan = useRef(0);
 
-  const runSafeScans = useCallback(async () => {
-    const results = await Promise.allSettled([
-      scan(),
-      fetchVideos(),
-      scanDocuments(),
-    ]);
-    for (const result of results) {
-      if (result.status === 'rejected') {
-        reportWarning('ScanManager', result.reason, 'A background scan task failed');
-      }
+  const SCAN_INTERVAL_MS = 1500;
+
+  async function runWithInterval<T>(fn: () => Promise<T>, label: string): Promise<T | undefined> {
+    try {
+      return await fn();
+    } catch (e) {
+      reportWarning('ScanManager', e, `${label} scan failed`);
+      return undefined;
     }
-  }, [scan, fetchVideos, scanDocuments]);
+  }
+
+  const runSafeScans = useCallback(async () => {
+    await runWithInterval(scan, 'Music');
+    await new Promise((r) => setTimeout(r, SCAN_INTERVAL_MS));
+    await runWithInterval(fetchVideos, 'Video');
+  }, [scan, fetchVideos]);
 
   useEffect(() => {
     const setup = async () => {
@@ -88,6 +89,5 @@ export function useScanManager() {
     manualScan,
     songCount: songs.length,
     videoCount: videos.length,
-    docCount: docFiles.length,
   };
 }

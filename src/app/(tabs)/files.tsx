@@ -50,6 +50,7 @@ export default function FilesScreen() {
   const [selectedUris, setSelectedUris] = useState<Set<string>>(new Set());
   const isSelecting = selectedUris.size > 0;
   const mountedRef = useRef(true);
+  const currentDirRef = useRef<{ path: string; breadcrumbs: string[] } | null>(null);
 
   const toggleSelect = useCallback((uri: string) => {
     setSelectedUris((prev) => {
@@ -157,6 +158,7 @@ export default function FilesScreen() {
     setMediaFiles(contents.mediaFiles);
     setMediaFolders(contents.mediaFolders);
     setViewState({ screen: 'files', path: uri, breadcrumbs });
+    currentDirRef.current = { path: uri, breadcrumbs };
     setLoading(false);
   }, [filterType]);
 
@@ -166,13 +168,14 @@ export default function FilesScreen() {
 
   // Refresh current directory when filter toggles
   useEffect(() => {
-    if (viewState.screen === 'files') {
+    const dir = currentDirRef.current;
+    if (dir) {
       const id = setTimeout(() => {
-        loadDirectory(viewState.path, viewState.breadcrumbs);
+        loadDirectory(dir.path, dir.breadcrumbs);
       }, 0);
       return () => clearTimeout(id);
     }
-  }, [filterType, loadDirectory, viewState]);
+  }, [filterType, loadDirectory]);
 
   const navigateTo = useCallback(async (uri: string) => {
     if (viewState.screen !== 'files') return;

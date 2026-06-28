@@ -56,13 +56,6 @@ export interface Video {
   subtitleLanguages: string[];
 }
 
-export interface SubtitleTrack {
-  index: number;
-  language: string | null;
-  title: string | null;
-  format: 'srt' | 'vtt' | 'ass' | 'embedded';
-}
-
 export type SortField = 'title' | 'artist' | 'dateAdded' | 'duration' | 'fileSize' | 'playCount' | 'lastPlayed';
 export type SortOrder = 'asc' | 'desc';
 

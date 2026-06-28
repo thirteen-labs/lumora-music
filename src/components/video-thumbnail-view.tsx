@@ -1,7 +1,6 @@
 import { useEffect, useState, memo } from 'react';
 import { View } from 'react-native';
 import { Image } from 'expo-image';
-import type { VideoThumbnail } from 'expo-video';
 import { generateThumbnail, getCachedThumbnail } from '@/services/video-thumbnails';
 import { Film } from 'lucide-react-native';
 
@@ -24,7 +23,7 @@ export const VideoThumbnailView = memo(function VideoThumbnailView({
   iconColor,
   backgroundColor,
 }: VideoThumbnailViewProps) {
-  const [thumb, setThumb] = useState<VideoThumbnail | null>(getCachedThumbnail(videoId));
+  const [thumb, setThumb] = useState<string | null>(getCachedThumbnail(videoId));
 
   useEffect(() => {
     if (thumb) return;
@@ -33,7 +32,8 @@ export const VideoThumbnailView = memo(function VideoThumbnailView({
       if (!cancelled && t) setThumb(t);
     });
     return () => { cancelled = true; };
-  }, [videoUri, videoId, thumb]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [videoUri, videoId]);
 
   if (thumb) {
     return (

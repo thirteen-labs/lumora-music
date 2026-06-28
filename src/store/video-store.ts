@@ -4,13 +4,19 @@ import type { Video, MediaScanStatus } from "@/types/media";
 import { fetchVideos, getCachedVideos } from "@/services/video-fetcher";
 import { clearThumbnailCache } from "@/services/video-thumbnails";
 import { useToastStore } from "@/store/toast-store";
+import { storage } from "@/services/mmkv";
+
+const CACHED_VIDEOS_KEY = 'lumora-cached-videos';
+
+export type VideoUpdate = Partial<Pick<Video, 'title' | 'artist' | 'language' | 'hasEmbeddedSubtitles' | 'subtitleLanguages'>>;
 
 interface VideoState {
   videos: Video[];
   scanStatus: MediaScanStatus;
   scanProgress: { processed: number; total: number } | null;
   fetchVideos: (force?: boolean) => Promise<void>;
-  clearVideos: () => void;
+  clearVideos: () => Promise<void>;
+  updateVideo: (id: string, updates: VideoUpdate) => void;
 }
 
 export const useVideoStore = create<VideoState>()(
@@ -70,13 +76,35 @@ export const useVideoStore = create<VideoState>()(
       }
     },
 
-    clearVideos: () => {
-      clearThumbnailCache();
+    clearVideos: async () => {
+      await clearThumbnailCache();
       set((state) => {
         state.videos = [];
         state.scanStatus = "idle";
         state.scanProgress = null;
       });
+    },
+
+    updateVideo: (id, updates) => {
+      set((state) => {
+        const idx = state.videos.findIndex((v) => v.id === id);
+        if (idx >= 0) {
+          Object.assign(state.videos[idx], updates);
+        }
+      });
+      const updated = get().videos.find((v) => v.id === id);
+      if (updated) {
+        try {
+          const existing = getCachedVideos();
+          const idx = existing.findIndex((v) => v.id === id);
+          if (idx >= 0) {
+            Object.assign(existing[idx], updates);
+          } else {
+            existing.push(updated);
+          }
+          storage.set(CACHED_VIDEOS_KEY, JSON.stringify(existing));
+        } catch {}
+      }
     },
   })),
 );

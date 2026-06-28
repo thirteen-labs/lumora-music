@@ -3,6 +3,7 @@ import { immer } from 'zustand/middleware/immer';
 import { storage } from '@/services/mmkv';
 import type { SleepTimerSettings } from '@/types/audio';
 import { usePlayerStore } from '@/store/player-store';
+import { showSleepTimerNotification, dismissSleepTimerNotification } from '@/services/notifications';
 
 const TIMER_KEY = 'lumora-sleep-timer';
 
@@ -57,6 +58,8 @@ export const useSleepTimerStore = create<SleepTimerState>()(
       });
       saveTimer(get());
 
+      showSleepTimerNotification(minutes);
+
       clearTickInterval();
       tickInterval = setInterval(() => {
         get().tick();
@@ -72,6 +75,7 @@ export const useSleepTimerStore = create<SleepTimerState>()(
       });
       saveTimer(get());
       clearTickInterval();
+      dismissSleepTimerNotification();
     },
 
     tick: () => {
@@ -85,12 +89,14 @@ export const useSleepTimerStore = create<SleepTimerState>()(
       if (remaining <= 0) {
         set((s) => { s.expiredFlag = true; });
         usePlayerStore.getState().pause();
+        dismissSleepTimerNotification();
         get().cancel();
         return true;
       } else {
         set((s) => {
           s.minutesRemaining = Math.ceil(remaining / 60000);
         });
+        showSleepTimerNotification(Math.ceil(remaining / 60000));
         return false;
       }
     },

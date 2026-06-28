@@ -29,41 +29,25 @@ function ensureTaskDefined(): void {
 
         console.log('[BackgroundScanner] Starting background scan');
 
-        const results = await Promise.allSettled([
-          (async () => {
-            const r = await scanMediaLibrary(undefined, undefined);
-            if (r.songs.length > 0) {
-              updateKnownFiles(r.songs);
-              hasData = true;
-            }
-            return r;
-          })(),
-          (async () => {
-            const v = await fetchVideos();
-            if (v.length > 0) hasData = true;
-            return v;
-          })(),
-          (async () => {
-            const { scanRootDirectories } = require('./document-scanner');
-            const docs = await scanRootDirectories();
-            if (docs.length > 0) {
-              hasData = true;
-              try {
-                const storage = require('./mmkv').storage;
-                storage.set('lumora-documents', JSON.stringify(docs));
-                storage.set('lumora-documents-time', new Date().toISOString());
-              } catch (e) {
-                reportWarning('BackgroundScanner', e, 'Failed to persist document scan results');
-              }
-            }
-            return docs;
-          })(),
-        ]);
+        const bgIntervalMs = 2000;
 
-        for (const result of results) {
-          if (result.status === 'rejected') {
-            reportWarning('BackgroundScanner', result.reason, 'Background scan sub-task failed');
+        try {
+          const r = await scanMediaLibrary(undefined, undefined);
+          if (r.songs.length > 0) {
+            updateKnownFiles(r.songs);
+            hasData = true;
           }
+        } catch (e) {
+          reportWarning('BackgroundScanner', e, 'Music scan failed');
+        }
+
+        await new Promise((r) => setTimeout(r, bgIntervalMs));
+
+        try {
+          const v = await fetchVideos();
+          if (v.length > 0) hasData = true;
+        } catch (e) {
+          reportWarning('BackgroundScanner', e, 'Video scan failed');
         }
 
         storage.set(LAST_BG_SCAN_KEY, Date.now());
