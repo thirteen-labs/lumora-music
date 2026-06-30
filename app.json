@@ -83,13 +83,6 @@
           }
         }
       ],
-      [
-        "expo-video",
-        {
-          "supportsPictureInPicture": true,
-          "supportsBackgroundPlayback": true
-        }
-      ],
       "expo-image",
       [
         "expo-media-library",
