@@ -24,12 +24,14 @@ function hexToNumber(hex: string): number {
   return parseInt(hex.replace('#', ''), 16);
 }
 
-async function ensureChannel(channelId: string, channelName: string): Promise<void> {
+async function ensureChannel(channelId: string, channelName: string, importance: ExpoNotifications.AndroidImportance = ExpoNotifications.AndroidImportance.LOW): Promise<void> {
   if (Platform.OS !== 'android') return;
   try {
+    const existing = await ExpoNotifications.getNotificationChannelAsync(channelId);
+    if (existing) return;
     await ExpoNotifications.setNotificationChannelAsync(channelId, {
       name: channelName,
-      importance: ExpoNotifications.AndroidImportance.LOW,
+      importance,
       vibrationPattern: null,
       sound: null,
     });
@@ -44,7 +46,10 @@ export async function initializeNotifications(): Promise<void> {
 
   if (Platform.OS !== 'web') {
     try {
-      await ExpoNotifications.requestPermissionsAsync();
+      const { status } = await ExpoNotifications.requestPermissionsAsync();
+      if (status !== 'granted') {
+        console.warn('[Notifications] Notification permission not granted:', status);
+      }
     } catch (e) {
       reportWarning('Notifications', e, 'Failed to request notification permissions');
     }
@@ -54,91 +59,80 @@ export async function initializeNotifications(): Promise<void> {
     try { fn(); } catch (e) { reportWarning('Notifications', e); }
   };
 
-  PlaybackNotificationManager.addEventListener(
-    'playbackNotificationPlay',
-    () => wrapHandler(() => { usePlayerStore.getState().resume(); }),
-  );
+  const addListener = (event: string, handler: () => void) => {
+    try {
+      (PlaybackNotificationManager.addEventListener as (event: string, handler: () => void) => void)(event, handler);
+    } catch (e) {
+      reportWarning('Notifications', e, `Failed to register listener: ${event}`);
+    }
+  };
 
-  PlaybackNotificationManager.addEventListener(
-    'playbackNotificationPause',
-    () => wrapHandler(() => { usePlayerStore.getState().pause(); }),
-  );
+  addListener('playbackNotificationPlay', () => wrapHandler(() => { usePlayerStore.getState().resume(); }));
+  addListener('playbackNotificationPause', () => wrapHandler(() => { usePlayerStore.getState().pause(); }));
+  addListener('playbackNotificationNextTrack', () => wrapHandler(() => { usePlayerStore.getState().next(); }));
+  addListener('playbackNotificationPreviousTrack', () => wrapHandler(() => { usePlayerStore.getState().previous(); }));
 
-  PlaybackNotificationManager.addEventListener(
-    'playbackNotificationNextTrack',
-    () => wrapHandler(() => { usePlayerStore.getState().next(); }),
-  );
+  addListener('playbackNotificationSeekForward', () => wrapHandler(() => {
+    const state = usePlayerStore.getState();
+    state.seekTo(Math.min(state.position + 10, state.duration));
+  }));
 
-  PlaybackNotificationManager.addEventListener(
-    'playbackNotificationPreviousTrack',
-    () => wrapHandler(() => { usePlayerStore.getState().previous(); }),
-  );
+  addListener('playbackNotificationSeekBackward', () => wrapHandler(() => {
+    const state = usePlayerStore.getState();
+    state.seekTo(Math.max(state.position - 10, 0));
+  }));
 
-  (PlaybackNotificationManager.addEventListener as (event: string, handler: () => void) => void)(
-    'playbackNotificationSeekForward',
-    () => wrapHandler(() => {
-      const state = usePlayerStore.getState();
-      state.seekTo(Math.min(state.position + 10, state.duration));
-    }),
-  );
+  addListener('playbackNotificationStop', () => wrapHandler(() => { usePlayerStore.getState().stop(); }));
 
-  (PlaybackNotificationManager.addEventListener as (event: string, handler: () => void) => void)(
-    'playbackNotificationSeekBackward',
-    () => wrapHandler(() => {
-      const state = usePlayerStore.getState();
-      state.seekTo(Math.max(state.position - 10, 0));
-    }),
-  );
+  addListener('playbackNotificationFavorite', () => wrapHandler(() => {
+    const state = usePlayerStore.getState();
+    const track = state.currentTrack;
+    if (track) {
+      useFavoritesStore.getState().toggleSongFavorite(track);
+      showNowPlayingNotification(track, state.isPlaying);
+    }
+  }));
 
-  PlaybackNotificationManager.addEventListener(
-    'playbackNotificationStop',
-    () => wrapHandler(() => { usePlayerStore.getState().stop(); }),
-  );
+  addListener('playbackNotificationClose', () => wrapHandler(() => {
+    const state = usePlayerStore.getState();
+    state.pause();
+    dismissNowPlayingNotification();
+  }));
 
-  (PlaybackNotificationManager.addEventListener as (event: string, handler: () => void) => void)(
-    'playbackNotificationFavorite',
-    () => wrapHandler(() => {
-      const state = usePlayerStore.getState();
-      const track = state.currentTrack;
-      if (track) {
-        useFavoritesStore.getState().toggleSongFavorite(track);
-        showNowPlayingNotification(track, state.isPlaying);
-      }
-    }),
-  );
-
-  (PlaybackNotificationManager.addEventListener as (event: string, handler: () => void) => void)(
-    'playbackNotificationClose',
-    () => wrapHandler(() => {
-      const state = usePlayerStore.getState();
-      state.pause();
-      dismissNowPlayingNotification();
-    }),
-  );
-
-  (PlaybackNotificationManager.addEventListener as (event: string, handler: () => void) => void)(
-    'playbackNotificationDismiss',
-    () => wrapHandler(() => {
-      const state = usePlayerStore.getState();
-      state.pause();
-      dismissNowPlayingNotification();
-    }),
-  );
+  addListener('playbackNotificationDismiss', () => wrapHandler(() => {
+    const state = usePlayerStore.getState();
+    state.pause();
+    dismissNowPlayingNotification();
+  }));
 
   await Promise.all([
     ensureChannel(SCAN_CHANNEL, 'Media Scan'),
     ensureChannel(SLEEP_TIMER_CHANNEL, 'Sleep Timer'),
-    ensureChannel(RESUME_WATCHING_CHANNEL, 'Resume Watching'),
+    ensureChannel(RESUME_WATCHING_CHANNEL, 'Resume Watching', ExpoNotifications.AndroidImportance.HIGH),
   ]);
 }
 
 const ARTWORK_CACHE_DIR = `${FileSystem.cacheDirectory}notification-artwork/`;
 
 async function ensureCacheDir(): Promise<void> {
-  const dir = await FileSystem.getInfoAsync(ARTWORK_CACHE_DIR);
-  if (!dir.exists) {
-    await FileSystem.makeDirectoryAsync(ARTWORK_CACHE_DIR, { intermediates: true });
-  }
+  try {
+    const dir = await FileSystem.getInfoAsync(ARTWORK_CACHE_DIR);
+    if (!dir.exists) {
+      await FileSystem.makeDirectoryAsync(ARTWORK_CACHE_DIR, { intermediates: true });
+    }
+  } catch {}
+}
+
+const ARTWORK_CACHE_SIZE_LIMIT = 50 * 1024 * 1024;
+
+async function cleanArtworkCacheIfNeeded(): Promise<void> {
+  try {
+    const dir = await FileSystem.getInfoAsync(ARTWORK_CACHE_DIR);
+    if (!dir.exists || typeof dir.size !== 'number') return;
+    if (dir.size > ARTWORK_CACHE_SIZE_LIMIT) {
+      await FileSystem.deleteAsync(ARTWORK_CACHE_DIR, { idempotent: true });
+    }
+  } catch {}
 }
 
 async function cacheRemoteArtwork(uri: string): Promise<string> {
@@ -153,6 +147,7 @@ async function cacheRemoteArtwork(uri: string): Promise<string> {
     const info = await FileSystem.getInfoAsync(cachePath);
     if (info.exists) return cachePath;
     await ensureCacheDir();
+    await cleanArtworkCacheIfNeeded();
     if (isContent) {
       await FileSystem.copyAsync({ from: uri, to: cachePath });
     } else {
@@ -236,8 +231,16 @@ export async function showNowPlayingNotification(
     if (artwork) {
       const cacheUri = artwork;
       if (!colorCache.has(cacheUri)) {
-        const extracted = await extractColorsFromImage(cacheUri);
-        cacheArtworkColor(cacheUri, extracted ? hexToNumber(extracted.background) : null);
+        try {
+          const extracted = await extractColorsFromImage(cacheUri);
+          if (extracted?.background) {
+            cacheArtworkColor(cacheUri, hexToNumber(extracted.background));
+          } else {
+            cacheArtworkColor(cacheUri, null);
+          }
+        } catch {
+          cacheArtworkColor(cacheUri, null);
+        }
       }
       const color = colorCache.get(cacheUri);
       if (color != null) {
@@ -247,15 +250,17 @@ export async function showNowPlayingNotification(
     }
 
     await (PlaybackNotificationManager.show as (data: Record<string, unknown>) => Promise<void>)(info);
-    await PlaybackNotificationManager.enableControl('previousTrack', true);
-    await PlaybackNotificationManager.enableControl('nextTrack', true);
-    await PlaybackNotificationManager.enableControl('play', true);
-    await PlaybackNotificationManager.enableControl('pause', true);
-    await (PlaybackNotificationManager.enableControl as (name: string, enabled: boolean) => Promise<void>)('rewind', true);
-    await (PlaybackNotificationManager.enableControl as (name: string, enabled: boolean) => Promise<void>)('fastForward', true);
-    await (PlaybackNotificationManager.enableControl as (name: string, enabled: boolean) => Promise<void>)('stop', true);
-    await (PlaybackNotificationManager.enableControl as (name: string, enabled: boolean) => Promise<void>)('favorite', true);
-    await (PlaybackNotificationManager.enableControl as (name: string, enabled: boolean) => Promise<void>)('close', true);
+    await Promise.all([
+      PlaybackNotificationManager.enableControl('previousTrack', true),
+      PlaybackNotificationManager.enableControl('nextTrack', true),
+      PlaybackNotificationManager.enableControl('play', true),
+      PlaybackNotificationManager.enableControl('pause', true),
+      (PlaybackNotificationManager.enableControl as (name: string, enabled: boolean) => Promise<void>)('rewind', true),
+      (PlaybackNotificationManager.enableControl as (name: string, enabled: boolean) => Promise<void>)('fastForward', true),
+      (PlaybackNotificationManager.enableControl as (name: string, enabled: boolean) => Promise<void>)('stop', true),
+      (PlaybackNotificationManager.enableControl as (name: string, enabled: boolean) => Promise<void>)('favorite', true),
+      (PlaybackNotificationManager.enableControl as (name: string, enabled: boolean) => Promise<void>)('close', true),
+    ]);
   } catch (e) {
     reportWarning('Notifications', e);
   }
@@ -339,7 +344,9 @@ let sleepTimerNotificationId: string | null = null;
 export async function showSleepTimerNotification(minutesRemaining: number): Promise<void> {
   try {
     if (sleepTimerNotificationId) {
-      await ExpoNotifications.cancelScheduledNotificationAsync(sleepTimerNotificationId);
+      try {
+        await ExpoNotifications.cancelScheduledNotificationAsync(sleepTimerNotificationId);
+      } catch {}
     }
     const result = await ExpoNotifications.scheduleNotificationAsync({
       content: {
@@ -365,5 +372,3 @@ export async function dismissSleepTimerNotification(): Promise<void> {
   }
   sleepTimerNotificationId = null;
 }
-
-

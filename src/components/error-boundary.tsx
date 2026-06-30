@@ -1,5 +1,6 @@
 import { Component, type ReactNode } from 'react';
 import { View, Text, Pressable, ScrollView } from 'react-native';
+import { persistCrashLog } from '@/utils/error-handler';
 
 interface Props {
   children: ReactNode;
@@ -27,6 +28,8 @@ export class ErrorBoundary extends Component<Props, State> {
     this.setState({
       errorInfo: errorInfo?.componentStack ?? null,
     });
+    const name = this.props.name ?? 'ErrorBoundary';
+    persistCrashLog(name, error);
   }
 
   handleRetry = () => {

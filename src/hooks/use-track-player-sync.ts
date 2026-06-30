@@ -7,6 +7,7 @@ import { useSleepTimerStore } from '@/store/sleep-timer-store';
 import { useStatsStore } from '@/store/stats-store';
 import { useQueuePersistStore } from '@/store/queue-persist-store';
 import { useToastStore } from '@/store/toast-store';
+import { reportWarning } from '@/utils/error-handler';
 
 export function useTrackPlayerSync() {
   const syncFromPlayerRef = useRef(usePlayerStore.getState().syncFromPlayer);
@@ -21,6 +22,7 @@ export function useTrackPlayerSync() {
   const lastZeroVolNotifRef = useRef(0);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const appStateRef = useRef(AppState.currentState);
+  const consecutiveSyncFailsRef = useRef(0);
 
   useEffect(() => {
     syncFromPlayerRef.current = usePlayerStore.getState().syncFromPlayer;
@@ -129,7 +131,15 @@ export function useTrackPlayerSync() {
   useEffect(() => {
     function tick() {
       const player = getPlayer();
-      if (!player) return;
+      if (!player) {
+        consecutiveSyncFailsRef.current++;
+        if (consecutiveSyncFailsRef.current > 10) {
+          reportWarning('TrackPlayerSync', 'Player unreachable for 2.5s');
+          consecutiveSyncFailsRef.current = 0;
+        }
+        return;
+      }
+      consecutiveSyncFailsRef.current = 0;
 
       syncFromPlayerRef.current();
 
@@ -238,6 +248,9 @@ export function useTrackPlayerSync() {
         stopInterval();
       }
       if (nextState === 'background') {
+        saveQueueState();
+      }
+      if (nextState === 'inactive') {
         saveQueueState();
       }
     });

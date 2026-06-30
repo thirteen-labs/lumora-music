@@ -1,8 +1,13 @@
 import { storage } from '@/services/mmkv';
+import { reportWarning } from '@/utils/error-handler';
 
 const LYRICS_API = "https://api.lyrics.ovh/v1";
 const LRCLIB_API = "https://lrclib.net/api";
 const LYRICS_CACHE_KEY = "lumora-lyrics-fetch-cache";
+
+const FETCH_TIMEOUT_MS = 8000;
+const MAX_RETRIES = 2;
+const RETRY_DELAY_MS = 1000;
 
 export interface SyncedLine {
   time: number;
@@ -50,7 +55,9 @@ function loadPersistedCache(): void {
     } else {
       for (const k of keys) cache.set(k, obj[k]);
     }
-  } catch {}
+  } catch {
+    try { storage.remove(LYRICS_CACHE_KEY); } catch {}
+  }
 }
 
 loadPersistedCache();
@@ -105,17 +112,39 @@ function stripLRCMetadata(lrc: string): string {
     .trim();
 }
 
+async function fetchWithTimeout(url: string, timeoutMs: number): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetch(url, { signal: controller.signal });
+    return response;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function retryFetch(url: string, timeoutMs: number, maxRetries: number): Promise<Response | null> {
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      const response = await fetchWithTimeout(url, timeoutMs);
+      if (response.ok) return response;
+      if (response.status === 404) return response;
+    } catch {
+      if (attempt === maxRetries) return null;
+      await new Promise(r => setTimeout(r, RETRY_DELAY_MS * Math.pow(2, attempt)));
+    }
+  }
+  return null;
+}
+
 async function fetchFromLrclib(
   artist: string,
   title: string,
 ): Promise<LyricsResult | null> {
   try {
-    const response = await fetch(
-      `${LRCLIB_API}/get?artist_name=${encodeURIComponent(cleanArtist(artist))}&track_name=${encodeURIComponent(cleanTitle(title))}`,
-      { signal: AbortSignal.timeout(5000) },
-    );
-
-    if (!response.ok) return null;
+    const url = `${LRCLIB_API}/get?artist_name=${encodeURIComponent(cleanArtist(artist))}&track_name=${encodeURIComponent(cleanTitle(title))}`;
+    const response = await retryFetch(url, FETCH_TIMEOUT_MS, MAX_RETRIES);
+    if (!response || !response.ok) return null;
 
     const data = await response.json();
     const syncedLrc = data.syncedLyrics;
@@ -142,12 +171,9 @@ async function fetchFromLyricsOvh(
   title: string,
 ): Promise<LyricsResult | null> {
   try {
-    const response = await fetch(
-      `${LYRICS_API}/${encodeURIComponent(cleanArtist(artist))}/${encodeURIComponent(cleanTitle(title))}`,
-      { signal: AbortSignal.timeout(5000) },
-    );
-
-    if (!response.ok) return null;
+    const url = `${LYRICS_API}/${encodeURIComponent(cleanArtist(artist))}/${encodeURIComponent(cleanTitle(title))}`;
+    const response = await retryFetch(url, FETCH_TIMEOUT_MS, MAX_RETRIES);
+    if (!response || !response.ok) return null;
 
     const data = await response.json();
     const original: string = data.lyrics ?? "";
@@ -193,16 +219,21 @@ async function doFetch(
   title: string,
   key: string,
 ): Promise<LyricsResult | null> {
-  const [lrclibResult, ovhResult] = await Promise.all([
-    fetchFromLrclib(artist, title),
-    fetchFromLyricsOvh(artist, title),
-  ]);
+  try {
+    const [lrclibResult, ovhResult] = await Promise.all([
+      fetchFromLrclib(artist, title),
+      fetchFromLyricsOvh(artist, title),
+    ]);
 
-  const result = lrclibResult ?? ovhResult;
-  cache.set(key, result);
-  trimCache();
-  schedulePersist();
-  return result;
+    const result = lrclibResult ?? ovhResult;
+    cache.set(key, result);
+    trimCache();
+    schedulePersist();
+    return result;
+  } catch (e) {
+    reportWarning('Lyrics', e);
+    return null;
+  }
 }
 
 export function parseSyncedLyrics(lrcContent: string): LyricsResult {

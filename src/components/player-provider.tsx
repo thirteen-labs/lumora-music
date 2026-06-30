@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef, ReactNode } from 'react';
 import { View, Text, Pressable, ActivityIndicator, Platform, AppState } from 'react-native';
-import { setupPlayer, setCrossfadeEnabled, setCrossfadeDuration, loadTrack, pausePlayback, seekTo as serviceSeekTo, ensurePlayerAlive } from '@/services/track-player';
+import { setupPlayer, setCrossfadeEnabled, setCrossfadeDuration, loadTrack, pausePlayback, seekTo as serviceSeekTo, ensurePlayerAlive, destroyPlayer } from '@/services/track-player';
 import { useTrackPlayerSync } from '@/hooks/use-track-player-sync';
 import { useSettingsStore } from '@/store/settings-store';
 import { usePlayerStore } from '@/store/player-store';
@@ -12,11 +12,33 @@ import { syncReplayGainToEngine } from '@/store/replay-gain-store';
 import { useLoudnessEnhancerStore } from '@/store/loudness-enhancer-store';
 import { audioEngine } from '@/services/audio-engine';
 import { useTheme } from '@/hooks/use-theme';
-import { reportWarning } from '@/utils/error-handler';
+import { reportWarning, persistCrashLog } from '@/utils/error-handler';
+import { checkStorageIntegrity } from '@/services/mmkv';
+
+const MAX_INIT_RETRIES = 3;
+const INIT_RETRY_DELAY = 1000;
+const QUEUE_RESTORE_TIMEOUT = 10000;
 
 function PlayerSync() {
   useTrackPlayerSync();
   return null;
+}
+
+async function retryWithBackoff<T>(fn: () => Promise<T>, label: string, maxRetries = MAX_INIT_RETRIES): Promise<T> {
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (e) {
+      if (attempt < maxRetries) {
+        const delay = INIT_RETRY_DELAY * Math.pow(2, attempt);
+        console.warn(`[PlayerProvider] Retry ${attempt + 1}/${maxRetries} for ${label} in ${delay}ms:`, e);
+        await new Promise(r => setTimeout(r, delay));
+      } else {
+        throw e;
+      }
+    }
+  }
+  throw new Error(`All ${maxRetries + 1} attempts failed for ${label}`);
 }
 
 export function PlayerProvider({ children }: { children: ReactNode }) {
@@ -25,15 +47,20 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const crossfade = useSettingsStore((s) => s.crossfade);
   const crossfadeDuration = useSettingsStore((s) => s.crossfadeDuration);
   const restoreAttemptedRef = useRef(false);
+  const initAttemptedRef = useRef(false);
 
   useEffect(() => {
+    if (initAttemptedRef.current) return;
+    initAttemptedRef.current = true;
     let cancelled = false;
 
     async function init() {
+      checkStorageIntegrity();
+
       try {
-        await setupPlayer();
+        await retryWithBackoff(setupPlayer, 'setupPlayer');
       } catch (e) {
-        console.warn('Player setup failed, continuing without audio:', e);
+        reportWarning('PlayerProvider', e, 'Player setup failed, continuing without audio');
       }
 
       if (Platform.OS !== 'web') {
@@ -41,20 +68,27 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
           const { requestPermissionsAsync: requestMediaPermissions } = await import('expo-media-library');
           await requestMediaPermissions();
         } catch (e) {
-          console.warn('Media permissions request failed:', e);
+          console.warn('[PlayerProvider] Media permissions request failed:', e);
         }
       }
 
       try {
-        await initializeNotifications();
+        await retryWithBackoff(initializeNotifications, 'initializeNotifications');
       } catch (e) {
-        console.warn('Notification setup failed:', e);
+        reportWarning('PlayerProvider', e, 'Notification setup failed');
       }
 
+      const restoreWithTimeout = async () => {
+        const timer = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Queue restore timed out')), QUEUE_RESTORE_TIMEOUT)
+        );
+        await Promise.race([restoreQueue(), timer]);
+      };
+
       try {
-        await restoreQueue();
+        await restoreWithTimeout();
       } catch (e) {
-        console.warn('Queue restore failed:', e);
+        reportWarning('PlayerProvider', e, 'Queue restore failed or timed out');
       }
 
       if (!cancelled) {
@@ -64,7 +98,8 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
 
     init().catch((e) => {
       if (!cancelled) {
-        console.error('PlayerProvider init failed:', e);
+        reportWarning('PlayerProvider', e, 'Failed to initialize player');
+        persistCrashLog('player-init', e instanceof Error ? e : new Error(String(e)));
         setInitError('Failed to initialize player');
         setReady(true);
       }
@@ -73,7 +108,6 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     return () => { cancelled = true; };
   }, []);
 
-  // Retry queue restore when songs become available
   useEffect(() => {
     if (restoreAttemptedRef.current) return;
     if (!ready) return;
@@ -94,7 +128,6 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
 
     const allSongs = useMusicStore.getState().songs;
     if (allSongs.length === 0) {
-      // Songs not loaded yet - will retry via the songs watcher
       return;
     }
 
@@ -115,28 +148,32 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       isPlaying: false,
     });
 
-    // Load track into engine and seek to persisted position (stays paused)
     try {
       await loadTrack(track);
       if (persisted.position > 0) {
-        await serviceSeekTo(persisted.position);
+        const boundedPosition = Math.min(persisted.position, (track.duration || 300) - 1);
+        await serviceSeekTo(boundedPosition);
       }
       await pausePlayback();
     } catch (e) {
-      console.warn('Failed to restore track position:', e);
+      reportWarning('PlayerProvider', e, 'Failed to restore track position after crash');
     }
 
     restoreAttemptedRef.current = true;
   }
 
-  // Ensure audio engine survives app background/foreground
   useEffect(() => {
     const handleAppState = async (nextState: string) => {
       if (nextState === 'active') {
         try {
-          await ensurePlayerAlive();
+          const playerState = usePlayerStore.getState();
+          const wasPlaying = playerState.isPlaying;
+          const alive = await retryWithBackoff(ensurePlayerAlive, 'ensurePlayerAlive', 2);
+          if (!alive && wasPlaying) {
+            reportWarning('PlayerProvider', null, 'Player failed to recover after foreground - tap to retry');
+          }
         } catch (e) {
-          console.warn('[PlayerProvider] ensurePlayerAlive on foreground failed:', e);
+          reportWarning('PlayerProvider', e, 'Player recovery on foreground failed');
         }
       }
     };
@@ -144,20 +181,28 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     return () => sub.remove();
   }, []);
 
-  // Periodic health watchdog – checks audio engine every 30s during playback
   useEffect(() => {
     if (!ready) return;
+    let healthCheckFails = 0;
     const interval = setInterval(async () => {
       try {
-        await ensurePlayerAlive();
+        const alive = await ensurePlayerAlive();
+        if (alive) {
+          healthCheckFails = 0;
+        } else {
+          healthCheckFails++;
+        }
       } catch (e) {
-        console.warn('[PlayerProvider] Periodic health check failed:', e);
+        healthCheckFails++;
+        if (healthCheckFails > 3) {
+          reportWarning('PlayerProvider', e, 'Audio engine unreachable after multiple checks');
+          healthCheckFails = 0;
+        }
       }
     }, 30000);
     return () => clearInterval(interval);
   }, [ready]);
 
-  // Re-check when music store songs change
   useEffect(() => {
     const unsub = useMusicStore.subscribe((state, prev) => {
       if (!restoreAttemptedRef.current && state.songs.length > 0 && prev.songs.length === 0) {
@@ -206,12 +251,14 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
           onPress={async () => {
             setInitError(null);
             setReady(false);
+            initAttemptedRef.current = false;
             try {
-              const { destroyPlayer, setupPlayer } = await import('@/services/track-player');
               destroyPlayer();
               await setupPlayer();
             } catch (e) {
-              console.warn('[PlayerProvider] Retry cleanup failed:', e);
+              reportWarning('PlayerProvider', e, 'Retry failed');
+              setInitError('Retry failed');
+              setReady(true);
             }
           }}
           style={{ paddingHorizontal: 24, paddingVertical: 12, borderRadius: 12, backgroundColor: colors.accent }}

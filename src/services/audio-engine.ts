@@ -335,15 +335,28 @@ class AudioEngine {
 
   private startWatchdog(): void {
     this.stopWatchdog();
+    let consecutiveFailures = 0;
     this._watchdogTimer = setInterval(() => {
       if (this.context && this._playing && !this._paused) {
         try {
+          if (this.context.state === 'closed') {
+            console.warn('[AudioEngine] Watchdog: context was closed, triggering recovery');
+            this.ensureAlive().catch(() => {});
+            return;
+          }
           if (this.context.state !== 'running') {
             console.warn('[AudioEngine] Watchdog: context not running, attempting resume');
             this.context.resume().catch(() => {});
           }
+          consecutiveFailures = 0;
         } catch (e) {
+          consecutiveFailures++;
           console.warn('[AudioEngine] Watchdog health check failed:', e);
+          if (consecutiveFailures >= 3) {
+            console.warn('[AudioEngine] Watchdog: too many failures, triggering full recovery');
+            this.ensureAlive().catch(() => {});
+            consecutiveFailures = 0;
+          }
         }
       }
     }, WATCHDOG_INTERVAL_MS);
@@ -858,26 +871,43 @@ class AudioEngine {
     try {
       if (this.context) {
         try {
-          await this.context.resume();
-          this.startPositionTracking();
+          if (this.context.state !== 'running') {
+            await this.context.resume();
+          }
+          if (this._playing && !this._paused) {
+            this.startPositionTracking();
+          }
           return true;
         } catch {
-          // Context is dead, will re-create below
           this.stopCurrentSource();
           this.stopPositionTracking();
+          const savedUri = this._currentTrackUri;
+          const wasPlaying = this._playing;
+          const wasPaused = this._paused;
+          const savedPosition = this._currentTime;
+
           this.currentBuffer = null;
           this.crossfadeBuffer = null;
           this.context = null;
+
+          if (savedUri) {
+            await this.init();
+            if (this.context) {
+              await this.loadTrack(savedUri);
+              if (wasPlaying || wasPaused) {
+                this._currentTime = Math.min(savedPosition, this._duration - 0.5 || 0);
+                this._startOffset = this._currentTime;
+                if (wasPlaying) {
+                  this.play();
+                }
+              }
+              return true;
+            }
+          }
+          return false;
         }
       }
       await this.init();
-      if (this._currentTrackUri) {
-        await this.loadTrack(this._currentTrackUri);
-        if (this._playing || this._paused) {
-          this._currentTime = this._startOffset;
-          this.play();
-        }
-      }
       return this.context !== null;
     } catch (e) {
       console.warn('[AudioEngine] ensureAlive failed:', e);

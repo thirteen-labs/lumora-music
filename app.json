@@ -2,22 +2,32 @@
   "expo": {
     "name": "Lumora Player",
     "slug": "lumora",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "scheme": "lumoraapp",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "icon": "./assets/icon.png"
+      "icon": "./assets/icon.png",
+      "supportsTablet": true,
+      "bundleIdentifier": "com.cadmuslabss.lumora",
+      "infoPlist": {
+        "UIBackgroundModes": ["audio"],
+        "NSPhotoLibraryUsageDescription": "Allow Lumora Player to access your photos for album artwork.",
+        "NSMicrophoneUsageDescription": "This app requires access to the microphone to record audio."
+      }
     },
     "android": {
       "package": "com.cadmuslabss.lumora",
+      "versionCode": 2,
       "adaptiveIcon": {
         "backgroundColor": "#020008",
         "foregroundImage": "./assets/adaptive-icon.png",
         "monochromeImage": "./assets/adaptive-icon.png"
       },
       "predictiveBackGestureEnabled": false,
+      "allowBackup": true,
+      "enableProguardInRelease": true,
       "permissions": [
         "FOREGROUND_SERVICE",
         "FOREGROUND_SERVICE_MEDIA_PLAYBACK",
@@ -31,6 +41,20 @@
         "READ_MEDIA_VIDEO",
         "READ_MEDIA_IMAGES",
         "MANAGE_EXTERNAL_STORAGE"
+      ],
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "lumoraapp",
+              "host": "*",
+              "pathPrefix": "/play"
+            }
+          ],
+          "category": ["BROWSABLE", "DEFAULT"]
+        }
       ]
     },
     "web": {
@@ -122,6 +146,14 @@
         "projectId": "2845963d-2d37-48db-8d59-89262e0387ff"
       }
     },
-    "owner": "cadmuslabss-organization"
+    "owner": "cadmuslabss-organization",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/2845963d-2d37-48db-8d59-89262e0387ff",
+      "fallbackToCacheTimeout": 10000,
+      "enabled": true
+    }
   }
 }
