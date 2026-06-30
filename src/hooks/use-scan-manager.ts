@@ -1,7 +1,6 @@
 import { useEffect, useCallback, useRef } from 'react';
 import { AppState, AppStateStatus } from 'react-native';
 import { useMusicStore } from '@/store/music-store';
-import { useVideoStore } from '@/store/video-store';
 import {
   registerBackgroundScan,
   isBackgroundScanRegistered,
@@ -16,11 +15,7 @@ export function useScanManager() {
   const scan = useMusicStore((s) => s.scan);
   const songs = useMusicStore((s) => s.songs);
   const scanStatus = useMusicStore((s) => s.scanStatus);
-  const fetchVideos = useVideoStore((s) => s.fetchVideos);
-  const videos = useVideoStore((s) => s.videos);
   const lastForegroundScan = useRef(0);
-
-  const SCAN_INTERVAL_MS = 1500;
 
   async function runWithInterval<T>(fn: () => Promise<T>, label: string): Promise<T | undefined> {
     try {
@@ -33,9 +28,7 @@ export function useScanManager() {
 
   const runSafeScans = useCallback(async () => {
     await runWithInterval(scan, 'Music');
-    await new Promise((r) => setTimeout(r, SCAN_INTERVAL_MS));
-    await runWithInterval(fetchVideos, 'Video');
-  }, [scan, fetchVideos]);
+  }, [scan]);
 
   useEffect(() => {
     const setup = async () => {
@@ -88,6 +81,5 @@ export function useScanManager() {
   return {
     manualScan,
     songCount: songs.length,
-    videoCount: videos.length,
   };
 }

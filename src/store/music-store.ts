@@ -127,7 +127,6 @@ export const useMusicStore = create<MusicState>()(
               state.scanProgress = { processed, total };
             });
           },
-          { video: false },
         );
 
         const knownUris = new Set(Object.keys(getKnownFiles()));

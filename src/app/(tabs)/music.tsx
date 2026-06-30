@@ -168,9 +168,9 @@ export default function MusicScreen() {
                     <Pressable
                       key={item.id}
                       onPress={() => usePlayerStore.getState().play(item, generateRandomQueue(item, songs))}
-                      style={[s.flexRow, s.itemsCenter, s.gap3, s.px4, s.py3]}
+                      style={[s.flexRow, s.itemsCenter, s.gap3, s.px4, s.py4]}
                     >
-                      <Artwork uri={item.artwork} size={40} borderRadius={8} iconSize={16} iconColor={colors.accent} backgroundColor={colors.card} />
+                      <Artwork uri={item.artwork} size={44} borderRadius={8} iconSize={16} iconColor={colors.accent} backgroundColor={colors.card} />
                       <View style={s.flex1}>
                         <Text style={[s.textSm, s.fontSemibold, { color: colors.text }]} numberOfLines={1}>{item.title}</Text>
                         <View style={[s.flexRow, s.itemsCenter, s.gap1, s.mt05]}>
@@ -191,9 +191,9 @@ export default function MusicScreen() {
             renderItem={({ item }) => (
               <Pressable
                 onPress={() => usePlayerStore.getState().play(item, generateRandomQueue(item, songs))}
-                style={[s.flexRow, s.itemsCenter, s.gap3, s.px4, s.py3]}
+                style={[s.flexRow, s.itemsCenter, s.gap3, s.px4, s.py4]}
               >
-                <Artwork uri={item.artwork} size={40} borderRadius={8} iconSize={16} iconColor={colors.accent} backgroundColor={colors.card} />
+                <Artwork uri={item.artwork} size={44} borderRadius={8} iconSize={16} iconColor={colors.accent} backgroundColor={colors.card} />
                 <View style={s.flex1}>
                   <Text style={[s.textSm, s.fontSemibold, { color: colors.text }]} numberOfLines={1}>{item.title}</Text>
                     <View style={[s.flexRow, s.itemsCenter, s.gap1, s.mt05]}>

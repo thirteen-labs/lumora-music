@@ -24,9 +24,9 @@ export default function AlbumDetailScreen() {
   const album = albums.find((a) => a.id === id);
   const albumSongs = songs.filter((s) => s.albumId === id);
 
-  const heightMap = { small: 56, medium: 68, big: 84 };
+  const heightMap = { small: 64, medium: 76, big: 92 };
   const rowHeight = heightMap[fileSizeTheme];
-  const artSizeMap = { small: 36, medium: 44, big: 56 };
+  const artSizeMap = { small: 40, medium: 48, big: 60 };
   const artSize = artSizeMap[fileSizeTheme];
 
   return (

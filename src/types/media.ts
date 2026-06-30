@@ -37,25 +37,6 @@ export interface Genre {
   songCount: number;
 }
 
-export interface Video {
-  id: string;
-  uri: string;
-  title: string;
-  artist: string | null;
-  duration: number;
-  fileSize: number;
-  dateAdded: number;
-  thumbnail: string | null;
-  width: number;
-  height: number;
-  codec: string | null;
-  frameRate: number | null;
-  bitrate: number | null;
-  language: string | null;
-  hasEmbeddedSubtitles: boolean;
-  subtitleLanguages: string[];
-}
-
 export type SortField = 'title' | 'artist' | 'dateAdded' | 'duration' | 'fileSize' | 'playCount' | 'lastPlayed';
 export type SortOrder = 'asc' | 'desc';
 

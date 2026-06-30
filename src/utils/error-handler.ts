@@ -8,7 +8,6 @@ const SILENT_ERRORS = new Set([
   "Player setup failed",
   "Failed to load expo-media-library/legacy",
   "Failed to load expo-media-library",
-  "Video metadata parsing disabled",
   "Metadata parsing disabled",
   "Failed to load expo-file-system/legacy",
   "Media library module is required but failed to load",

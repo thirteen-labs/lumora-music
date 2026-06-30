@@ -94,19 +94,11 @@ function RootStack() {
               options={{ animation: "slide_from_right" }}
             />
             <Stack.Screen
-              name="online-subtitles"
-              options={{ animation: "slide_from_right" }}
-            />
-            <Stack.Screen
               name="ai-features"
               options={{ animation: "slide_from_right" }}
             />
             <Stack.Screen
               name="cloud-sync"
-              options={{ animation: "slide_from_right" }}
-            />
-            <Stack.Screen
-              name="gesture-controls"
               options={{ animation: "slide_from_right" }}
             />
             <Stack.Screen
@@ -183,18 +175,6 @@ function RootStack() {
             />
             <Stack.Screen
               name="output-devices"
-              options={{ animation: "slide_from_right" }}
-            />
-            <Stack.Screen
-              name="video-folder"
-              options={{ animation: "slide_from_right" }}
-            />
-            <Stack.Screen
-              name="video-player"
-              options={{ animation: "slide_from_bottom" }}
-            />
-            <Stack.Screen
-              name="video-edit"
               options={{ animation: "slide_from_right" }}
             />
             <Stack.Screen

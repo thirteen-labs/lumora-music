@@ -55,7 +55,6 @@ const SETTINGS_KEYS = {
   accentOverride: "lumora-setting-accent-override",
   showSystemHiddenFiles: "lumora-setting-show-system-hidden",
   audioQuality: "lumora-setting-audio-quality",
-  videoQuality: "lumora-setting-video-quality",
   gaplessPlayback: "lumora-setting-gapless",
   playTogether: "lumora-setting-play-together",
   newMediaNotification: "lumora-setting-new-media-notif",
@@ -105,7 +104,6 @@ interface SettingsState {
   accentOverride: string | null;
   showSystemHiddenFiles: boolean;
   audioQuality: string;
-  videoQuality: string;
   gaplessPlayback: boolean;
   playTogether: boolean;
   newMediaNotification: boolean;
@@ -127,7 +125,6 @@ interface SettingsState {
   setAdsRemoved: (v: boolean) => void;
   setAccentOverride: (color: string | null) => void;
   setAudioQuality: (v: string) => void;
-  setVideoQuality: (v: string) => void;
   setGaplessPlayback: (v: boolean) => void;
   setPlayTogether: (v: boolean) => void;
   setNewMediaNotification: (v: boolean) => void;
@@ -177,7 +174,6 @@ export const useSettingsStore = create<SettingsState>()(
     adsRemoved: loadBool(SETTINGS_KEYS.adsRemoved, false),
     showSystemHiddenFiles: loadBool(SETTINGS_KEYS.showSystemHiddenFiles, false),
     audioQuality: loadString(SETTINGS_KEYS.audioQuality, 'high'),
-    videoQuality: loadString(SETTINGS_KEYS.videoQuality, '1080p'),
     gaplessPlayback: loadBool(SETTINGS_KEYS.gaplessPlayback, true),
     playTogether: loadBool(SETTINGS_KEYS.playTogether, false),
     newMediaNotification: loadBool(SETTINGS_KEYS.newMediaNotification, true),
@@ -246,10 +242,6 @@ export const useSettingsStore = create<SettingsState>()(
     setAudioQuality: (v) => {
       set((s) => { s.audioQuality = v; });
       persistSetting(SETTINGS_KEYS.audioQuality, v);
-    },
-    setVideoQuality: (v) => {
-      set((s) => { s.videoQuality = v; });
-      persistSetting(SETTINGS_KEYS.videoQuality, v);
     },
     setGaplessPlayback: (v) => {
       set((s) => { s.gaplessPlayback = v; });

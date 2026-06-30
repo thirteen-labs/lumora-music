@@ -82,9 +82,9 @@ export default function SongsScreen() {
   const GRID_COLUMNS = gridConfig.columns;
   const GRID_ITEM_WIDTH = (SCREEN_WIDTH - 32 - (GRID_COLUMNS - 1) * 12) / GRID_COLUMNS;
 
-  const listHeightMap = { small: 56, medium: 68, big: 84 };
+  const listHeightMap = { small: 64, medium: 76, big: 92 };
   const rowHeight = listHeightMap[fileSizeTheme];
-  const listArtSizeMap = { small: 36, medium: 44, big: 56 };
+  const listArtSizeMap = { small: 40, medium: 48, big: 60 };
   const artSize = listArtSizeMap[fileSizeTheme];
 
   return (

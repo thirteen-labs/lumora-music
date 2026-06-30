@@ -23,9 +23,9 @@ export default function GenreDetailScreen() {
   const genre = genres.find((g) => g.id === id);
   const genreSongs = songs.filter((s) => (s.genre ?? 'Unknown Genre') === id);
 
-  const heightMap = { small: 56, medium: 68, big: 84 };
+  const heightMap = { small: 64, medium: 76, big: 92 };
   const rowHeight = heightMap[fileSizeTheme];
-  const artSizeMap = { small: 36, medium: 44, big: 56 };
+  const artSizeMap = { small: 40, medium: 48, big: 60 };
   const artSize = artSizeMap[fileSizeTheme];
 
   return (

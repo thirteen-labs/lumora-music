@@ -71,10 +71,8 @@ export interface ListeningStats {
 
 export interface StorageInfo {
   totalSongs: number;
-  totalVideos: number;
   totalAudioSize: number;
-  totalVideoSize: number;
-  largestFiles: { name: string; size: number; type: 'audio' | 'video' }[];
+  largestFiles: { name: string; size: number; type: 'audio' }[];
   genreBreakdown: { genre: string; count: number; size: number }[];
 }
 

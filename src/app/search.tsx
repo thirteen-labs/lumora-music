@@ -3,7 +3,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FlashList } from "@shopify/flash-list";
 import { useTheme } from "@/hooks/use-theme";
 import { useMusicStore } from "@/store/music-store";
-import { useVideoStore } from "@/store/video-store";
 import { useHiddenFilesStore } from "@/store/hidden-files-store";
 import { usePlayerStore } from "@/store/player-store";
 import { TopBar } from "@/components/top-bar";
@@ -13,7 +12,6 @@ import { useState, useMemo, useCallback, useEffect } from "react";
 import { fuzzySearch } from "@/utils/fuzzy";
 import { useRouter, useFocusEffect } from "expo-router";
 import { storage } from "@/services/mmkv";
-import { formatDuration } from "@/utils/cn";
 import { s } from "@/styles";
 
 const RECENT_KEY = "lumora-recent-searches";
@@ -60,8 +58,7 @@ export default function SearchScreen() {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const songs = useMusicStore((s) => s.songs);
-  const videos = useVideoStore((s) => s.videos);
-  const hiddenVideoIds = useHiddenFilesStore((s) => s.hiddenVideoIds);
+  const hiddenSongIds = useHiddenFilesStore((s) => s.hiddenSongIds);
   const albums = useMusicStore((s) => s.albums);
   const artists = useMusicStore((s) => s.artists);
   const genres = useMusicStore((s) => s.genres);
@@ -120,7 +117,7 @@ export default function SearchScreen() {
   const results = useMemo(() => {
     let q = debouncedQuery.trim();
     if (!q && !filterYear && !filterGenre && !filterExt && !minDuration && !maxDuration)
-      return { songs: [], videos: [], albums: [], artists: [], genres: [] };
+      return { songs: [], albums: [], artists: [], genres: [] };
 
     let yearFilter: string | null = filterYear;
     let genreFilter: string | null = filterGenre;
@@ -144,8 +141,7 @@ export default function SearchScreen() {
     const minDur = minDuration ? Number(minDuration) : 0;
     const maxDur = maxDuration ? Number(maxDuration) : Infinity;
 
-    let filteredSongs = songs;
-    let filteredVideos = videos.filter((v) => !hiddenVideoIds.has(v.id));
+    let filteredSongs = songs.filter((s) => !hiddenSongIds.has(s.id));
 
     if (yearFilter || genreFilter || extFilter || minDur > 0 || maxDur < Infinity) {
       filteredSongs = songs.filter((s) => {
@@ -163,21 +159,6 @@ export default function SearchScreen() {
         if (maxDur < Infinity && s.duration > maxDur) match = false;
         return match;
       });
-
-      filteredVideos = videos.filter((v) => {
-        let match = true;
-        if (yearFilter) {
-          const year = v.dateAdded ? new Date(v.dateAdded).getFullYear().toString() : '';
-          if (year !== yearFilter) match = false;
-        }
-        if (extFilter) {
-          const ext = v.uri ? v.uri.split('.').pop()?.toLowerCase() || '' : '';
-          if (ext !== extFilter) match = false;
-        }
-        if (minDur > 0 && v.duration < minDur) match = false;
-        if (maxDur < Infinity && v.duration > maxDur) match = false;
-        return match;
-      });
     }
 
     const getSongFields = (s: any) => {
@@ -186,16 +167,9 @@ export default function SearchScreen() {
       return [s.title, s.artist, s.album, s.genre || '', year, ext];
     };
 
-    const getVideoFields = (v: any) => {
-      const year = v.dateAdded ? new Date(v.dateAdded).getFullYear().toString() : '';
-      const ext = v.uri ? v.uri.split('.').pop() || '' : '';
-      return [v.title, year, ext];
-    };
-
     if (!baseQuery && (yearFilter || genreFilter || extFilter)) {
       return {
         songs: filteredSongs,
-        videos: filteredVideos,
         albums: genreFilter || extFilter ? [] : albums,
         artists: genreFilter || extFilter ? [] : artists,
         genres: yearFilter || extFilter ? [] : genres,
@@ -203,7 +177,6 @@ export default function SearchScreen() {
     }
 
     const matchedSongs = fuzzySearch(filteredSongs, baseQuery || q, getSongFields);
-    const matchedVideos = fuzzySearch(filteredVideos, baseQuery || q, getVideoFields);
     const matchedAlbums = fuzzySearch(albums, baseQuery || q, (a) => [
       a.title,
       a.artist,
@@ -212,16 +185,14 @@ export default function SearchScreen() {
     const matchedGenres = fuzzySearch(genres, baseQuery || q, (g) => [g.name]);
     return {
       songs: matchedSongs.map((r) => r.item),
-      videos: matchedVideos.map((r) => r.item),
       albums: matchedAlbums.map((r) => r.item),
       artists: matchedArtists.map((r) => r.item),
       genres: matchedGenres.map((r) => r.item),
     };
-  }, [debouncedQuery, filterYear, filterGenre, filterExt, minDuration, maxDuration, songs, videos, albums, artists, genres, hiddenVideoIds]);
+  }, [debouncedQuery, filterYear, filterGenre, filterExt, minDuration, maxDuration, songs, albums, artists, genres, hiddenSongIds]);
 
   const totalResults =
     results.songs.length +
-    results.videos.length +
     results.albums.length +
     results.artists.length +
     results.genres.length;
@@ -234,14 +205,6 @@ export default function SearchScreen() {
         subtitle: string;
         artwork: string | null;
         thumbnail: null;
-      }
-    | {
-        type: "video";
-        id: string;
-        title: string;
-        subtitle: string;
-        artwork: null;
-        thumbnail: string | null;
       }
     | {
         type: "album";
@@ -292,14 +255,6 @@ export default function SearchScreen() {
       subtitle: `${g.songCount} songs`,
       artwork: null,
       thumbnail: null,
-    })),
-    ...results.videos.map((v) => ({
-      type: "video" as const,
-      id: v.id,
-      title: v.title,
-      subtitle: formatDuration(v.duration),
-      artwork: null,
-      thumbnail: v.thumbnail,
     })),
     ...results.songs.map((s) => ({
       type: "song" as const,
@@ -491,11 +446,6 @@ export default function SearchScreen() {
                 if (item.type === "song") {
                   const song = songs.find((s) => s.id === item.id);
                   if (song) usePlayerStore.getState().play(song, results.songs);
-                } else if (item.type === "video") {
-                  const video = videos.find((v) => v.id === item.id);
-                  if (video) {
-                    router.push({ pathname: '/video-player', params: { videoId: video.id } });
-                  }
                 } else if (item.type === "album") {
                   router.push({
                     pathname: "/music/album/[id]",
@@ -513,11 +463,11 @@ export default function SearchScreen() {
                   });
                 }
               }}
-              style={[s.flexRow, s.itemsCenter, s.gap3, s.px4, s.py3]}
+              style={[s.flexRow, s.itemsCenter, s.gap3, s.px4, s.py4]}
             >
               <Artwork
-                uri={item.artwork ?? item.thumbnail}
-                size={40}
+                uri={item.artwork}
+                size={44}
                 borderRadius={16}
                 iconSize={18}
                 iconColor={colors.accent}

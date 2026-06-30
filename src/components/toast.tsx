@@ -4,7 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { s } from '@/styles';
 import { useTheme } from '@/hooks/use-theme';
 import { useToastStore } from '@/store/toast-store';
-import { Check, Heart, ListPlus, Music, Volume2, Film, AlertCircle, EyeOff, Trash2 } from 'lucide-react-native';
+import { Check, Heart, ListPlus, Music, Volume2, AlertCircle, EyeOff, Trash2 } from 'lucide-react-native';
 import Animated, { useSharedValue, useAnimatedStyle, withTiming } from 'react-native-reanimated';
 
 const ICON_MAP: Record<string, React.ComponentType<any>> = {
@@ -13,7 +13,6 @@ const ICON_MAP: Record<string, React.ComponentType<any>> = {
   list: ListPlus,
   music: Music,
   volume: Volume2,
-  video: Film,
   error: AlertCircle,
   'eye-off': EyeOff,
   'trash-2': Trash2,

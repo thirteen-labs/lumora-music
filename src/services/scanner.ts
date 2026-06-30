@@ -219,25 +219,19 @@ export function getCachedAlbums(): LumoraAlbum[] { ensureCacheLoaded(); return c
 export function getCachedArtists(): Artist[] { ensureCacheLoaded(); return cachedArtists; }
 export function getCachedGenres(): Genre[] { ensureCacheLoaded(); return cachedGenres; }
 
-export async function requestPermissions(options?: { audio?: boolean; video?: boolean }, force = false): Promise<boolean> {
+export async function requestPermissions(force = false): Promise<boolean> {
   if (!MediaLibrary) return false;
   if (force) permissionCache = null;
   if (!force && permissionCache !== null) return permissionCache;
-  const needAudio = options?.audio !== false;
-  const needVideo = options?.video !== false;
   try {
-    const { status, accessPrivileges } = await MediaLibrary.requestPermissionsAsync();
+    const { status } = await MediaLibrary.requestPermissionsAsync();
     let mediaLibraryGranted = status === 'granted';
 
     if (Platform.OS === 'android' && Platform.Version >= 33) {
       try {
-        const permPromises: Promise<string>[] = [];
-        if (needAudio) {
-          permPromises.push(PermissionsAndroid.request('android.permission.READ_MEDIA_AUDIO' as any));
-        }
-        if (needVideo) {
-          permPromises.push(PermissionsAndroid.request('android.permission.READ_MEDIA_VIDEO' as any));
-        }
+        const permPromises: Promise<string>[] = [
+          PermissionsAndroid.request('android.permission.READ_MEDIA_AUDIO' as any),
+        ];
         const results = await Promise.all(permPromises);
         const allGranted = results.every((r) => r === 'granted');
         if (!allGranted) {
@@ -247,7 +241,6 @@ export async function requestPermissions(options?: { audio?: boolean; video?: bo
         console.error('[Scanner] Failed to request Android 13+ permissions:', permError);
       }
     } else if (Platform.OS === 'android' && Platform.Version < 33) {
-      if (needAudio || needVideo) {
         try {
           const storageResult = await PermissionsAndroid.request(
             'android.permission.READ_EXTERNAL_STORAGE' as any,
@@ -258,7 +251,6 @@ export async function requestPermissions(options?: { audio?: boolean; video?: bo
         } catch (permError) {
           console.error('[Scanner] Failed to request legacy storage permission:', permError);
         }
-      }
     }
 
     permissionCache = mediaLibraryGranted;
@@ -492,10 +484,7 @@ async function fetchSongs(
 export async function scanMediaLibrary(
   onStatusChange?: (status: MediaScanStatus) => void,
   onProgress?: (processed: number, total: number) => void,
-  options?: { audio?: boolean; video?: boolean },
 ): Promise<{ songs: Song[]; albums: LumoraAlbum[]; artists: Artist[]; genres: Genre[] }> {
-  const scanAudio = options?.audio !== false;
-
   onStatusChange?.('scanning');
   onProgress?.(0, 1);
 
@@ -508,7 +497,7 @@ export async function scanMediaLibrary(
   }
 
   try {
-    const hasPermission = await requestPermissions({ audio: scanAudio });
+    const hasPermission = await requestPermissions();
     if (!hasPermission) {
       onStatusChange?.('error');
       return { songs: [], albums: [], artists: [], genres: [] };
@@ -516,14 +505,12 @@ export async function scanMediaLibrary(
 
     const songs: Song[] = [];
 
-    if (scanAudio) {
-      let songsProcessed = 0;
-      const fetchedSongs = await fetchSongs((count) => {
-        songsProcessed += count;
-        onProgress?.(songsProcessed, songsProcessed);
-      });
-      songs.push(...fetchedSongs);
-    }
+    let songsProcessed = 0;
+    const fetchedSongs = await fetchSongs((count) => {
+      songsProcessed += count;
+      onProgress?.(songsProcessed, songsProcessed);
+    });
+    songs.push(...fetchedSongs);
 
     const existingSongMap = new Map<string, number>(
       cachedSongs.filter((s) => s.dateAdded > 0).map((s) => [s.uri, s.dateAdded]),

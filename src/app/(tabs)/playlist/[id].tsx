@@ -164,12 +164,12 @@ export default function PlaylistDetailScreen() {
             <Pressable
               onPress={() => toggleSelect(item.id)}
               onLongPress={() => toggleSelect(item.id)}
-              style={[s.flexRow, s.itemsCenter, s.gap3, s.px4, s.py3, { backgroundColor: isSelected ? colors.accent + '10' : 'transparent' }]}
+              style={[s.flexRow, s.itemsCenter, s.gap3, s.px4, s.py4, { backgroundColor: isSelected ? colors.accent + '10' : 'transparent' }]}
             >
               <Text style={[s.textXs, { width: 24, textAlign: 'center', color: colors.textMuted }]}>
                 {index + 1}
               </Text>
-              <Artwork uri={item.artwork} size={44} borderRadius={12} iconSize={18} iconColor={colors.accent} backgroundColor={colors.surface} />
+              <Artwork uri={item.artwork} size={48} borderRadius={12} iconSize={18} iconColor={colors.accent} backgroundColor={colors.surface} />
               <View style={s.flex1}>
                 <Text style={[s.textSm, s.fontMedium, { color: colors.text }]} numberOfLines={1}>{item.title}</Text>
                 <Text style={[s.textXs, { color: colors.textMuted }]}>{item.artist} · {formatDuration(item.duration)}</Text>
@@ -236,11 +236,11 @@ export default function PlaylistDetailScreen() {
                     alignItems: 'center',
                     gap: 12,
                     paddingHorizontal: 20,
-                    paddingVertical: 10,
+                    paddingVertical: 12,
                     backgroundColor: isSelected ? colors.accent + '10' : 'transparent',
                   }}
                 >
-                  <Artwork uri={item.artwork} size={40} borderRadius={10} iconSize={16} iconColor={colors.accent} backgroundColor={colors.surface} />
+                  <Artwork uri={item.artwork} size={44} borderRadius={10} iconSize={16} iconColor={colors.accent} backgroundColor={colors.surface} />
                   <View style={{ flex: 1 }}>
                     <Text style={{ fontSize: 14, fontWeight: '500', color: colors.text }} numberOfLines={1}>{item.title}</Text>
                     <Text style={{ fontSize: 12, color: colors.textMuted }} numberOfLines={1}>{item.artist}</Text>

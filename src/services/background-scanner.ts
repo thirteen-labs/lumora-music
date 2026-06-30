@@ -19,7 +19,6 @@ function ensureTaskDefined(): void {
       let hasData = false;
       try {
         const { scanMediaLibrary } = require('./scanner');
-        const { fetchVideos } = require('./video-fetcher');
         const { updateKnownFiles } = require('../scanner/enhanced-scanner');
 
         const enabled = storage.getString(BG_SCAN_ENABLED_KEY);
@@ -27,25 +26,14 @@ function ensureTaskDefined(): void {
           return BackgroundFetch.BackgroundFetchResult.NoData;
         }
 
-        const bgIntervalMs = 2000;
-
         try {
-          const r = await scanMediaLibrary(undefined, undefined);
+          const r = await scanMediaLibrary();
           if (r.songs.length > 0) {
             updateKnownFiles(r.songs);
             hasData = true;
           }
         } catch (e) {
           reportWarning('BackgroundScanner', e, 'Music scan failed');
-        }
-
-        await new Promise((r) => setTimeout(r, bgIntervalMs));
-
-        try {
-          const v = await fetchVideos();
-          if (v.length > 0) hasData = true;
-        } catch (e) {
-          reportWarning('BackgroundScanner', e, 'Video scan failed');
         }
 
         storage.set(LAST_BG_SCAN_KEY, Date.now());

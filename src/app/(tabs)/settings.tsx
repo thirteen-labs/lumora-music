@@ -20,7 +20,6 @@ import {
   Languages,
   Type,
   Music,
-  Play,
   SlidersHorizontal,
   Volume2,
   RefreshCw,
@@ -258,13 +257,6 @@ export default function SettingsScreen() {
               label="Audio Quality"
               subtitle="High (320 kbps)"
               onPress={() => router.push('/audio-quality' as any)}
-              colors={colors}
-            />
-            <SettingRow
-              icon={Play}
-              label="Video Quality"
-              subtitle="1080p"
-              onPress={() => router.push('/video-quality' as any)}
               colors={colors}
             />
             <SettingRow

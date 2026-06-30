@@ -11,7 +11,7 @@ export interface DeletedItem {
   title: string;
   artist?: string;
   uri: string;
-  type: 'song' | 'video';
+  type: 'song';
   deletedAt: number;
   fileSize: number;
   duration: number;

@@ -62,7 +62,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { s } from '@/styles';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const QUEUE_ITEM_HEIGHT = 64;
+const QUEUE_ITEM_HEIGHT = 72;
 const ARTWORK_SIZE = SCREEN_WIDTH * 0.72;
 
 const SeekBar = React.memo(({
@@ -265,7 +265,7 @@ export default function PlayerScreen() {
                 alignItems: 'center',
                 gap: 8,
                 paddingHorizontal: 16,
-                paddingVertical: 8,
+                paddingVertical: 12,
                 backgroundColor: isCurrent ? colors.accent + '18' : 'transparent',
               },
               isBeingDragged && dragAnimatedStyle,
@@ -276,8 +276,8 @@ export default function PlayerScreen() {
             </View>
             <View
               style={{
-                width: 40,
-                height: 40,
+                width: 44,
+                height: 44,
                 borderRadius: 12,
                 overflow: 'hidden',
                 alignItems: 'center',
