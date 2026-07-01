@@ -95,6 +95,15 @@ export async function initializeNotifications(): Promise<void> {
 
   addListener('playbackNotificationClose', () => wrapHandler(() => {
     const state = usePlayerStore.getState();
+    if (state.currentTrack) {
+      try {
+        const { useQueuePersistStore } = require('@/store/queue-persist-store');
+        useQueuePersistStore.getState().saveQueue(
+          state.currentTrack, state.queue, state.queueIndex,
+          state.shuffle, state.repeat, state.position,
+        );
+      } catch {}
+    }
     state.pause();
     dismissNowPlayingNotification();
   }));
@@ -102,8 +111,24 @@ export async function initializeNotifications(): Promise<void> {
   addListener('playbackNotificationDismiss', () => wrapHandler(() => {
     const state = usePlayerStore.getState();
     state.pause();
+    /* Also save queue so position is captured */
+    try {
+      const s = usePlayerStore.getState();
+      if (s.currentTrack) {
+        const { useQueuePersistStore } = require('@/store/queue-persist-store');
+        useQueuePersistStore.getState().saveQueue(
+          s.currentTrack, s.queue, s.queueIndex,
+          s.shuffle, s.repeat, s.position,
+        );
+      }
+    } catch {}
     dismissNowPlayingNotification();
   }));
+
+  /* Dismiss any stale notification from prior session */
+  try {
+    await PlaybackNotificationManager.hide();
+  } catch {}
 
   await Promise.all([
     ensureChannel(SCAN_CHANNEL, 'Media Scan'),
@@ -294,6 +319,16 @@ export async function cancelAllNotifications(): Promise<void> {
   } catch (e) {
     reportWarning('Notifications', e);
   }
+}
+
+/** Call on app death to ensure notification is removed cleanly and any stale
+ *  notification from a previous session is dismissed on next launch. */
+export async function cleanupOnAppExit(): Promise<void> {
+  await dismissNowPlayingNotification();
+  try {
+    await ExpoNotifications.cancelAllScheduledNotificationsAsync();
+  } catch {}
+  initialized = false;
 }
 
 function shouldNotify(): boolean {

@@ -87,12 +87,12 @@ function trimCache(): void {
 
 function parseLRC(lrc: string): SyncedLine[] {
   const lines: SyncedLine[] = [];
-  const regex = /\[(\d{2}):(\d{2})[.:](\d{2,3})\]\s*(.*)/g;
+  const regex = /\[(\d{2}):(\d{2})(?:[.:](\d{2,3}))?\]\s*(.*)/g;
   let match: RegExpExecArray | null;
   while ((match = regex.exec(lrc)) !== null) {
     const min = parseInt(match[1], 10);
     const sec = parseInt(match[2], 10);
-    const ms = parseInt(match[3].padEnd(3, "0"), 10);
+    const ms = match[3] ? parseInt(match[3].padEnd(3, "0"), 10) : 0;
     const time = min * 60 + sec + ms / 1000;
     const text = match[4].trim();
     if (text) lines.push({ time, text });
@@ -108,7 +108,7 @@ function stripLRCMetadata(lrc: string): string {
     .replace(/\[al:.*?\]\s*/g, "")
     .replace(/\[by:.*?\]\s*/g, "")
     .replace(/\[offset:.*?\]\s*/g, "")
-    .replace(/\[\d{2}:\d{2}[.:]\d{2,3}\]\s*/g, "")
+    .replace(/\[\d{2}:\d{2}(?:[.:]\d{2,3})?\]\s*/g, "")
     .trim();
 }
 

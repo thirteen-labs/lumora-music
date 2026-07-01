@@ -10,8 +10,7 @@ import { fetchLyrics } from '@/services/lyrics';
 import { useState } from 'react';
 import { Search, FileUp, FileDown, Paperclip, Loader } from 'lucide-react-native';
 import * as DocumentPicker from 'expo-document-picker';
-import { cacheDirectory } from 'expo-file-system/legacy';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 
 export default function LyricsEditorScreen() {
@@ -68,7 +67,7 @@ export default function LyricsEditorScreen() {
   const handleSearchLyrics = async () => {
     if (!targetSong) return;
     setSearchLoading(true);
-    const result = await fetchLyrics(targetSong.artist, targetSong.title);
+    const result = await fetchLyrics(targetSong.artist, targetSong.title, true);
     setSearchLoading(false);
     if (result) {
       saveLyrics(targetSong.id, result.raw || result.lyrics);
@@ -99,7 +98,7 @@ export default function LyricsEditorScreen() {
 
     try {
       const fileName = `${targetSong.title.replace(/[^a-zA-Z0-9]/g, '_')}.lrc`;
-      const fileUri = cacheDirectory + fileName;
+      const fileUri = FileSystem.cacheDirectory + fileName;
       await FileSystem.writeAsStringAsync(fileUri, lyrics);
       const isAvailable = await Sharing.isAvailableAsync();
       if (isAvailable) {

@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, ReactNode } from 'react';
+import { useEffect, useState, useRef, useCallback, ReactNode } from 'react';
 import { View, Text, Pressable, ActivityIndicator, Platform, AppState } from 'react-native';
 import { setupPlayer, setCrossfadeEnabled, setCrossfadeDuration, loadTrack, pausePlayback, seekTo as serviceSeekTo, ensurePlayerAlive, destroyPlayer } from '@/services/track-player';
 import { useTrackPlayerSync } from '@/hooks/use-track-player-sync';
@@ -6,7 +6,7 @@ import { useSettingsStore } from '@/store/settings-store';
 import { usePlayerStore } from '@/store/player-store';
 import { useMusicStore } from '@/store/music-store';
 import { useQueuePersistStore, reconstructQueue } from '@/store/queue-persist-store';
-import { initializeNotifications } from '@/services/notifications';
+import { initializeNotifications, dismissNowPlayingNotification } from '@/services/notifications';
 import { syncEqualizerToEngine } from '@/store/equalizer-store';
 import { syncReplayGainToEngine } from '@/store/replay-gain-store';
 import { useLoudnessEnhancerStore } from '@/store/loudness-enhancer-store';
@@ -48,6 +48,27 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const crossfadeDuration = useSettingsStore((s) => s.crossfadeDuration);
   const restoreAttemptedRef = useRef(false);
   const initAttemptedRef = useRef(false);
+  const destroyedRef = useRef(false);
+
+  const saveStateBeforeExit = useCallback(() => {
+    try {
+      const state = usePlayerStore.getState();
+      if (state.currentTrack) {
+        useQueuePersistStore.getState().saveQueue(
+          state.currentTrack, state.queue, state.queueIndex,
+          state.shuffle, state.repeat, state.position,
+        );
+      }
+    } catch {}
+  }, []);
+
+  const cleanup = useCallback(() => {
+    if (destroyedRef.current) return;
+    destroyedRef.current = true;
+    saveStateBeforeExit();
+    dismissNowPlayingNotification();
+    destroyPlayer();
+  }, [saveStateBeforeExit]);
 
   useEffect(() => {
     if (initAttemptedRef.current) return;
@@ -78,18 +99,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         reportWarning('PlayerProvider', e, 'Notification setup failed');
       }
 
-      const restoreWithTimeout = async () => {
-        const timer = new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('Queue restore timed out')), QUEUE_RESTORE_TIMEOUT)
-        );
-        await Promise.race([restoreQueue(), timer]);
-      };
-
-      try {
-        await restoreWithTimeout();
-      } catch (e) {
-        reportWarning('PlayerProvider', e, 'Queue restore failed or timed out');
-      }
+      await restoreQueueWithTimeout();
 
       if (!cancelled) {
         setReady(true);
@@ -105,9 +115,10 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       }
     });
 
-    return () => { cancelled = true; };
-  }, []);
+    return () => { cancelled = true; cleanup(); };
+  }, [cleanup]);
 
+  /* Retry restore when music store populates after init */
   useEffect(() => {
     if (restoreAttemptedRef.current) return;
     if (!ready) return;
@@ -119,21 +130,30 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     }
   }, [ready]);
 
+  async function restoreQueueWithTimeout() {
+    try {
+      const timer = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Queue restore timed out')), QUEUE_RESTORE_TIMEOUT)
+      );
+      await Promise.race([restoreQueue(), timer]);
+    } catch (e) {
+      reportWarning('PlayerProvider', e, 'Queue restore failed or timed out');
+    }
+  }
+
   async function restoreQueue() {
+    /* Prevent re-entry */
+    if (restoreAttemptedRef.current) return;
+    restoreAttemptedRef.current = true;
+
     const persisted = useQueuePersistStore.getState().loadQueue();
     if (!persisted || !persisted.currentTrackId) {
-      restoreAttemptedRef.current = true;
       return;
     }
 
     const allSongs = useMusicStore.getState().songs;
-    if (allSongs.length === 0) {
-      return;
-    }
-
     const { track, queue, queueIndex } = reconstructQueue(persisted, allSongs);
-    if (!track || queue.length === 0) {
-      restoreAttemptedRef.current = true;
+    if (!track) {
       return;
     }
 
@@ -150,16 +170,14 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
 
     try {
       await loadTrack(track);
-      if (persisted.position > 0) {
-        const boundedPosition = Math.min(persisted.position, (track.duration || 300) - 1);
+      if (persisted.position > 0 && track.duration > 0) {
+        const boundedPosition = Math.min(persisted.position, track.duration - 1);
         await serviceSeekTo(boundedPosition);
       }
       await pausePlayback();
     } catch (e) {
       reportWarning('PlayerProvider', e, 'Failed to restore track position after crash');
     }
-
-    restoreAttemptedRef.current = true;
   }
 
   useEffect(() => {
@@ -175,11 +193,13 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         } catch (e) {
           reportWarning('PlayerProvider', e, 'Player recovery on foreground failed');
         }
+      } else if (nextState === 'background' || nextState === 'inactive') {
+        saveStateBeforeExit();
       }
     };
     const sub = AppState.addEventListener('change', handleAppState);
     return () => sub.remove();
-  }, []);
+  }, [saveStateBeforeExit]);
 
   useEffect(() => {
     if (!ready) return;
@@ -252,6 +272,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
             setInitError(null);
             setReady(false);
             initAttemptedRef.current = false;
+            destroyedRef.current = false;
             try {
               destroyPlayer();
               await setupPlayer();

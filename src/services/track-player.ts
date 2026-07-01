@@ -111,6 +111,8 @@ export function getCrossfadeDuration(): number {
 
 export async function setupPlayer(): Promise<void> {
   try {
+    /* Destroy any existing context before init */
+    audioEngine.destroy();
     await audioEngine.init();
   } catch (e) {
     console.warn("Audio engine init failed:", e);
@@ -201,6 +203,9 @@ export function clearLockScreenControls(): void {
 }
 
 export function destroyPlayer(): void {
+  try {
+    dismissNowPlayingNotification();
+  } catch {}
   audioEngine.destroy();
 }
 

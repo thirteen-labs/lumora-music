@@ -5,12 +5,24 @@ import { reportWarning } from '@/utils/error-handler';
 import type { Song } from '@/types/media';
 
 const QUEUE_KEY = 'lumora-persisted-queue';
-const QUEUE_VERSION = 2;
+const QUEUE_VERSION = 3;
+
+interface StubSong {
+  id: string;
+  title: string;
+  artist: string;
+  artwork: string | null;
+  duration: number;
+  uri: string;
+}
 
 interface PersistedQueue {
   version: number;
   currentTrackId: string | null;
   queueIds: string[];
+  /** Fallback song data so queue is usable even without the full music store loaded */
+  queueItems: StubSong[];
+  currentTrackStub: StubSong | null;
   queueIndex: number;
   shuffle: boolean;
   repeat: string;
@@ -24,16 +36,33 @@ interface QueuePersistState {
   clearQueue: () => void;
 }
 
+function toStub(song: Song): StubSong {
+  return {
+    id: song.id,
+    title: song.title,
+    artist: song.artist,
+    artwork: song.artwork,
+    duration: song.duration,
+    uri: song.uri,
+  };
+}
+
 function validatePersistedQueue(data: unknown): data is PersistedQueue {
   if (!data || typeof data !== 'object') return false;
   const q = data as Record<string, unknown>;
-  return (
+  const valid =
     typeof q.currentTrackId === 'string' &&
     Array.isArray(q.queueIds) &&
     typeof q.queueIndex === 'number' &&
     typeof q.shuffle === 'boolean' &&
-    typeof q.repeat === 'string'
-  );
+    typeof q.repeat === 'string';
+  if (!valid) return false;
+  if (typeof q.queueItems === 'undefined' || !Array.isArray(q.queueItems)) {
+    // migrate v2 -> v3
+    (q as Record<string, unknown>).queueItems = [];
+    (q as Record<string, unknown>).currentTrackStub = null;
+  }
+  return true;
 }
 
 export const useQueuePersistStore = create<QueuePersistState>()(
@@ -43,6 +72,8 @@ export const useQueuePersistStore = create<QueuePersistState>()(
         version: QUEUE_VERSION,
         currentTrackId: track?.id ?? null,
         queueIds: queue.map((s) => s.id),
+        queueItems: queue.map((s) => toStub(s)),
+        currentTrackStub: track ? toStub(track) : null,
         queueIndex,
         shuffle,
         repeat,
@@ -85,12 +116,33 @@ export const useQueuePersistStore = create<QueuePersistState>()(
 
 export function reconstructQueue(persisted: PersistedQueue, allSongs: Song[]): { track: Song | null; queue: Song[]; queueIndex: number } {
   const songMap = new Map(allSongs.map((s) => [s.id, s]));
-  const queue = persisted.queueIds.map((id) => songMap.get(id)).filter(Boolean) as Song[];
-  const track = persisted.currentTrackId ? songMap.get(persisted.currentTrackId) ?? null : null;
+  const hasFullSongs = allSongs.length > 0;
+
+  const promote = (stub: StubSong): Song => ({
+    id: stub.id,
+    title: stub.title,
+    artist: stub.artist,
+    artwork: stub.artwork,
+    duration: stub.duration,
+    uri: stub.uri,
+    album: '',
+    albumId: '',
+    fileSize: 0,
+    dateAdded: 0,
+    genre: null,
+    bitrate: null,
+    sampleRate: null,
+  });
+
+  if (hasFullSongs) {
+    const queue = persisted.queueIds.map((id) => songMap.get(id)).filter(Boolean) as Song[];
+    const track = persisted.currentTrackId ? songMap.get(persisted.currentTrackId) ?? null : null;
+    const queueIndex = queue.length > 0 ? Math.min(persisted.queueIndex, queue.length - 1) : 0;
+    return { track, queue, queueIndex };
+  }
+
+  const queue = persisted.queueItems.map((stub) => promote(stub));
+  const track = persisted.currentTrackStub ? promote(persisted.currentTrackStub) : null;
   const queueIndex = queue.length > 0 ? Math.min(persisted.queueIndex, queue.length - 1) : 0;
-  return {
-    track,
-    queue,
-    queueIndex,
-  };
+  return { track, queue, queueIndex };
 }

@@ -129,6 +129,15 @@ export const usePlayerStore = create<PlayerState>()(
     },
 
     pause: async () => {
+      const state = get();
+      if (state.currentTrack) {
+        try {
+          useQueuePersistStore.getState().saveQueue(
+            state.currentTrack, state.queue, state.queueIndex,
+            state.shuffle, state.repeat, state.position,
+          );
+        } catch {}
+      }
       set((s) => {
         s.isPlaying = false;
       });
@@ -136,6 +145,15 @@ export const usePlayerStore = create<PlayerState>()(
     },
 
     stop: async () => {
+      const state = get();
+      if (state.currentTrack) {
+        try {
+          useQueuePersistStore.getState().saveQueue(
+            state.currentTrack, state.queue, state.queueIndex,
+            state.shuffle, state.repeat, state.position,
+          );
+        } catch {}
+      }
       set((s) => {
         s.isPlaying = false;
         s.currentTrack = null;
@@ -172,6 +190,17 @@ export const usePlayerStore = create<PlayerState>()(
       const currentTrack = get().currentTrack;
       if (currentTrack) {
         try { useStatsStore.getState().recordSkip(currentTrack.id); } catch {}
+      }
+
+      /* Save position before moving on */
+      const preState = get();
+      if (preState.currentTrack && preState.isPlaying) {
+        try {
+          useQueuePersistStore.getState().saveQueue(
+            preState.currentTrack, preState.queue, preState.queueIndex,
+            preState.shuffle, preState.repeat, preState.position,
+          );
+        } catch {}
       }
 
       let nextOriginalIndex: number;
@@ -216,6 +245,8 @@ export const usePlayerStore = create<PlayerState>()(
         set((s) => {
           s.queueIndex = nextOriginalIndex;
           s.currentTrack = nextTrack;
+          s.position = 0;
+          s.duration = 0;
           s.isPlaying = true;
         });
         try {
@@ -234,6 +265,17 @@ export const usePlayerStore = create<PlayerState>()(
     previous: async () => {
       const { queue, shuffle, shuffledOrder, position } = get();
       if (queue.length === 0) return;
+
+      /* Save position before moving on */
+      const preState = get();
+      if (preState.currentTrack && preState.isPlaying) {
+        try {
+          useQueuePersistStore.getState().saveQueue(
+            preState.currentTrack, preState.queue, preState.queueIndex,
+            preState.shuffle, preState.repeat, preState.position,
+          );
+        } catch {}
+      }
 
       if (position > 3) {
         await serviceSeekTo(0);
@@ -266,6 +308,8 @@ export const usePlayerStore = create<PlayerState>()(
         set((s) => {
           s.queueIndex = prevOriginalIndex;
           s.currentTrack = prevTrack;
+          s.position = 0;
+          s.duration = 0;
           s.isPlaying = true;
         });
         try {

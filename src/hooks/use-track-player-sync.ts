@@ -23,6 +23,7 @@ export function useTrackPlayerSync() {
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const appStateRef = useRef(AppState.currentState);
   const consecutiveSyncFailsRef = useRef(0);
+  const mountedRef = useRef(true);
 
   useEffect(() => {
     syncFromPlayerRef.current = usePlayerStore.getState().syncFromPlayer;
@@ -129,7 +130,9 @@ export function useTrackPlayerSync() {
   const crossfadeEnabled = isCrossfadeEnabled();
 
   useEffect(() => {
+    mountedRef.current = true;
     function tick() {
+      if (!mountedRef.current) return;
       const player = getPlayer();
       if (!player) {
         consecutiveSyncFailsRef.current++;
@@ -206,9 +209,10 @@ export function useTrackPlayerSync() {
         recordPlayTime(currentTime, lastTimeRef.current, true, state.currentTrack.id);
       }
 
-      if (isNowPlaying && currentTime - lastQueueSaveRef.current >= 10) {
+      /* Save queue every 5s instead of 10s for better crash resilience */
+      if ((isNowPlaying || state.currentTrack) && now - lastQueueSaveRef.current >= 5000) {
         saveQueueState();
-        lastQueueSaveRef.current = currentTime;
+        lastQueueSaveRef.current = now;
       }
 
       if (isNowPlaying) {
@@ -247,10 +251,7 @@ export function useTrackPlayerSync() {
       } else {
         stopInterval();
       }
-      if (nextState === 'background') {
-        saveQueueState();
-      }
-      if (nextState === 'inactive') {
+      if (nextState === 'background' || nextState === 'inactive') {
         saveQueueState();
       }
     });
@@ -258,7 +259,10 @@ export function useTrackPlayerSync() {
     startInterval();
 
     return () => {
+      mountedRef.current = false;
       stopInterval();
+      /* Final save before unmount */
+      saveQueueState();
       appStateSub.remove();
     };
   }, [crossfadeEnabled]);

@@ -4,7 +4,7 @@ import { storage } from "@/services/mmkv";
 import type { RepeatMode } from "@/types/player";
 import { reportWarning } from "@/utils/error-handler";
 
-export type NowPlayingLayout = "classic" | "modern" | "minimal" | "driving" | "lyrics";
+export type NowPlayingLayout = "modern" | "lyrics";
 export type AppLanguage = "en" | "es" | "fr" | "de" | "ja" | "zh" | "pt" | "ru" | "it" | "ko" | "ar" | "tr";
 export type FontFamily = "system" | "serif" | "rounded" | "mono" | "poppins" | "inter" | "monr" | "socide" | "epsor" | "roba" | "hago" | "preospe";
 
@@ -167,8 +167,8 @@ export const useSettingsStore = create<SettingsState>()(
     nowPlayingLayout:
       (loadString(
         SETTINGS_KEYS.nowPlayingLayout,
-        "classic",
-      ) as NowPlayingLayout) || "classic",
+        "modern",
+      ) as NowPlayingLayout) || "modern",
     language: (loadString(SETTINGS_KEYS.language, "en") as AppLanguage) || "en",
     fontFamily: (loadString(SETTINGS_KEYS.fontFamily, "system") as FontFamily) || "system",
     adsRemoved: loadBool(SETTINGS_KEYS.adsRemoved, false),
