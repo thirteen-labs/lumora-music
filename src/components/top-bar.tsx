@@ -55,11 +55,7 @@ export function TopBar({ showSearch = true, showSettings = true, title, rightEle
                   onPress={() => router.push('/search')}
                   style={[s.w11, s.h11, s.roundedFull, s.itemsCenter, s.justifyCenter, {
                     backgroundColor: colors.surface,
-                    elevation: 4,
-                    shadowColor: '#000',
-                    shadowOffset: { width: 0, height: 2 },
-                    shadowOpacity: 0.25,
-                    shadowRadius: 4,
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.25)',
                   }]}
                 >
                   <Search size={20} color={colors.text} />
@@ -70,11 +66,7 @@ export function TopBar({ showSearch = true, showSettings = true, title, rightEle
                   onPress={() => router.push('/settings')}
                   style={[s.w11, s.h11, s.roundedFull, s.itemsCenter, s.justifyCenter, {
                     backgroundColor: colors.surface,
-                    elevation: 4,
-                    shadowColor: '#000',
-                    shadowOffset: { width: 0, height: 2 },
-                    shadowOpacity: 0.25,
-                    shadowRadius: 4,
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.25)',
                   }]}
                 >
                   <Settings size={20} color={colors.text} />

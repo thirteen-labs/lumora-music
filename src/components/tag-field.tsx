@@ -1,4 +1,5 @@
 import { View, Text, TextInput } from 'react-native';
+import type { ThemeColors } from '@/types/theme';
 import { s } from '@/styles';
 
 interface TagFieldProps {
@@ -6,7 +7,7 @@ interface TagFieldProps {
   value: string;
   onChange: (v: string) => void;
   onBlur?: () => void;
-  colors: any;
+  colors: ThemeColors;
   error?: string;
   keyboardType?: 'default' | 'numeric';
   accessibilityLabel?: string;

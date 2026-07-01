@@ -1,4 +1,4 @@
-import { View, Text, ScrollView, Pressable, Dimensions } from 'react-native';
+import { View, Text, ScrollView, Pressable, useWindowDimensions } from 'react-native';
 import { useTheme } from '@/hooks/use-theme';
 import { useThemeStore } from '@/store/theme-store';
 import { themes } from '@/theme/themes';
@@ -7,12 +7,11 @@ import { ChevronLeft, Check, Paintbrush } from 'lucide-react-native';
 import { s } from '@/styles';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const PADDING = 40;
-const GAP = 12;
-const ITEM_SIZE = (SCREEN_WIDTH - PADDING - GAP * 2) / 3;
-
 export default function ThemesScreen() {
+  const { width: winW } = useWindowDimensions();
+  const PADDING = 40;
+  const GAP = 12;
+  const ITEM_SIZE = (winW - PADDING - GAP * 2) / 3;
   const { colors } = useTheme();
   const router = useRouter();
   const currentThemeId = useThemeStore((s) => s.currentThemeId);

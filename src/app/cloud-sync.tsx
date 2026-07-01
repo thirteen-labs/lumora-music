@@ -371,7 +371,7 @@ export default function CloudSyncScreen() {
               <Text style={[s.textXs, s.fontSemibold, { color: colors.textMuted }]}>BACKUP DATA</Text>
             </View>
             <Text style={[s.textXs, { color: colors.textMuted, lineHeight: 20 }]}>
-              Your backup includes: playlists, favorites, play stats, equalizer & audio settings, theme, custom presets, and all app preferences. Song and video files themselves are not backed up — only your library metadata.
+               Your backup includes: playlists, favorites, play stats, equalizer & audio settings, theme, custom presets, and all app preferences. Song files themselves are not backed up — only your library metadata.
             </Text>
           </View>
 

@@ -2,6 +2,7 @@ import { useState, useMemo, useRef } from 'react';
 import { View, Text, ScrollView, Pressable, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { s } from '@/styles';
+import type { ThemeColors } from '@/types/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useTranslation } from '@/hooks/use-translation';
 import { TopBar } from '@/components/top-bar';
@@ -273,7 +274,7 @@ export default function BatchOperationsScreen() {
 function ActionButton({
   icon: Icon, label, count, onPress, colors, danger, disabled,
 }: {
-  icon: any; label: string; count: number; onPress: () => void; colors: any; danger?: boolean; disabled?: boolean;
+  icon: any; label: string; count: number; onPress: () => void; colors: ThemeColors; danger?: boolean; disabled?: boolean;
 }) {
   return (
     <Pressable

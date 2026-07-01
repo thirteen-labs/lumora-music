@@ -1,5 +1,5 @@
 import React, { useCallback, useRef, useState, useEffect, useMemo } from 'react';
-import { View, Text, Pressable, Dimensions, ActivityIndicator, ScrollView, TextInput, useWindowDimensions } from 'react-native';
+import { View, Text, Pressable, ActivityIndicator, ScrollView, TextInput, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@/hooks/use-theme';
 import { usePlayerStore } from '@/store/player-store';
@@ -24,7 +24,6 @@ import {
   PenLine,
   Info,
   Car,
-  Maximize2,
   Mic2,
   Save,
   RotateCcw,
@@ -59,11 +58,12 @@ import {
 import { useSyncedLyricsScroll } from '@/hooks/use-synced-lyrics-scroll';
 import { useTranslation } from '@/hooks/use-translation';
 import * as ImagePicker from 'expo-image-picker';
+import type { ThemeColors } from '@/types/theme';
+import type { Song } from '@/types/media';
+import type { RepeatMode } from '@/types/player';
 import { s } from '@/styles';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const QUEUE_ITEM_HEIGHT = 72;
-const ARTWORK_SIZE = SCREEN_WIDTH * 0.72;
 
 const SeekBar = React.memo(({
   colors,
@@ -74,7 +74,7 @@ const SeekBar = React.memo(({
   showPercentage = true,
   sliderHeight = 40,
 }: {
-  colors: any;
+  colors: Partial<ThemeColors>;
   sliderAccent?: string;
   sliderTrack?: string;
   thumbColor?: string;
@@ -145,11 +145,7 @@ export default function PlayerScreen() {
   const dragAnimatedStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: isDragging.value ? dragTranslateY.value : 0 }],
     zIndex: isDragging.value ? 999 : 0,
-    elevation: isDragging.value ? 10 : 0,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: isDragging.value ? 8 : 0 },
-    shadowOpacity: isDragging.value ? 0.25 : 0,
-    shadowRadius: isDragging.value ? 12 : 0,
+    boxShadow: isDragging.value ? '0 8px 12px rgba(0,0,0,0.25)' : '0 0 0 rgba(0,0,0,0)',
   }));
   const showToast = useToastStore((s) => s.showToast);
   const lyricsMap = useLyricsStore((s) => s.lyricsMap);
@@ -347,7 +343,7 @@ export default function PlayerScreen() {
   }, [hideFullPlayer, router]);
 
   const onQueuePress = useCallback(() => queueSheetRef.current?.present(), []);
-  const onLyricsPress = useCallback(() => queueSheetRef.current?.present(), []);
+  const onLyricsPress = useCallback(() => lyricsSheetRef.current?.present(), []);
   const onInfoPress = useCallback(() => infoSheetRef.current?.present(), []);
 
   const translateY = useSharedValue(0);
@@ -761,29 +757,29 @@ export default function PlayerScreen() {
 }
 
 interface LayoutProps {
-  currentTrack: any;
+  currentTrack: Song | null;
   isPlaying: boolean;
   isFav: boolean;
   shuffle: boolean;
-  repeat: string;
-  colors: any;
+  repeat: RepeatMode;
+  colors: ThemeColors;
   togglePlay: () => void;
   next: () => void;
   previous: () => void;
   setShuffle: (v: boolean) => void;
-  setRepeat: (m: any) => void;
-  toggleSongFavorite: (song: any) => void;
+  setRepeat: (m: RepeatMode) => void;
+  toggleSongFavorite: (song: Song) => void;
   cycleLayout: () => void;
   hideFullPlayer: () => void;
   onQueuePress: () => void;
   onLyricsPress: () => void;
   onInfoPress: () => void;
-  lyrics?: any;
+  lyrics?: LyricsResult | null;
   isLyricsLoading?: boolean;
   lyricsError?: boolean;
 }
 
-function RepeatButton({ repeat, setRepeat, colors }: { repeat: string; setRepeat: (m: any) => void; colors: any }) {
+function RepeatButton({ repeat, setRepeat, colors }: { repeat: RepeatMode; setRepeat: (m: RepeatMode) => void; colors: Pick<ThemeColors, 'accent' | 'textMuted'> }) {
   return (
     <Pressable
       onPress={() => {
@@ -805,6 +801,16 @@ const ClassicLayout = React.memo(function ClassicLayout(props: LayoutProps) {
   const { colors, currentTrack, isPlaying, isFav, shuffle, repeat } = props;
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
+  const { width: winW } = useWindowDimensions();
+  const artworkSize = winW * 0.72;
+
+  if (!currentTrack) {
+    return (
+      <View style={[s.flex1, s.itemsCenter, s.justifyCenter, { paddingBottom: insets.bottom, paddingTop: insets.top }]}>
+        <Text style={[{ color: colors.textMuted }]}>{t('player.no.track')}</Text>
+      </View>
+    );
+  }
 
   return (
     <View style={[s.flex1, { paddingBottom: insets.bottom }]}>
@@ -822,10 +828,10 @@ const ClassicLayout = React.memo(function ClassicLayout(props: LayoutProps) {
 
       <View style={[s.flex1, s.itemsCenter, s.justifyCenter, s.px8]}>
         <View
-          style={[s.rounded3xl, s.itemsCenter, s.justifyCenter, s.mb8, s.overflowHidden, { width: ARTWORK_SIZE, height: ARTWORK_SIZE, backgroundColor: colors.surface }]}
+          style={[s.rounded3xl, s.itemsCenter, s.justifyCenter, s.mb8, s.overflowHidden, { width: artworkSize, height: artworkSize, backgroundColor: colors.surface }]}
         >
           {currentTrack.artwork ? (
-            <Image source={{ uri: currentTrack.artwork }} style={{ width: ARTWORK_SIZE, height: ARTWORK_SIZE }} contentFit="cover" transition={300} />
+            <Image source={{ uri: currentTrack.artwork }} style={{ width: artworkSize, height: artworkSize }} contentFit="cover" transition={300} />
           ) : (
             <Music size={64} color={colors.accent} />
           )}
@@ -881,6 +887,15 @@ const ModernLayout = React.memo((props: LayoutProps) => {
   const { colors, currentTrack, isPlaying, isFav, shuffle, repeat } = props;
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
+  const { width: winW } = useWindowDimensions();
+
+  if (!currentTrack) {
+    return (
+      <View style={[s.flex1, s.itemsCenter, s.justifyCenter, { paddingBottom: insets.bottom, paddingTop: insets.top }]}>
+        <Text style={[{ color: '#fff' }]}>{t('player.no.track')}</Text>
+      </View>
+    );
+  }
 
   const m = {
     text: '#fff',
@@ -919,9 +934,9 @@ const ModernLayout = React.memo((props: LayoutProps) => {
         </View>
 
         <View style={[s.flex1, s.itemsCenter, s.justifyCenter, { paddingHorizontal: 32 }]}>
-          <View style={[s.rounded3xl, s.overflowHidden, s.mb8, { width: SCREEN_WIDTH * 0.65, height: SCREEN_WIDTH * 0.65, backgroundColor: m.surface }]}>
+          <View style={[s.rounded3xl, s.overflowHidden, s.mb8, { width: winW * 0.65, height: winW * 0.65, backgroundColor: m.surface }]}>
             {currentTrack.artwork ? (
-              <Image source={{ uri: currentTrack.artwork }} style={{ width: SCREEN_WIDTH * 0.65, height: SCREEN_WIDTH * 0.65 }} contentFit="cover" transition={300} />
+              <Image source={{ uri: currentTrack.artwork }} style={{ width: winW * 0.65, height: winW * 0.65 }} contentFit="cover" transition={300} />
             ) : (
               <View style={[s.flex1, s.itemsCenter, s.justifyCenter]}>
                 <Music size={64} color={m.textMuted} />
@@ -986,6 +1001,15 @@ const MinimalLayout = React.memo((props: LayoutProps) => {
   const { colors, currentTrack, isPlaying, isFav, shuffle, repeat } = props;
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
+  const { width: winW } = useWindowDimensions();
+
+  if (!currentTrack) {
+    return (
+      <View style={[s.flex1, s.itemsCenter, s.justifyCenter, { paddingBottom: insets.bottom, paddingTop: insets.top }]}>
+        <Text style={[{ color: colors.textMuted }]}>{t('player.no.track')}</Text>
+      </View>
+    );
+  }
 
   return (
     <View style={[s.flex1, { paddingBottom: insets.bottom }]}>
@@ -1001,10 +1025,10 @@ const MinimalLayout = React.memo((props: LayoutProps) => {
         </Pressable>
       </View>
 
-      <View style={[s.flex1, { paddingHorizontal: 24, justifyContent: 'center' }]}>
-        <View style={[s.flexRow, s.itemsCenter, s.gap4, { marginBottom: 32 }]}>
-          <View style={[s.rounded2xl, s.overflowHidden, { width: 72, height: 72, backgroundColor: colors.surface }]}>
-            {currentTrack.artwork ? (
+      <View style={[s.flex1, s.itemsCenter, s.justifyCenter, s.px8]}>
+        <View
+          style={[s.rounded3xl, s.overflowHidden, s.mb8, { width: winW * 0.65, height: winW * 0.65, backgroundColor: colors.surface }]}>
+          {currentTrack.artwork ? (
               <Image source={{ uri: currentTrack.artwork }} style={{ width: 72, height: 72 }} contentFit="cover" transition={200} />
             ) : (
               <View style={[s.flex1, s.itemsCenter, s.justifyCenter]}>
@@ -1054,7 +1078,6 @@ const MinimalLayout = React.memo((props: LayoutProps) => {
             <Info size={20} color={colors.textMuted} />
           </Pressable>
         </View>
-      </View>
     </View>
   );
 });
@@ -1062,7 +1085,16 @@ MinimalLayout.displayName = 'MinimalLayout';
 
 const DrivingLayout = React.memo((props: LayoutProps) => {
   const { colors, currentTrack, isPlaying } = props;
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
+
+  if (!currentTrack) {
+    return (
+      <View style={[s.flex1, s.itemsCenter, s.justifyCenter, { paddingBottom: insets.bottom, paddingTop: insets.top, backgroundColor: '#000' }]}>
+        <Text style={[{ color: '#888' }]}>{t('player.no.track')}</Text>
+      </View>
+    );
+  }
 
   return (
     <View style={[s.flex1, { paddingBottom: insets.bottom, backgroundColor: '#000' }]}>
@@ -1070,9 +1102,11 @@ const DrivingLayout = React.memo((props: LayoutProps) => {
         <Pressable onPress={props.hideFullPlayer}>
           <ChevronDown size={32} color="#fff" />
         </Pressable>
-        <Car size={24} color={colors.accent} />
+        <Text style={[s.textLg, s.fontBold, { color: '#fff' }]}>
+          {t('player.now.playing')}
+        </Text>
         <Pressable onPress={props.cycleLayout}>
-          <Maximize2 size={24} color="#fff" />
+          <LayoutGrid size={24} color="#fff" />
         </Pressable>
       </View>
 
@@ -1302,7 +1336,7 @@ const LyricsLayout = React.memo((props: LayoutProps) => {
 });
 LyricsLayout.displayName = 'LyricsLayout';
 
-function InfoRow({ label, value, colors, multiline }: { label: string; value: string; colors: any; multiline?: boolean }) {
+function InfoRow({ label, value, colors, multiline }: { label: string; value: string; colors: Pick<ThemeColors, 'text' | 'textMuted'>; multiline?: boolean }) {
   return (
     <View style={[multiline ? s.flexCol : s.flexRow, multiline ? s.itemsStart : s.itemsCenter, s.justifyBetween, s.py1]}>
       <Text style={[s.textXs, { color: colors.textMuted, width: multiline ? '100%' : 100 }]}>{label}</Text>
@@ -1316,7 +1350,7 @@ function InfoRow({ label, value, colors, multiline }: { label: string; value: st
   );
 }
 
-function SyncedLyricsView({ synced, colors }: { synced: SyncedLine[]; colors: any }) {
+function SyncedLyricsView({ synced, colors }: { synced: SyncedLine[]; colors: Pick<ThemeColors, 'accent' | 'text' | 'textMuted'> }) {
   const position = usePlayerStore((s) => s.position);
   const { scrollRef, registerLine, activeIdx } = useSyncedLyricsScroll(synced, position);
 

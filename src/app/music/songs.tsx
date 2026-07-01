@@ -5,6 +5,7 @@ import { useMemo } from 'react';
 
 import { s } from '@/styles';
 import { useTheme } from '@/hooks/use-theme';
+import type { ThemeColors } from '@/types/theme';
 import { useMusicStore } from '@/store/music-store';
 import { usePlayerStore, generateRandomQueue } from '@/store/player-store';
 import { useLayoutStore } from '@/store/layout-store';
@@ -41,7 +42,7 @@ function sortSongs(songs: any[], sortField: SortField, sortOrder: SortOrder, sta
   return sorted;
 }
 
-function LyricsBadge({ colors, show, size }: { colors: any; show?: boolean; size?: number }) {
+function LyricsBadge({ colors, show, size }: { colors: ThemeColors; show?: boolean; size?: number }) {
   if (!show) return null;
   return (
     <View

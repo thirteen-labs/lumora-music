@@ -12,46 +12,33 @@ export interface FileItem {
 }
 
 const AUDIO_EXTENSIONS = ['.mp3', '.flac', '.wav', '.aac', '.ogg', '.m4a', '.wma', '.opus'];
-const VIDEO_EXTENSIONS = ['.mp4', '.mkv', '.avi', '.mov', '.wmv', '.flv', '.webm', '.m4v'];
 
 function getExtension(name: string): string {
   const dot = name.lastIndexOf('.');
   return dot >= 0 ? name.substring(dot).toLowerCase() : '';
 }
 
-function isAudioFile(name: string): boolean {
-  return AUDIO_EXTENSIONS.includes(getExtension(name));
-}
-
-function isVideoFile(name: string): boolean {
-  return VIDEO_EXTENSIONS.includes(getExtension(name));
-}
-
-export function getMediaType(name: string): 'audio' | 'video' | null {
-  if (isAudioFile(name)) return 'audio';
-  if (isVideoFile(name)) return 'video';
-  return null;
+export function getMediaType(name: string): 'audio' | null {
+  return AUDIO_EXTENSIONS.includes(getExtension(name)) ? 'audio' : null;
 }
 
 export interface MediaFolderItem extends FileItem {
-  mediaCount: { audio: number; video: number };
+  mediaCount: { audio: number };
 }
 
-export async function countMediaFiles(uri: string, filterType?: 'audio' | 'video'): Promise<{ audio: number; video: number }> {
+export async function countMediaFiles(uri: string, filterType?: 'audio'): Promise<{ audio: number }> {
   const entries = await listDirectory(uri);
   let audio = 0;
-  let video = 0;
   for (const entry of entries) {
     if (entry.isDirectory) continue;
     const type = getMediaType(entry.name);
     if (filterType && type !== filterType) continue;
     if (type === 'audio') audio++;
-    else if (type === 'video') video++;
   }
-  return { audio, video };
+  return { audio };
 }
 
-export async function listMediaContents(uri: string, filterType?: 'audio' | 'video'): Promise<{
+export async function listMediaContents(uri: string, filterType?: 'audio'): Promise<{
   mediaFiles: FileItem[];
   mediaFolders: MediaFolderItem[];
 }> {
@@ -79,7 +66,7 @@ export async function listMediaContents(uri: string, filterType?: 'audio' | 'vid
 
   const mediaFolders: MediaFolderItem[] = [];
   for (const { folder, count } of results) {
-    if (filterType === 'audio' ? count.audio > 0 : count.audio > 0 || count.video > 0) {
+    if (count.audio > 0) {
       mediaFolders.push({ ...folder, mediaCount: count });
     }
   }

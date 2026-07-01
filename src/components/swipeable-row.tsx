@@ -23,7 +23,7 @@ interface SwipeableRowProps {
 const ACTION_WIDTH = 72;
 const THRESHOLD = 60;
 
-function SwipeActionButton({ type, onPress, colors }: { type: SwipeAction; onPress: () => void; colors: any }) {
+function SwipeActionButton({ type, onPress, colors }: { type: SwipeAction; onPress: () => void; colors: { accent: string; info: string; error: string } }) {
   const iconMap = {
     queue: { icon: ListPlus, color: colors.info ?? '#3b82f6' },
     favorite: { icon: Heart, color: '#ef4444' },

@@ -55,11 +55,6 @@ export default function SystemHiddenFilesScreen() {
     return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
   };
 
-  const getTypeIcon = (type: 'audio' | 'video' | 'mixed') => {
-    if (type === 'audio') return FileAudio;
-    return HardDrive;
-  };
-
   const [lastScanLabel, setLastScanLabel] = useState('');
 
   useEffect(() => {
@@ -155,7 +150,7 @@ export default function SystemHiddenFilesScreen() {
                   <View style={{ backgroundColor: colors.surface, borderRadius: 16, overflow: 'hidden' }}>
                     {groups.map((group, i) => {
                       const isExpanded = expandedGroups.has(group.name);
-                      const TypeIcon = getTypeIcon(group.type);
+                      const TypeIcon = FileAudio;
                       return (
                         <View key={group.name}>
                           <Pressable

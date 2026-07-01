@@ -11,6 +11,7 @@ import { Artwork } from "@/components/artwork";
 import { useState, useMemo, useCallback, useEffect } from "react";
 import { fuzzySearch } from "@/utils/fuzzy";
 import { useRouter, useFocusEffect } from "expo-router";
+import type { ThemeColors } from '@/types/theme';
 import { storage } from "@/services/mmkv";
 import { s } from "@/styles";
 
@@ -43,7 +44,7 @@ function saveRecent(items: string[]): void {
   }
 }
 
-function FilterChip({ label, selected, onPress, colors }: { label: string; selected: boolean; onPress: () => void; colors: any }) {
+function FilterChip({ label, selected, onPress, colors }: { label: string; selected: boolean; onPress: () => void; colors: ThemeColors }) {
   return (
     <Pressable
       onPress={onPress}
@@ -334,7 +335,7 @@ export default function SearchScreen() {
           <View>
             <Text style={[s.textXs, s.fontSemibold, s.mb1, { color: colors.textMuted }]}>Extension</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.gap1}>
-              {['mp3', 'flac', 'wav', 'aac', 'ogg', 'wma', 'm4a', 'mp4', 'mkv', 'avi'].map((ext) => (
+              {['mp3', 'flac', 'wav', 'aac', 'ogg', 'wma', 'm4a'].map((ext) => (
                 <FilterChip
                   key={ext}
                   label={ext}
@@ -420,7 +421,7 @@ export default function SearchScreen() {
             <View style={[s.itemsCenter, s.py20]}>
               <Search size={40} color={colors.textMuted} />
               <Text style={[s.mt3, { color: colors.textMuted }]}>
-                Search your music, videos & files
+                Search your music & files
               </Text>
               <Text style={[s.mt3, s.textXs, s.textCenter, { color: colors.textMuted }]}>
                 Pro tip: Use advanced filters like{'\n'}year:2023, genre:rock, or ext:mp3

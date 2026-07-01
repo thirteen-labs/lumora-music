@@ -1,6 +1,7 @@
-import { useMemo, useEffect } from 'react';
+import { useMemo, useEffect, type ComponentType } from 'react';
 import { View, Text, ScrollView, Pressable, Switch, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import type { ThemeColors } from '@/types/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useSettingsStore, FONT_OPTIONS } from '@/store/settings-store';
 import { useOutputDevicesStore, startDeviceDetection } from '@/store/output-devices-store';
@@ -407,7 +408,7 @@ export default function SettingsScreen() {
   );
 }
 
-function Section({ title, colors, children }: { title: string; colors: any; children: React.ReactNode }) {
+function Section({ title, colors, children }: { title: string; colors: ThemeColors; children: React.ReactNode }) {
   return (
     <View style={[s.mb6]}>
       <Text style={[s.textXs, s.fontBold, s.uppercase, { letterSpacing: 1, color: colors.textMuted }, s.mb3]}>{title}</Text>
@@ -418,7 +419,7 @@ function Section({ title, colors, children }: { title: string; colors: any; chil
   );
 }
 
-function SettingRow({ icon: Icon, label, subtitle, onPress, colors }: { icon: any; label: string; subtitle: string; onPress: () => void; colors: any }) {
+function SettingRow({ icon: Icon, label, subtitle, onPress, colors }: { icon: ComponentType<{ size?: number; color?: string }>; label: string; subtitle: string; onPress: () => void; colors: ThemeColors }) {
   return (
     <Pressable onPress={onPress} style={[s.flexRow, s.itemsCenter, s.gap4, s.p4]}>
       <View style={[s.w10, s.h10, s.roundedXl, s.itemsCenter, s.justifyCenter, { backgroundColor: colors.accent + '15' }]}>

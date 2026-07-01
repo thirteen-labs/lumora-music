@@ -11,6 +11,7 @@ export interface ThemeColors {
   success: string;
   warning: string;
   info: string;
+  error: string;
   textSecondary: string;
   textMuted: string;
 }
@@ -36,9 +37,9 @@ export interface ThemeBorderRadius {
 }
 
 export interface ThemeShadows {
-  sm: any;
-  md: any;
-  lg: any;
+  sm: { boxShadow: string };
+  md: { boxShadow: string };
+  lg: { boxShadow: string };
 }
 
 export interface Theme {

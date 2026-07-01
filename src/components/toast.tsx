@@ -65,11 +65,7 @@ export function Toast() {
         borderRadius: 16,
         paddingHorizontal: 18,
         paddingVertical: 12,
-        elevation: 8,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 8,
+        boxShadow: '0 4px 8px rgba(0,0,0,0.3)',
         borderWidth: 1,
         borderColor: colors.border,
       }}>

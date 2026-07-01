@@ -1,7 +1,6 @@
 import { Directory, File } from 'expo-file-system';
 
 const AUDIO_EXTENSIONS = ['.mp3', '.flac', '.wav', '.aac', '.ogg', '.m4a', '.wma', '.opus'];
-const VIDEO_EXTENSIONS = ['.mp4', '.mkv', '.avi', '.mov', '.wmv', '.flv', '.webm', '.m4v'];
 const MAX_DEPTH = 4;
 
 export interface ScannedFile {
@@ -15,7 +14,7 @@ export interface ScannedFile {
 export interface FileGroup {
   name: string;
   files: ScannedFile[];
-  type: 'audio' | 'video' | 'mixed';
+  type: 'audio';
 }
 
 const STOP_WORDS = new Set(['a', 'an', 'the', 'and', 'or', 'for', 'with', 'file', 'new', 'old', 'tmp', 'temp', 'test', 'backup', 'copy']);
@@ -26,15 +25,7 @@ function getExtension(name: string): string {
 }
 
 function isMediaFile(name: string): boolean {
-  const ext = getExtension(name);
-  return AUDIO_EXTENSIONS.includes(ext) || VIDEO_EXTENSIONS.includes(ext);
-}
-
-function getMediaType(name: string): 'audio' | 'video' | null {
-  const ext = getExtension(name);
-  if (AUDIO_EXTENSIONS.includes(ext)) return 'audio';
-  if (VIDEO_EXTENSIONS.includes(ext)) return 'video';
-  return null;
+  return AUDIO_EXTENSIONS.includes(getExtension(name));
 }
 
 const SYSTEM_PATHS: string[] = [
@@ -149,12 +140,10 @@ export function groupFilesBySubstring(files: ScannedFile[]): FileGroup[] {
     }
   }
 
-  const typedGroups = new Map<string, { files: ScannedFile[]; type: 'audio' | 'video' | 'mixed' }>();
+  const typedGroups = new Map<string, { files: ScannedFile[]; type: 'audio' }>();
   for (const [token, groupFiles] of groups) {
     if (groupFiles.length < 2) continue;
-    const types = new Set(groupFiles.map((f) => getMediaType(f.name)).filter(Boolean));
-    const type = types.size === 1 ? types.values().next().value as 'audio' | 'video' : 'mixed';
-    typedGroups.set(token, { files: groupFiles, type });
+    typedGroups.set(token, { files: groupFiles, type: 'audio' });
   }
 
   return [...typedGroups.entries()]

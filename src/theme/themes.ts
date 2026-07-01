@@ -40,6 +40,7 @@ function makeTheme(
       success: '#22C55E',
       warning: '#F59E0B',
       info: '#3B82F6',
+      error: '#EF4444',
       textSecondary: hexToRgba(text, 0.6),
       textMuted: hexToRgba(text, 0.4),
     },
@@ -62,9 +63,9 @@ function makeTheme(
       full: 9999,
     },
     shadows: {
-      sm: { elevation: 2, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.2, shadowRadius: 2 },
-      md: { elevation: 4, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 4 },
-      lg: { elevation: 8, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8 },
+      sm: { boxShadow: '0 1px 2px rgba(0,0,0,0.2)' },
+      md: { boxShadow: '0 2px 4px rgba(0,0,0,0.25)' },
+      lg: { boxShadow: '0 4px 8px rgba(0,0,0,0.3)' },
     },
   };
   return theme;
