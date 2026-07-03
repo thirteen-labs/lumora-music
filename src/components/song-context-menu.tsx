@@ -11,6 +11,7 @@ import { useFavoritesStore } from '@/store/favorites-store';
 import { useToastStore } from '@/store/toast-store';
 import { useRouter } from 'expo-router';
 import type { Song } from '@/types/media';
+import { Image } from 'expo-image';
 import {
   Play,
   ListPlus,
@@ -103,24 +104,29 @@ export function SongContextMenu({ bottomSheetRef, song, onDismiss }: SongContext
             >
               <View
                 style={{
-                  width: 48,
-                  height: 48,
-                  borderRadius: 12,
+                  width: 60,
+                  height: 60,
+                  borderRadius: 14,
                   alignItems: 'center',
                   justifyContent: 'center',
                   backgroundColor: colors.card,
+                  overflow: 'hidden',
                 }}
               >
-                <Music size={20} color={colors.accent} />
+                {song.artwork ? (
+                  <Image source={{ uri: song.artwork }} style={{ width: 60, height: 60 }} contentFit="cover" />
+                ) : (
+                  <Music size={24} color={colors.accent} />
+                )}
               </View>
               <View style={{ flex: 1 }}>
                 <Text
-                  style={{ fontSize: 16, fontWeight: '600', color: colors.text }}
+                  style={{ fontSize: 17, fontWeight: '600', color: colors.text }}
                   numberOfLines={1}
                 >
                   {song.title}
                 </Text>
-                <Text style={{ fontSize: 13, color: colors.textMuted }} numberOfLines={1}>
+                <Text style={{ fontSize: 14, color: colors.textMuted }} numberOfLines={1}>
                   {song.artist}
                 </Text>
               </View>

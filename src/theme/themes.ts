@@ -14,6 +14,13 @@ function lighten(hex: string, amount: number): string {
   return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
 }
 
+function darken(hex: string, amount: number): string {
+  const r = Math.max(0, parseInt(hex.slice(1, 3), 16) - amount);
+  const g = Math.max(0, parseInt(hex.slice(3, 5), 16) - amount);
+  const b = Math.max(0, parseInt(hex.slice(5, 7), 16) - amount);
+  return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
+}
+
 function makeTheme(
   id: string,
   name: string,
@@ -33,9 +40,9 @@ function makeTheme(
       text,
       accent,
       primary: accent,
-      secondary: isDark ? lighten(accent, 40) : '#6B7280',
+      secondary: isDark ? lighten(accent, 40) : darken(accent, 20),
       border: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)',
-      card: isDark ? lighten(surface, 8) : '#F8FAFC',
+      card: isDark ? lighten(surface, 8) : darken(surface, 6),
       notification: '#EF4444',
       success: '#22C55E',
       warning: '#F59E0B',
@@ -62,10 +69,14 @@ function makeTheme(
       '3xl': 28,
       full: 9999,
     },
-    shadows: {
+    shadows: isDark ? {
       sm: { boxShadow: '0 1px 2px rgba(0,0,0,0.2)' },
       md: { boxShadow: '0 2px 4px rgba(0,0,0,0.25)' },
       lg: { boxShadow: '0 4px 8px rgba(0,0,0,0.3)' },
+    } : {
+      sm: { boxShadow: '0 1px 3px rgba(0,0,0,0.08)' },
+      md: { boxShadow: '0 4px 12px rgba(0,0,0,0.1)' },
+      lg: { boxShadow: '0 8px 24px rgba(0,0,0,0.12)' },
     },
   };
   return theme;
@@ -88,6 +99,10 @@ export const themes: Theme[] = [
   makeTheme('plum', 'Plum', '#140A14', '#201020', '#FFF0FF', '#D946EF', true),
   makeTheme('coral', 'Coral', '#1A0E0E', '#2A1818', '#FFF5F0', '#FB923C', true),
   makeTheme('ice', 'Ice', '#080C16', '#0F1628', '#F0F4FF', '#38BDF8', true),
+
+  makeTheme('light', 'Light', '#F8F9FC', '#FFFFFF', '#1A1A2E', '#6366F1', false),
+  makeTheme('warm-light', 'Warm Light', '#FEFCF8', '#FFFFFF', '#2D1B00', '#F59E0B', false),
+  makeTheme('cool-light', 'Cool Light', '#F0F5FF', '#FFFFFF', '#0F172A', '#0EA5E9', false),
 ];
 
 export const DEFAULT_THEME_ID = 'obsidian';

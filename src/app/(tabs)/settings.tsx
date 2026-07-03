@@ -39,8 +39,42 @@ import {
   Disc3,
   Cloud,
   Smartphone,
+  Mic,
 } from 'lucide-react-native';
 import { s } from '@/styles';
+
+const LIGHT_PAIRS: Record<string, string> = {
+  obsidian: 'light',
+  nebula: 'cool-light',
+  aurora: 'light',
+  sunset: 'warm-light',
+  rose: 'light',
+  ocean: 'cool-light',
+  midnight: 'cool-light',
+  forest: 'light',
+  lavender: 'light',
+  crimson: 'warm-light',
+  slate: 'light',
+  amber: 'warm-light',
+  teal: 'cool-light',
+  plum: 'light',
+  coral: 'warm-light',
+  ice: 'cool-light',
+};
+
+const DARK_PAIRS: Record<string, string> = {
+  light: 'obsidian',
+  'warm-light': 'amber',
+  'cool-light': 'ocean',
+};
+
+function getDarkCounterpart(lightId: string): string | null {
+  return DARK_PAIRS[lightId] ?? null;
+}
+
+function getLightCounterpart(darkId: string): string | null {
+  return LIGHT_PAIRS[darkId] ?? 'light';
+}
 
 export default function SettingsScreen() {
   const { colors } = useTheme();
@@ -232,9 +266,23 @@ export default function SettingsScreen() {
               </View>
               <View style={[s.flex1]}>
                 <Text style={[s.textSm, s.fontMedium, { color: colors.text }]}>Dark Mode</Text>
-                <Text style={[s.textXs, s.mt05, { color: colors.textMuted }]}>Always on</Text>
+                <Text style={[s.textXs, s.mt05, { color: colors.textMuted }]}>{currentTheme.isDark ? 'On' : 'Off'}</Text>
               </View>
-              <Switch value={true} disabled trackColor={{ false: colors.card, true: colors.accent + '80' }} thumbColor="#fff" />
+              <Switch
+                value={currentTheme.isDark}
+                onValueChange={(isDark) => {
+                  const themeStore = useThemeStore.getState();
+                  if (isDark) {
+                    const darkId = getLightCounterpart(currentTheme.id) ?? 'obsidian';
+                    themeStore.setTheme(darkId);
+                  } else {
+                    const lightId = getDarkCounterpart(currentTheme.id) ?? 'light';
+                    themeStore.setTheme(lightId);
+                  }
+                }}
+                trackColor={{ false: colors.card, true: colors.accent + '80' }}
+                thumbColor="#fff"
+              />
             </View>
             <SettingRow
               icon={Languages}
@@ -299,6 +347,13 @@ export default function SettingsScreen() {
               label="Sleep Timer"
               subtitle="Set a timer to stop playback"
               onPress={() => router.push('/sleep-timer' as any)}
+              colors={colors}
+            />
+            <SettingRow
+              icon={Mic}
+              label="Audio Recognition"
+              subtitle="Identify songs playing near you"
+              onPress={() => router.push('/audio-recognition' as any)}
               colors={colors}
             />
           </Section>

@@ -5,9 +5,12 @@ import { useTheme } from '@/hooks/use-theme';
 import { useMusicStore } from '@/store/music-store';
 import { usePlayerStore } from '@/store/player-store';
 import { useLayoutStore } from '@/store/layout-store';
+import { useLyricsStore } from '@/store/lyrics-store';
+import { hasCachedLyrics } from '@/services/lyrics';
 import { TopBar } from '@/components/top-bar';
 import { MiniPlayer } from '@/components/mini-player';
 import { SongContextMenu, useSongContextMenu } from '@/components/song-context-menu';
+import { LyricsBadge } from '@/components/lyrics-badge';
 import { Music } from 'lucide-react-native';
 import { Artwork } from '@/components/artwork';
 import { formatDuration, formatFileSize } from '@/utils/cn';
@@ -19,14 +22,15 @@ export default function AlbumDetailScreen() {
   const songs = useMusicStore((s) => s.songs);
   const albums = useMusicStore((s) => s.albums);
   const fileSizeTheme = useLayoutStore((s) => s.fileSizeTheme);
+  const lyricsMap = useLyricsStore((s) => s.lyricsMap);
   const { bottomSheetRef, present, song } = useSongContextMenu();
 
   const album = albums.find((a) => a.id === id);
   const albumSongs = songs.filter((s) => s.albumId === id);
 
-  const heightMap = { small: 64, medium: 76, big: 92 };
+  const heightMap = { small: 76, medium: 88, big: 104 };
   const rowHeight = heightMap[fileSizeTheme];
-  const artSizeMap = { small: 40, medium: 48, big: 60 };
+  const artSizeMap = { small: 52, medium: 60, big: 72 };
   const artSize = artSizeMap[fileSizeTheme];
 
   return (
@@ -58,12 +62,15 @@ export default function AlbumDetailScreen() {
             </Text>
             <Artwork uri={album?.artwork ?? item.artwork} size={artSize} borderRadius={artSize * 0.25} iconColor={colors.accent} backgroundColor={colors.surface} />
             <View style={s.flex1}>
-              <Text style={[s.textSm, s.fontMedium, { color: colors.text }]} numberOfLines={1}>{item.title}</Text>
-              <Text style={[s.textXs, { color: colors.textMuted }]} numberOfLines={1}>
-                {item.artist} {fileSizeTheme === 'big' ? `· ${formatFileSize(item.fileSize)}` : ''}
-              </Text>
+              <Text style={[s.textBase, s.fontMedium, { color: colors.text }]} numberOfLines={1}>{item.title}</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <LyricsBadge colors={colors} show={!!lyricsMap[item.id] || hasCachedLyrics(item.artist, item.title) === true} />
+                <Text style={[s.textSm, { color: colors.textMuted }]} numberOfLines={1}>
+                  {item.artist} {fileSizeTheme === 'big' ? `· ${formatFileSize(item.fileSize)}` : ''}
+                </Text>
+              </View>
             </View>
-            <Text style={[s.textXs, { color: colors.textMuted }]}>{formatDuration(item.duration)}</Text>
+            <Text style={[s.textSm, { color: colors.textMuted }]}>{formatDuration(item.duration)}</Text>
           </Pressable>
         )}
         ListEmptyComponent={

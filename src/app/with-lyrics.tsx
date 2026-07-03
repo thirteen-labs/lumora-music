@@ -7,6 +7,7 @@ import { useLyricsStore } from '@/store/lyrics-store';
 import { usePlayerStore } from '@/store/player-store';
 import { useRouter } from 'expo-router';
 import { ChevronLeft, Play, Mic2 } from 'lucide-react-native';
+import { LyricsBadge } from '@/components/lyrics-badge';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function WithLyricsScreen() {
@@ -45,7 +46,10 @@ export default function WithLyricsScreen() {
                   </View>
                   <View style={s.flex1}>
                     <Text style={[s.textSm, s.fontMedium, { color: colors.text }]} numberOfLines={1}>{song.title}</Text>
-                    <Text style={[s.textXs, s.mt05, { color: colors.textMuted }]} numberOfLines={1}>{song.artist}</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <LyricsBadge colors={colors} show={true} />
+                      <Text style={[s.textXs, s.mt05, { color: colors.textMuted }]} numberOfLines={1}>{song.artist}</Text>
+                    </View>
                   </View>
                 </Pressable>
               ))

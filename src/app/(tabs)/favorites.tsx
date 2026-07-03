@@ -5,10 +5,13 @@ import { useTheme } from '@/hooks/use-theme';
 import { useFavoritesStore } from '@/store/favorites-store';
 import { usePlayerStore } from '@/store/player-store';
 import { useMusicStore } from '@/store/music-store';
+import { useLyricsStore } from '@/store/lyrics-store';
+import { hasCachedLyrics } from '@/services/lyrics';
 import { TopBar } from '@/components/top-bar';
 import { MiniPlayer } from '@/components/mini-player';
 import { SongContextMenu, useSongContextMenu } from '@/components/song-context-menu';
 import { SwipeableRow } from '@/components/swipeable-row';
+import { LyricsBadge } from '@/components/lyrics-badge';
 import { Heart } from 'lucide-react-native';
 import { Artwork } from '@/components/artwork';
 import { formatDuration } from '@/utils/cn';
@@ -25,6 +28,7 @@ export default function FavoritesScreen() {
   const songs = useFavoritesStore((s) => s.songs);
   const hydrateFavorites = useFavoritesStore((s) => s.hydrateFavorites);
   const toggleSongFavorite = useFavoritesStore((s) => s.toggleSongFavorite);
+  const lyricsMap = useLyricsStore((s) => s.lyricsMap);
   const { bottomSheetRef, present, song } = useSongContextMenu();
 
   useFocusEffect(
@@ -59,16 +63,19 @@ export default function FavoritesScreen() {
                 style={[s.flexRow, s.itemsCenter, s.gap3, s.px4, s.py4]}
               >
                 <Artwork uri={item.artwork}
-                 size={48} 
+                 size={60} 
                  borderRadius={16} 
-                 iconSize={18} 
+                 iconSize={22} 
                  iconColor={colors.accent} 
                  backgroundColor={colors.surface} />
                 <View style={[s.flex1]}>
-                  <Text style={[s.textSm, s.fontMedium, { color: colors.text }]} numberOfLines={1}>{item.title}</Text>
-                  <Text style={[s.textXs, { color: colors.textMuted }]}>{item.artist}</Text>
+                  <Text style={[s.textBase, s.fontMedium, { color: colors.text }]} numberOfLines={1}>{item.title}</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <LyricsBadge colors={colors} show={!!lyricsMap[item.id] || hasCachedLyrics(item.artist, item.title) === true} />
+                    <Text style={[s.textSm, { color: colors.textMuted }]}>{item.artist}</Text>
+                  </View>
                 </View>
-                <Text style={[s.textXs, { color: colors.textMuted }]}>{formatDuration(item.duration)}</Text>
+                <Text style={[s.textSm, { color: colors.textMuted }]}>{formatDuration(item.duration)}</Text>
               </Pressable>
             </SwipeableRow>
           );

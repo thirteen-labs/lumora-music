@@ -5,7 +5,10 @@ import { useTheme } from '@/hooks/use-theme';
 import { useMusicStore } from '@/store/music-store';
 import { useStatsStore } from '@/store/stats-store';
 import { usePlayerStore } from '@/store/player-store';
+import { useLyricsStore } from '@/store/lyrics-store';
+import { hasCachedLyrics } from '@/services/lyrics';
 import { useRouter } from 'expo-router';
+import { LyricsBadge } from '@/components/lyrics-badge';
 import { ChevronLeft, Play, Clock } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -13,6 +16,7 @@ export default function RecentlyPlayedScreen() {
   const { colors } = useTheme();
   const router = useRouter();
   const songs = useMusicStore((s) => s.songs);
+  const lyricsMap = useLyricsStore((s) => s.lyricsMap);
   const getRecentlyPlayed = useStatsStore((s) => s.getRecentlyPlayed);
   const recentlyPlayed = useMemo(() => getRecentlyPlayed(songs, 20), [songs, getRecentlyPlayed]);
   const insets = useSafeAreaInsets();
@@ -45,7 +49,10 @@ export default function RecentlyPlayedScreen() {
                   </View>
                   <View style={s.flex1}>
                     <Text style={[s.textSm, s.fontMedium, { color: colors.text }]} numberOfLines={1}>{song.title}</Text>
-                    <Text style={[s.textXs, s.mt05, { color: colors.textMuted }]} numberOfLines={1}>{song.artist}</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <LyricsBadge colors={colors} show={!!lyricsMap[song.id] || hasCachedLyrics(song.artist, song.title) === true} />
+                      <Text style={[s.textXs, s.mt05, { color: colors.textMuted }]} numberOfLines={1}>{song.artist}</Text>
+                    </View>
                   </View>
                 </Pressable>
               ))

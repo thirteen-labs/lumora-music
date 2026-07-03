@@ -5,7 +5,7 @@ import { reportWarning } from '@/utils/error-handler';
 import type { Song } from '@/types/media';
 
 const QUEUE_KEY = 'lumora-persisted-queue';
-const QUEUE_VERSION = 3;
+const QUEUE_VERSION = 4;
 
 interface StubSong {
   id: string;
@@ -28,10 +28,11 @@ interface PersistedQueue {
   repeat: string;
   position: number;
   savedAt: number;
+  isPlaying: boolean;
 }
 
 interface QueuePersistState {
-  saveQueue: (track: Song | null, queue: Song[], queueIndex: number, shuffle: boolean, repeat: string, position: number) => void;
+  saveQueue: (track: Song | null, queue: Song[], queueIndex: number, shuffle: boolean, repeat: string, position: number, isPlaying?: boolean) => void;
   loadQueue: () => PersistedQueue | null;
   clearQueue: () => void;
 }
@@ -58,29 +59,34 @@ function validatePersistedQueue(data: unknown): data is PersistedQueue {
     typeof q.repeat === 'string';
   if (!valid) return false;
   if (typeof q.queueItems === 'undefined' || !Array.isArray(q.queueItems)) {
-    // migrate v2 -> v3
     (q as Record<string, unknown>).queueItems = [];
     (q as Record<string, unknown>).currentTrackStub = null;
+  }
+  if (typeof q.isPlaying === 'undefined') {
+    (q as Record<string, unknown>).isPlaying = false;
   }
   return true;
 }
 
 export const useQueuePersistStore = create<QueuePersistState>()(
   immer(() => ({
-    saveQueue: (track, queue, queueIndex, shuffle, repeat, position) => {
-      const data: PersistedQueue = {
-        version: QUEUE_VERSION,
-        currentTrackId: track?.id ?? null,
-        queueIds: queue.map((s) => s.id),
-        queueItems: queue.map((s) => toStub(s)),
-        currentTrackStub: track ? toStub(track) : null,
-        queueIndex,
-        shuffle,
-        repeat,
-        position: Math.max(0, position),
-        savedAt: Date.now(),
-      };
-      try { storage.set(QUEUE_KEY, JSON.stringify(data)); } catch (e) { reportWarning('QueuePersist', e); }
+    saveQueue: (track, queue, queueIndex, shuffle, repeat, position, isPlaying = false) => {
+      try {
+        const data: PersistedQueue = {
+          version: QUEUE_VERSION,
+          currentTrackId: track?.id ?? null,
+          queueIds: queue.map((s) => s.id),
+          queueItems: queue.map((s) => toStub(s)),
+          currentTrackStub: track ? toStub(track) : null,
+          queueIndex: Math.max(0, Math.min(queueIndex, queue.length - 1)),
+          shuffle,
+          repeat,
+          position: Math.max(0, position),
+          savedAt: Date.now(),
+          isPlaying,
+        };
+        storage.set(QUEUE_KEY, JSON.stringify(data));
+      } catch (e) { reportWarning('QueuePersist', e); }
     },
 
     loadQueue: () => {

@@ -5,9 +5,12 @@ import { useTheme } from '@/hooks/use-theme';
 import { useMusicStore } from '@/store/music-store';
 import { usePlayerStore } from '@/store/player-store';
 import { useLayoutStore } from '@/store/layout-store';
+import { useLyricsStore } from '@/store/lyrics-store';
+import { hasCachedLyrics } from '@/services/lyrics';
 import { TopBar } from '@/components/top-bar';
 import { MiniPlayer } from '@/components/mini-player';
 import { SongContextMenu, useSongContextMenu } from '@/components/song-context-menu';
+import { LyricsBadge } from '@/components/lyrics-badge';
 import { Music } from 'lucide-react-native';
 import { Artwork } from '@/components/artwork';
 import { formatDuration, formatFileSize } from '@/utils/cn';
@@ -19,6 +22,7 @@ export default function ArtistDetailScreen() {
   const songs = useMusicStore((s) => s.songs);
   const artists = useMusicStore((s) => s.artists);
   const fileSizeTheme = useLayoutStore((s) => s.fileSizeTheme);
+  const lyricsMap = useLyricsStore((s) => s.lyricsMap);
   const { bottomSheetRef, present, song } = useSongContextMenu();
 
   const artist = artists.find((a) => a.id === id);
@@ -59,9 +63,12 @@ export default function ArtistDetailScreen() {
             <Artwork uri={item.artwork} size={artSize} borderRadius={artSize * 0.25} iconColor={colors.accent} backgroundColor={colors.surface} />
             <View style={s.flex1}>
               <Text style={[s.textSm, s.fontMedium, { color: colors.text }]} numberOfLines={1}>{item.title}</Text>
-              <Text style={[s.textXs, { color: colors.textMuted }]} numberOfLines={1}>
-                {item.album} {fileSizeTheme === 'big' ? `· ${formatFileSize(item.fileSize)}` : ''}
-              </Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <LyricsBadge colors={colors} show={!!lyricsMap[item.id] || hasCachedLyrics(item.artist, item.title) === true} />
+                <Text style={[s.textXs, { color: colors.textMuted }]} numberOfLines={1}>
+                  {item.album} {fileSizeTheme === 'big' ? `· ${formatFileSize(item.fileSize)}` : ''}
+                </Text>
+              </View>
             </View>
             <Text style={[s.textXs, { color: colors.textMuted }]}>{formatDuration(item.duration)}</Text>
           </Pressable>

@@ -5,9 +5,12 @@ import { useTheme } from "@/hooks/use-theme";
 import { useMusicStore } from "@/store/music-store";
 import { useHiddenFilesStore } from "@/store/hidden-files-store";
 import { usePlayerStore } from "@/store/player-store";
+import { useLyricsStore } from '@/store/lyrics-store';
+import { hasCachedLyrics } from '@/services/lyrics';
 import { TopBar } from "@/components/top-bar";
 import { Search, X, Clock, SlidersHorizontal, ChevronDown, ChevronUp } from "lucide-react-native";
 import { Artwork } from "@/components/artwork";
+import { LyricsBadge } from '@/components/lyrics-badge';
 import { useState, useMemo, useCallback, useEffect } from "react";
 import { fuzzySearch } from "@/utils/fuzzy";
 import { useRouter, useFocusEffect } from "expo-router";
@@ -63,6 +66,7 @@ export default function SearchScreen() {
   const albums = useMusicStore((s) => s.albums);
   const artists = useMusicStore((s) => s.artists);
   const genres = useMusicStore((s) => s.genres);
+  const lyricsMap = useLyricsStore((s) => s.lyricsMap);
 
   const [query, setQuery] = useState("");
   const debouncedQuery = useDebounce(query, 300);
@@ -441,11 +445,12 @@ export default function SearchScreen() {
               {totalResults} result{totalResults !== 1 ? "s" : ""} found
             </Text>
           }
-          renderItem={({ item }: { item: ResultItem }) => (
+          renderItem={({ item }: { item: ResultItem }) => {
+            const song = item.type === 'song' ? songs.find((s) => s.id === item.id) : null;
+            return (
             <Pressable
               onPress={() => {
                 if (item.type === "song") {
-                  const song = songs.find((s) => s.id === item.id);
                   if (song) usePlayerStore.getState().play(song, results.songs);
                 } else if (item.type === "album") {
                   router.push({
@@ -492,12 +497,16 @@ export default function SearchScreen() {
                     </Text>
                   </View>
                 </View>
-                <Text style={[s.textXs, { color: colors.textMuted }]}>
-                  {item.subtitle}
-                </Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <LyricsBadge colors={colors} show={!!song && (!!lyricsMap[song.id] || hasCachedLyrics(song.artist, song.title) === true)} />
+                  <Text style={[s.textXs, { color: colors.textMuted }]}>
+                    {item.subtitle}
+                  </Text>
+                </View>
               </View>
             </Pressable>
-          )}
+            );
+          }}
           ListEmptyComponent={
             <View style={[s.itemsCenter, s.py20]}>
               <Search size={40} color={colors.textMuted} />

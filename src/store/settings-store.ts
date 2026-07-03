@@ -4,7 +4,6 @@ import { storage } from "@/services/mmkv";
 import type { RepeatMode } from "@/types/player";
 import { reportWarning } from "@/utils/error-handler";
 
-export type NowPlayingLayout = "modern" | "lyrics";
 export type AppLanguage = "en" | "es" | "fr" | "de" | "ja" | "zh" | "pt" | "ru" | "it" | "ko" | "ar" | "tr";
 export type FontFamily = "system" | "serif" | "rounded" | "mono" | "poppins" | "inter" | "monr" | "socide" | "epsor" | "roba" | "hago" | "preospe";
 
@@ -48,7 +47,6 @@ const SETTINGS_KEYS = {
   backgroundBrightness: "lumora-setting-bg-brightness",
   backgroundBlur: "lumora-setting-bg-blur",
   backgroundHue: "lumora-setting-bg-hue",
-  nowPlayingLayout: "lumora-setting-np-layout",
   language: "lumora-setting-language",
   fontFamily: "lumora-setting-font-family",
   adsRemoved: "lumora-setting-ads-removed",
@@ -97,7 +95,6 @@ interface SettingsState {
   backgroundBrightness: number;
   backgroundBlur: number;
   backgroundHue: number;
-  nowPlayingLayout: NowPlayingLayout;
   language: AppLanguage;
   fontFamily: FontFamily;
   adsRemoved: boolean;
@@ -119,7 +116,6 @@ interface SettingsState {
   setBackgroundBrightness: (v: number) => void;
   setBackgroundBlur: (v: number) => void;
   setBackgroundHue: (v: number) => void;
-  setNowPlayingLayout: (layout: NowPlayingLayout) => void;
   setLanguage: (lang: AppLanguage) => void;
   setFontFamily: (font: FontFamily) => void;
   setAdsRemoved: (v: boolean) => void;
@@ -164,11 +160,6 @@ export const useSettingsStore = create<SettingsState>()(
     backgroundBrightness: loadNumber(SETTINGS_KEYS.backgroundBrightness, 100),
     backgroundBlur: loadNumber(SETTINGS_KEYS.backgroundBlur, 0),
     backgroundHue: loadNumber(SETTINGS_KEYS.backgroundHue, 0),
-    nowPlayingLayout:
-      (loadString(
-        SETTINGS_KEYS.nowPlayingLayout,
-        "modern",
-      ) as NowPlayingLayout) || "modern",
     language: (loadString(SETTINGS_KEYS.language, "en") as AppLanguage) || "en",
     fontFamily: (loadString(SETTINGS_KEYS.fontFamily, "system") as FontFamily) || "system",
     adsRemoved: loadBool(SETTINGS_KEYS.adsRemoved, false),
@@ -218,10 +209,6 @@ export const useSettingsStore = create<SettingsState>()(
     setBackgroundHue: (v) => {
       set((s) => { s.backgroundHue = v; });
       persistSetting(SETTINGS_KEYS.backgroundHue, v);
-    },
-    setNowPlayingLayout: (layout) => {
-      set((s) => { s.nowPlayingLayout = layout; });
-      persistSetting(SETTINGS_KEYS.nowPlayingLayout, layout);
     },
     setLanguage: (lang) => {
       set((s) => { s.language = lang; });

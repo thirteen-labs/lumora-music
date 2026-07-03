@@ -31,22 +31,22 @@ export function MiniPlayer() {
         <View style={[s.wFull, s.h2px, { backgroundColor: colors.border }]}>
           <View style={[s.hFull, { width: `${progress * 100}%`, backgroundColor: colors.accent }]} />
         </View>
-        <View style={[s.flexRow, s.itemsCenter, s.px4, s.py3, s.gap3]}>
+          <View style={[s.flexRow, s.itemsCenter, s.px4, s.py3, s.gap3]}>
           <View style={[s.roundedXl, s.overflowHidden, { backgroundColor: colors.card }]}>
-            <Artwork uri={currentTrack.artwork} size={44} borderRadius={10} iconSize={18} iconColor={colors.accent} backgroundColor="transparent" />
+            <Artwork uri={currentTrack.artwork} size={52} borderRadius={12} iconSize={20} iconColor={colors.accent} backgroundColor="transparent" />
           </View>
           <View style={s.flex1}>
-            <Text style={[s.textSm, s.fontSemibold, { color: colors.text }]} numberOfLines={1}>
+            <Text style={[s.textBase, s.fontSemibold, { color: colors.text }]} numberOfLines={1}>
               {currentTrack.title}
             </Text>
-            <Text style={[s.textXs, s.mt05, { color: colors.textMuted }]} numberOfLines={1}>
+            <Text style={[s.textSm, s.mt05, { color: colors.textMuted }]} numberOfLines={1}>
               {currentTrack.artist}
             </Text>
           </View>
-          <Text style={[s.textXs, { color: colors.textMuted }]}>
+          <Text style={[s.textSm, { color: colors.textMuted }]}>
             {formatDuration(position)}
           </Text>
-          <Text style={[s.textXs, s.fontMedium, { color: colors.accent }]}>
+          <Text style={[s.textSm, s.fontMedium, { color: colors.accent }]}>
             {Math.round(progress * 100)}%
           </Text>
           <Pressable onPress={togglePlay} hitSlop={8} style={[s.w10, s.h10, s.roundedFull, s.itemsCenter, s.justifyCenter, { backgroundColor: colors.card }]}>

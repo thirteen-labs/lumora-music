@@ -14,16 +14,20 @@ import { ErrorBoundary } from "@/components/error-boundary";
 import { Toast } from "@/components/toast";
 import { StatusBar } from "expo-status-bar";
 import { useScanManager } from "@/hooks/use-scan-manager";
+import { useThemeStore } from "@/store/theme-store";
+import { getThemeById } from "@/theme/themes";
 
 function RootStack() {
   const segments = useSegments();
   useScanManager();
+  const currentThemeId = useThemeStore((s) => s.currentThemeId);
+  const currentTheme = getThemeById(currentThemeId);
 
   const isTabScreen = segments.length > 0 && segments[0] === "(tabs)";
 
   return (
     <View style={{ flex: 1 }}>
-      <StatusBar style="light" />
+      <StatusBar style={currentTheme.isDark ? "light" : "dark"} />
       <ErrorBoundary name="Screen Content">
         <View style={{ flex: 1 }}>
           <Stack
@@ -199,6 +203,10 @@ function RootStack() {
             />
             <Stack.Screen
               name="system-hidden-files"
+              options={{ animation: "slide_from_right" }}
+            />
+            <Stack.Screen
+              name="audio-recognition"
               options={{ animation: "slide_from_right" }}
             />
           </Stack>

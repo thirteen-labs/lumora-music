@@ -12,6 +12,7 @@ import { hasCachedLyrics } from '@/services/lyrics';
 import { TopBar } from '@/components/top-bar';
 import { MiniPlayer } from '@/components/mini-player';
 import { SortMenu } from '@/components/sort-menu';
+import { LyricsBadge } from '@/components/lyrics-badge';
 import { useEffect, useMemo, useRef } from 'react';
 import { Music, Clock, LayoutGrid, List } from 'lucide-react-native';
 import { Artwork } from '@/components/artwork';
@@ -141,9 +142,9 @@ export default function MusicScreen() {
                 >
                   <Artwork uri={item.artwork} size={GRID_ITEM_WIDTH} borderRadius={14} iconSize={24} iconColor={colors.accent} backgroundColor={colors.surface} />
                 </View>
-                <Text style={{ fontSize: 12, fontWeight: '500', color: colors.text, marginTop: 8 }} numberOfLines={1}>{item.title}</Text>
+                <Text style={{ fontSize: 14, fontWeight: '600', color: colors.text, marginTop: 8 }} numberOfLines={1}>{item.title}</Text>
                 <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 2 }}>
-                  <Text style={{ fontSize: 11, color: colors.textMuted }} numberOfLines={1}>{item.artist}</Text>
+                  <Text style={{ fontSize: 13, color: colors.textMuted }} numberOfLines={1}>{item.artist}</Text>
                 </View>
               </Pressable>
             )}
@@ -170,19 +171,15 @@ export default function MusicScreen() {
                       onPress={() => usePlayerStore.getState().play(item, generateRandomQueue(item, songs))}
                       style={[s.flexRow, s.itemsCenter, s.gap3, s.px4, s.py4]}
                     >
-                      <Artwork uri={item.artwork} size={44} borderRadius={8} iconSize={16} iconColor={colors.accent} backgroundColor={colors.card} />
+                      <Artwork uri={item.artwork} size={56} borderRadius={12} iconSize={20} iconColor={colors.accent} backgroundColor={colors.card} />
                       <View style={s.flex1}>
-                        <Text style={[s.textSm, s.fontSemibold, { color: colors.text }]} numberOfLines={1}>{item.title}</Text>
+                        <Text style={[s.textBase, s.fontSemibold, { color: colors.text }]} numberOfLines={1}>{item.title}</Text>
                         <View style={[s.flexRow, s.itemsCenter, s.gap1, s.mt05]}>
-                          {(!!lyricsMap[item.id] || hasCachedLyrics(item.artist, item.title) === true) && (
-                            <View style={{ backgroundColor: colors.accent + '20', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 }}>
-                              <Text style={{ fontSize: 9, fontWeight: '700', color: colors.accent }}>Lyrics</Text>
-                            </View>
-                          )}
-                          <Text style={[s.textXs, { color: colors.textMuted }]} numberOfLines={1}>{item.artist}</Text>
+                          <LyricsBadge colors={colors} show={!!lyricsMap[item.id] || hasCachedLyrics(item.artist, item.title) === true} />
+                          <Text style={[s.textSm, { color: colors.textMuted }]} numberOfLines={1}>{item.artist}</Text>
                         </View>
                       </View>
-                      <Text style={[s.textXs, { color: colors.textMuted }]}>{formatDuration(item.duration)}</Text>
+                      <Text style={[s.textSm, { color: colors.textMuted }]}>{formatDuration(item.duration)}</Text>
                     </Pressable>
                   ))}
                 </View>
@@ -193,19 +190,19 @@ export default function MusicScreen() {
                 onPress={() => usePlayerStore.getState().play(item, generateRandomQueue(item, songs))}
                 style={[s.flexRow, s.itemsCenter, s.gap3, s.px4, s.py4]}
               >
-                <Artwork uri={item.artwork} size={44} borderRadius={8} iconSize={16} iconColor={colors.accent} backgroundColor={colors.card} />
+                <Artwork uri={item.artwork} size={56} borderRadius={12} iconSize={20} iconColor={colors.accent} backgroundColor={colors.card} />
                 <View style={s.flex1}>
-                  <Text style={[s.textSm, s.fontSemibold, { color: colors.text }]} numberOfLines={1}>{item.title}</Text>
+                  <Text style={[s.textBase, s.fontSemibold, { color: colors.text }]} numberOfLines={1}>{item.title}</Text>
                     <View style={[s.flexRow, s.itemsCenter, s.gap1, s.mt05]}>
                       {(!!lyricsMap[item.id] || hasCachedLyrics(item.artist, item.title) === true) && (
                         <View style={{ backgroundColor: colors.accent + '20', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 }}>
-                          <Text style={{ fontSize: 9, fontWeight: '700', color: colors.accent }}>Lyrics</Text>
+                          <Text style={{ fontSize: 10, fontWeight: '700', color: colors.accent }}>Lyrics</Text>
                         </View>
                       )}
-                      <Text style={[s.textXs, { color: colors.textMuted }]} numberOfLines={1}>{item.artist}</Text>
+                      <Text style={[s.textSm, { color: colors.textMuted }]} numberOfLines={1}>{item.artist}</Text>
                     </View>
                 </View>
-                <Text style={[s.textXs, { color: colors.textMuted }]}>{formatDuration(item.duration)}</Text>
+                <Text style={[s.textSm, { color: colors.textMuted }]}>{formatDuration(item.duration)}</Text>
               </Pressable>
             )}
             ListEmptyComponent={null}

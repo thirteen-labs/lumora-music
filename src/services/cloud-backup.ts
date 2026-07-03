@@ -82,7 +82,6 @@ function getSettingsSnapshot(): Record<string, string | boolean | number | null>
     playTogether: s.playTogether,
     newMediaNotification: s.newMediaNotification,
     pushNotification: s.pushNotification,
-    nowPlayingLayout: s.nowPlayingLayout,
   };
 }
 

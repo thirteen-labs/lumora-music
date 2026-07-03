@@ -53,13 +53,14 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const saveStateBeforeExit = useCallback(() => {
     try {
       const state = usePlayerStore.getState();
-      if (state.currentTrack) {
-        useQueuePersistStore.getState().saveQueue(
-          state.currentTrack, state.queue, state.queueIndex,
-          state.shuffle, state.repeat, state.position,
-        );
-      }
-    } catch {}
+      useQueuePersistStore.getState().saveQueue(
+        state.currentTrack, state.queue, state.queueIndex,
+        state.shuffle, state.repeat, state.position,
+        state.isPlaying,
+      );
+    } catch (e) {
+      reportWarning('PlayerProvider', e, 'Failed to save state before exit');
+    }
   }, []);
 
   const cleanup = useCallback(() => {
@@ -142,7 +143,6 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   }
 
   async function restoreQueue() {
-    /* Prevent re-entry */
     if (restoreAttemptedRef.current) return;
     restoreAttemptedRef.current = true;
 
@@ -157,6 +157,8 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       return;
     }
 
+    const wasPlaying = persisted.isPlaying === true;
+
     usePlayerStore.setState({
       currentTrack: track,
       queue,
@@ -165,7 +167,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       repeat: persisted.repeat as any,
       isMiniPlayerVisible: true,
       position: persisted.position,
-      isPlaying: false,
+      isPlaying: wasPlaying,
     });
 
     try {
@@ -174,7 +176,9 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         const boundedPosition = Math.min(persisted.position, track.duration - 1);
         await serviceSeekTo(boundedPosition);
       }
-      await pausePlayback();
+      if (!wasPlaying) {
+        await pausePlayback();
+      }
     } catch (e) {
       reportWarning('PlayerProvider', e, 'Failed to restore track position after crash');
     }
@@ -198,7 +202,19 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       }
     };
     const sub = AppState.addEventListener('change', handleAppState);
-    return () => sub.remove();
+
+    /* Also save on beforeunload for web cleanup */
+    let beforeUnloadCleanup: (() => void) | null = null;
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      const handleBeforeUnload = () => saveStateBeforeExit();
+      window.addEventListener('beforeunload', handleBeforeUnload);
+      beforeUnloadCleanup = () => window.removeEventListener('beforeunload', handleBeforeUnload);
+    }
+
+    return () => {
+      sub.remove();
+      if (beforeUnloadCleanup) beforeUnloadCleanup();
+    };
   }, [saveStateBeforeExit]);
 
   useEffect(() => {

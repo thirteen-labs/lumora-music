@@ -6,6 +6,7 @@ import * as ExpoNotifications from 'expo-notifications';
 import * as FileSystem from 'expo-file-system/legacy';
 import type { Song } from '@/types/media';
 import { usePlayerStore } from '@/store/player-store';
+import { useQueuePersistStore } from '@/store/queue-persist-store';
 import { useFavoritesStore } from '@/store/favorites-store';
 import { useSettingsStore } from '@/store/settings-store';
 import { extractColorsFromImage } from '@/services/color-extraction';
@@ -15,6 +16,7 @@ let initialized = false;
 const colorCache = new Map<string, number | null>();
 const COLOR_CACHE_MAX = 50;
 const ARTWORK_URI_CACHE_MAX = 50;
+let preloadRequestId = 0;
 
 const SCAN_CHANNEL = 'media-scan';
 const SLEEP_TIMER_CHANNEL = 'sleep-timer';
@@ -89,6 +91,7 @@ export async function initializeNotifications(): Promise<void> {
     const track = state.currentTrack;
     if (track) {
       useFavoritesStore.getState().toggleSongFavorite(track);
+      preloadColorsForTrack(track.artwork);
       showNowPlayingNotification(track, state.isPlaying);
     }
   }));
@@ -97,10 +100,10 @@ export async function initializeNotifications(): Promise<void> {
     const state = usePlayerStore.getState();
     if (state.currentTrack) {
       try {
-        const { useQueuePersistStore } = require('@/store/queue-persist-store');
         useQueuePersistStore.getState().saveQueue(
           state.currentTrack, state.queue, state.queueIndex,
           state.shuffle, state.repeat, state.position,
+          false,
         );
       } catch {}
     }
@@ -111,14 +114,13 @@ export async function initializeNotifications(): Promise<void> {
   addListener('playbackNotificationDismiss', () => wrapHandler(() => {
     const state = usePlayerStore.getState();
     state.pause();
-    /* Also save queue so position is captured */
     try {
       const s = usePlayerStore.getState();
       if (s.currentTrack) {
-        const { useQueuePersistStore } = require('@/store/queue-persist-store');
         useQueuePersistStore.getState().saveQueue(
           s.currentTrack, s.queue, s.queueIndex,
           s.shuffle, s.repeat, s.position,
+          false,
         );
       }
     } catch {}
@@ -219,6 +221,54 @@ function cacheArtworkUri(key: string, value: string): void {
   artworkUriCache.set(key, value);
 }
 
+/** Preload artwork for an upcoming track into the local cache in background.
+ *  Call this before play starts to avoid blocking the notification display. */
+export async function preloadArtworkForTrack(track: Song): Promise<void> {
+  if (!track.artwork) return;
+  const requestId = ++preloadRequestId;
+  try {
+    const resolved = resolveArtworkUri(track.artwork);
+    if (!resolved) return;
+    let needsCache = false;
+    if (resolved.startsWith('http://') || resolved.startsWith('https://')) {
+      if (!artworkUriCache.has(resolved)) needsCache = true;
+    } else if (resolved.startsWith('content://')) {
+      needsCache = true;
+    }
+    if (needsCache) {
+      const cached = await cacheRemoteArtwork(resolved);
+      if (requestId === preloadRequestId) {
+        cacheArtworkUri(resolved, cached);
+      }
+    }
+  } catch {}
+}
+
+/** Preload artwork for multiple upcoming tracks in the background.
+ *  Useful for preloading the next few tracks in the queue. */
+export async function preloadArtworkForQueue(tracks: Song[], startIndex: number, count = 3): Promise<void> {
+  const toPreload = tracks.slice(startIndex, startIndex + count);
+  await Promise.allSettled(toPreload.map((t) => preloadArtworkForTrack(t)));
+}
+
+/** Extract and cache artwork colors in background for a given track. */
+export async function preloadColorsForTrack(artworkUri: string | null): Promise<void> {
+  if (!artworkUri || colorCache.has(artworkUri)) return;
+  try {
+    const resolved = resolveArtworkUri(artworkUri);
+    if (!resolved) return;
+    const cacheUri = artworkUriCache.get(resolved) ?? resolved;
+    if (!colorCache.has(cacheUri)) {
+      const extracted = await extractColorsFromImage(cacheUri);
+      if (extracted?.background) {
+        cacheArtworkColor(cacheUri, hexToNumber(extracted.background));
+      } else {
+        cacheArtworkColor(cacheUri, null);
+      }
+    }
+  } catch {}
+}
+
 export async function showNowPlayingNotification(
   track: Song,
   isPlaying: boolean,
@@ -236,7 +286,12 @@ export async function showNowPlayingNotification(
         }
         artwork = cached;
       } else if (artwork.startsWith('content://')) {
-        artwork = await cacheRemoteArtwork(artwork);
+        let cached = artworkUriCache.get(artwork);
+        if (!cached) {
+          cached = await cacheRemoteArtwork(artwork);
+          cacheArtworkUri(artwork, cached);
+        }
+        artwork = cached;
       }
     }
     const info: Record<string, unknown> = {
@@ -254,20 +309,19 @@ export async function showNowPlayingNotification(
     };
 
     if (artwork) {
-      const cacheUri = artwork;
-      if (!colorCache.has(cacheUri)) {
+      if (!colorCache.has(artwork)) {
         try {
-          const extracted = await extractColorsFromImage(cacheUri);
+          const extracted = await extractColorsFromImage(artwork);
           if (extracted?.background) {
-            cacheArtworkColor(cacheUri, hexToNumber(extracted.background));
+            cacheArtworkColor(artwork, hexToNumber(extracted.background));
           } else {
-            cacheArtworkColor(cacheUri, null);
+            cacheArtworkColor(artwork, null);
           }
         } catch {
-          cacheArtworkColor(cacheUri, null);
+          cacheArtworkColor(artwork, null);
         }
       }
-      const color = colorCache.get(cacheUri);
+      const color = colorCache.get(artwork);
       if (color != null) {
         info.color = color;
         info.colorized = true;
@@ -324,6 +378,17 @@ export async function cancelAllNotifications(): Promise<void> {
 /** Call on app death to ensure notification is removed cleanly and any stale
  *  notification from a previous session is dismissed on next launch. */
 export async function cleanupOnAppExit(): Promise<void> {
+  try {
+    const state = usePlayerStore.getState();
+    if (state.currentTrack) {
+      const { saveQueue } = useQueuePersistStore.getState();
+      saveQueue(
+        state.currentTrack, state.queue, state.queueIndex,
+        state.shuffle, state.repeat, state.position,
+        state.isPlaying,
+      );
+    }
+  } catch {}
   await dismissNowPlayingNotification();
   try {
     await ExpoNotifications.cancelAllScheduledNotificationsAsync();

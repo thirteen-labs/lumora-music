@@ -1,6 +1,6 @@
 import { Tabs } from 'expo-router';
 import { useTheme } from '@/hooks/use-theme';
-import { Music, Heart, Settings } from 'lucide-react-native';
+import { Music, Heart, Settings, LayoutGrid } from 'lucide-react-native';
 
 export default function TabLayout() {
   const { colors } = useTheme();
@@ -20,6 +20,13 @@ export default function TabLayout() {
         },
       }}
     >
+      <Tabs.Screen
+        name="index"
+        options={{
+          title: 'Home',
+          tabBarIcon: ({ color, size }) => <LayoutGrid size={size} color={color} />,
+        }}
+      />
       <Tabs.Screen
         name="music"
         options={{

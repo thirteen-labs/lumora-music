@@ -1,5 +1,6 @@
 import { File } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
+import { invalidateCache } from '@/services/directory-cache';
 
 interface FileOperationResult {
   success: boolean;
@@ -27,10 +28,21 @@ export async function deleteFiles(uris: string[]): Promise<FileOperationResult> 
       lastError = result.error ?? 'Failed';
     }
   }
+  const parentUris = new Set(uris.map((u) => getParentUri(u)));
+  for (const parent of parentUris) {
+    if (parent) invalidateCache(parent);
+  }
   if (failed > 0 && failed === uris.length) {
     return { success: false, error: lastError };
   }
   return { success: true };
+}
+
+function getParentUri(uri: string): string | null {
+  const cleaned = uri.replace(/\/$/, '');
+  const lastSlash = cleaned.lastIndexOf('/');
+  if (lastSlash <= 0) return null;
+  return cleaned.substring(0, lastSlash + 1);
 }
 
 async function shareFile(uri: string): Promise<FileOperationResult> {

@@ -2,6 +2,7 @@ import { Platform } from 'react-native';
 import { Paths, File, Directory } from 'expo-file-system';
 import { StorageAccessFramework, getInfoAsync } from 'expo-file-system/legacy';
 import { useSettingsStore } from '@/store/settings-store';
+import { getCachedDirectory, setCachedDirectory, invalidateCache } from '@/services/directory-cache';
 
 export interface FileItem {
   name: string;
@@ -77,11 +78,18 @@ export async function listMediaContents(uri: string, filterType?: 'audio'): Prom
 export async function listDirectory(uri: string): Promise<FileItem[]> {
   const showHidden = useSettingsStore.getState().showSystemHiddenFiles;
 
+  const cached = getCachedDirectory(uri, showHidden);
+  if (cached) return cached;
+
+  let items: FileItem[];
   if (uri.startsWith('content://')) {
-    return listDirectorySAF(uri, showHidden);
+    items = await listDirectorySAF(uri, showHidden);
+  } else {
+    items = await listDirectoryLegacy(uri, showHidden);
   }
 
-  return listDirectoryLegacy(uri, showHidden);
+  setCachedDirectory(uri, items, showHidden);
+  return items;
 }
 
 async function listDirectorySAF(uri: string, showHidden: boolean): Promise<FileItem[]> {

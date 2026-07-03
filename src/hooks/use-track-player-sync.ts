@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import { AppState } from 'react-native';
 import { usePlayerStore } from '@/store/player-store';
 import { getPlayer, isCrossfadeEnabled, getCrossfadeDuration, preloadNextTrack } from '@/services/track-player';
-import { showNowPlayingNotification, updateNotificationPlaybackState, dismissNowPlayingNotification } from '@/services/notifications';
+import { showNowPlayingNotification, updateNotificationPlaybackState, dismissNowPlayingNotification, preloadArtworkForTrack, preloadColorsForTrack } from '@/services/notifications';
 import { useSleepTimerStore } from '@/store/sleep-timer-store';
 import { useStatsStore } from '@/store/stats-store';
 import { useQueuePersistStore } from '@/store/queue-persist-store';
@@ -20,6 +20,7 @@ export function useTrackPlayerSync() {
   const lastQueueSaveRef = useRef(0);
   const lastNotifUpdateRef = useRef(0);
   const lastZeroVolNotifRef = useRef(0);
+  const lastMilestonePosRef = useRef(0);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const appStateRef = useRef(AppState.currentState);
   const consecutiveSyncFailsRef = useRef(0);
@@ -123,6 +124,7 @@ export function useTrackPlayerSync() {
         state.shuffle,
         state.repeat,
         state.position,
+        state.isPlaying,
       );
     }
   }
@@ -163,6 +165,9 @@ export function useTrackPlayerSync() {
         if (state.currentTrack && state.currentTrack.id !== lastTrackIdRef.current) {
           lastTrackIdRef.current = state.currentTrack.id;
           playTimeAccumRef.current = 0;
+          lastMilestonePosRef.current = 0;
+          preloadArtworkForTrack(state.currentTrack);
+          preloadColorsForTrack(state.currentTrack.artwork);
           showNowPlayingNotification(state.currentTrack, isNowPlaying, currentTime);
           lastNotifUpdateRef.current = now;
         } else if (state.currentTrack && isNowPlaying !== wasPlayingRef.current) {
@@ -182,11 +187,14 @@ export function useTrackPlayerSync() {
 
       if (isNowPlaying && duration > 0 && state.currentTrack) {
         const pct = currentTime / duration;
-        if (pct > 0.8 && pct < 0.99) {
+        /* Preload next track at 60% for better readiness */
+        if (pct > 0.6 && pct < 0.99) {
           const queue = state.queue;
           const nextIdx = state.queueIndex + 1;
           if (nextIdx < queue.length) {
             preloadNextTrack(queue[nextIdx]);
+            preloadArtworkForTrack(queue[nextIdx]);
+            preloadColorsForTrack(queue[nextIdx].artwork);
           }
         }
       }
@@ -209,10 +217,20 @@ export function useTrackPlayerSync() {
         recordPlayTime(currentTime, lastTimeRef.current, true, state.currentTrack.id);
       }
 
-      /* Save queue every 5s instead of 10s for better crash resilience */
-      if ((isNowPlaying || state.currentTrack) && now - lastQueueSaveRef.current >= 5000) {
+      /* Save queue every 2s for better crash resilience */
+      if ((isNowPlaying || state.currentTrack) && now - lastQueueSaveRef.current >= 2000) {
         saveQueueState();
         lastQueueSaveRef.current = now;
+      }
+
+      /* Save on position milestones (every ~10s progress) for precise resume after crash */
+      if (isNowPlaying && state.currentTrack && duration > 0) {
+        const milestoneDelta = Math.abs(currentTime - lastMilestonePosRef.current);
+        if (milestoneDelta >= 10) {
+          saveQueueState();
+          lastQueueSaveRef.current = now;
+          lastMilestonePosRef.current = currentTime;
+        }
       }
 
       if (isNowPlaying) {

@@ -1,13 +1,14 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { View, Pressable, type LayoutChangeEvent } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Music, ListMusic, Heart } from 'lucide-react-native';
+import { Music, ListMusic, Heart, LayoutGrid } from 'lucide-react-native';
 import { useRouter, useSegments } from 'expo-router';
 import { s } from '@/styles';
 import { useTheme } from '@/hooks/use-theme';
 import Animated, { useSharedValue, useAnimatedStyle, withTiming } from 'react-native-reanimated';
 
 const NAV_ITEMS = [
+  { key: 'index', labelKey: 'nav.home', icon: LayoutGrid, route: '/(tabs)' },
   { key: 'music', labelKey: 'nav.music', icon: Music, route: '/(tabs)/music' },
   { key: 'favorites', labelKey: 'nav.favorites', icon: Heart, route: '/(tabs)/favorites' },
   { key: 'playlists', labelKey: 'nav.playlists', icon: ListMusic, route: '/(tabs)/playlists' },

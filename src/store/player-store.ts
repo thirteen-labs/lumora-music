@@ -12,6 +12,7 @@ import {
 } from "@/services/track-player";
 import { useStatsStore } from "@/store/stats-store";
 import { useQueuePersistStore } from "@/store/queue-persist-store";
+import { preloadArtworkForTrack, preloadColorsForTrack } from "@/services/notifications";
 import { reportWarning } from "@/utils/error-handler";
 
 function shuffleArray(length: number): number[] {
@@ -117,8 +118,20 @@ export const usePlayerStore = create<PlayerState>()(
       try { useStatsStore.getState().recordPlay(track.id); } catch {}
       const state = get();
       try {
-        useQueuePersistStore.getState().saveQueue(track, state.queue, state.queueIndex, state.shuffle, state.repeat, 0);
+        useQueuePersistStore.getState().saveQueue(track, state.queue, state.queueIndex, state.shuffle, state.repeat, 0, true);
       } catch {}
+
+      /* Preload artwork for background notification */
+      preloadArtworkForTrack(track);
+      preloadColorsForTrack(track.artwork);
+      const stateAfter = get();
+      if (stateAfter.queue.length > 0) {
+        const nextIdx = stateAfter.queueIndex + 1;
+        if (nextIdx < stateAfter.queue.length) {
+          preloadArtworkForTrack(stateAfter.queue[nextIdx]);
+          preloadColorsForTrack(stateAfter.queue[nextIdx].artwork);
+        }
+      }
 
       try {
         await guardedLoadTrack(track);
@@ -135,6 +148,7 @@ export const usePlayerStore = create<PlayerState>()(
           useQueuePersistStore.getState().saveQueue(
             state.currentTrack, state.queue, state.queueIndex,
             state.shuffle, state.repeat, state.position,
+            false,
           );
         } catch {}
       }
@@ -151,6 +165,7 @@ export const usePlayerStore = create<PlayerState>()(
           useQueuePersistStore.getState().saveQueue(
             state.currentTrack, state.queue, state.queueIndex,
             state.shuffle, state.repeat, state.position,
+            false,
           );
         } catch {}
       }
@@ -192,13 +207,13 @@ export const usePlayerStore = create<PlayerState>()(
         try { useStatsStore.getState().recordSkip(currentTrack.id); } catch {}
       }
 
-      /* Save position before moving on */
       const preState = get();
-      if (preState.currentTrack && preState.isPlaying) {
+      if (preState.currentTrack) {
         try {
           useQueuePersistStore.getState().saveQueue(
             preState.currentTrack, preState.queue, preState.queueIndex,
             preState.shuffle, preState.repeat, preState.position,
+            preState.isPlaying,
           );
         } catch {}
       }
@@ -249,6 +264,9 @@ export const usePlayerStore = create<PlayerState>()(
           s.duration = 0;
           s.isPlaying = true;
         });
+        /* Preload artwork for notification */
+        preloadArtworkForTrack(nextTrack);
+        preloadColorsForTrack(nextTrack.artwork);
         try {
           await guardedLoadTrack(nextTrack);
         } catch (e) {
@@ -257,7 +275,7 @@ export const usePlayerStore = create<PlayerState>()(
         }
         const s = get();
         try {
-          useQueuePersistStore.getState().saveQueue(nextTrack, s.queue, nextOriginalIndex, s.shuffle, s.repeat, 0);
+          useQueuePersistStore.getState().saveQueue(nextTrack, s.queue, nextOriginalIndex, s.shuffle, s.repeat, 0, true);
         } catch {}
       }
     },
@@ -266,13 +284,13 @@ export const usePlayerStore = create<PlayerState>()(
       const { queue, shuffle, shuffledOrder, position } = get();
       if (queue.length === 0) return;
 
-      /* Save position before moving on */
       const preState = get();
-      if (preState.currentTrack && preState.isPlaying) {
+      if (preState.currentTrack) {
         try {
           useQueuePersistStore.getState().saveQueue(
             preState.currentTrack, preState.queue, preState.queueIndex,
             preState.shuffle, preState.repeat, preState.position,
+            preState.isPlaying,
           );
         } catch {}
       }
@@ -312,6 +330,9 @@ export const usePlayerStore = create<PlayerState>()(
           s.duration = 0;
           s.isPlaying = true;
         });
+        /* Preload artwork for notification */
+        preloadArtworkForTrack(prevTrack);
+        preloadColorsForTrack(prevTrack.artwork);
         try {
           await guardedLoadTrack(prevTrack);
         } catch (e) {
@@ -320,7 +341,7 @@ export const usePlayerStore = create<PlayerState>()(
         }
         const s = get();
         try {
-          useQueuePersistStore.getState().saveQueue(prevTrack, s.queue, prevOriginalIndex, s.shuffle, s.repeat, 0);
+          useQueuePersistStore.getState().saveQueue(prevTrack, s.queue, prevOriginalIndex, s.shuffle, s.repeat, 0, true);
         } catch {}
       }
     },

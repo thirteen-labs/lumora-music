@@ -5,7 +5,6 @@ import { useMemo } from 'react';
 
 import { s } from '@/styles';
 import { useTheme } from '@/hooks/use-theme';
-import type { ThemeColors } from '@/types/theme';
 import { useMusicStore } from '@/store/music-store';
 import { usePlayerStore, generateRandomQueue } from '@/store/player-store';
 import { useLayoutStore } from '@/store/layout-store';
@@ -17,6 +16,7 @@ import { MiniPlayer } from '@/components/mini-player';
 import { SortMenu } from '@/components/sort-menu';
 import { SongContextMenu, useSongContextMenu } from '@/components/song-context-menu';
 import { SwipeableRow } from '@/components/swipeable-row';
+import { LyricsBadge } from '@/components/lyrics-badge';
 import { Music, LayoutGrid, List } from 'lucide-react-native';
 import { Artwork } from '@/components/artwork';
 import { formatDuration, formatFileSize } from '@/utils/cn';
@@ -40,22 +40,6 @@ function sortSongs(songs: any[], sortField: SortField, sortOrder: SortOrder, sta
     return sortOrder === 'desc' ? -cmp : cmp;
   });
   return sorted;
-}
-
-function LyricsBadge({ colors, show, size }: { colors: ThemeColors; show?: boolean; size?: number }) {
-  if (!show) return null;
-  return (
-    <View
-      style={{
-        backgroundColor: colors.accent + '20',
-        borderRadius: 6,
-        paddingHorizontal: size ?? 6,
-        paddingVertical: 2,
-      }}
-    >
-      <Text style={{ fontSize: size ? size - 3 : 9, fontWeight: '700', color: colors.accent }}>Lyrics</Text>
-    </View>
-  );
 }
 
 export default function SongsScreen() {
@@ -83,9 +67,9 @@ export default function SongsScreen() {
   const GRID_COLUMNS = gridConfig.columns;
   const GRID_ITEM_WIDTH = (SCREEN_WIDTH - 32 - (GRID_COLUMNS - 1) * 12) / GRID_COLUMNS;
 
-  const listHeightMap = { small: 64, medium: 76, big: 92 };
+  const listHeightMap = { small: 76, medium: 88, big: 104 };
   const rowHeight = listHeightMap[fileSizeTheme];
-  const listArtSizeMap = { small: 40, medium: 48, big: 60 };
+  const listArtSizeMap = { small: 52, medium: 60, big: 72 };
   const artSize = listArtSizeMap[fileSizeTheme];
 
   return (
@@ -136,11 +120,11 @@ export default function SongsScreen() {
                   >
                     <Artwork uri={item.artwork} size={GRID_ITEM_WIDTH} borderRadius={14} iconSize={36} iconColor={colors.accent} backgroundColor={colors.surface} />
                   </View>
-                  <Text style={{ fontSize: 13, fontWeight: '600', color: colors.text, marginTop: 8 }} numberOfLines={1}>{item.title}</Text>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 3 }}>
-                      <LyricsBadge colors={colors} show={!!lyricsMap[item.id] || hasCachedLyrics(item.artist, item.title) === true} />
-                      <Text style={{ fontSize: 11, color: colors.textMuted }} numberOfLines={1}>{item.artist}</Text>
-                    </View>
+                    <Text style={{ fontSize: 15, fontWeight: '600', color: colors.text, marginTop: 8 }} numberOfLines={1}>{item.title}</Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 3 }}>
+                        <LyricsBadge colors={colors} show={!!lyricsMap[item.id] || hasCachedLyrics(item.artist, item.title) === true} />
+                        <Text style={{ fontSize: 13, color: colors.textMuted }} numberOfLines={1}>{item.artist}</Text>
+                      </View>
                 </>
               ) : (
                 <>
@@ -155,11 +139,11 @@ export default function SongsScreen() {
                   >
                     <Artwork uri={item.artwork} size={GRID_ITEM_WIDTH} borderRadius={12} iconSize={24} iconColor={colors.accent} backgroundColor={colors.surface} />
                   </View>
-                  <Text style={{ fontSize: 12, fontWeight: '500', color: colors.text, marginTop: 8 }} numberOfLines={1}>{item.title}</Text>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 }}>
-                      <LyricsBadge colors={colors} show={!!lyricsMap[item.id] || hasCachedLyrics(item.artist, item.title) === true} />
-                      <Text style={{ fontSize: 11, color: colors.textMuted }} numberOfLines={1}>{item.artist}</Text>
-                    </View>
+                    <Text style={{ fontSize: 14, fontWeight: '600', color: colors.text, marginTop: 8 }} numberOfLines={1}>{item.title}</Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 }}>
+                        <LyricsBadge colors={colors} show={!!lyricsMap[item.id] || hasCachedLyrics(item.artist, item.title) === true} />
+                        <Text style={{ fontSize: 13, color: colors.textMuted }} numberOfLines={1}>{item.artist}</Text>
+                      </View>
                 </>
               )}
             </Pressable>
@@ -190,20 +174,20 @@ export default function SongsScreen() {
                 >
                   <Artwork uri={item.artwork} size={artSize} borderRadius={artSize * 0.25} iconColor={colors.accent} backgroundColor={colors.surface} />
                   <View style={s.flex1}>
-                    <Text style={[s.textSm, s.fontMedium, { color: colors.text }]} numberOfLines={1}>{item.title}</Text>
+                    <Text style={[s.textBase, s.fontMedium, { color: colors.text }]} numberOfLines={1}>{item.title}</Text>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 }}>
                       <LyricsBadge colors={colors} show={!!lyricsMap[item.id] || hasCachedLyrics(item.artist, item.title) === true} />
-                      <Text style={[s.textXs, { color: colors.textMuted }]} numberOfLines={1}>
+                      <Text style={[s.textSm, { color: colors.textMuted }]} numberOfLines={1}>
                         {item.artist}
                       </Text>
                       {fileSizeTheme === 'big' && (
-                        <Text style={[s.textXs, { color: colors.textMuted }]}>
+                        <Text style={[s.textSm, { color: colors.textMuted }]}>
                           {formatFileSize(item.fileSize)}
                         </Text>
                       )}
                     </View>
                   </View>
-                  <Text style={[s.textXs, { color: colors.textMuted }]}>{formatDuration(item.duration)}</Text>
+                  <Text style={[s.textSm, { color: colors.textMuted }]}>{formatDuration(item.duration)}</Text>
                 </Pressable>
               </SwipeableRow>
             );

@@ -9,7 +9,10 @@ import { Artwork } from '@/components/artwork';
 import { usePlaylistStore } from '@/store/playlist-store';
 import { useMusicStore } from '@/store/music-store';
 import { usePlayerStore } from '@/store/player-store';
+import { useLyricsStore } from '@/store/lyrics-store';
+import { hasCachedLyrics } from '@/services/lyrics';
 import { formatDuration } from '@/utils/cn';
+import { LyricsBadge } from '@/components/lyrics-badge';
 import { Music, Play, Plus, Shuffle } from 'lucide-react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
@@ -30,6 +33,7 @@ export default function PlaylistDetailScreen() {
 
   const playlist = playlists.find((p) => p.id === id);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const lyricsMap = useLyricsStore((s) => s.lyricsMap);
   const addSheetRef = useRef<BottomSheetModal>(null);
 
   const playlistSongs = useMemo(() => {
@@ -172,7 +176,10 @@ export default function PlaylistDetailScreen() {
               <Artwork uri={item.artwork} size={48} borderRadius={12} iconSize={18} iconColor={colors.accent} backgroundColor={colors.surface} />
               <View style={s.flex1}>
                 <Text style={[s.textSm, s.fontMedium, { color: colors.text }]} numberOfLines={1}>{item.title}</Text>
-                <Text style={[s.textXs, { color: colors.textMuted }]}>{item.artist} · {formatDuration(item.duration)}</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <LyricsBadge colors={colors} show={!!lyricsMap[item.id] || hasCachedLyrics(item.artist, item.title) === true} />
+                  <Text style={[s.textXs, { color: colors.textMuted }]}>{item.artist} · {formatDuration(item.duration)}</Text>
+                </View>
               </View>
               {isSelected && (
                 <View style={[{ width: 24, height: 24, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.accent }]}>
@@ -243,7 +250,10 @@ export default function PlaylistDetailScreen() {
                   <Artwork uri={item.artwork} size={44} borderRadius={10} iconSize={16} iconColor={colors.accent} backgroundColor={colors.surface} />
                   <View style={{ flex: 1 }}>
                     <Text style={{ fontSize: 14, fontWeight: '500', color: colors.text }} numberOfLines={1}>{item.title}</Text>
-                    <Text style={{ fontSize: 12, color: colors.textMuted }} numberOfLines={1}>{item.artist}</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <LyricsBadge colors={colors} show={!!lyricsMap[item.id] || hasCachedLyrics(item.artist, item.title) === true} />
+                      <Text style={{ fontSize: 12, color: colors.textMuted }} numberOfLines={1}>{item.artist}</Text>
+                    </View>
                   </View>
                   {isSelected && (
                     <View style={{ width: 22, height: 22, borderRadius: 11, backgroundColor: colors.accent, alignItems: 'center', justifyContent: 'center' }}>

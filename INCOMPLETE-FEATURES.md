@@ -8,8 +8,9 @@
 
 | # | Feature | File | Problem |
 |---|---------|------|---------|
-| 1 | **Online Subtitle Downloader** | `src/app/online-subtitles.tsx` | "Coming Soon" placeholder. No API integration. |
-| 2 | **AI Features** | `src/app/ai-features.tsx` | 3 feature cards behind "Coming Soon" badge. No ML/AI logic. |
+| 1 | **AI Features** | `src/app/ai-features.tsx` | 3 feature cards behind "Coming Soon" badge. No ML/AI logic. |
+
+> **Note:** Online Subtitle Downloader removed alongside video player (commit `3c121c5`).
 
 ---
 

@@ -6,10 +6,13 @@ import { useFavoritesStore } from '@/store/favorites-store';
 import { useMusicStore } from '@/store/music-store';
 import { useStatsStore } from '@/store/stats-store';
 import { usePlaylistStore } from '@/store/playlist-store';
+import { useLyricsStore } from '@/store/lyrics-store';
+import { hasCachedLyrics } from '@/services/lyrics';
 import { TopBar } from '@/components/top-bar';
 import { MiniPlayer } from '@/components/mini-player';
 import { SongContextMenu, useSongContextMenu } from '@/components/song-context-menu';
 import { SwipeableRow } from '@/components/swipeable-row';
+import { LyricsBadge } from '@/components/lyrics-badge';
 import { Music, Play, Sparkles, FileMusic } from 'lucide-react-native';
 import { Artwork } from '@/components/artwork';
 import { formatDuration } from '@/utils/cn';
@@ -42,6 +45,7 @@ export default function HomeScreen() {
   const router = useRouter();
   const { bottomSheetRef, present, song } = useSongContextMenu();
   const trackStats = useStatsStore((s) => s.trackStats);
+  const lyricsMap = useLyricsStore((s) => s.lyricsMap);
 
   useEffect(() => {
     const init = async () => {
@@ -191,9 +195,12 @@ export default function HomeScreen() {
                       <Text style={[s.textSm, s.fontSemibold, { color: colors.text }]} numberOfLines={1}>
                         {song.title}
                       </Text>
-                      <Text style={[s.textXs, s.mt05, { color: colors.textMuted }]} numberOfLines={1}>
-                        {song.artist} · {formatDuration(song.duration)}
-                      </Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                        <LyricsBadge colors={colors} show={!!lyricsMap[song.id] || hasCachedLyrics(song.artist, song.title) === true} />
+                        <Text style={[s.textXs, s.mt05, { color: colors.textMuted }]} numberOfLines={1}>
+                          {song.artist} · {formatDuration(song.duration)}
+                        </Text>
+                      </View>
                     </Pressable>
                   ))}
                 </ScrollView>
@@ -230,9 +237,12 @@ export default function HomeScreen() {
                       <Text style={[s.textSm, s.fontSemibold, { color: colors.text }]} numberOfLines={1}>
                         {song.title}
                       </Text>
-                      <Text style={[s.textXs, s.mt05, { color: colors.textMuted }]} numberOfLines={1}>
-                        {song.artist} · {formatDuration(song.duration)}
-                      </Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                        <LyricsBadge colors={colors} show={!!lyricsMap[song.id] || hasCachedLyrics(song.artist, song.title) === true} />
+                        <Text style={[s.textXs, s.mt05, { color: colors.textMuted }]} numberOfLines={1}>
+                          {song.artist} · {formatDuration(song.duration)}
+                        </Text>
+                      </View>
                     </Pressable>
                   ))}
                 </ScrollView>
@@ -266,9 +276,12 @@ export default function HomeScreen() {
                           <Text style={[s.textSm, s.fontSemibold, { color: colors.text }]} numberOfLines={1}>
                             {song.title}
                           </Text>
-                          <Text style={[s.textXs, s.mt05, { color: colors.textMuted }]} numberOfLines={1}>
-                            {song.artist}
-                          </Text>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                            <LyricsBadge colors={colors} show={!!lyricsMap[song.id] || hasCachedLyrics(song.artist, song.title) === true} />
+                            <Text style={[s.textXs, s.mt05, { color: colors.textMuted }]} numberOfLines={1}>
+                              {song.artist}
+                            </Text>
+                          </View>
                         </View>
                         <Text style={[s.textXs, { color: colors.textMuted }]}>
                           {formatDuration(song.duration)}
