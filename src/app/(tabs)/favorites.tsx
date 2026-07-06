@@ -79,7 +79,7 @@ export default function FavoritesScreen() {
               </Pressable>
             </SwipeableRow>
           );
-        }, [songs, colors, present, toggleSongFavorite])}
+        }, [songs, colors, present, toggleSongFavorite, lyricsMap])}
         ListEmptyComponent={
           <View style={[s.itemsCenter, s.py20]}>
             <Heart size={40} color={colors.textMuted} />

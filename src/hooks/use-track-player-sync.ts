@@ -30,7 +30,16 @@ export function useTrackPlayerSync() {
     syncFromPlayerRef.current = usePlayerStore.getState().syncFromPlayer;
   }, []);
 
+  function isTransitioning(): boolean {
+    const player = getPlayer();
+    if (!player) return true;
+    const state = usePlayerStore.getState();
+    return state.isPlaying && !player.isLoaded && !player.playing;
+  }
+
   function handleTrackEnd() {
+    if (isTransitioning()) return;
+
     const state = usePlayerStore.getState();
     const player = getPlayer();
     if (!player) return;
@@ -67,6 +76,7 @@ export function useTrackPlayerSync() {
   }
 
   function handleCrossfade() {
+    if (isTransitioning()) return;
     const state = usePlayerStore.getState();
     if (!state.isPlaying || crossfadeTriggeredRef.current) return;
 
@@ -129,6 +139,14 @@ export function useTrackPlayerSync() {
     }
   }
 
+  const handleCrossfadeRef = useRef(handleCrossfade);
+  const handleTrackEndRef = useRef(handleTrackEnd);
+
+  useEffect(() => {
+    handleCrossfadeRef.current = handleCrossfade;
+    handleTrackEndRef.current = handleTrackEnd;
+  });
+
   const crossfadeEnabled = isCrossfadeEnabled();
 
   useEffect(() => {
@@ -182,7 +200,7 @@ export function useTrackPlayerSync() {
       }
 
       if (crossfadeEnabled && isNowPlaying) {
-        handleCrossfade();
+        handleCrossfadeRef.current();
       }
 
       if (isNowPlaying && duration > 0 && state.currentTrack) {
@@ -207,7 +225,7 @@ export function useTrackPlayerSync() {
       ) {
         if (!trackEndedRef.current) {
           trackEndedRef.current = true;
-          handleTrackEnd();
+          handleTrackEndRef.current();
         }
       }
 

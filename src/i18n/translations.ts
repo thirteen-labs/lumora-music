@@ -173,7 +173,12 @@ const en = {
   'audio.loudness.help': 'Boosts perceived loudness using bass and treble contour',
   'audio.reset': 'Reset All Audio Settings',
   'audio.reset.confirm': 'Reset all audio settings to defaults?',
-
+  'audio.battery.title': 'Battery Optimization',
+  'audio.battery.desc': 'Prevent the OS from killing the app in background',
+  'audio.battery.btn': 'Disable Optimization',
+  'audio.battery.alert.title': 'Battery Optimization',
+  'audio.battery.alert.body': 'To ensure uninterrupted playback in the background, please disable battery optimization for Lumora Player:\\n\\n1. Tap OK to open settings\\n2. Find Lumora Player\\n3. Select "Don\'t optimize"',
+  
   // Search
   'search.title': 'Search',
   'search.placeholder': 'Search songs, artists, albums...',

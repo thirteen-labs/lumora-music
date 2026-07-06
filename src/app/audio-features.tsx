@@ -1,4 +1,4 @@
-import { View, Text, ScrollView, Pressable, Alert, Switch } from 'react-native';
+import { View, Text, ScrollView, Pressable, Alert, Switch, Linking } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { s } from '@/styles';
 import { useTheme } from '@/hooks/use-theme';
@@ -11,7 +11,7 @@ import { usePlaybackSpeedStore, SPEED_OPTIONS } from '@/store/playback-speed-sto
 import { useLoudnessEnhancerStore } from '@/store/loudness-enhancer-store';
 import Slider from '@react-native-community/slider';
 import {
-  Music, Gauge, Volume2, AudioLines, RotateCcw, Volume,
+  Music, Gauge, Volume2, AudioLines, RotateCcw, Volume, Battery,
 } from 'lucide-react-native';
 
 export default function AudioFeaturesScreen() {
@@ -277,16 +277,47 @@ export default function AudioFeaturesScreen() {
                     <Text style={[s.textXs, { color: colors.textMuted }]}>Subtle</Text>
                     <Text style={[s.textXs, { color: colors.textMuted }]}>Maximum</Text>
                   </View>
-                  <Text style={[s.textXs, s.mt2, { color: colors.textMuted }]}>
-                    {t('audio.loudness.help')}
-                  </Text>
-                </>
-              )}
-            </View>
-          </View>
+                   <Text style={[s.textXs, s.mt2, { color: colors.textMuted }]}>
+                     {t('audio.loudness.help')}
+                   </Text>
+                 </>
+               )}
+             </View>
+           </View>
 
-          {/* Reset */}
-          <Pressable
+           {/* Battery Optimization */}
+           <View>
+             <SectionHeader title={t('audio.battery.title')} />
+             <View style={[s.rounded3xl, s.overflowHidden, s.p4, { backgroundColor: colors.surface }]}>
+               <View style={[s.flexRow, s.itemsCenter, s.gap2, s.mb3]}>
+                 <Battery size={18} color={colors.accent} />
+                 <Text style={[s.textSm, s.fontMedium, { color: colors.text }]}>
+                   {t('audio.battery.desc')}
+                 </Text>
+               </View>
+               <Pressable
+                 onPress={() => {
+                   Alert.alert(
+                     t('audio.battery.alert.title'),
+                     t('audio.battery.alert.body'),
+                     [
+                       { text: t('common.cancel'), style: 'cancel' },
+                       { text: t('common.ok'), onPress: () => Linking.openSettings() },
+                     ]
+                   );
+                 }}
+                 style={[s.flexRow, s.itemsCenter, s.justifyCenter, s.gap2, { paddingVertical: 12, borderRadius: 16, backgroundColor: colors.card }]}
+               >
+                 <Text style={[s.textSm, s.fontSemibold, { color: colors.text }]}>
+                   {t('audio.battery.btn')}
+                 </Text>
+               </Pressable>
+             </View>
+           </View>
+
+           {/* Reset */}
+           <Pressable
+
             onPress={() => {
               Alert.alert(t('audio.reset'), t('audio.reset.confirm'), [
                 { text: t('common.cancel'), style: 'cancel' },

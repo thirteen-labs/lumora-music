@@ -2,7 +2,7 @@ import { Platform } from 'react-native';
 import { Paths, File, Directory } from 'expo-file-system';
 import { StorageAccessFramework, getInfoAsync } from 'expo-file-system/legacy';
 import { useSettingsStore } from '@/store/settings-store';
-import { getCachedDirectory, setCachedDirectory, invalidateCache } from '@/services/directory-cache';
+import { getCachedDirectory, setCachedDirectory } from '@/services/directory-cache';
 
 export interface FileItem {
   name: string;

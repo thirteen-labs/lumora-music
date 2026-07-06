@@ -404,14 +404,12 @@ class AudioEngine {
 
   async loadTrack(uri: string): Promise<void> {
     if (this.loadingLock) {
-      console.warn('[AudioEngine] loadTrack called while already loading, waiting');
-      for (let i = 0; i < 50; i++) {
+      for (let i = 0; i < 200; i++) {
         await new Promise(r => setTimeout(r, 50));
         if (!this.loadingLock) break;
       }
       if (this.loadingLock) {
-        console.warn('[AudioEngine] loadTrack force-releasing stale lock');
-        this.loadingLock = false;
+        throw new Error('loadTrack timed out waiting for previous load');
       }
     }
     this.loadingLock = true;
@@ -870,6 +868,12 @@ class AudioEngine {
   async ensureAlive(): Promise<boolean> {
     try {
       if (this.context) {
+        if (this.context.state === 'closed') {
+          this.context = null;
+          await this.init();
+          if (!this.context) return false;
+          return this.restorePlayback();
+        }
         try {
           if (this.context.state !== 'running') {
             await this.context.resume();
@@ -883,7 +887,6 @@ class AudioEngine {
           this.stopPositionTracking();
           const savedUri = this._currentTrackUri;
           const wasPlaying = this._playing;
-          const wasPaused = this._paused;
           const savedPosition = this._currentTime;
 
           this.currentBuffer = null;
@@ -894,12 +897,11 @@ class AudioEngine {
             await this.init();
             if (this.context) {
               await this.loadTrack(savedUri);
-              if (wasPlaying || wasPaused) {
-                this._currentTime = Math.min(savedPosition, this._duration - 0.5 || 0);
-                this._startOffset = this._currentTime;
-                if (wasPlaying) {
-                  this.play();
-                }
+              if (wasPlaying) {
+                const seekPos = Math.min(savedPosition, Math.max(this._duration - 0.5, 0));
+                this._currentTime = seekPos;
+                this._startOffset = seekPos;
+                this.play();
               }
               return true;
             }
@@ -913,6 +915,33 @@ class AudioEngine {
       console.warn('[AudioEngine] ensureAlive failed:', e);
       return false;
     }
+  }
+
+  private async restorePlayback(): Promise<boolean> {
+    const savedUri = this._currentTrackUri;
+    const wasPlaying = this._playing;
+    const savedPosition = this._currentTime;
+
+    this.currentBuffer = null;
+    this.crossfadeBuffer = null;
+    this._currentTrackUri = null;
+    this._playing = false;
+    this._paused = false;
+    this._currentTime = 0;
+
+    if (savedUri && wasPlaying) {
+      try {
+        await this.loadTrack(savedUri);
+        const seekPos = Math.min(savedPosition, Math.max(this._duration - 0.5, 0));
+        this._currentTime = seekPos;
+        this._startOffset = seekPos;
+        this.play();
+        return true;
+      } catch (e) {
+        console.warn('[AudioEngine] restorePlayback failed:', e);
+      }
+    }
+    return this.context !== null;
   }
 
   destroy(): void {

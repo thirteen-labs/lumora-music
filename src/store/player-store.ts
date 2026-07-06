@@ -68,24 +68,28 @@ interface PlayerState {
   syncFromPlayer: () => void;
 }
 
-let trackLoadingLock = false;
+let trackChangeChain: Promise<void> = Promise.resolve();
+
+async function serializedTrackChange(fn: () => Promise<void>): Promise<void> {
+  const result = trackChangeChain.then(
+    () => fn(),
+    () => fn(),
+  );
+  trackChangeChain = result.then(() => {}, () => {});
+  return result;
+}
 
 async function guardedLoadTrack(track: Song): Promise<void> {
-  if (trackLoadingLock) {
-    reportWarning('PlayerStore', 'loadTrack called while already loading, queuing');
-    // Small yield to let current load finish
-    await new Promise(r => setTimeout(r, 100));
-    if (trackLoadingLock) {
-      reportWarning('PlayerStore', 'loadTrack still locked after wait, forcing release');
-      trackLoadingLock = false;
+  const currentId = usePlayerStore.getState().currentTrack?.id;
+  await serializedTrackChange(async () => {
+    if (usePlayerStore.getState().currentTrack?.id !== currentId) return;
+    try {
+      await loadTrack(track);
+    } catch (e) {
+      reportWarning('PlayerStore', e, 'Failed to load track');
+      throw e;
     }
-  }
-  trackLoadingLock = true;
-  try {
-    await loadTrack(track);
-  } finally {
-    trackLoadingLock = false;
-  }
+  });
 }
 
 export const usePlayerStore = create<PlayerState>()(

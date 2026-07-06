@@ -320,7 +320,7 @@ export default function PlayerScreen() {
         </GestureDetector>
       );
     },
-    [queueIndex, queue.length, colors, removeFromQueue, reorderQueue, draggedIndex, isDragging, dragTranslateY, setDraggedIndex, dragAnimatedStyle, handlePlayFromQueue],
+    [queueIndex, queue.length, colors, removeFromQueue, reorderQueue, draggedIndex, isDragging, dragTranslateY, setDraggedIndex, dragAnimatedStyle, handlePlayFromQueue, lyricsMap],
   );
 
   const isFav = currentTrack ? favoriteSongIds.includes(currentTrack.id) : false;

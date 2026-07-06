@@ -28,20 +28,21 @@
       "predictiveBackGestureEnabled": false,
       "allowBackup": true,
       "enableProguardInRelease": true,
-      "permissions": [
-        "FOREGROUND_SERVICE",
-        "FOREGROUND_SERVICE_MEDIA_PLAYBACK",
-        "FOREGROUND_SERVICE_SPECIAL_USE",
-        "POST_NOTIFICATIONS",
-        "WAKE_LOCK",
-        "SYSTEM_ALERT_WINDOW",
-        "READ_EXTERNAL_STORAGE",
-        "WRITE_EXTERNAL_STORAGE",
-        "READ_MEDIA_AUDIO",
-        "READ_MEDIA_VIDEO",
-        "READ_MEDIA_IMAGES",
-        "MANAGE_EXTERNAL_STORAGE"
-      ],
+        "permissions": [
+          "FOREGROUND_SERVICE",
+          "FOREGROUND_SERVICE_MEDIA_PLAYBACK",
+          "FOREGROUND_SERVICE_SPECIAL_USE",
+          "POST_NOTIFICATIONS",
+          "WAKE_LOCK",
+          "REQUEST_IGNORE_BATTERY_OPTIMIZATIONS",
+          "SYSTEM_ALERT_WINDOW",
+          "READ_EXTERNAL_STORAGE",
+          "WRITE_EXTERNAL_STORAGE",
+          "READ_MEDIA_AUDIO",
+          "READ_MEDIA_VIDEO",
+          "READ_MEDIA_IMAGES",
+          "MANAGE_EXTERNAL_STORAGE"
+        ],
       "intentFilters": [
         {
           "action": "VIEW",

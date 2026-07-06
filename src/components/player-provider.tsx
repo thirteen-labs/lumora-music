@@ -71,6 +71,59 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     destroyPlayer();
   }, [saveStateBeforeExit]);
 
+  const restoreQueue = useCallback(async () => {
+    if (restoreAttemptedRef.current) return;
+    restoreAttemptedRef.current = true;
+
+    const persisted = useQueuePersistStore.getState().loadQueue();
+    if (!persisted || !persisted.currentTrackId) {
+      return;
+    }
+
+    const allSongs = useMusicStore.getState().songs;
+    const { track, queue, queueIndex } = reconstructQueue(persisted, allSongs);
+    if (!track) {
+      return;
+    }
+
+    const wasPlaying = persisted.isPlaying === true;
+
+    usePlayerStore.setState({
+      currentTrack: track,
+      queue,
+      queueIndex,
+      shuffle: persisted.shuffle,
+      repeat: persisted.repeat as any,
+      isMiniPlayerVisible: true,
+      position: persisted.position,
+      isPlaying: wasPlaying,
+    });
+
+    try {
+      await loadTrack(track);
+      if (persisted.position > 0 && track.duration > 0) {
+        const boundedPosition = Math.min(persisted.position, track.duration - 1);
+        await serviceSeekTo(boundedPosition);
+      }
+      if (!wasPlaying) {
+        await pausePlayback();
+      }
+    } catch (e) {
+      reportWarning('PlayerProvider', e, 'Failed to restore track position after crash');
+    }
+  }, []);
+
+  const restoreQueueWithTimeout = useCallback(async () => {
+    try {
+      const timer = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Queue restore timed out')), QUEUE_RESTORE_TIMEOUT)
+      );
+      await Promise.race([restoreQueue(), timer]);
+    } catch (e) {
+      reportWarning('PlayerProvider', e, 'Queue restore failed or timed out');
+    }
+  }, [restoreQueue]);
+
   useEffect(() => {
     if (initAttemptedRef.current) return;
     initAttemptedRef.current = true;
@@ -117,7 +170,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     });
 
     return () => { cancelled = true; cleanup(); };
-  }, [cleanup]);
+  }, [cleanup, restoreQueueWithTimeout]);
 
   /* Retry restore when music store populates after init */
   useEffect(() => {
@@ -129,73 +182,41 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     if (songs.length > 0 && !currentTrack) {
       restoreQueue();
     }
-  }, [ready]);
-
-  async function restoreQueueWithTimeout() {
-    try {
-      const timer = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Queue restore timed out')), QUEUE_RESTORE_TIMEOUT)
-      );
-      await Promise.race([restoreQueue(), timer]);
-    } catch (e) {
-      reportWarning('PlayerProvider', e, 'Queue restore failed or timed out');
-    }
-  }
-
-  async function restoreQueue() {
-    if (restoreAttemptedRef.current) return;
-    restoreAttemptedRef.current = true;
-
-    const persisted = useQueuePersistStore.getState().loadQueue();
-    if (!persisted || !persisted.currentTrackId) {
-      return;
-    }
-
-    const allSongs = useMusicStore.getState().songs;
-    const { track, queue, queueIndex } = reconstructQueue(persisted, allSongs);
-    if (!track) {
-      return;
-    }
-
-    const wasPlaying = persisted.isPlaying === true;
-
-    usePlayerStore.setState({
-      currentTrack: track,
-      queue,
-      queueIndex,
-      shuffle: persisted.shuffle,
-      repeat: persisted.repeat as any,
-      isMiniPlayerVisible: true,
-      position: persisted.position,
-      isPlaying: wasPlaying,
-    });
-
-    try {
-      await loadTrack(track);
-      if (persisted.position > 0 && track.duration > 0) {
-        const boundedPosition = Math.min(persisted.position, track.duration - 1);
-        await serviceSeekTo(boundedPosition);
-      }
-      if (!wasPlaying) {
-        await pausePlayback();
-      }
-    } catch (e) {
-      reportWarning('PlayerProvider', e, 'Failed to restore track position after crash');
-    }
-  }
+  }, [ready, restoreQueue]);
 
   useEffect(() => {
     const handleAppState = async (nextState: string) => {
       if (nextState === 'active') {
-        try {
-          const playerState = usePlayerStore.getState();
-          const wasPlaying = playerState.isPlaying;
-          const alive = await retryWithBackoff(ensurePlayerAlive, 'ensurePlayerAlive', 2);
-          if (!alive && wasPlaying) {
-            reportWarning('PlayerProvider', null, 'Player failed to recover after foreground - tap to retry');
+        saveStateBeforeExit();
+        for (let attempt = 0; attempt < 3; attempt++) {
+          try {
+            const playerState = usePlayerStore.getState();
+            const wasPlaying = playerState.isPlaying;
+            const alive = await ensurePlayerAlive();
+            if (alive) {
+              if (wasPlaying) {
+                const track = usePlayerStore.getState().currentTrack;
+                if (track) {
+                  try {
+                    const { AudioManager } = await import('react-native-audio-api');
+                    AudioManager.setAudioSessionActivity(true);
+                  } catch {}
+                }
+              }
+              return;
+            }
+            if (attempt < 2) {
+              reportWarning('PlayerProvider', null, `Player recovery attempt ${attempt + 1} failed, retrying...`);
+              await new Promise(r => setTimeout(r, 1000));
+            } else {
+              reportWarning('PlayerProvider', null, 'Player failed to recover after foreground');
+            }
+          } catch (e) {
+            reportWarning('PlayerProvider', e, `Player recovery attempt ${attempt + 1} failed`);
+            if (attempt < 2) {
+              await new Promise(r => setTimeout(r, 1000));
+            }
           }
-        } catch (e) {
-          reportWarning('PlayerProvider', e, 'Player recovery on foreground failed');
         }
       } else if (nextState === 'background' || nextState === 'inactive') {
         saveStateBeforeExit();
@@ -246,7 +267,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       }
     });
     return unsub;
-  }, []);
+  }, [restoreQueue]);
 
   useEffect(() => {
     try {
