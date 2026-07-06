@@ -147,19 +147,19 @@ export default function PlayerScreen() {
   const getOverriddenSong = useMetadataStore((s) => s.getOverriddenSong);
   const setOverride = useMetadataStore((s) => s.setOverride);
   const track = currentTrack ? getOverriddenSong(currentTrack) : null;
+  const [prevTrackId, setPrevTrackId] = useState(track?.id);
   const [editTitle, setEditTitle] = useState(track?.title ?? '');
   const [editArtist, setEditArtist] = useState(track?.artist ?? '');
   const [editAlbum, setEditAlbum] = useState(track?.album ?? '');
 const [editArtwork, setEditArtwork] = useState<string | null>(track?.artwork ?? null);
 
-useEffect(() => {
-  if (track) {
-    setEditTitle(track.title);
-    setEditArtist(track.artist ?? '');
-    setEditAlbum(track.album ?? '');
-    setEditArtwork(track.artwork ?? null);
-  }
-}, [track?.id]);
+if (track?.id && track.id !== prevTrackId) {
+  setPrevTrackId(track.id);
+  setEditTitle(track.title);
+  setEditArtist(track.artist ?? '');
+  setEditAlbum(track.album ?? '');
+  setEditArtwork(track.artwork ?? null);
+}
 
 useEffect(() => {
     ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.DEFAULT).catch(() => {});
