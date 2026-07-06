@@ -15,6 +15,7 @@ import { formatDuration } from '@/utils/cn';
 import { LyricsBadge } from '@/components/lyrics-badge';
 import { Music, Play, Plus, Shuffle } from 'lucide-react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { SongContextMenu, useSongContextMenu } from '@/components/song-context-menu';
 import {
   BottomSheetModal,
   BottomSheetBackdrop,
@@ -35,6 +36,7 @@ export default function PlaylistDetailScreen() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const lyricsMap = useLyricsStore((s) => s.lyricsMap);
   const addSheetRef = useRef<BottomSheetModal>(null);
+  const { bottomSheetRef, present, song } = useSongContextMenu();
 
   const playlistSongs = useMemo(() => {
     if (!playlist) return [];
@@ -167,7 +169,7 @@ export default function PlaylistDetailScreen() {
           return (
             <Pressable
               onPress={() => toggleSelect(item.id)}
-              onLongPress={() => toggleSelect(item.id)}
+              onLongPress={() => present(item)}
               style={[s.flexRow, s.itemsCenter, s.gap3, s.px4, s.py4, { backgroundColor: isSelected ? colors.accent + '10' : 'transparent' }]}
             >
               <Text style={[s.textXs, { width: 24, textAlign: 'center', color: colors.textMuted }]}>
@@ -203,6 +205,7 @@ export default function PlaylistDetailScreen() {
         }
       />
       <MiniPlayer />
+      <SongContextMenu bottomSheetRef={bottomSheetRef} song={song} />
 
       <BottomSheetModal
         ref={addSheetRef}

@@ -298,7 +298,8 @@ export async function showNowPlayingNotification(
       title: track.title,
       artist: track.artist ?? undefined,
       album: track.album ?? undefined,
-      artwork,
+      artwork: artwork && (artwork.startsWith('file://') || artwork.startsWith('content://'))
+        ? { uri: artwork } : artwork,
       duration: track.duration,
       elapsedTime: position != null ? Math.floor(position) : 0,
       speed: 1,
@@ -334,9 +335,9 @@ export async function showNowPlayingNotification(
       PlaybackNotificationManager.enableControl('nextTrack', true),
       PlaybackNotificationManager.enableControl('play', true),
       PlaybackNotificationManager.enableControl('pause', true),
-      (PlaybackNotificationManager.enableControl as (name: string, enabled: boolean) => Promise<void>)('rewind', true),
-      (PlaybackNotificationManager.enableControl as (name: string, enabled: boolean) => Promise<void>)('fastForward', true),
-      (PlaybackNotificationManager.enableControl as (name: string, enabled: boolean) => Promise<void>)('stop', true),
+      PlaybackNotificationManager.enableControl('skipBackward', true),
+      PlaybackNotificationManager.enableControl('skipForward', true),
+      PlaybackNotificationManager.enableControl('stop', true),
       (PlaybackNotificationManager.enableControl as (name: string, enabled: boolean) => Promise<void>)('favorite', true),
       (PlaybackNotificationManager.enableControl as (name: string, enabled: boolean) => Promise<void>)('close', true),
     ]);

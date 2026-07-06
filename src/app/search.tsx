@@ -8,6 +8,7 @@ import { usePlayerStore } from "@/store/player-store";
 import { useLyricsStore } from '@/store/lyrics-store';
 import { hasCachedLyrics } from '@/services/lyrics';
 import { TopBar } from "@/components/top-bar";
+import { SongContextMenu, useSongContextMenu } from '@/components/song-context-menu';
 import { Search, X, Clock, SlidersHorizontal, ChevronDown, ChevronUp } from "lucide-react-native";
 import { Artwork } from "@/components/artwork";
 import { LyricsBadge } from '@/components/lyrics-badge';
@@ -79,6 +80,7 @@ export default function SearchScreen() {
   const [maxDuration, setMaxDuration] = useState('');
   const allGenres = useMemo(() => [...new Set(genres.map((g) => g.name))].sort(), [genres]);
   const router = useRouter();
+  const { bottomSheetRef, present, song } = useSongContextMenu();
 
   useFocusEffect(
     useCallback(() => {
@@ -469,6 +471,12 @@ export default function SearchScreen() {
                   });
                 }
               }}
+              onLongPress={() => {
+                if (item.type === "song") {
+                  const s = songs.find((s) => s.id === item.id);
+                  if (s) present(s);
+                }
+              }}
               style={[s.flexRow, s.itemsCenter, s.gap3, s.px4, s.py4]}
             >
               <Artwork
@@ -517,6 +525,7 @@ export default function SearchScreen() {
           }
         />
       )}
+      <SongContextMenu bottomSheetRef={bottomSheetRef} song={song} />
     </View>
   );
 }

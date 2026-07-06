@@ -8,6 +8,7 @@ import { usePlayerStore } from '@/store/player-store';
 import { useRouter } from 'expo-router';
 import { ChevronLeft, Play, Mic2 } from 'lucide-react-native';
 import { LyricsBadge } from '@/components/lyrics-badge';
+import { SongContextMenu, useSongContextMenu } from '@/components/song-context-menu';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function WithLyricsScreen() {
@@ -17,6 +18,7 @@ export default function WithLyricsScreen() {
   const lyricsMap = useLyricsStore((s) => s.lyricsMap);
   const withLyrics = useMemo(() => songs.filter((s) => lyricsMap[s.id]), [songs, lyricsMap]);
   const insets = useSafeAreaInsets();
+  const { bottomSheetRef, present, song } = useSongContextMenu();
 
   return (
     <View style={[s.flex1, { backgroundColor: colors.background }]}>
@@ -39,6 +41,7 @@ export default function WithLyricsScreen() {
                 <Pressable
                   key={song.id}
                   onPress={() => usePlayerStore.getState().play(song, withLyrics)}
+                  onLongPress={() => present(song)}
                   style={[s.flexRow, s.itemsCenter, s.gap3, s.p4]}
                 >
                   <View style={[s.w10, s.h10, s.roundedXl, s.itemsCenter, s.justifyCenter, { backgroundColor: colors.accent + '15' }]}>
@@ -57,6 +60,7 @@ export default function WithLyricsScreen() {
           </View>
         </View>
       </ScrollView>
+      <SongContextMenu bottomSheetRef={bottomSheetRef} song={song} />
     </View>
   );
 }

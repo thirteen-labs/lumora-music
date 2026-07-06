@@ -19,6 +19,7 @@ import {
   Share2,
   Music,
   FolderPlus,
+  Info,
 } from 'lucide-react-native';
 import * as Sharing from 'expo-sharing';
 
@@ -182,6 +183,19 @@ export function SongContextMenu({ bottomSheetRef, song, onDismiss }: SongContext
             >
               <FolderPlus size={20} color={colors.text} />
               <Text style={{ fontSize: 15, color: colors.text }}>Add to Playlist</Text>
+            </Pressable>
+            <Pressable
+              onPress={() => { dismiss(); router.push({ pathname: '/metadata-editor', params: { songId: song.id } }); }}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 16,
+                paddingHorizontal: 20,
+                paddingVertical: 14,
+              }}
+            >
+              <Info size={20} color={colors.text} />
+              <Text style={{ fontSize: 15, color: colors.text }}>Info</Text>
             </Pressable>
             <Pressable
               onPress={handleShare}

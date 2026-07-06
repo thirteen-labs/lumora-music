@@ -13,6 +13,7 @@ import { TopBar } from '@/components/top-bar';
 import { MiniPlayer } from '@/components/mini-player';
 import { SortMenu } from '@/components/sort-menu';
 import { LyricsBadge } from '@/components/lyrics-badge';
+import { SongContextMenu, useSongContextMenu } from '@/components/song-context-menu';
 import { useEffect, useMemo, useRef } from 'react';
 import { Music, Clock, LayoutGrid, List } from 'lucide-react-native';
 import { Artwork } from '@/components/artwork';
@@ -58,6 +59,7 @@ export default function MusicScreen() {
   const libraryViewMode = useLayoutStore((s) => s.libraryViewMode);
   const setLibraryViewMode = useLayoutStore((s) => s.setLibraryViewMode);
 
+  const { bottomSheetRef, present, song } = useSongContextMenu();
   const initialScanDone = useRef(false);
   useEffect(() => {
     if (songs.length === 0 && !initialScanDone.current) {
@@ -129,6 +131,7 @@ export default function MusicScreen() {
             renderItem={({ item }: { item: Song }) => (
               <Pressable
                 onPress={() => usePlayerStore.getState().play(item, generateRandomQueue(item, songs))}
+                onLongPress={() => present(item)}
                 style={{ width: GRID_ITEM_WIDTH, marginBottom: 16 }}
               >
                 <View
@@ -169,6 +172,7 @@ export default function MusicScreen() {
                     <Pressable
                       key={item.id}
                       onPress={() => usePlayerStore.getState().play(item, generateRandomQueue(item, songs))}
+                      onLongPress={() => present(item)}
                       style={[s.flexRow, s.itemsCenter, s.gap3, s.px4, s.py4]}
                     >
                       <Artwork uri={item.artwork} size={56} borderRadius={12} iconSize={20} iconColor={colors.accent} backgroundColor={colors.card} />
@@ -188,6 +192,7 @@ export default function MusicScreen() {
             renderItem={({ item }) => (
               <Pressable
                 onPress={() => usePlayerStore.getState().play(item, generateRandomQueue(item, songs))}
+                onLongPress={() => present(item)}
                 style={[s.flexRow, s.itemsCenter, s.gap3, s.px4, s.py4]}
               >
                 <Artwork uri={item.artwork} size={56} borderRadius={12} iconSize={20} iconColor={colors.accent} backgroundColor={colors.card} />
@@ -214,6 +219,7 @@ export default function MusicScreen() {
           <Text style={[s.textSm, s.mt3, { color: colors.textMuted }]}>No music found</Text>
         </View>
       )}
+      <SongContextMenu bottomSheetRef={bottomSheetRef} song={song} />
       <MiniPlayer />
     </View>
   );

@@ -1,0 +1,30 @@
+diff --git a/node_modules/react-native-audio-api/common/cpp/audioapi/HostObjects/utils/JsEnumParser.cpp b/node_modules/react-native-audio-api/common/cpp/audioapi/HostObjects/utils/JsEnumParser.cpp
+--- a/node_modules/react-native-audio-api/common/cpp/audioapi/HostObjects/utils/JsEnumParser.cpp
++++ b/node_modules/react-native-audio-api/common/cpp/audioapi/HostObjects/utils/JsEnumParser.cpp
+@@ -125,4 +125,6 @@
+   if (event == "playbackNotificationDismissed")
+     return AudioEvent::PLAYBACK_NOTIFICATION_DISMISSED;
++  if (event == "playbackNotificationFavorite")
++    return AudioEvent::PLAYBACK_NOTIFICATION_FAVORITE;
+   if (event == "playbackNotificationClose")
+     return AudioEvent::PLAYBACK_NOTIFICATION_CLOSE;
+diff --git a/node_modules/react-native-audio-api/android/src/main/java/com/swmansion/audioapi/system/notification/PlaybackNotification.kt b/node_modules/react-native-audio-api/android/src/main/java/com/swmansion/audioapi/system/notification/PlaybackNotification.kt
+--- a/node_modules/react-native-audio-api/android/src/main/java/com/swmansion/audioapi/system/notification/PlaybackNotification.kt
++++ b/node_modules/react-native-audio-api/android/src/main/java/com/swmansion/audioapi/system/notification/PlaybackNotification.kt
+@@ -266,3 +266,10 @@
+     if (info.hasKey("speed")) {
+       speed = info.getDouble("speed").toFloat()
+     }
++
++    if (info.hasKey("color")) {
++      notificationBuilder?.setColor(info.getInt("color"))
++    }
++    if (info.hasKey("colorized")) {
++      notificationBuilder?.setColorized(info.getBoolean("colorized"))
++    }
+@@ -445,4 +452,5 @@
+       notificationBuilder?.addAction(
+         createAction("close", "Close", R.drawable.close, 0L),
+       )
++      actionsList.add(index++)
+     }

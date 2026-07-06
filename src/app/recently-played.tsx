@@ -10,6 +10,7 @@ import { hasCachedLyrics } from '@/services/lyrics';
 import { useRouter } from 'expo-router';
 import { LyricsBadge } from '@/components/lyrics-badge';
 import { ChevronLeft, Play, Clock } from 'lucide-react-native';
+import { SongContextMenu, useSongContextMenu } from '@/components/song-context-menu';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function RecentlyPlayedScreen() {
@@ -20,6 +21,7 @@ export default function RecentlyPlayedScreen() {
   const getRecentlyPlayed = useStatsStore((s) => s.getRecentlyPlayed);
   const recentlyPlayed = useMemo(() => getRecentlyPlayed(songs, 20), [songs, getRecentlyPlayed]);
   const insets = useSafeAreaInsets();
+  const { bottomSheetRef, present, song } = useSongContextMenu();
 
   return (
     <View style={[s.flex1, { backgroundColor: colors.background }]}>
@@ -42,6 +44,7 @@ export default function RecentlyPlayedScreen() {
                 <Pressable
                   key={song.id}
                   onPress={() => usePlayerStore.getState().play(song, recentlyPlayed)}
+                  onLongPress={() => present(song)}
                   style={[s.flexRow, s.itemsCenter, s.gap3, s.p4]}
                 >
                   <View style={[s.w10, s.h10, s.roundedXl, s.itemsCenter, s.justifyCenter, { backgroundColor: colors.accent + '15' }]}>
@@ -60,6 +63,7 @@ export default function RecentlyPlayedScreen() {
           </View>
         </View>
       </ScrollView>
+      <SongContextMenu bottomSheetRef={bottomSheetRef} song={song} />
     </View>
   );
 }

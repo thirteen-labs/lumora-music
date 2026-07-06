@@ -150,9 +150,18 @@ export default function PlayerScreen() {
   const [editTitle, setEditTitle] = useState(track?.title ?? '');
   const [editArtist, setEditArtist] = useState(track?.artist ?? '');
   const [editAlbum, setEditAlbum] = useState(track?.album ?? '');
-  const [editArtwork, setEditArtwork] = useState<string | null>(track?.artwork ?? null);
+const [editArtwork, setEditArtwork] = useState<string | null>(track?.artwork ?? null);
 
-  useEffect(() => {
+useEffect(() => {
+  if (track) {
+    setEditTitle(track.title);
+    setEditArtist(track.artist ?? '');
+    setEditAlbum(track.album ?? '');
+    setEditArtwork(track.artwork ?? null);
+  }
+}, [track?.id]);
+
+useEffect(() => {
     ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.DEFAULT).catch(() => {});
     return () => { ScreenOrientation.unlockAsync().catch(() => {}); };
   }, []);
