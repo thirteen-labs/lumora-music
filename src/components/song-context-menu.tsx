@@ -25,9 +25,11 @@ import * as Sharing from 'expo-sharing';
 
 export function useSongContextMenu() {
   const bottomSheetRef = useRef<BottomSheetModal>(null);
+  const songRef = useRef<Song | null>(null);
   const [song, setSong] = useState<Song | null>(null);
 
   const present = useCallback((target: Song) => {
+    songRef.current = target;
     setSong(target);
     bottomSheetRef.current?.present();
   }, []);

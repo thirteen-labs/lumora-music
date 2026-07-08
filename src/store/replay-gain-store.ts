@@ -65,10 +65,11 @@ export function syncReplayGainToEngine(): void {
   }
 }
 
-try {
-  useReplayGainStore.subscribe(() => {
-    try {
-      syncReplayGainToEngine();
-    } catch {}
+let _rgUnsub: (() => void) | null = null;
+export function subscribeReplayGain(): () => void {
+  if (_rgUnsub) _rgUnsub();
+  _rgUnsub = useReplayGainStore.subscribe(() => {
+    try { syncReplayGainToEngine(); } catch {}
   });
-} catch {}
+  return () => { _rgUnsub?.(); _rgUnsub = null; };
+}

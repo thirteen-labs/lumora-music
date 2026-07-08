@@ -3,7 +3,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { s } from '@/styles';
 import { useTheme } from '@/hooks/use-theme';
 import { TopBar } from '@/components/top-bar';
-import { useRoute, useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useMusicStore } from '@/store/music-store';
 import { Save, X } from 'lucide-react-native';
 import { useForm, Controller } from 'react-hook-form';
@@ -27,10 +27,8 @@ export default function TagEditScreen() {
   const insets = useSafeAreaInsets();
   const { t } = useTranslation();
   const router = useRouter();
-  const route = useRoute();
+  const { songId } = useLocalSearchParams<{ songId: string }>();
   const songs = useMusicStore((s) => s.songs);
-
-  const songId = (route.params as any)?.songId;
   const song = songs.find((s) => s.id === songId);
 
   const {
@@ -60,19 +58,15 @@ export default function TagEditScreen() {
   }
 
   const handleSave = async (data: TagFormData) => {
-    const musicStore = useMusicStore.getState();
-    const idx = musicStore.songs.findIndex((s) => s.id === songId);
-    if (idx >= 0) {
-      useMusicStore.setState((state) => {
-        const song = state.songs[idx];
-        if (song) {
-          song.title = data.title;
-          song.artist = data.artist;
-          song.album = data.album;
-          song.genre = data.genre || null;
-        }
-      });
-    }
+    useMusicStore.setState((state) => {
+      const song = state.songs.find((s) => s.id === songId);
+      if (song) {
+        song.title = data.title;
+        song.artist = data.artist;
+        song.album = data.album;
+        song.genre = data.genre || null;
+      }
+    });
 
     Alert.alert('Saved', t('tag.saved'), [{ text: 'OK', onPress: () => router.back() }]);
   };

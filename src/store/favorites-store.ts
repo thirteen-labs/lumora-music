@@ -41,8 +41,8 @@ export const useFavoritesStore = create<FavoritesState>()(
           state.favoriteSongIds.push(song.id);
           state.songs.push(song);
         }
-        saveIds(FAV_SONGS_KEY, state.favoriteSongIds);
       });
+      saveIds(FAV_SONGS_KEY, get().favoriteSongIds);
     },
 
     isSongFavorite: (id) => get().favoriteSongIds.includes(id),

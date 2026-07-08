@@ -44,7 +44,7 @@ import {
   getLastBackgroundScanTime,
   isBackgroundScanRegistered,
 } from "@/services/background-scanner";
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 
 export default function LibraryToolsScreen() {
   const { colors } = useTheme();
@@ -99,8 +99,8 @@ export default function LibraryToolsScreen() {
     return d.toLocaleDateString() + ' · ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
-  const duplicates = findDuplicateSongs(songs);
-  const scanHistory = getScanHistory();
+  const duplicates = useMemo(() => findDuplicateSongs(songs), [songs]);
+  const scanHistory = useMemo(() => getScanHistory(), []);
 
   const handleKeepBest = useCallback(
     async (groupIndex: number) => {

@@ -177,10 +177,11 @@ export function syncEqualizerToEngine(): void {
   }
 }
 
-try {
-  useEqualizerStore.subscribe(() => {
-    try {
-      syncEqualizerToEngine();
-    } catch {}
+let _eqUnsub: (() => void) | null = null;
+export function subscribeEqualizer(): () => void {
+  if (_eqUnsub) _eqUnsub();
+  _eqUnsub = useEqualizerStore.subscribe(() => {
+    try { syncEqualizerToEngine(); } catch {}
   });
-} catch {}
+  return () => { _eqUnsub?.(); _eqUnsub = null; };
+}

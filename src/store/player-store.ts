@@ -68,6 +68,23 @@ interface PlayerState {
   syncFromPlayer: () => void;
 }
 
+let _saveTimer: ReturnType<typeof setTimeout> | null = null;
+
+function debouncedSaveQueue() {
+  if (_saveTimer) clearTimeout(_saveTimer);
+  _saveTimer = setTimeout(() => {
+    _saveTimer = null;
+    try {
+      const state = usePlayerStore.getState();
+      useQueuePersistStore.getState().saveQueue(
+        state.currentTrack, state.queue, state.queueIndex,
+        state.shuffle, state.repeat, state.position,
+        state.isPlaying,
+      );
+    } catch {}
+  }, 300);
+}
+
 let trackChangeChain: Promise<void> = Promise.resolve();
 
 async function serializedTrackChange(fn: () => Promise<void>): Promise<void> {
@@ -120,12 +137,8 @@ export const usePlayerStore = create<PlayerState>()(
       });
 
       try { useStatsStore.getState().recordPlay(track.id); } catch {}
-      const state = get();
-      try {
-        useQueuePersistStore.getState().saveQueue(track, state.queue, state.queueIndex, state.shuffle, state.repeat, 0, true);
-      } catch {}
+      debouncedSaveQueue();
 
-      /* Preload artwork for background notification */
       preloadArtworkForTrack(track);
       preloadColorsForTrack(track.artwork);
       const stateAfter = get();
@@ -146,16 +159,7 @@ export const usePlayerStore = create<PlayerState>()(
     },
 
     pause: async () => {
-      const state = get();
-      if (state.currentTrack) {
-        try {
-          useQueuePersistStore.getState().saveQueue(
-            state.currentTrack, state.queue, state.queueIndex,
-            state.shuffle, state.repeat, state.position,
-            false,
-          );
-        } catch {}
-      }
+      debouncedSaveQueue();
       set((s) => {
         s.isPlaying = false;
       });
@@ -163,16 +167,7 @@ export const usePlayerStore = create<PlayerState>()(
     },
 
     stop: async () => {
-      const state = get();
-      if (state.currentTrack) {
-        try {
-          useQueuePersistStore.getState().saveQueue(
-            state.currentTrack, state.queue, state.queueIndex,
-            state.shuffle, state.repeat, state.position,
-            false,
-          );
-        } catch {}
-      }
+      debouncedSaveQueue();
       set((s) => {
         s.isPlaying = false;
         s.currentTrack = null;
@@ -211,16 +206,7 @@ export const usePlayerStore = create<PlayerState>()(
         try { useStatsStore.getState().recordSkip(currentTrack.id); } catch {}
       }
 
-      const preState = get();
-      if (preState.currentTrack) {
-        try {
-          useQueuePersistStore.getState().saveQueue(
-            preState.currentTrack, preState.queue, preState.queueIndex,
-            preState.shuffle, preState.repeat, preState.position,
-            preState.isPlaying,
-          );
-        } catch {}
-      }
+      debouncedSaveQueue();
 
       let nextOriginalIndex: number;
 
@@ -277,10 +263,7 @@ export const usePlayerStore = create<PlayerState>()(
           reportWarning('PlayerStore', e, 'Failed to load next track');
           set((s) => { s.isPlaying = false; });
         }
-        const s = get();
-        try {
-          useQueuePersistStore.getState().saveQueue(nextTrack, s.queue, nextOriginalIndex, s.shuffle, s.repeat, 0, true);
-        } catch {}
+        debouncedSaveQueue();
       }
     },
 
@@ -288,16 +271,7 @@ export const usePlayerStore = create<PlayerState>()(
       const { queue, shuffle, shuffledOrder, position } = get();
       if (queue.length === 0) return;
 
-      const preState = get();
-      if (preState.currentTrack) {
-        try {
-          useQueuePersistStore.getState().saveQueue(
-            preState.currentTrack, preState.queue, preState.queueIndex,
-            preState.shuffle, preState.repeat, preState.position,
-            preState.isPlaying,
-          );
-        } catch {}
-      }
+      debouncedSaveQueue();
 
       if (position > 3) {
         await serviceSeekTo(0);
@@ -343,10 +317,7 @@ export const usePlayerStore = create<PlayerState>()(
           reportWarning('PlayerStore', e, 'Failed to load previous track');
           set((s) => { s.isPlaying = false; });
         }
-        const s = get();
-        try {
-          useQueuePersistStore.getState().saveQueue(prevTrack, s.queue, prevOriginalIndex, s.shuffle, s.repeat, 0, true);
-        } catch {}
+        debouncedSaveQueue();
       }
     },
 

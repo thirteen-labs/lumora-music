@@ -78,7 +78,7 @@ export async function persistCrashLog(name: string, error: Error): Promise<void>
       error: { name: error.name, message: error.message, stack: error.stack },
       timestamp,
       platform: Platform.OS,
-      memoryWarn: globalThis as any,
+        memoryWarn: 'n/a',
     }, null, 2));
 
     const files = await FileSystem.readDirectoryAsync(crashDir);

@@ -52,11 +52,14 @@ export const usePlaybackSpeedStore = create<SpeedState>()(
 
 export { SPEED_OPTIONS };
 
-try {
-  usePlaybackSpeedStore.subscribe((state) => {
+let _speedUnsub: (() => void) | null = null;
+export function subscribePlaybackSpeed(): () => void {
+  if (_speedUnsub) _speedUnsub();
+  _speedUnsub = usePlaybackSpeedStore.subscribe((state) => {
     try {
       audioEngine.setSpeed(state.speed);
       audioEngine.setPitchCorrection(state.pitchCorrection);
     } catch {}
   });
-} catch {}
+  return () => { _speedUnsub?.(); _speedUnsub = null; };
+}

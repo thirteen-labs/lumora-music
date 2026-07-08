@@ -15,6 +15,16 @@ function saveLyricsMap(map: Record<string, string>): void {
   try { storage.set(LYRICS_STORAGE_KEY, JSON.stringify(map)); } catch {}
 }
 
+let _lyricsSaveTimer: ReturnType<typeof setTimeout> | null = null;
+
+function debouncedSaveLyricsMap(map: Record<string, string>) {
+  if (_lyricsSaveTimer) clearTimeout(_lyricsSaveTimer);
+  _lyricsSaveTimer = setTimeout(() => {
+    _lyricsSaveTimer = null;
+    saveLyricsMap(map);
+  }, 500);
+}
+
 interface LyricsState {
   lyricsMap: Record<string, string>;
   getLyrics: (songId: string) => string | undefined;
@@ -32,14 +42,14 @@ export const useLyricsStore = create<LyricsState>()(
       set((state) => {
         state.lyricsMap[songId] = text;
       });
-      saveLyricsMap(get().lyricsMap);
+      debouncedSaveLyricsMap(get().lyricsMap);
     },
 
     deleteLyrics: (songId) => {
       set((state) => {
         delete state.lyricsMap[songId];
       });
-      saveLyricsMap(get().lyricsMap);
+      debouncedSaveLyricsMap(get().lyricsMap);
     },
   })),
 );

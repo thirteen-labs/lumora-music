@@ -1,3 +1,4 @@
+import React from 'react';
 import { View, Text, Pressable } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { usePlayerStore } from '@/store/player-store';
@@ -9,7 +10,9 @@ import { formatDuration } from '@/utils/cn';
 import { useRouter } from 'expo-router';
 import { Artwork } from '@/components/artwork';
 
-export function MiniPlayer() {
+const CIRCUMFERENCE = 2 * Math.PI * 17;
+
+export const MiniPlayer = React.memo(function MiniPlayer() {
   const isMiniPlayerVisible = usePlayerStore((s) => s.isMiniPlayerVisible);
   const currentTrack = usePlayerStore((s) => s.currentTrack);
   const isPlaying = usePlayerStore((s) => s.isPlaying);
@@ -56,8 +59,8 @@ export function MiniPlayer() {
                 <Circle
                   cx={20} cy={20} r={17}
                   stroke={colors.accent} strokeWidth={3} fill="none"
-                  strokeDasharray={106.814}
-                  strokeDashoffset={106.814 * (1 - progress)}
+                  strokeDasharray={CIRCUMFERENCE}
+                  strokeDashoffset={CIRCUMFERENCE * (1 - progress)}
                   strokeLinecap="round"
                 />
               </G>
@@ -75,4 +78,4 @@ export function MiniPlayer() {
       </View>
     </Pressable>
   );
-}
+});

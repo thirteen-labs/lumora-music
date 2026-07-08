@@ -1,4 +1,4 @@
-import { useState, useRef, useMemo } from 'react';
+import { useState, useRef, useMemo, useCallback } from 'react';
 import { View, Text, Pressable, Alert, TextInput, ScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { s } from '@/styles';
@@ -106,7 +106,7 @@ export default function PlaylistsScreen() {
     <BottomSheetBackdrop {...props} disappearsOnIndex={-1} appearsOnIndex={0} opacity={0.5} />
   );
 
-  const renderListHeader = () => (
+  const renderListHeader = useCallback(() => (
     <View>
       <View style={[s.px5, s.py2]}>
         <Text style={[s.textSm, s.fontSemibold, s.mb3, { color: colors.textMuted }]}>Browse</Text>
@@ -155,7 +155,7 @@ export default function PlaylistsScreen() {
         </View>
       )}
     </View>
-  );
+  ), [colors, t, playlists, getCount, router, createSheetRef]);
 
   return (
     <View style={[s.flex1, { backgroundColor: colors.background }]}>

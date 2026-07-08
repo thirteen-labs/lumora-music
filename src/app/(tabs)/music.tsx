@@ -14,8 +14,8 @@ import { MiniPlayer } from '@/components/mini-player';
 import { SortMenu } from '@/components/sort-menu';
 import { LyricsBadge } from '@/components/lyrics-badge';
 import { SongContextMenu, useSongContextMenu } from '@/components/song-context-menu';
-import { useEffect, useMemo, useRef } from 'react';
-import { Music, Clock, LayoutGrid, List } from 'lucide-react-native';
+import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
+import { Music, Clock, LayoutGrid, List, ListPlus, Play, X, SquareCheck } from 'lucide-react-native';
 import { Artwork } from '@/components/artwork';
 import { formatDuration } from '@/utils/cn';
 import { s } from '@/styles';
@@ -47,8 +47,6 @@ export default function MusicScreen() {
   const insets = useSafeAreaInsets();
   const songs = useMusicStore((s) => s.songs);
   const scan = useMusicStore((s) => s.scan);
-  const scanStatus = useMusicStore((s) => s.scanStatus);
-  const scanProgress = useMusicStore((s) => s.scanProgress);
   const sortField = useMusicStore((s) => s.sortField);
   const sortOrder = useMusicStore((s) => s.sortOrder);
   const setSort = useMusicStore((s) => s.setSort);
@@ -68,6 +66,55 @@ export default function MusicScreen() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const isSelecting = selectedIds.size > 0;
+
+  const toggleSelect = useCallback((id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const clearSelection = useCallback(() => {
+    setSelectedIds(new Set());
+  }, []);
+
+  const handleItemPress = useCallback((item: Song) => {
+    if (isSelecting) {
+      toggleSelect(item.id);
+    } else {
+      usePlayerStore.getState().play(item, generateRandomQueue(item, songs));
+    }
+  }, [isSelecting, toggleSelect, songs]);
+
+  const handleItemLongPress = useCallback((item: Song) => {
+    if (!isSelecting) {
+      setSelectedIds(new Set([item.id]));
+    } else {
+      present(item);
+    }
+  }, [isSelecting, present]);
+
+  const handleAddSelectedToQueue = useCallback(() => {
+    const addToQueue = usePlayerStore.getState().addToQueue;
+    selectedIds.forEach((id) => {
+      const track = songs.find((s) => s.id === id);
+      if (track) addToQueue(track);
+    });
+    clearSelection();
+  }, [selectedIds, songs, clearSelection]);
+
+  const handlePlaySelected = useCallback(() => {
+    const selectedSongs = songs.filter((s) => selectedIds.has(s.id));
+    if (selectedSongs.length > 0) {
+      usePlayerStore.getState().play(selectedSongs[0], selectedSongs);
+    }
+    clearSelection();
+  }, [selectedIds, songs, clearSelection]);
 
   const sortedSongs = useMemo(() => sortSongs(songs, sortField, sortOrder, trackStats), [songs, sortField, sortOrder, trackStats]);
 
@@ -97,16 +144,6 @@ export default function MusicScreen() {
         onSelect={(opt) => setSort(opt.field, opt.order)}
         count={sortedSongs.length}
       />
-      {scanStatus === 'scanning' && (
-        <View style={{ paddingHorizontal: 16, paddingBottom: 8 }}>
-          <View style={{ height: 3, borderRadius: 1.5, backgroundColor: colors.surface, overflow: 'hidden' }}>
-            <View style={{ height: '100%', borderRadius: 1.5, width: '100%', backgroundColor: colors.accent, opacity: 0.6 }} />
-          </View>
-          <Text style={{ fontSize: 10, color: colors.textMuted, marginTop: 4 }}>
-            Scanning... {scanProgress?.processed ?? 0} files found
-          </Text>
-        </View>
-      )}
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', paddingHorizontal: 16, paddingBottom: 8, gap: 8 }}>
         <Pressable
           onPress={() => setLibraryViewMode('list')}
@@ -128,29 +165,39 @@ export default function MusicScreen() {
             keyExtractor={(item) => item.id}
             numColumns={GRID_COLUMNS}
             contentContainerStyle={{ paddingBottom: 120 + insets.bottom, paddingHorizontal: 16 }}
-            renderItem={({ item }: { item: Song }) => (
-              <Pressable
-                onPress={() => usePlayerStore.getState().play(item, generateRandomQueue(item, songs))}
-                onLongPress={() => present(item)}
-                style={{ width: GRID_ITEM_WIDTH, marginBottom: 16 }}
-              >
-                <View
-                  style={{
-                    width: GRID_ITEM_WIDTH,
-                    height: gridConfig.thumbHeight || GRID_ITEM_WIDTH,
-                    borderRadius: 14,
-                    overflow: 'hidden',
-                    backgroundColor: colors.surface,
-                  }}
+            renderItem={({ item }: { item: Song }) => {
+              const isSelected = selectedIds.has(item.id);
+              return (
+                <Pressable
+                  onPress={() => handleItemPress(item)}
+                  onLongPress={() => handleItemLongPress(item)}
+                  style={{ width: GRID_ITEM_WIDTH, marginBottom: 16, opacity: isSelecting && !isSelected ? 0.6 : 1 }}
                 >
-                  <Artwork uri={item.artwork} size={GRID_ITEM_WIDTH} borderRadius={14} iconSize={24} iconColor={colors.accent} backgroundColor={colors.surface} />
-                </View>
-                <Text style={{ fontSize: 14, fontWeight: '600', color: colors.text, marginTop: 8 }} numberOfLines={1}>{item.title}</Text>
-                <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 2 }}>
-                  <Text style={{ fontSize: 13, color: colors.textMuted }} numberOfLines={1}>{item.artist}</Text>
-                </View>
-              </Pressable>
-            )}
+                  <View
+                    style={{
+                      width: GRID_ITEM_WIDTH,
+                      height: gridConfig.thumbHeight || GRID_ITEM_WIDTH,
+                      borderRadius: 14,
+                      overflow: 'hidden',
+                      backgroundColor: colors.surface,
+                      borderWidth: isSelected ? 2 : 0,
+                      borderColor: colors.accent,
+                    }}
+                  >
+                    <Artwork uri={item.artwork} size={GRID_ITEM_WIDTH} borderRadius={14} iconSize={24} iconColor={colors.accent} backgroundColor={colors.surface} />
+                    {isSelected && (
+                      <View style={{ position: 'absolute', top: 4, right: 4, width: 22, height: 22, borderRadius: 11, backgroundColor: colors.accent, alignItems: 'center', justifyContent: 'center' }}>
+                        <SquareCheck size={14} color={colors.background} />
+                      </View>
+                    )}
+                  </View>
+                  <Text style={{ fontSize: 14, fontWeight: '600', color: colors.text, marginTop: 8 }} numberOfLines={1}>{item.title}</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 2 }}>
+                    <Text style={{ fontSize: 13, color: colors.textMuted }} numberOfLines={1}>{item.artist}</Text>
+                  </View>
+                </Pressable>
+              );
+            }}
             ListEmptyComponent={null}
           />
         ) : (
@@ -168,48 +215,62 @@ export default function MusicScreen() {
                       Recently Added
                     </Text>
                   </View>
-                  {recentlyAdded.slice(0, 5).map((item) => (
-                    <Pressable
-                      key={item.id}
-                      onPress={() => usePlayerStore.getState().play(item, generateRandomQueue(item, songs))}
-                      onLongPress={() => present(item)}
-                      style={[s.flexRow, s.itemsCenter, s.gap3, s.px4, s.py4]}
-                    >
-                      <Artwork uri={item.artwork} size={56} borderRadius={12} iconSize={20} iconColor={colors.accent} backgroundColor={colors.card} />
-                      <View style={s.flex1}>
-                        <Text style={[s.textBase, s.fontSemibold, { color: colors.text }]} numberOfLines={1}>{item.title}</Text>
-                        <View style={[s.flexRow, s.itemsCenter, s.gap1, s.mt05]}>
-                          <LyricsBadge colors={colors} show={!!lyricsMap[item.id] || hasCachedLyrics(item.artist, item.title) === true} />
-                          <Text style={[s.textSm, { color: colors.textMuted }]} numberOfLines={1}>{item.artist}</Text>
+                  {recentlyAdded.slice(0, 5).map((item) => {
+                    const isSelected = selectedIds.has(item.id);
+                    return (
+                      <Pressable
+                        key={item.id}
+                        onPress={() => handleItemPress(item)}
+                        onLongPress={() => handleItemLongPress(item)}
+                        style={[s.flexRow, s.itemsCenter, s.gap3, s.px4, s.py4, { backgroundColor: isSelected ? colors.accent + '10' : 'transparent', opacity: isSelecting && !isSelected ? 0.6 : 1 }]}
+                      >
+                        <Artwork uri={item.artwork} size={56} borderRadius={12} iconSize={20} iconColor={colors.accent} backgroundColor={colors.card} />
+                        <View style={s.flex1}>
+                          <Text style={[s.textBase, s.fontSemibold, { color: colors.text }]} numberOfLines={1}>{item.title}</Text>
+                          <View style={[s.flexRow, s.itemsCenter, s.gap1, s.mt05]}>
+                            <LyricsBadge colors={colors} show={!!lyricsMap[item.id] || hasCachedLyrics(item.artist, item.title) === true} />
+                            <Text style={[s.textSm, { color: colors.textMuted }]} numberOfLines={1}>{item.artist}</Text>
+                          </View>
                         </View>
-                      </View>
-                      <Text style={[s.textSm, { color: colors.textMuted }]}>{formatDuration(item.duration)}</Text>
-                    </Pressable>
-                  ))}
+                        {isSelected ? (
+                          <SquareCheck size={18} color={colors.accent} />
+                        ) : (
+                          <Text style={[s.textSm, { color: colors.textMuted }]}>{formatDuration(item.duration)}</Text>
+                        )}
+                      </Pressable>
+                    );
+                  })}
                 </View>
               ) : null
             }
-            renderItem={({ item }) => (
-              <Pressable
-                onPress={() => usePlayerStore.getState().play(item, generateRandomQueue(item, songs))}
-                onLongPress={() => present(item)}
-                style={[s.flexRow, s.itemsCenter, s.gap3, s.px4, s.py4]}
-              >
-                <Artwork uri={item.artwork} size={56} borderRadius={12} iconSize={20} iconColor={colors.accent} backgroundColor={colors.card} />
-                <View style={s.flex1}>
-                  <Text style={[s.textBase, s.fontSemibold, { color: colors.text }]} numberOfLines={1}>{item.title}</Text>
-                    <View style={[s.flexRow, s.itemsCenter, s.gap1, s.mt05]}>
-                      {(!!lyricsMap[item.id] || hasCachedLyrics(item.artist, item.title) === true) && (
-                        <View style={{ backgroundColor: colors.accent + '20', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 }}>
-                          <Text style={{ fontSize: 10, fontWeight: '700', color: colors.accent }}>Lyrics</Text>
-                        </View>
-                      )}
-                      <Text style={[s.textSm, { color: colors.textMuted }]} numberOfLines={1}>{item.artist}</Text>
-                    </View>
-                </View>
-                <Text style={[s.textSm, { color: colors.textMuted }]}>{formatDuration(item.duration)}</Text>
-              </Pressable>
-            )}
+            renderItem={({ item }) => {
+              const isSelected = selectedIds.has(item.id);
+              return (
+                <Pressable
+                  onPress={() => handleItemPress(item)}
+                  onLongPress={() => handleItemLongPress(item)}
+                  style={[s.flexRow, s.itemsCenter, s.gap3, s.px4, s.py4, { backgroundColor: isSelected ? colors.accent + '10' : 'transparent', opacity: isSelecting && !isSelected ? 0.6 : 1 }]}
+                >
+                  <Artwork uri={item.artwork} size={56} borderRadius={12} iconSize={20} iconColor={colors.accent} backgroundColor={colors.card} />
+                  <View style={s.flex1}>
+                    <Text style={[s.textBase, s.fontSemibold, { color: colors.text }]} numberOfLines={1}>{item.title}</Text>
+                      <View style={[s.flexRow, s.itemsCenter, s.gap1, s.mt05]}>
+                        {(!!lyricsMap[item.id] || hasCachedLyrics(item.artist, item.title) === true) && (
+                          <View style={{ backgroundColor: colors.accent + '20', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 }}>
+                            <Text style={{ fontSize: 10, fontWeight: '700', color: colors.accent }}>Lyrics</Text>
+                          </View>
+                        )}
+                        <Text style={[s.textSm, { color: colors.textMuted }]} numberOfLines={1}>{item.artist}</Text>
+                      </View>
+                  </View>
+                  {isSelected ? (
+                    <SquareCheck size={18} color={colors.accent} />
+                  ) : (
+                    <Text style={[s.textSm, { color: colors.textMuted }]}>{formatDuration(item.duration)}</Text>
+                  )}
+                </Pressable>
+              );
+            }}
             ListEmptyComponent={null}
           />
         )
@@ -217,6 +278,34 @@ export default function MusicScreen() {
         <View style={[s.flex1, s.itemsCenter, s.justifyCenter]}>
           <Music size={48} color={colors.textMuted} />
           <Text style={[s.textSm, s.mt3, { color: colors.textMuted }]}>No music found</Text>
+        </View>
+      )}
+      {isSelecting && (
+        <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, paddingHorizontal: 16, paddingBottom: insets.bottom + 8, paddingTop: 12, backgroundColor: colors.background + 'F2' }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <Pressable
+              onPress={clearSelection}
+              style={{ width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surface }}
+            >
+              <X size={18} color={colors.text} />
+            </Pressable>
+            <Text style={{ flex: 1, fontSize: 14, fontWeight: '600', color: colors.text }}>
+              {selectedIds.size} selected
+            </Text>
+            <Pressable
+              onPress={handleAddSelectedToQueue}
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 20, backgroundColor: colors.accent }}
+            >
+              <ListPlus size={16} color={colors.background} />
+              <Text style={{ fontSize: 13, fontWeight: '600', color: colors.background }}>Add to Queue</Text>
+            </Pressable>
+            <Pressable
+              onPress={handlePlaySelected}
+              style={{ width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.accent }}
+            >
+              <Play size={18} color={colors.background} fill={colors.background} />
+            </Pressable>
+          </View>
         </View>
       )}
       <SongContextMenu bottomSheetRef={bottomSheetRef} song={song} />

@@ -53,6 +53,16 @@ function persistEvents(events: TelemetryEvent[]): void {
   } catch {}
 }
 
+let _telemetrySaveTimer: ReturnType<typeof setTimeout> | null = null;
+
+function debouncedPersistEvents(events: TelemetryEvent[]) {
+  if (_telemetrySaveTimer) clearTimeout(_telemetrySaveTimer);
+  _telemetrySaveTimer = setTimeout(() => {
+    _telemetrySaveTimer = null;
+    persistEvents(events);
+  }, 1000);
+}
+
 export const useTelemetryStore = create<TelemetryState>()(
   immer((set, get) => ({
     events: loadEvents(),
@@ -70,7 +80,7 @@ export const useTelemetryStore = create<TelemetryState>()(
           s.events = s.events.slice(-MAX_EVENTS);
         }
       });
-      persistEvents(get().events);
+      debouncedPersistEvents(get().events);
     },
 
     recordPlay: (trackId, decodeMs) => {
@@ -79,7 +89,7 @@ export const useTelemetryStore = create<TelemetryState>()(
         s.events.push({ ts: Date.now(), type: 'play', detail: trackId, payload: { decodeMs } });
         if (s.events.length > MAX_EVENTS) s.events = s.events.slice(-MAX_EVENTS);
       });
-      persistEvents(get().events);
+      debouncedPersistEvents(get().events);
     },
 
     recordError: (source, error) => {
@@ -88,7 +98,7 @@ export const useTelemetryStore = create<TelemetryState>()(
         s.events.push({ ts: Date.now(), type: 'error', detail: `${source}: ${error}` });
         if (s.events.length > MAX_EVENTS) s.events = s.events.slice(-MAX_EVENTS);
       });
-      persistEvents(get().events);
+      debouncedPersistEvents(get().events);
     },
 
     recordSkip: (trackId) => {
@@ -97,7 +107,7 @@ export const useTelemetryStore = create<TelemetryState>()(
         s.events.push({ ts: Date.now(), type: 'skip', detail: trackId });
         if (s.events.length > MAX_EVENTS) s.events = s.events.slice(-MAX_EVENTS);
       });
-      persistEvents(get().events);
+      debouncedPersistEvents(get().events);
     },
 
     recordDecode: (_trackId, ms) => {

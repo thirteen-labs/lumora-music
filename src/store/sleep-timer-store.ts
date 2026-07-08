@@ -25,6 +25,13 @@ function clearTickInterval() {
   }
 }
 
+function startTickInterval() {
+  clearTickInterval();
+  tickInterval = setInterval(() => {
+    try { useSleepTimerStore.getState().tick(); } catch {}
+  }, 1000);
+}
+
 function loadTimer(): SleepTimerSettings {
   try {
     const raw = storage.getString(TIMER_KEY);
@@ -36,6 +43,13 @@ function loadTimer(): SleepTimerSettings {
     }
   } catch {}
   return { active: false, minutesRemaining: 0, totalMinutes: 0, endTime: 0, stopAtEndOfTrack: false };
+}
+
+export function restoreSleepTimer(): void {
+  const state = useSleepTimerStore.getState();
+  if (state.active && state.endTime > Date.now()) {
+    startTickInterval();
+  }
 }
 
 function saveTimer(settings: SleepTimerSettings): void {
@@ -60,10 +74,7 @@ export const useSleepTimerStore = create<SleepTimerState>()(
 
       showSleepTimerNotification(minutes);
 
-      clearTickInterval();
-      tickInterval = setInterval(() => {
-        get().tick();
-      }, 1000);
+      startTickInterval();
     },
 
     cancel: () => {

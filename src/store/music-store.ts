@@ -17,7 +17,6 @@ import {
   getCachedGenres,
 } from "@/services/scanner";
 import { storage } from "@/services/mmkv";
-import { useStatsStore } from "@/store/stats-store";
 import {
   isBackgroundScanEnabled,
   setBackgroundScanEnabled,
@@ -55,7 +54,6 @@ interface MusicState {
   backgroundScanEnabled: boolean;
   scan: (force?: boolean) => Promise<void>;
   setSort: (field: SortField, order: SortOrder) => void;
-  getSortedSongs: () => Song[];
   setBackgroundScanEnabled: (enabled: boolean) => void;
 }
 
@@ -181,41 +179,6 @@ export const useMusicStore = create<MusicState>()(
         state.sortOrder = order;
       });
       try { storage.set(SORT_FIELD_KEY, field); storage.set(SORT_ORDER_KEY, order); } catch {}
-    },
-
-    getSortedSongs: () => {
-      const state = get();
-      const stats = useStatsStore.getState().trackStats;
-      const sorted = [...state.songs];
-      sorted.sort((a, b) => {
-        let cmp = 0;
-        switch (state.sortField) {
-          case "title":
-            cmp = a.title.localeCompare(b.title);
-            break;
-          case "artist":
-            cmp = a.artist.localeCompare(b.artist);
-            break;
-          case "dateAdded":
-            cmp = a.dateAdded - b.dateAdded;
-            break;
-          case "duration":
-            cmp = a.duration - b.duration;
-            break;
-          case "fileSize":
-            cmp = a.fileSize - b.fileSize;
-            break;
-          case "playCount":
-            cmp = (stats[a.id]?.playCount || 0) - (stats[b.id]?.playCount || 0);
-            break;
-          case "lastPlayed":
-            cmp =
-              (stats[a.id]?.lastPlayed || 0) - (stats[b.id]?.lastPlayed || 0);
-            break;
-        }
-        return state.sortOrder === "desc" ? -cmp : cmp;
-      });
-      return sorted;
     },
 
     setBackgroundScanEnabled: (enabled) => {

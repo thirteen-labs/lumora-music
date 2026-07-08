@@ -99,5 +99,5 @@ export function fuzzySearch<T>(
   }
 
   results.sort((a, b) => b.score - a.score);
-  return results.slice(0, maxResults);
+  return results;
 }

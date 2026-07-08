@@ -57,38 +57,34 @@ export const usePlaylistStore = create<PlaylistState>()(
       };
       set((state) => {
         state.playlists.push(newPlaylist);
-        savePlaylists(state.playlists);
       });
+      savePlaylists(get().playlists);
       return id;
     },
 
     deletePlaylist: (id) => {
       set((state) => {
         state.playlists = state.playlists.filter(p => p.id !== id);
-        savePlaylists(state.playlists);
       });
+      savePlaylists(get().playlists);
     },
 
     renamePlaylist: (id, name) => {
       set((state) => {
         const p = state.playlists.find(p => p.id === id);
-        if (p) {
-          p.name = name;
-          savePlaylists(state.playlists);
-        }
+        if (p) p.name = name;
       });
+      savePlaylists(get().playlists);
     },
 
     addSongToPlaylist: (playlistId, songId) => {
       set((state) => {
         const p = state.playlists.find(p => p.id === playlistId);
-        if (p) {
-          if (!p.songIds.includes(songId)) {
-            p.songIds.push(songId);
-            savePlaylists(state.playlists);
-          }
+        if (p && !p.songIds.includes(songId)) {
+          p.songIds.push(songId);
         }
       });
+      savePlaylists(get().playlists);
     },
 
     addSongsToPlaylist: (playlistId, songIds) => {
@@ -100,9 +96,9 @@ export const usePlaylistStore = create<PlaylistState>()(
               p.songIds.push(songId);
             }
           }
-          savePlaylists(state.playlists);
         }
       });
+      savePlaylists(get().playlists);
     },
 
     removeSongFromPlaylist: (playlistId, songId) => {
@@ -110,9 +106,9 @@ export const usePlaylistStore = create<PlaylistState>()(
         const p = state.playlists.find(p => p.id === playlistId);
         if (p) {
           p.songIds = p.songIds.filter(id => id !== songId);
-          savePlaylists(state.playlists);
         }
       });
+      savePlaylists(get().playlists);
     },
 
     reorderSongs: (playlistId, fromIndex, toIndex) => {
@@ -121,9 +117,9 @@ export const usePlaylistStore = create<PlaylistState>()(
         if (p) {
           const [moved] = p.songIds.splice(fromIndex, 1);
           p.songIds.splice(toIndex, 0, moved);
-          savePlaylists(state.playlists);
         }
       });
+      savePlaylists(get().playlists);
     },
 
     getPlaylistSongs: (playlistId) => {

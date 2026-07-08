@@ -44,11 +44,13 @@ async function retryWithBackoff<T>(fn: () => Promise<T>, label: string, maxRetri
 export function PlayerProvider({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(false);
   const [initError, setInitError] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
   const crossfade = useSettingsStore((s) => s.crossfade);
   const crossfadeDuration = useSettingsStore((s) => s.crossfadeDuration);
   const restoreAttemptedRef = useRef(false);
   const initAttemptedRef = useRef(false);
   const destroyedRef = useRef(false);
+  const mountedRef = useRef(true);
 
   const saveStateBeforeExit = useCallback(() => {
     try {
@@ -125,6 +127,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   }, [restoreQueue]);
 
   useEffect(() => {
+    mountedRef.current = true;
     if (initAttemptedRef.current) return;
     initAttemptedRef.current = true;
     let cancelled = false;
@@ -155,13 +158,13 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
 
       await restoreQueueWithTimeout();
 
-      if (!cancelled) {
+      if (!cancelled && mountedRef.current) {
         setReady(true);
       }
     }
 
     init().catch((e) => {
-      if (!cancelled) {
+      if (!cancelled && mountedRef.current) {
         reportWarning('PlayerProvider', e, 'Failed to initialize player');
         persistCrashLog('player-init', e instanceof Error ? e : new Error(String(e)));
         setInitError('Failed to initialize player');
@@ -169,8 +172,8 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       }
     });
 
-    return () => { cancelled = true; cleanup(); };
-  }, [cleanup, restoreQueueWithTimeout]);
+    return () => { cancelled = true; cleanup(); mountedRef.current = false; };
+  }, [cleanup, restoreQueueWithTimeout, retryCount]);
 
   /* Retry restore when music store populates after init */
   useEffect(() => {
@@ -313,6 +316,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
             try {
               destroyPlayer();
               await setupPlayer();
+              setRetryCount((c) => c + 1);
             } catch (e) {
               reportWarning('PlayerProvider', e, 'Retry failed');
               setInitError('Retry failed');

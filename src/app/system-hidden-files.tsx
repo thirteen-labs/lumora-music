@@ -187,7 +187,7 @@ export default function SystemHiddenFilesScreen() {
                                       {file.name}
                                     </Text>
                                     <Text style={[s.text10, { color: colors.textMuted }]} numberOfLines={1}>
-                                      {formatSize(file.size)} · {file.sourcePath.split('/').pop()}
+                                      {formatSize(file.size)} · {(file.sourcePath ?? '').split('/').pop()}
                                     </Text>
                                   </View>
                                 </View>

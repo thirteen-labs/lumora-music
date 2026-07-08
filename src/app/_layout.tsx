@@ -12,6 +12,7 @@ import { ColorAwareProvider } from "@/components/color-aware-provider";
 import { PlayerProvider } from "@/components/player-provider";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { Toast } from "@/components/toast";
+import { ScanOverlay } from "@/components/scan-overlay";
 import { StatusBar } from "expo-status-bar";
 import { useScanManager } from "@/hooks/use-scan-manager";
 import { useThemeStore } from "@/store/theme-store";
@@ -230,6 +231,7 @@ export default function RootLayout() {
                 <PlayerProvider>
                   <RootStack />
                   <Toast />
+                  <ScanOverlay />
                 </PlayerProvider>
               </ColorAwareProvider>
             </FontProvider>
