@@ -152,14 +152,13 @@ export default function PlayerScreen() {
   const [editAlbum, setEditAlbum] = useState(track?.album ?? '');
   const [editArtwork, setEditArtwork] = useState<string | null>(track?.artwork ?? null);
 
-useEffect(() => {
-  if (track) {
-    setEditTitle(track.title);
-    setEditArtist(track.artist ?? '');
-    setEditAlbum(track.album ?? '');
-    setEditArtwork(track.artwork ?? null);
-  }
-}, [track?.id]);
+  const syncEditState = useCallback((t: typeof track) => {
+    if (!t) return;
+    setEditTitle(t.title);
+    setEditArtist(t.artist ?? '');
+    setEditAlbum(t.album ?? '');
+    setEditArtwork(t.artwork ?? null);
+  }, []);
 
 useEffect(() => {
     ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.DEFAULT).catch(() => {});
@@ -349,14 +348,18 @@ useEffect(() => {
 
   const onQueuePress = useCallback(() => queueSheetRef.current?.present(), []);
   const onLyricsPress = useCallback(() => lyricsSheetRef.current?.present(), []);
-  const onInfoPress = useCallback(() => infoSheetRef.current?.present(), []);
+  const onInfoPress = useCallback(() => {
+    syncEditState(track);
+    infoSheetRef.current?.present();
+  }, [syncEditState, track]);
 
   const translateY = useSharedValue(0);
   const isSwipingDown = useSharedValue(false);
   const isMountedSV = useSharedValue(true);
 
-  useEffect(() => { return () => { isMountedSV.value = false; }; }, []);
+  useEffect(() => { return () => { isMountedSV.value = false; }; }, [isMountedSV]);
 
+  /* eslint-disable react-hooks/immutability */
   const panGesture = useMemo(() => Gesture.Pan()
     .onStart(() => {
       isSwipingDown.value = true;
@@ -374,7 +377,8 @@ useEffect(() => {
       }
       translateY.value = withSpring(0, { damping: 20, stiffness: 200 });
       isSwipingDown.value = false;
-    }), [hideFullPlayer, router]);
+    }), [hideFullPlayer, router, isMountedSV, isSwipingDown, translateY]);
+  /* eslint-enable react-hooks/immutability */
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: translateY.value }],

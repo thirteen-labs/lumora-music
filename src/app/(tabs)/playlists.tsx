@@ -63,7 +63,7 @@ export default function PlaylistsScreen() {
     [songs, trackStats],
   );
 
-  const getCount = (labelKey: string): number => {
+  const getCount = useCallback((labelKey: string): number => {
     switch (labelKey) {
       case 'library.albums': return albums.length;
       case 'library.genres': return genres.length;
@@ -74,7 +74,7 @@ export default function PlaylistsScreen() {
       case 'library.favorites': return favoriteCount;
       default: return 0;
     }
-  };
+  }, [albums.length, artists.length, genres.length, lyricsCount, recentlyPlayedCount, mostPlayedCount, favoriteCount]);
 
   const handleCreate = () => {
     if (newName.trim()) {
