@@ -5,7 +5,7 @@
   "dependencies": {
     "@gorhom/bottom-sheet": "^5.2.14",
     "@hookform/resolvers": "^5.4.0",
-"@obsidian_north/react-native-mediastore": "^1.0.0",
+    "@obsidian_north/react-native-mediastore": "^2.0.0",
     "@react-native-community/slider": "5.2.0",
     "@shopify/flash-list": "2.0.2",
     "babel-preset-expo": "^56.0.14",
