@@ -17,7 +17,7 @@ import { SongContextMenu, useSongContextMenu } from '@/components/song-context-m
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { Music, Clock, LayoutGrid, List, ListPlus, Play, X, SquareCheck } from 'lucide-react-native';
 import { Artwork } from '@/components/artwork';
-import { formatDuration } from '@/utils/cn';
+import { formatDuration } from '@/utils/format';
 import { s } from '@/styles';
 import type { SortField, SortOrder, Song } from '@/types/media';
 import { SORT_OPTIONS } from '@/types/media';

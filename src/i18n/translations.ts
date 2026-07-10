@@ -177,7 +177,7 @@ const en = {
   'audio.battery.desc': 'Prevent the OS from killing the app in background',
   'audio.battery.btn': 'Disable Optimization',
   'audio.battery.alert.title': 'Battery Optimization',
-  'audio.battery.alert.body': 'To ensure uninterrupted playback in the background, please disable battery optimization for Lumora Player:\\n\\n1. Tap OK to open settings\\n2. Find Lumora Player\\n3. Select "Don\'t optimize"',
+  'audio.battery.alert.body': 'To ensure uninterrupted playback in the background, please disable battery optimization for Lumora Player:\n\n1. Tap OK to open settings\n2. Find Lumora Player\n3. Select "Don\'t optimize"',
   
   // Search
   'search.title': 'Search',

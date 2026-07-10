@@ -12,7 +12,7 @@ import { MiniPlayer } from '@/components/mini-player';
 import { SongContextMenu, useSongContextMenu } from '@/components/song-context-menu';
 import { LyricsBadge } from '@/components/lyrics-badge';
 import { Music, Tag } from 'lucide-react-native';
-import { formatDuration, formatFileSize } from '@/utils/cn';
+import { formatDuration, formatFileSize } from '@/utils/format';
 import { useLocalSearchParams } from 'expo-router';
 
 export default function GenreDetailScreen() {

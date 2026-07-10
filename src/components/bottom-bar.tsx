@@ -93,7 +93,7 @@ export function BottomBar() {
         return (
           <Pressable
             key={item.key}
-            onPress={() => router.push(item.route as any)}
+            onPress={() => router.push(item.route)}
             onLayout={(e) => handleLayout(item.key, e)}
             style={{ padding: 8, alignItems: 'center' }}
           >

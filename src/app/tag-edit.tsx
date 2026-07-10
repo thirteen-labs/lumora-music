@@ -36,7 +36,7 @@ export default function TagEditScreen() {
     handleSubmit,
     formState: { errors, isDirty },
   } = useForm<TagFormData>({
-    resolver: zodResolver(tagSchema) as any,
+    resolver: zodResolver(tagSchema),
     defaultValues: {
       title: song?.title ?? '',
       artist: song?.artist ?? '',

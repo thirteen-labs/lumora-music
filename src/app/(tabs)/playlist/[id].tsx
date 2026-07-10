@@ -10,9 +10,9 @@ import { usePlaylistStore } from '@/store/playlist-store';
 import { useMusicStore } from '@/store/music-store';
 import { usePlayerStore } from '@/store/player-store';
 import { useLyricsStore } from '@/store/lyrics-store';
-import { useMetadataStore } from '@/store/metadata-store';
+import { useMetadataStore, type MetadataOverride } from '@/store/metadata-store';
 import { hasCachedLyrics } from '@/services/lyrics';
-import { formatDuration } from '@/utils/cn';
+import { formatDuration } from '@/utils/format';
 import type { Song } from '@/types/media';
 import { Music, Play, Plus, Shuffle, Info, Save, RotateCcw } from 'lucide-react-native';
 import { LyricsBadge } from '@/components/lyrics-badge';
@@ -81,7 +81,7 @@ export default function PlaylistDetailScreen() {
 
   const handleSaveInfo = useCallback(() => {
     if (!infoSong) return;
-    const override: Record<string, string | undefined> = {};
+    const override: MetadataOverride = {};
     if (editTitle !== infoSong.title) override.title = editTitle;
     if (editArtist !== (infoSong.artist ?? '')) override.artist = editArtist;
     if (editAlbum !== (infoSong.album ?? '')) override.album = editAlbum;
@@ -89,7 +89,7 @@ export default function PlaylistDetailScreen() {
       override.artwork = editArtwork ?? '';
     }
     if (Object.keys(override).length > 0) {
-      setOverride(infoSong.id, override as any);
+      setOverride(infoSong.id, override);
     }
     infoSheetRef.current?.dismiss();
   }, [infoSong, editTitle, editArtist, editAlbum, editArtwork, setOverride]);

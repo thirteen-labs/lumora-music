@@ -5,6 +5,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { usePlayerStore } from '@/store/player-store';
 import { useMetadataStore, type MetadataOverride } from '@/store/metadata-store';
 import * as ScreenOrientation from 'expo-screen-orientation';
+import { reportWarning } from '@/utils/error-handler';
 import {
   Play,
   Pause,
@@ -35,7 +36,7 @@ import Animated, {
   withSpring,
   runOnJS,
 } from 'react-native-reanimated';
-import { formatDuration, formatFileSize } from '@/utils/cn';
+import { formatDuration, formatFileSize } from '@/utils/format';
 import Slider from '@react-native-community/slider';
 import { useRouter } from 'expo-router';
 import { useFavoritesStore } from '@/store/favorites-store';
@@ -161,8 +162,8 @@ export default function PlayerScreen() {
   }, []);
 
 useEffect(() => {
-    ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.DEFAULT).catch(() => {});
-    return () => { ScreenOrientation.unlockAsync().catch(() => {}); };
+    ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.DEFAULT).catch((e) => reportWarning('Player', e, 'Failed to lock orientation'));
+    return () => { ScreenOrientation.unlockAsync().catch((e) => reportWarning('Player', e, 'Failed to unlock orientation')); };
   }, []);
 
   const infoSheetRef = useRef<BottomSheetModal>(null);
@@ -665,7 +666,7 @@ function RepeatButton({ repeat, setRepeat, colors }: { repeat: RepeatMode; setRe
     <Pressable
       onPress={() => {
         const modes = ['off', 'all', 'one'] as const;
-        const idx = modes.indexOf(repeat as any);
+        const idx = modes.indexOf(repeat);
         setRepeat(modes[(idx + 1) % modes.length]);
       }}
     >

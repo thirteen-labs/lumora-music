@@ -6,7 +6,7 @@ import { s } from '@/styles';
 import { useTheme } from '@/hooks/use-theme';
 import { Play, Pause, SkipForward } from 'lucide-react-native';
 import Svg, { Circle, G } from 'react-native-svg';
-import { formatDuration } from '@/utils/cn';
+import { formatDuration } from '@/utils/format';
 import { useRouter } from 'expo-router';
 import { Artwork } from '@/components/artwork';
 

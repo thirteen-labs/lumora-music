@@ -4,6 +4,7 @@ import { storage } from '@/services/mmkv';
 import type { SleepTimerSettings } from '@/types/audio';
 import { usePlayerStore } from '@/store/player-store';
 import { showSleepTimerNotification, dismissSleepTimerNotification } from '@/services/notifications';
+import { reportWarning } from '@/utils/error-handler';
 
 const TIMER_KEY = 'lumora-sleep-timer';
 
@@ -99,7 +100,7 @@ export const useSleepTimerStore = create<SleepTimerState>()(
       const remaining = state.endTime - Date.now();
       if (remaining <= 0) {
         set((s) => { s.expiredFlag = true; });
-        try { usePlayerStore.getState().pause(); } catch {}
+        try { usePlayerStore.getState().pause(); } catch (e) { reportWarning('SleepTimer', e, 'Failed to pause on timer expiry'); }
         dismissSleepTimerNotification();
         get().cancel();
         return true;

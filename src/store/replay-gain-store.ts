@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 import { storage } from '@/services/mmkv';
 import { audioEngine } from '@/services/audio-engine';
+import { reportWarning } from '@/utils/error-handler';
 import type { ReplayGainSettings } from '@/types/audio';
 
 const RG_KEY = 'lumora-replay-gain';
@@ -69,7 +70,7 @@ let _rgUnsub: (() => void) | null = null;
 export function subscribeReplayGain(): () => void {
   if (_rgUnsub) _rgUnsub();
   _rgUnsub = useReplayGainStore.subscribe(() => {
-    try { syncReplayGainToEngine(); } catch {}
+    try { syncReplayGainToEngine(); } catch (e) { reportWarning('ReplayGain', e, 'Failed to sync RG to engine'); }
   });
   return () => { _rgUnsub?.(); _rgUnsub = null; };
 }

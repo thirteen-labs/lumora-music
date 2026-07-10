@@ -7,7 +7,7 @@ import { TopBar } from '@/components/top-bar';
 import { SectionHeader } from '@/components/section-header';
 import { useMusicStore } from '@/store/music-store';
 import { calculateStorageInfo } from '@/scanner/enhanced-scanner';
-import { formatFileSize } from '@/utils/cn';
+import { formatFileSize } from '@/utils/format';
 import { HardDrive, Music, FileText, Tag } from 'lucide-react-native';
 
 export default function StorageScreen() {

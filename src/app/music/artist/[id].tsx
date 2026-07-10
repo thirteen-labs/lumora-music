@@ -13,7 +13,7 @@ import { SongContextMenu, useSongContextMenu } from '@/components/song-context-m
 import { LyricsBadge } from '@/components/lyrics-badge';
 import { Music } from 'lucide-react-native';
 import { Artwork } from '@/components/artwork';
-import { formatDuration, formatFileSize } from '@/utils/cn';
+import { formatDuration, formatFileSize } from '@/utils/format';
 import { useLocalSearchParams } from 'expo-router';
 
 export default function ArtistDetailScreen() {

@@ -81,7 +81,7 @@ function debouncedSaveQueue() {
         state.shuffle, state.repeat, state.position,
         state.isPlaying,
       );
-    } catch {}
+    } catch (e) { reportWarning('PlayerStore', e, 'Failed to save queue'); }
   }, 300);
 }
 
@@ -136,7 +136,7 @@ export const usePlayerStore = create<PlayerState>()(
         }
       });
 
-      try { useStatsStore.getState().recordPlay(track.id); } catch {}
+      try { useStatsStore.getState().recordPlay(track.id); } catch (e) { reportWarning('PlayerStore', e, 'Failed to record play'); }
       debouncedSaveQueue();
 
       preloadArtworkForTrack(track);
@@ -203,7 +203,7 @@ export const usePlayerStore = create<PlayerState>()(
 
       const currentTrack = get().currentTrack;
       if (currentTrack) {
-        try { useStatsStore.getState().recordSkip(currentTrack.id); } catch {}
+        try { useStatsStore.getState().recordSkip(currentTrack.id); } catch (e) { reportWarning('PlayerStore', e, 'Failed to record skip'); }
       }
 
       debouncedSaveQueue();
@@ -322,7 +322,7 @@ export const usePlayerStore = create<PlayerState>()(
     },
 
     seekTo: async (position) => {
-      try { await serviceSeekTo(position); } catch {}
+      try { await serviceSeekTo(position); } catch (e) { reportWarning('PlayerStore', e, 'Seek failed'); }
       set((s) => {
         s.position = position;
       });

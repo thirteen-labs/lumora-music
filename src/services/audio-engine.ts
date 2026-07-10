@@ -341,12 +341,12 @@ class AudioEngine {
         try {
           if (this.context.state === 'closed') {
             console.warn('[AudioEngine] Watchdog: context was closed, triggering recovery');
-            this.ensureAlive().catch(() => {});
+            this.ensureAlive().catch((e) => reportWarning('AudioEngine', e, 'Watchdog: ensureAlive failed'));
             return;
           }
           if (this.context.state !== 'running') {
             console.warn('[AudioEngine] Watchdog: context not running, attempting resume');
-            this.context.resume().catch(() => {});
+            this.context.resume().catch((e) => reportWarning('AudioEngine', e, 'Watchdog: context resume failed'));
           }
           consecutiveFailures = 0;
         } catch (e) {
@@ -354,7 +354,7 @@ class AudioEngine {
           console.warn('[AudioEngine] Watchdog health check failed:', e);
           if (consecutiveFailures >= 3) {
             console.warn('[AudioEngine] Watchdog: too many failures, triggering full recovery');
-            this.ensureAlive().catch(() => {});
+            this.ensureAlive().catch((e) => reportWarning('AudioEngine', e, 'Watchdog: recovery ensureAlive failed'));
             consecutiveFailures = 0;
           }
         }
@@ -520,7 +520,7 @@ class AudioEngine {
     if (!this.context || !this.currentBuffer) return;
 
     if (this._paused && this.currentSource) {
-      this.context.resume().catch(() => {});
+      this.context.resume().catch((e) => reportWarning('AudioEngine', e, 'Play: context resume failed'));
       this._paused = false;
       this._playing = true;
       this.startPositionTracking();

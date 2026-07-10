@@ -15,7 +15,7 @@ import { SwipeableRow } from '@/components/swipeable-row';
 import { LyricsBadge } from '@/components/lyrics-badge';
 import { Music, Play, Sparkles, FileMusic } from 'lucide-react-native';
 import { Artwork } from '@/components/artwork';
-import { formatDuration } from '@/utils/cn';
+import { formatDuration } from '@/utils/format';
 import { useRouter } from 'expo-router';
 import { useTranslation } from '@/hooks/use-translation';
 import { ScrollView } from 'react-native-gesture-handler';

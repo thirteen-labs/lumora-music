@@ -250,14 +250,14 @@ export default function SettingsScreen() {
               icon={Paintbrush}
               label="Theme"
               subtitle={currentTheme.name}
-              onPress={() => router.push('/themes' as any)}
+              onPress={() => router.push('/themes' )}
               colors={colors}
             />
             <SettingRow
               icon={Palette}
               label="Accent Color"
               subtitle={accentOverride ? (accentLabel[accentOverride] ?? accentOverride) : 'Default'}
-              onPress={() => router.push('/accent-color' as any)}
+              onPress={() => router.push('/accent-color' )}
               colors={colors}
             />
             <View style={[s.flexRow, s.itemsCenter, s.gap4, s.p4]}>
@@ -288,14 +288,14 @@ export default function SettingsScreen() {
               icon={Languages}
               label="Language"
               subtitle={languageLabel[language] || 'English'}
-              onPress={() => router.push('/language-settings' as any)}
+              onPress={() => router.push('/language-settings' )}
               colors={colors}
             />
             <SettingRow
               icon={Type}
               label="Font"
               subtitle={fontLabel}
-              onPress={() => router.push('/font-settings' as any)}
+              onPress={() => router.push('/font-settings' )}
               colors={colors}
             />
           </Section>
@@ -305,21 +305,21 @@ export default function SettingsScreen() {
               icon={Music}
               label="Audio Quality"
               subtitle="High (320 kbps)"
-              onPress={() => router.push('/audio-quality' as any)}
+              onPress={() => router.push('/audio-quality' )}
               colors={colors}
             />
             <SettingRow
               icon={SlidersHorizontal}
               label={t('settings.equalizer')}
               subtitle="Custom"
-              onPress={() => router.push('/audio-features' as any)}
+              onPress={() => router.push('/audio-features' )}
               colors={colors}
             />
             <SettingRow
               icon={Volume2}
               label={t('settings.crossfade')}
               subtitle="5 seconds"
-              onPress={() => router.push('/crossfade-settings' as any)}
+              onPress={() => router.push('/crossfade-settings' )}
               colors={colors}
             />
             <View style={[s.flexRow, s.itemsCenter, s.gap4, s.p4]}>
@@ -346,14 +346,14 @@ export default function SettingsScreen() {
               icon={Moon}
               label="Sleep Timer"
               subtitle="Set a timer to stop playback"
-              onPress={() => router.push('/sleep-timer' as any)}
+              onPress={() => router.push('/sleep-timer' )}
               colors={colors}
             />
             <SettingRow
               icon={Mic}
               label="Audio Recognition"
               subtitle="Identify songs playing near you"
-              onPress={() => router.push('/audio-recognition' as any)}
+              onPress={() => router.push('/audio-recognition' )}
               colors={colors}
             />
           </Section>
@@ -363,7 +363,7 @@ export default function SettingsScreen() {
               icon={Smartphone}
               label="Output Devices"
               subtitle={`${devices.length} device(s) connected`}
-              onPress={() => router.push('/output-devices' as any)}
+              onPress={() => router.push('/output-devices' )}
               colors={colors}
             />
           </Section>
@@ -380,14 +380,14 @@ export default function SettingsScreen() {
               icon={Database}
               label={t('settings.storage')}
               subtitle={`${songs.length} songs · ${albums.length} albums`}
-              onPress={() => router.push('/storage' as any)}
+              onPress={() => router.push('/storage' )}
               colors={colors}
             />
             <SettingRow
               icon={EyeOff}
               label={t('settings.hidden.files')}
               subtitle={t('settings.hidden.files.desc')}
-              onPress={() => router.push('/hidden-files' as any)}
+              onPress={() => router.push('/hidden-files' )}
               colors={colors}
             />
             <View style={[s.flexRow, s.itemsCenter, s.gap4, s.p4]}>
@@ -407,21 +407,21 @@ export default function SettingsScreen() {
               icon={Clock}
               label="Play Time"
               subtitle="View total listening stats"
-              onPress={() => router.push('/play-time' as any)}
+              onPress={() => router.push('/play-time' )}
               colors={colors}
             />
             <SettingRow
               icon={Bell}
               label="Notifications"
               subtitle="Media & push notification settings"
-              onPress={() => router.push('/notification-settings' as any)}
+              onPress={() => router.push('/notification-settings' )}
               colors={colors}
             />
             <SettingRow
               icon={Shield}
               label="Privacy"
               subtitle="Offline & Local Only"
-              onPress={() => router.push('/privacy' as any)}
+              onPress={() => router.push('/privacy' )}
               colors={colors}
             />
             <View style={[s.flexRow, s.itemsCenter, s.gap4, s.p4]}>
@@ -438,21 +438,21 @@ export default function SettingsScreen() {
               icon={HelpCircle}
               label="Help & Support"
               subtitle="FAQs, Guides, Contact"
-              onPress={() => router.push('/help-support' as any)}
+              onPress={() => router.push('/help-support' )}
               colors={colors}
             />
             <SettingRow
               icon={Info}
               label="About Lumora"
               subtitle={t('settings.version')}
-              onPress={() => router.push('/about' as any)}
+              onPress={() => router.push('/about' )}
               colors={colors}
             />
             <SettingRow
               icon={Cloud}
               label="Cloud Sync"
               subtitle={connectedProviders.length > 0 ? `${connectedProviders.length} provider(s) connected` : 'Backup & sync to cloud'}
-              onPress={() => router.push('/cloud-sync' as any)}
+              onPress={() => router.push('/cloud-sync' )}
               colors={colors}
             />
           </Section>

@@ -13,6 +13,7 @@ import { useTheme } from "@/hooks/use-theme";
 import { useTranslation } from "@/hooks/use-translation";
 import { TopBar } from "@/components/top-bar";
 import { SectionHeader } from "@/components/section-header";
+import { reportWarning } from "@/utils/error-handler";
 import {
   findDuplicateSongs,
   findNewSongs,
@@ -66,7 +67,7 @@ export default function LibraryToolsScreen() {
   const [lastBgScan, setLastBgScan] = useState(getLastBackgroundScanTime);
 
   useEffect(() => {
-    isBackgroundScanRegistered().then(setBgScanRegistered).catch(() => {});
+    isBackgroundScanRegistered().then(setBgScanRegistered).catch((e) => reportWarning('LibraryTools', e, 'Failed to check background scan registration'));
   }, [bgScanEnabled]);
 
   const INTERVAL_OPTIONS = [
@@ -82,7 +83,7 @@ export default function LibraryToolsScreen() {
     setBgScanEnabled(value);
     setBackgroundScanEnabled(value);
     if (value) {
-      isBackgroundScanRegistered().then(setBgScanRegistered).catch(() => {});
+      isBackgroundScanRegistered().then(setBgScanRegistered).catch((e) => reportWarning('LibraryTools', e, 'Failed to check background scan registration'));
     } else {
       setBgScanRegistered(false);
     }

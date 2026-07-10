@@ -65,7 +65,7 @@ export function setCachedJSON(key: string, value: unknown): void {
     const serialized = JSON.stringify(value);
     storage.set(key, serialized);
   } catch (e) {
-    reportWarning('MMKV', `Failed to serialize ${key}`, e as any);
+    reportWarning('MMKV', e, `Failed to serialize ${key}`);
   }
 }
 
@@ -73,7 +73,7 @@ export function removeItem(key: string): void {
   try {
     storage.remove(key);
   } catch (e) {
-    reportWarning('MMKV', `Failed to remove ${key}`, e as any);
+    reportWarning('MMKV', e, `Failed to remove ${key}`);
   }
 }
 
@@ -81,7 +81,7 @@ export function clearStorage(): void {
   try {
     storage.clearAll();
   } catch (e) {
-    reportWarning('MMKV', 'Failed to clear storage', e as any);
+    reportWarning('MMKV', e, 'Failed to clear storage');
   }
 }
 
@@ -99,7 +99,7 @@ export function createBackup(label: string): void {
     storage.set(backupKey, JSON.stringify(snapshot));
     trimBackups();
   } catch (e) {
-    reportWarning('MMKV', `Failed to create backup: ${label}`, e as any);
+    reportWarning('MMKV', e, `Failed to create backup: ${label}`);
   }
 }
 
@@ -125,7 +125,7 @@ export function restoreFromBackup(label: string): boolean {
     }
     return true;
   } catch (e) {
-    reportWarning('MMKV', `Failed to restore backup: ${label}`, e as any);
+    reportWarning('MMKV', e, `Failed to restore backup: ${label}`);
     return false;
   }
 }

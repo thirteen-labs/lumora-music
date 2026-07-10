@@ -174,7 +174,7 @@ export function SongContextMenu({ bottomSheetRef, song, onDismiss }: SongContext
               <Text style={{ fontSize: 15, color: colors.text }}>{isFav ? 'Remove from Favorites' : 'Add to Favorites'}</Text>
             </Pressable>
             <Pressable
-              onPress={() => { dismiss(); router.push({ pathname: '/playlist-picker' as any, params: { songId: song.id } }); }}
+              onPress={() => { dismiss(); router.push({ pathname: '/playlist-picker', params: { songId: song.id } }); }}
               style={{
                 flexDirection: 'row',
                 alignItems: 'center',

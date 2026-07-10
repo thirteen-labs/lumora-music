@@ -25,11 +25,11 @@ const PROVIDER_ICONS: Record<string, React.ComponentType<any>> = {
   'custom': Server,
 };
 
-const INTERVAL_OPTIONS: { value: string; label: string }[] = [
-  { value: 'daily', label: 'Every Day' },
-  { value: 'weekly', label: 'Every Week' },
-  { value: 'monthly', label: 'Every Month' },
-  { value: 'off', label: 'Manual Only' },
+const INTERVAL_OPTIONS = [
+  { value: 'daily' as const, label: 'Every Day' },
+  { value: 'weekly' as const, label: 'Every Week' },
+  { value: 'monthly' as const, label: 'Every Month' },
+  { value: 'off' as const, label: 'Manual Only' },
 ];
 
 export default function CloudSyncScreen() {
@@ -345,7 +345,7 @@ export default function CloudSyncScreen() {
                   {INTERVAL_OPTIONS.map((opt) => (
                     <Pressable
                       key={opt.value}
-                      onPress={() => setAutoBackupInterval(opt.value as any)}
+                      onPress={() => setAutoBackupInterval(opt.value)}
                       style={[s.flexRow, s.itemsCenter, s.gap3, s.p4, { paddingLeft: 56 }]}
                     >
                       <View style={[{ width: 32, height: 32 }, s.roundedFull, s.itemsCenter, s.justifyCenter, {

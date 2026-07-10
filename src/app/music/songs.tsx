@@ -19,7 +19,7 @@ import { SwipeableRow } from '@/components/swipeable-row';
 import { LyricsBadge } from '@/components/lyrics-badge';
 import { Music, LayoutGrid, List, ListPlus, Play, X, SquareCheck } from 'lucide-react-native';
 import { Artwork } from '@/components/artwork';
-import { formatDuration, formatFileSize } from '@/utils/cn';
+import { formatDuration, formatFileSize } from '@/utils/format';
 import { SORT_OPTIONS, type SortField, type SortOrder, type Song } from '@/types/media';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');

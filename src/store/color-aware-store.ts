@@ -2,24 +2,7 @@ import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 import type { ExtractedColors } from '@/services/color-extraction';
 import type { ThemeColors } from '@/types/theme';
-
-function luminance(hex: string): number {
-  const r = parseInt(hex.slice(1, 3), 16) / 255;
-  const g = parseInt(hex.slice(3, 5), 16) / 255;
-  const b = parseInt(hex.slice(5, 7), 16) / 255;
-  return 0.299 * r + 0.587 * g + 0.114 * b;
-}
-
-function isLight(hex: string): boolean {
-  return luminance(hex) > 0.5;
-}
-
-function hexToRgba(hex: string, alpha: number): string {
-  const r = parseInt(hex.slice(1, 3), 16);
-  const g = parseInt(hex.slice(3, 5), 16);
-  const b = parseInt(hex.slice(5, 7), 16);
-  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-}
+import { isLight, hexToRgba } from '@/utils/color';
 
 interface ColorAwareState {
   extractedColors: ExtractedColors | null;

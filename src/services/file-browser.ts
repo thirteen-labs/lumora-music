@@ -170,7 +170,7 @@ async function listDirectoryLegacy(uri: string, showHidden: boolean): Promise<Fi
             uri: entry.uri,
             isDirectory: false,
             size: info.size ?? 0,
-            modificationTime: 'modificationTime' in info ? (info as any).modificationTime ?? 0 : 0,
+            modificationTime: 'modificationTime' in info ? (info as { modificationTime?: number }).modificationTime ?? 0 : 0,
           });
         }
       } catch {

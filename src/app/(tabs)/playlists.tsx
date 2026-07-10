@@ -11,11 +11,10 @@ import { usePlaylistStore } from '@/store/playlist-store';
 import { useMusicStore } from '@/store/music-store';
 import { useFavoritesStore } from '@/store/favorites-store';
 import { useStatsStore } from '@/store/stats-store';
-import { useLyricsStore } from '@/store/lyrics-store';
 import { usePlayerStore } from '@/store/player-store';
 import { useRouter } from 'expo-router';
 import {
-  Heart, Plus, ListMusic, Play, Tag, Users, Mic2, Clock, TrendingUp, Disc3,
+  Heart, Plus, ListMusic, Play, Tag, Users, Clock, TrendingUp, Disc3,
 } from 'lucide-react-native';
 import {
   BottomSheetModal,
@@ -24,13 +23,12 @@ import {
 } from '@gorhom/bottom-sheet';
 
 const PREDEFINED_SECTIONS = [
-  { icon: Disc3, labelKey: 'library.albums', route: '/music/albums' },
-  { icon: Tag, labelKey: 'library.genres', route: '/music/genres' },
-  { icon: Users, labelKey: 'library.artists', route: '/music/artists' },
-  { icon: Mic2, labelKey: 'library.with.lyrics', route: '/with-lyrics' },
-  { icon: Clock, labelKey: 'library.recently.played', route: '/recently-played' },
-  { icon: TrendingUp, labelKey: 'library.most.played', route: '/statistics' },
-  { icon: Heart, labelKey: 'library.favorites', route: '/(tabs)/favorites' },
+  { icon: Disc3, labelKey: 'library.albums' as const, route: '/music/albums' },
+  { icon: Tag, labelKey: 'library.genres' as const, route: '/music/genres' },
+  { icon: Users, labelKey: 'library.artists' as const, route: '/music/artists' },
+  { icon: Clock, labelKey: 'library.recently.played' as const, route: '/recently-played' },
+  { icon: TrendingUp, labelKey: 'library.most.played' as const, route: '/statistics' },
+  { icon: Heart, labelKey: 'library.favorites' as const, route: '/(tabs)/favorites' },
 ];
 
 export default function PlaylistsScreen() {
@@ -48,12 +46,10 @@ export default function PlaylistsScreen() {
   const play = usePlayerStore((s) => s.play);
   const favoriteCount = useFavoritesStore((s) => s.favoriteSongIds.length);
   const trackStats = useStatsStore((s) => s.trackStats);
-  const lyricsMap = useLyricsStore((s) => s.lyricsMap);
 
   const [newName, setNewName] = useState('');
   const createSheetRef = useRef<BottomSheetModal>(null);
 
-  const lyricsCount = useMemo(() => songs.filter((s) => lyricsMap[s.id]).length, [songs, lyricsMap]);
   const recentlyPlayedCount = useMemo(
     () => songs.filter((s) => trackStats[s.id]?.lastPlayed).length,
     [songs, trackStats],
@@ -68,13 +64,12 @@ export default function PlaylistsScreen() {
       case 'library.albums': return albums.length;
       case 'library.genres': return genres.length;
       case 'library.artists': return artists.length;
-      case 'library.with.lyrics': return lyricsCount;
       case 'library.recently.played': return recentlyPlayedCount;
       case 'library.most.played': return mostPlayedCount;
       case 'library.favorites': return favoriteCount;
       default: return 0;
     }
-  }, [albums.length, artists.length, genres.length, lyricsCount, recentlyPlayedCount, mostPlayedCount, favoriteCount]);
+  }, [albums.length, artists.length, genres.length, recentlyPlayedCount, mostPlayedCount, favoriteCount]);
 
   const handleCreate = () => {
     if (newName.trim()) {
@@ -117,7 +112,7 @@ export default function PlaylistsScreen() {
             return (
               <Pressable
                 key={section.labelKey}
-                onPress={() => router.push(section.route as any)}
+                onPress={() => router.push(section.route)}
                 style={[s.flexRow, s.itemsCenter, s.gap3, s.p4, { backgroundColor: colors.surface, borderRadius: 16, borderWidth: 1, borderColor: colors.accent + '30' }]}
               >
                 <View style={[s.w14, s.h14, s.roundedXl, s.itemsCenter, s.justifyCenter, { backgroundColor: colors.accent + '15' }]}>
@@ -125,7 +120,7 @@ export default function PlaylistsScreen() {
                 </View>
                 <View style={s.flex1}>
                   <Text style={[s.textSm, s.fontSemibold, { color: colors.text }]} numberOfLines={1}>
-                    {t(section.labelKey as any)}
+                    {t(section.labelKey)}
                   </Text>
                   <Text style={[s.textXs, { color: colors.textMuted }]}>
                     {count} {count === 1 ? t('library.song') : t('library.tracks')}

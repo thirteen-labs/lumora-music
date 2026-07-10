@@ -34,7 +34,7 @@ export default function HiddenFilesScreen() {
       <ScrollView style={s.flex1} contentContainerStyle={{ paddingBottom: 120 + insets.bottom }}>
         <View style={[s.px4, s.py4, s.gap6]}>
           <Pressable
-            onPress={() => router.push('/system-hidden-files' as any)}
+            onPress={() => router.push('/system-hidden-files')}
             style={[s.flexRow, s.itemsCenter, s.gap3, s.p4, { backgroundColor: colors.accent + '12', borderRadius: 16 }]}
           >
             <View style={[s.w11, s.h11, s.roundedXl, s.itemsCenter, s.justifyCenter, { backgroundColor: colors.accent + '25' }]}>

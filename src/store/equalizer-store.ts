@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 import { storage } from '@/services/mmkv';
+import { reportWarning } from '@/utils/error-handler';
 import { audioEngine } from '@/services/audio-engine';
 import type { EqualizerSettings, EqualizerBand, EqualizerPreset } from '@/types/audio';
 
@@ -181,7 +182,7 @@ let _eqUnsub: (() => void) | null = null;
 export function subscribeEqualizer(): () => void {
   if (_eqUnsub) _eqUnsub();
   _eqUnsub = useEqualizerStore.subscribe(() => {
-    try { syncEqualizerToEngine(); } catch {}
+    try { syncEqualizerToEngine(); } catch (e) { reportWarning('Equalizer', e, 'Failed to sync EQ to engine'); }
   });
   return () => { _eqUnsub?.(); _eqUnsub = null; };
 }

@@ -14,7 +14,7 @@ import { SwipeableRow } from '@/components/swipeable-row';
 import { LyricsBadge } from '@/components/lyrics-badge';
 import { Heart } from 'lucide-react-native';
 import { Artwork } from '@/components/artwork';
-import { formatDuration } from '@/utils/cn';
+import { formatDuration } from '@/utils/format';
 import { useCallback } from 'react';
 import { useFocusEffect } from 'expo-router';
 import type { Song } from '@/types/media';
