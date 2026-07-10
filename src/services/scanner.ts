@@ -1,4 +1,4 @@
-import { Platform, PermissionsAndroid } from 'react-native';
+import { Platform } from 'react-native';
 import type { Song, Album as LumoraAlbum, Artist, Genre, MediaScanStatus } from '@/types/media';
 import { storage } from '@/services/mmkv';
 import { reportWarning } from '@/utils/error-handler';
@@ -55,11 +55,34 @@ async function retryWithBackoff<T>(fn: () => Promise<T>, label: string, maxRetri
   throw new Error(`All ${maxRetries + 1} attempts failed for ${label}`);
 }
 
+const isAndroid = Platform.OS === 'android';
+
+let MediaStore: any = null;
 let MediaLibrary: any = null;
 let MetadataRetriever: any = null;
 let FileSystemLegacy: any = null;
 
 async function loadModules(): Promise<boolean> {
+  if (isAndroid) {
+    try {
+      const ms = await import('@obsidian_north/react-native-mediastore');
+      MediaStore = ms;
+    } catch (e) {
+      reportWarning('Scanner', e, 'Failed to load react-native-mediastore');
+    }
+    try {
+      const fs = await import('expo-file-system/legacy');
+      FileSystemLegacy = fs;
+    } catch (e) {
+      reportWarning('Scanner', e, 'Failed to load expo-file-system/legacy');
+    }
+    if (!MediaStore) {
+      reportWarning('Scanner', null, 'MediaStore module is required but failed to load');
+      return false;
+    }
+    return true;
+  }
+
   let hasMediaLibrary = false;
   try {
     const ml = await import('expo-media-library/legacy');
@@ -220,39 +243,23 @@ export function getCachedArtists(): Artist[] { ensureCacheLoaded(); return cache
 export function getCachedGenres(): Genre[] { ensureCacheLoaded(); return cachedGenres; }
 
 export async function requestPermissions(force = false): Promise<boolean> {
-  if (!MediaLibrary) return false;
   if (force) permissionCache = null;
   if (!force && permissionCache !== null) return permissionCache;
-  try {
-    const { status } = await MediaLibrary.requestPermissionsAsync();
-    let mediaLibraryGranted = status === 'granted';
 
-    if (Platform.OS === 'android' && Platform.Version >= 33) {
-      try {
-        const permPromises: Promise<string>[] = [
-          PermissionsAndroid.request('android.permission.READ_MEDIA_AUDIO' as any),
-        ];
-        const results = await Promise.all(permPromises);
-        const allGranted = results.every((r) => r === 'granted');
-        if (!allGranted) {
-          console.warn('[Scanner] Some Android 13+ media permissions were denied');
-        }
-      } catch (permError) {
-        console.error('[Scanner] Failed to request Android 13+ permissions:', permError);
+  try {
+    if (isAndroid) {
+      if (MediaStore) {
+        const status = await MediaStore.requestPermissions();
+        const granted = status?.granted ?? false;
+        permissionCache = granted;
+        return granted;
       }
-    } else if (Platform.OS === 'android' && Platform.Version < 33) {
-        try {
-          const storageResult = await PermissionsAndroid.request(
-            'android.permission.READ_EXTERNAL_STORAGE' as any,
-          );
-          if (storageResult !== 'granted') {
-            console.warn('[Scanner] READ_EXTERNAL_STORAGE was denied');
-          }
-        } catch (permError) {
-          console.error('[Scanner] Failed to request legacy storage permission:', permError);
-        }
+      return false;
     }
 
+    if (!MediaLibrary) return false;
+    const { status } = await MediaLibrary.requestPermissionsAsync();
+    const mediaLibraryGranted = status === 'granted';
     permissionCache = mediaLibraryGranted;
     return mediaLibraryGranted;
   } catch (error) {
@@ -362,6 +369,37 @@ async function parseAudioMetadata(uri: string): Promise<{
   }
 }
 
+function processMediaStoreItem(item: any): Song | null {
+  try {
+    const uri = item.contentUri ?? item.uri;
+    if (!uri) return null;
+
+    let fileSize = item.size ?? 0;
+    if (fileSize <= 0) {
+      fileSize = estimateFileSizeFromBitrate(item.bitrate ?? null, item.sampleRate ?? null, item.duration ?? 0);
+    }
+
+    return {
+      id: item.id ?? uri,
+      uri,
+      title: item.title ?? 'Unknown',
+      artist: item.artist ?? 'Unknown Artist',
+      album: item.album ?? 'Unknown Album',
+      albumId: item.albumId ?? item.id ?? uri,
+      duration: item.duration ?? 0,
+      fileSize,
+      dateAdded: item.dateAdded ?? 0,
+      artwork: item.artworkUri ?? null,
+      genre: item.genre ?? null,
+      bitrate: item.bitrate ?? null,
+      sampleRate: item.sampleRate ?? null,
+    };
+  } catch (error) {
+    console.warn('[Scanner] Failed to process MediaStore item:', item?.id, error);
+    return null;
+  }
+}
+
 async function processAsset(asset: any): Promise<Song | null> {
   try {
     const uri = asset.uri as string | undefined;
@@ -426,7 +464,32 @@ async function processBatch(assets: any[], concurrency = 10): Promise<Song[]> {
   return results;
 }
 
-async function fetchSongs(
+async function fetchSongsAndroid(
+  onProgress?: (batchCount: number) => void,
+): Promise<Song[]> {
+  if (!MediaStore) return [];
+
+  try {
+    const songs: any[] = await fetchWithTimeout(
+      retryWithBackoff(() => MediaStore.getAudio({ field: 'dateAdded', order: 'desc' }), 'getAudio'),
+      MEDIA_FETCH_TIMEOUT,
+      'getAudio',
+    );
+
+    const results: Song[] = [];
+    for (const item of songs) {
+      const song = processMediaStoreItem(item);
+      if (song) results.push(song);
+    }
+    onProgress?.(results.length);
+    return results;
+  } catch (e) {
+    console.warn('[Scanner] fetchSongsAndroid failed:', e);
+    return [];
+  }
+}
+
+async function fetchSongsIos(
   onProgress?: (batchCount: number) => void,
 ): Promise<Song[]> {
   if (!MediaLibrary || typeof MediaLibrary.getAssetsAsync !== 'function') return [];
@@ -479,6 +542,12 @@ async function fetchSongs(
   }
 
   return allSongs;
+}
+
+async function fetchSongs(
+  onProgress?: (batchCount: number) => void,
+): Promise<Song[]> {
+  return isAndroid ? fetchSongsAndroid(onProgress) : fetchSongsIos(onProgress);
 }
 
 export async function scanMediaLibrary(

@@ -14,6 +14,7 @@ import { audioEngine } from '@/services/audio-engine';
 import { useTheme } from '@/hooks/use-theme';
 import { reportWarning, persistCrashLog } from '@/utils/error-handler';
 import { checkStorageIntegrity } from '@/services/mmkv';
+import type { RepeatMode } from '@/types/player';
 
 const MAX_INIT_RETRIES = 3;
 const INIT_RETRY_DELAY = 1000;
@@ -95,7 +96,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       queue,
       queueIndex,
       shuffle: persisted.shuffle,
-      repeat: persisted.repeat as any,
+      repeat: persisted.repeat as RepeatMode,
       isMiniPlayerVisible: true,
       position: persisted.position,
       isPlaying: wasPlaying,
@@ -143,8 +144,13 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
 
       if (Platform.OS !== 'web') {
         try {
-          const { requestPermissionsAsync: requestMediaPermissions } = await import('expo-media-library');
-          await requestMediaPermissions();
+          if (Platform.OS === 'android') {
+            const ms = await import('@obsidian_north/react-native-mediastore');
+            await ms.requestPermissions();
+          } else {
+            const { requestPermissionsAsync: requestMediaPermissions } = await import('expo-media-library');
+            await requestMediaPermissions();
+          }
         } catch (e) {
           console.warn('[PlayerProvider] Media permissions request failed:', e);
         }
