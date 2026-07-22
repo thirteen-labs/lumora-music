@@ -133,8 +133,12 @@ export function groupFilesBySubstring(files: ScannedFile[]): FileGroup[] {
     const assigned = new Set<string>();
     for (const token of tokens) {
       if ((tokenCount.get(token) ?? 0) >= 2 && !assigned.has(token)) {
-        if (!groups.has(token)) groups.set(token, []);
-        groups.get(token)!.push(file);
+        const group = groups.get(token);
+        if (group) {
+          group.push(file);
+        } else {
+          groups.set(token, [file]);
+        }
         assigned.add(token);
       }
     }

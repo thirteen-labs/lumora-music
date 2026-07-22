@@ -14,14 +14,6 @@
 - **Bass boost** – Emphasize low-end frequencies.
 - **10–32 band equalizer** – Fine-grained frequency control.
 
-### Video
-- **Picture-in-Picture** – Mini floating player while using other apps.
-- **Gesture controls** – Swipe for brightness, volume, and seeking.
-- **Subtitle support** – SRT, ASS, and VTT formats.
-- **Subtitle downloading** – Fetch subtitles from online sources.
-- **Playback speed** – Variable speed for video content.
-- **Frame-by-frame stepping** – Advance one frame at a time.
-
 ---
 
 ## 2. Library Management

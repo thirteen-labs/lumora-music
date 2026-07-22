@@ -21,6 +21,10 @@ function shuffleArray(length: number): number[] {
     const j = Math.floor(Math.random() * (i + 1));
     [arr[i], arr[j]] = [arr[j], arr[i]];
   }
+  _shuffledPositionMap.clear();
+  for (let i = 0; i < arr.length; i++) {
+    _shuffledPositionMap.set(arr[i], i);
+  }
   return arr;
 }
 
@@ -69,6 +73,7 @@ interface PlayerState {
 }
 
 let _saveTimer: ReturnType<typeof setTimeout> | null = null;
+let _shuffledPositionMap = new Map<number, number>();
 
 function debouncedSaveQueue() {
   if (_saveTimer) clearTimeout(_saveTimer);
@@ -211,7 +216,7 @@ export const usePlayerStore = create<PlayerState>()(
       let nextOriginalIndex: number;
 
       if (shuffle) {
-        const currentShuffledIdx = shuffledOrder.indexOf(get().queueIndex);
+        const currentShuffledIdx = _shuffledPositionMap.get(get().queueIndex) ?? shuffledOrder.indexOf(get().queueIndex);
         const nextShuffledIdx = currentShuffledIdx + 1;
 
         if (nextShuffledIdx >= shuffledOrder.length) {
@@ -284,7 +289,7 @@ export const usePlayerStore = create<PlayerState>()(
       let prevOriginalIndex: number;
 
       if (shuffle) {
-        const currentShuffledIdx = shuffledOrder.indexOf(get().queueIndex);
+        const currentShuffledIdx = _shuffledPositionMap.get(get().queueIndex) ?? shuffledOrder.indexOf(get().queueIndex);
         const prevShuffledIdx = currentShuffledIdx - 1;
 
         if (prevShuffledIdx < 0) {

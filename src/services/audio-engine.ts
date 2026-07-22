@@ -404,12 +404,19 @@ class AudioEngine {
 
   async loadTrack(uri: string): Promise<void> {
     if (this.loadingLock) {
-      for (let i = 0; i < 200; i++) {
-        await new Promise(r => setTimeout(r, 50));
-        if (!this.loadingLock) break;
-      }
-      if (this.loadingLock) {
-        throw new Error('loadTrack timed out waiting for previous load');
+      const lockAcquired = await new Promise<boolean>((resolve) => {
+        let elapsed = 0;
+        const interval = setInterval(() => {
+          elapsed += 50;
+          if (!this.loadingLock || elapsed >= 10000) {
+            clearInterval(interval);
+            resolve(!this.loadingLock);
+          }
+        }, 50);
+      });
+      if (!lockAcquired) {
+        console.warn('[AudioEngine] loadTrack lock timeout, proceeding anyway');
+        this.loadingLock = false;
       }
     }
     this.loadingLock = true;
@@ -592,7 +599,13 @@ class AudioEngine {
       this.crossfadeSource = null;
     }
     this.crossfadeBuffer = null;
-    this.crossfadeGain = null;
+    if (this.crossfadeGain) {
+      try {
+        this.crossfadeGain.gain.value = 0;
+      } catch {
+        this.crossfadeGain = null;
+      }
+    }
   }
 
   private stopCurrentSource(): void {
@@ -805,53 +818,60 @@ class AudioEngine {
       let step = 0;
 
       this._crossfadeInterval = setInterval(() => {
-        if (!this._crossfading || !this.context) {
-          this.cancelCrossfade();
-          return;
-        }
-
-        step++;
-        const progress = step / steps;
-
         try {
-          oldGain.gain.setValueAtTime(1 - progress, this.context.currentTime);
-          newGain.gain.setValueAtTime(progress, this.context.currentTime);
-        } catch (e) {
-          reportWarning('AudioEngine', e);
-        }
+          if (!this._crossfading || !this.context) {
+            this.cancelCrossfade();
+            return;
+          }
 
-        if (step >= steps) {
-          this.cancelCrossfade();
+          step++;
+          const progress = step / steps;
 
           try {
-            oldGain.disconnect();
-            this.currentSource?.onEnded && (this.currentSource.onEnded = null);
-            this.currentSource?.disconnect();
-            this.currentSource?.stop();
+            oldGain.gain.setValueAtTime(1 - progress, this.context.currentTime);
+            newGain.gain.setValueAtTime(progress, this.context.currentTime);
           } catch (e) {
             reportWarning('AudioEngine', e);
           }
 
-          this.currentSource = crossfadeSource;
-          this.crossfadeSource = null;
-          this.currentBuffer = newBuffer;
-          this._duration = newBuffer.duration;
-          this._currentTime = 0;
-          this._startOffset = 0;
-          this._startContextTime = this.context?.currentTime ?? 0;
+          if (step >= steps) {
+            this.cancelCrossfade();
 
-          if (this.currentSource) {
-            this.currentSource.onEnded = () => {
-              if (this._playing) {
-                this._playing = false;
-                this._currentTime = this._duration;
-                this.stopPositionTracking();
-                this.emitState();
+            try {
+              oldGain.disconnect();
+              if (this.currentSource) {
+                this.currentSource.onEnded = null;
+                this.currentSource.disconnect();
+                this.currentSource.stop();
               }
-            };
-          }
+            } catch (e) {
+              reportWarning('AudioEngine', e);
+            }
 
-          this.emitState();
+            this.currentSource = crossfadeSource;
+            this.crossfadeSource = null;
+            this.currentBuffer = newBuffer;
+            this._duration = newBuffer.duration;
+            this._currentTime = 0;
+            this._startOffset = 0;
+            this._startContextTime = this.context?.currentTime ?? 0;
+
+            if (this.currentSource) {
+              this.currentSource.onEnded = () => {
+                if (this._playing) {
+                  this._playing = false;
+                  this._currentTime = this._duration;
+                  this.stopPositionTracking();
+                  this.emitState();
+                }
+              };
+            }
+
+            this.emitState();
+          }
+        } catch (e) {
+          reportWarning('AudioEngine', e, 'Crossfade interval error');
+          this.cancelCrossfade();
         }
       }, stepMs);
     } catch (e) {

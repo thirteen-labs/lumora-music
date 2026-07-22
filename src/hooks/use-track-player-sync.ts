@@ -145,7 +145,7 @@ export function useTrackPlayerSync() {
   useEffect(() => {
     handleCrossfadeRef.current = handleCrossfade;
     handleTrackEndRef.current = handleTrackEnd;
-  });
+  }); // eslint-disable-line react-hooks/exhaustive-deps
 
   const crossfadeEnabled = isCrossfadeEnabled();
 

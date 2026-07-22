@@ -205,8 +205,14 @@ export function clearLockScreenControls(): void {
 export function destroyPlayer(): void {
   try {
     dismissNowPlayingNotification();
-  } catch {}
-  audioEngine.destroy();
+  } catch (e) {
+    reportWarning('TrackPlayer', e, 'Failed to dismiss notification on destroy');
+  }
+  try {
+    audioEngine.destroy();
+  } catch (e) {
+    reportWarning('TrackPlayer', e, 'Failed to destroy audio engine');
+  }
 }
 
 export async function ensurePlayerAlive(): Promise<boolean> {

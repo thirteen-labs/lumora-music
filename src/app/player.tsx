@@ -153,6 +153,15 @@ export default function PlayerScreen() {
   const [editAlbum, setEditAlbum] = useState(track?.album ?? '');
   const [editArtwork, setEditArtwork] = useState<string | null>(track?.artwork ?? null);
 
+  useEffect(() => {
+    if (track) {
+      setEditTitle(track.title);
+      setEditArtist(track.artist ?? '');
+      setEditAlbum(track.album ?? '');
+      setEditArtwork(track.artwork ?? null);
+    }
+  }, [track?.id]);
+
   const syncEditState = useCallback((t: typeof track) => {
     if (!t) return;
     setEditTitle(t.title);
@@ -590,10 +599,10 @@ useEffect(() => {
               Technical Information
             </Text>
             <View style={s.gap4}>
-              <InfoRow label="Format" value={track?.uri.split('.').pop()?.toUpperCase() ?? 'NONE'} colors={colors} />
+              <InfoRow label="Format" value={track?.uri?.split('.').pop()?.toUpperCase() ?? 'NONE'} colors={colors} />
               <InfoRow label="Bitrate" value={track?.bitrate ? `${track.bitrate} kbps` : 'Unknown'} colors={colors} />
               <InfoRow label="Sample Rate" value={track?.sampleRate ? `${track.sampleRate} Hz` : 'Unknown'} colors={colors} />
-              <InfoRow label="File Size" value={track ? formatFileSize(track.fileSize) : '0 B'} colors={colors} />
+              <InfoRow label="File Size" value={track?.fileSize ? formatFileSize(track.fileSize) : '0 B'} colors={colors} />
               <InfoRow label="File Path" value={track?.uri ?? 'Unknown'} colors={colors} multiline />
             </View>
 

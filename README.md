@@ -1,25 +1,27 @@
 # Lumora
 
-A premium offline media player built with React Native and Expo. Scan your device for songs and videos, organize by album/artist/genre, and play with features like shuffle, repeat, crossfade, lyrics, and adaptive color theming.
+A premium offline media player built with React Native and Expo. Scan your device for songs, organize by album/artist/genre, and play with features like shuffle, repeat, crossfade, lyrics, and adaptive color theming.
 
 ## Features
 
-- **Music Playback** — Play local audio files with expo-audio, including shuffle, repeat (off/all/one), and crossfade between tracks
-- **Video Playback** — Play local video files with expo-video
-- **Media Scanning** — Automatically detect songs and videos from your device library
+- **Music Playback** — Play local audio files with react-native-audio-api, including shuffle, repeat (off/all/one), and crossfade between tracks
+- **Media Scanning** — Automatically detect songs from your device library
 - **Library Organization** — Browse by songs, albums, artists, and genres
-- **Favorites** — Mark songs and videos as favorites for quick access
+- **Favorites** — Mark songs as favorites for quick access
 - **File Browser** — Navigate device folders and play media directly
-- **Search** — Find songs, artists, albums, and videos across your library
-- **Lyrics** — Fetch and display lyrics for the current track
+- **Search** — Find songs, artists, albums with advanced filters
+- **Lyrics** — Fetch and display synced lyrics for the current track
+- **Equalizer** — 10-band EQ, bass boost, stereo balance, loudness enhancer
 - **Color-Aware Theming** — Extract dominant colors from album artwork and apply them as the UI theme
-- **Multiple Themes** — Choose from a set of built-in color themes
+- **Multiple Themes** — Choose from 19 built-in color themes
 - **Glassmorphism UI** — Blur effects on the tab bar and mini-player using expo-blur
 - **Queue Management** — View, reorder, and remove tracks from the playback queue
 - **Mini Player** — Persistent bottom bar showing current track with play/pause and skip controls
 - **Background Playback** — Audio continues playing when the app is backgrounded
-- **Customizable Layout** — Adjust file size display (small/medium/big) in settings
-- **Background Image** — Set a custom background image from your photo library
+- **Cloud Backup** — Backup and restore settings via Google Drive or Dropbox
+- **Smart Playlists** — Rule-based auto-generated playlists
+- **Tag Editing** — Edit song metadata and artwork
+- **Sleep Timer** — Stop playback after a set duration
 
 ## Tech Stack
 
@@ -29,10 +31,9 @@ A premium offline media player built with React Native and Expo. Scan your devic
 | Routing | expo-router (file-based) |
 | Styling | React Native StyleSheet via `src/styles/index.ts` |
 | State | Zustand v5 with immer middleware |
-| Audio | expo-audio |
-| Video | expo-video |
+| Audio | react-native-audio-api (Web Audio API) |
 | Storage | react-native-mmkv |
-| Animations | react-native-reanimated + moti |
+| Animations | react-native-reanimated |
 | Icons | lucide-react-native |
 | Blur | expo-blur |
 | Lists | @shopify/flash-list |
@@ -47,8 +48,6 @@ src/
       _layout.tsx         # Tab bar configuration
       index.tsx           # Home screen
       music.tsx           # Music categories
-      videos.tsx          # Video library
-      files.tsx           # File browser
       favorites.tsx       # Favorites
       settings.tsx        # App settings
     music/                # Music sub-screens
@@ -60,7 +59,6 @@ src/
       artist/[id].tsx     # Artist detail
       genre/[id].tsx      # Genre detail
     player.tsx            # Full-screen music player
-    video-player.tsx      # Full-screen video player
     search.tsx            # Search screen
   components/             # Shared UI components
   hooks/                  # Custom React hooks
@@ -94,9 +92,6 @@ npx expo start
 ```bash
 # Android (device or emulator)
 npx expo run:android
-
-# Web
-npx expo start --web
 ```
 
 ## Scripts

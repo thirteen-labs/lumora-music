@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Lumora Player",
-    "slug": "lumora",
+    "slug": "lumoraapp",
     "version": "1.0.1",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -12,7 +12,9 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.cadmuslabss.lumora",
       "infoPlist": {
-        "UIBackgroundModes": ["audio"],
+        "UIBackgroundModes": [
+          "audio"
+        ],
         "NSPhotoLibraryUsageDescription": "Allow Lumora Player to access your photos for album artwork.",
         "NSMicrophoneUsageDescription": "This app requires access to the microphone to record audio."
       }
@@ -28,21 +30,33 @@
       "predictiveBackGestureEnabled": false,
       "allowBackup": true,
       "enableProguardInRelease": true,
-        "permissions": [
-          "FOREGROUND_SERVICE",
-          "FOREGROUND_SERVICE_MEDIA_PLAYBACK",
-          "FOREGROUND_SERVICE_SPECIAL_USE",
-          "POST_NOTIFICATIONS",
-          "WAKE_LOCK",
-          "REQUEST_IGNORE_BATTERY_OPTIMIZATIONS",
-          "SYSTEM_ALERT_WINDOW",
-          "READ_EXTERNAL_STORAGE",
-          "WRITE_EXTERNAL_STORAGE",
-          "READ_MEDIA_AUDIO",
-          "READ_MEDIA_VIDEO",
-          "READ_MEDIA_IMAGES",
-          "MANAGE_EXTERNAL_STORAGE"
-        ],
+      "permissions": [
+        "FOREGROUND_SERVICE",
+        "FOREGROUND_SERVICE_MEDIA_PLAYBACK",
+        "FOREGROUND_SERVICE_SPECIAL_USE",
+        "POST_NOTIFICATIONS",
+        "WAKE_LOCK",
+        "REQUEST_IGNORE_BATTERY_OPTIMIZATIONS",
+        "SYSTEM_ALERT_WINDOW",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE",
+        "READ_MEDIA_AUDIO",
+        "READ_MEDIA_IMAGES",
+        "MANAGE_EXTERNAL_STORAGE",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.READ_MEDIA_VISUAL_USER_SELECTED",
+        "android.permission.ACCESS_MEDIA_LOCATION",
+        "android.permission.READ_MEDIA_IMAGES",
+        "android.permission.READ_MEDIA_VIDEO",
+        "android.permission.READ_MEDIA_AUDIO",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.FOREGROUND_SERVICE",
+        "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK",
+        "android.permission.RECEIVE_BOOT_COMPLETED",
+        "android.permission.WAKE_LOCK"
+      ],
       "intentFilters": [
         {
           "action": "VIEW",
@@ -54,7 +68,10 @@
               "pathPrefix": "/play"
             }
           ],
-          "category": ["BROWSABLE", "DEFAULT"]
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
         }
       ]
     },
@@ -91,8 +108,7 @@
           "photosPermission": "Allow $(PRODUCT_NAME) to access your photos for album artwork.",
           "savePhotosPermission": "Allow $(PRODUCT_NAME) to save photos.",
           "isAccessMediaLocationEnabled": true,
-          "audioPermission": "Allow $(PRODUCT_NAME) to access your music files.",
-          "videoPermission": "Allow $(PRODUCT_NAME) to access your video files."
+          "audioPermission": "Allow $(PRODUCT_NAME) to access your music files."
         }
       ],
       [
@@ -137,7 +153,7 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "2845963d-2d37-48db-8d59-89262e0387ff"
+        "projectId": "fdbec9de-3e8d-4d3f-94bd-98169087596d"
       }
     },
     "owner": "cadmuslabss-organization",
