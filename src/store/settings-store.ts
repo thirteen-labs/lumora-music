@@ -5,7 +5,7 @@ import type { RepeatMode } from "@/types/player";
 import { reportWarning } from "@/utils/error-handler";
 
 export type AppLanguage = "en" | "es" | "fr" | "de" | "ja" | "zh" | "pt" | "ru" | "it" | "ko" | "ar" | "tr";
-export type FontFamily = "system" | "serif" | "rounded" | "mono" | "poppins" | "inter" | "monr" | "socide" | "epsor" | "roba" | "hago" | "preospe";
+export type FontFamily = "system" | "serif" | "rounded" | "mono" | "poppins" | "inter";
 
 export const LANGUAGE_OPTIONS: { code: AppLanguage; label: string; native: string }[] = [
   { code: "en", label: "English", native: "English" },
@@ -29,12 +29,6 @@ export const FONT_OPTIONS: { key: FontFamily; label: string }[] = [
   { key: "serif", label: "Serif" },
   { key: "rounded", label: "Rounded" },
   { key: "mono", label: "Monospace" },
-  { key: "monr", label: "Monr" },
-  { key: "socide", label: "Socide" },
-  { key: "epsor", label: "Epsor" },
-  { key: "roba", label: "Roba" },
-  { key: "hago", label: "Hago" },
-  { key: "preospe", label: "Preospe" },
 ];
 
 const SETTINGS_KEYS = {

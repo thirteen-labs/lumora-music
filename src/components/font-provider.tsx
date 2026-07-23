@@ -32,28 +32,6 @@ const FONT_MAP: Record<string, () => Promise<void>> = {
       "Inter-Bold": require("../../assets/fonts/Inter-Bold.ttf"),
     });
   },
-  monr: async () => {
-    await Font.loadAsync({ Monr: require("../../assets/fonts/monr.otf") });
-  },
-  socide: async () => {
-    await Font.loadAsync({ Socide: require("../../assets/fonts/socide.otf") });
-  },
-  epsor: async () => {
-    await Font.loadAsync({ Epsor: require("../../assets/fonts/epsor.otf") });
-  },
-  roba: async () => {
-    await Font.loadAsync({
-      Roba: require("../../assets/fonts/roba-4n2zl.ttf"),
-    });
-  },
-  hago: async () => {
-    await Font.loadAsync({ Hago: require("../../assets/fonts/Hago DEMO.otf") });
-  },
-  preospe: async () => {
-    await Font.loadAsync({
-      Preospe: require("../../assets/fonts/preospe.otf"),
-    });
-  },
 };
 
 export const FONT_FAMILY_MAP: Record<string, string | undefined> = {
@@ -63,12 +41,6 @@ export const FONT_FAMILY_MAP: Record<string, string | undefined> = {
   mono: "JetBrainsMono",
   poppins: "Poppins",
   inter: "Inter",
-  monr: "Monr",
-  socide: "Socide",
-  epsor: "Epsor",
-  roba: "Roba",
-  hago: "Hago",
-  preospe: "Preospe",
 };
 
 interface FontProviderProps {
