@@ -6,6 +6,8 @@ design/
 plan/
 lumora_future_assets/
 not-used/
+.agents/
+assets/discs/
 
 # Expo
 .expo/
