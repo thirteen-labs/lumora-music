@@ -2,14 +2,19 @@
 
 # dependencies
 node_modules/
-designs/
+.claude
+.agents
+designs
+markdown
 plan/
-lumora_future_assets/
-not-used/
-.agents/
+lumora_future_assets
+not-used
+.agents
 assets/discs/
+features.md
 
 # Expo
+.agents
 .expo/
 dist/
 web-build/
