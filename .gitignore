@@ -4,6 +4,8 @@
 node_modules/
 .claude
 .agents
+agents/
+skills/
 designs
 markdown
 plan/
