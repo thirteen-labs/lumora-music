@@ -1,12 +1,12 @@
-declare var require: any;
-declare var ErrorUtils: { getGlobalHandler: () => (error: any, isFatal?: boolean) => void; setGlobalHandler: (handler: (error: any, isFatal?: boolean) => void) => void; };
+declare let require: any;
+declare let ErrorUtils: { getGlobalHandler: () => (error: any, isFatal?: boolean) => void; setGlobalHandler: (handler: (error: any, isFatal?: boolean) => void) => void; };
 declare namespace React {
-  type FC<P = {}> = { (props: P): any; displayName?: string; };
+  type FC<P = Record<string, never>> = { (props: P): any; displayName?: string; };
   type ReactNode = any;
-  type Component<T = any, S = any> = { props: any; state: any; setState: (state: any) => void; forceUpdate: () => void; render(): any; context: any; refs: any; };
-  type ComponentClass<P = {}> = new(props: P) => Component<any, any>;
-  type ComponentType<P = {}> = FC<P> | ComponentClass<P>;
-  type Ref<T = any> = any;
+  type Component = { props: any; state: any; setState: (state: any) => void; forceUpdate: () => void; render(): any; context: any; refs: any; };
+  type ComponentClass<P = Record<string, never>> = new(props: P) => Component;
+  type ComponentType<P = Record<string, never>> = FC<P> | ComponentClass<P>;
+  type Ref = any;
   type RefObject<T> = { current: T; };
   function useEffect(fn: () => void | (() => void), deps?: any[]): void;
   function useState<T>(init: T | (() => T)): [T, (v: T | ((prev: T) => T)) => void];
@@ -126,15 +126,15 @@ declare module 'expo-file-system' {
 
 declare module 'react-native' {
   import * as React from 'react';
-  export interface ViewProps { style?: any; children?: React.ReactNode; onLayout?: (event: any) => void; key?: any; testID?: string; ref?: any; pointerEvents?: string }
+  export interface ViewProps { style?: any; children?: React.ReactNode; onLayout?: (event: any) => void; key?: any; testID?: string; ref?: any; pointerEvents?: string; accessibilityLabel?: string; accessibilityRole?: string; accessibilityState?: Record<string, any>; accessibilityLiveRegion?: string; accessible?: boolean }
   export class View extends React.Component<ViewProps> {}
-  export interface TextProps { style?: any; children?: React.ReactNode; numberOfLines?: number; onPress?: () => void; onLayout?: (e: any) => void; selectable?: boolean }
+  export interface TextProps { style?: any; children?: React.ReactNode; numberOfLines?: number; onPress?: () => void; onLayout?: (e: any) => void; selectable?: boolean; key?: any; ref?: any }
   export class Text extends React.Component<TextProps> {}
-  export interface PressableProps { style?: any; onPress?: () => void; onLongPress?: () => void; disabled?: boolean; hitSlop?: number; onLayout?: (e: any) => void; children?: React.ReactNode | ((state: { pressed: boolean }) => React.ReactNode) }
+  export interface PressableProps { style?: any; onPress?: () => void; onLongPress?: () => void; disabled?: boolean; hitSlop?: number; onLayout?: (e: any) => void; children?: React.ReactNode | ((state: { pressed: boolean }) => React.ReactNode); key?: any; ref?: any; accessibilityLabel?: string; accessibilityRole?: string; accessibilityState?: Record<string, any>; accessible?: boolean }
   export class Pressable extends React.Component<PressableProps> {}
   export interface ImageProps { source: any; style?: any; resizeMode?: string; onLoad?: () => void; onError?: () => void; blurRadius?: number }
   export class Image extends React.Component<ImageProps> {}
-  export interface ScrollViewProps { style?: any; contentContainerStyle?: any; horizontal?: boolean; showsHorizontalScrollIndicator?: boolean; showsVerticalScrollIndicator?: boolean; children?: React.ReactNode; onScroll?: (event: any) => void; refreshControl?: React.ReactElement; pagingEnabled?: boolean }
+  export interface ScrollViewProps { style?: any; contentContainerStyle?: any; horizontal?: boolean; showsHorizontalScrollIndicator?: boolean; showsVerticalScrollIndicator?: boolean; children?: React.ReactNode; onScroll?: (event: any) => void; refreshControl?: React.ReactElement; pagingEnabled?: boolean; ref?: any }
   export class ScrollView extends React.Component<ScrollViewProps> { scrollTo(options?: { x?: number; y?: number; animated?: boolean }): void; }
   export interface TextInputProps { style?: any; value?: string; onChangeText?: (text: string) => void; placeholder?: string; placeholderTextColor?: string; multiline?: boolean; editable?: boolean; autoFocus?: boolean; onSubmitEditing?: () => void; onBlur?: () => void; returnKeyType?: string; autoCapitalize?: string; autoCorrect?: boolean; keyboardType?: string; secureTextEntry?: boolean; maxLength?: number; accessibilityLabel?: string }
   export class TextInput extends React.Component<TextInputProps> {}
@@ -146,7 +146,7 @@ declare module 'react-native' {
   export class RefreshControl extends React.Component<RefreshControlProps> {}
   export interface SwitchProps { value?: boolean; onValueChange?: (value: boolean) => void; disabled?: boolean; trackColor?: { false?: string; true?: string }; thumbColor?: string; style?: any }
   export class Switch extends React.Component<SwitchProps> {}
-  export interface FlatListProps<ItemT> { data: ItemT[]; renderItem: (info: { item: ItemT; index: number; separators: any }) => React.ReactElement | null; keyExtractor?: (item: ItemT, index: number) => string; style?: any; contentContainerStyle?: any; horizontal?: boolean; showsHorizontalScrollIndicator?: boolean; showsVerticalScrollIndicator?: boolean; onRefresh?: () => void; refreshing?: boolean; ListHeaderComponent?: React.ReactElement | (() => React.ReactElement); ListFooterComponent?: React.ReactElement | (() => React.ReactElement); ListEmptyComponent?: React.ReactElement | (() => React.ReactElement); ItemSeparatorComponent?: React.ReactElement | (() => React.ReactElement); numColumns?: number; extraData?: any; initialNumToRender?: number; maxToRenderPerBatch?: number; windowSize?: number; getItemLayout?: any; onEndReached?: () => void; onEndReachedThreshold?: number }
+  export interface FlatListProps<ItemT> { data: ItemT[]; renderItem: (info: { item: ItemT; index: number; separators: any }) => React.ReactElement | null; keyExtractor?: (item: ItemT, index: number) => string; style?: any; contentContainerStyle?: any; horizontal?: boolean; showsHorizontalScrollIndicator?: boolean; showsVerticalScrollIndicator?: boolean; onRefresh?: () => void; refreshing?: boolean; ListHeaderComponent?: React.ReactElement | (() => React.ReactElement); ListFooterComponent?: React.ReactElement | (() => React.ReactElement); ListEmptyComponent?: React.ReactElement | (() => React.ReactElement); ItemSeparatorComponent?: React.ReactElement | (() => React.ReactElement); numColumns?: number; extraData?: any; initialNumToRender?: number; maxToRenderPerBatch?: number; windowSize?: number; getItemLayout?: any; onEndReached?: () => void; onEndReachedThreshold?: number; removeClippedSubviews?: boolean }
   export class FlatList<ItemT> extends React.Component<FlatListProps<ItemT>> {}
   export type ColorValue = string;
   export type DimensionValue = number | string | undefined;
@@ -502,7 +502,7 @@ declare module 'zod' {
     union(schemas: ZodSchema[]): ZodSchema;
     any(): ZodSchema;
     nativeEnum(enumObj: Record<string, any>): ZodSchema;
-    infer: <T extends ZodSchema>() => any;
+    infer: () => any;
   };
 }
   declare module '*.css' {}

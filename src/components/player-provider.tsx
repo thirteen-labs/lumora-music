@@ -142,25 +142,33 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         reportWarning('PlayerProvider', e, 'Player setup failed, continuing without audio');
       }
 
+      const postSetupPromises: Promise<void>[] = [];
+
       if (Platform.OS !== 'web') {
-        try {
-          if (Platform.OS === 'android') {
-            const ms = await import('@obsidian_north/react-native-mediastore');
-            await ms.requestPermissions();
-          } else {
-            const { requestPermissionsAsync: requestMediaPermissions } = await import('expo-media-library');
-            await requestMediaPermissions();
-          }
-        } catch (e) {
-          console.warn('[PlayerProvider] Media permissions request failed:', e);
-        }
+        postSetupPromises.push(
+          (async () => {
+            try {
+              if (Platform.OS === 'android') {
+                const ms = await import('@obsidian_north/react-native-mediastore');
+                await ms.requestPermissions();
+              } else {
+                const { requestPermissionsAsync: requestMediaPermissions } = await import('expo-media-library');
+                await requestMediaPermissions();
+              }
+            } catch (e) {
+              console.warn('[PlayerProvider] Media permissions request failed:', e);
+            }
+          })()
+        );
       }
 
-      try {
-        await retryWithBackoff(initializeNotifications, 'initializeNotifications');
-      } catch (e) {
-        reportWarning('PlayerProvider', e, 'Notification setup failed');
-      }
+      postSetupPromises.push(
+        retryWithBackoff(initializeNotifications, 'initializeNotifications').catch((e) => {
+          reportWarning('PlayerProvider', e, 'Notification setup failed');
+        })
+      );
+
+      await Promise.all(postSetupPromises);
 
       await restoreQueueWithTimeout();
 

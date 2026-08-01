@@ -16,21 +16,27 @@ export default function SleepTimerScreen() {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const { t } = useTranslation();
-  const timer = useSleepTimerStore();
+  const timerActive = useSleepTimerStore((s) => s.active);
+  const timerTotalMinutes = useSleepTimerStore((s) => s.totalMinutes);
+  const timerEndTime = useSleepTimerStore((s) => s.endTime);
+  const timerStopAtEndOfTrack = useSleepTimerStore((s) => s.stopAtEndOfTrack);
+  const timerStart = useSleepTimerStore((s) => s.start);
+  const timerCancel = useSleepTimerStore((s) => s.cancel);
+  const timerGetRemainingMs = useSleepTimerStore((s) => s.getRemainingMs);
   const [remaining, setRemaining] = useState(
-    timer.active ? timer.getRemainingMs() : 0,
+    timerActive ? timerGetRemainingMs() : 0,
   );
 
   useEffect(() => {
-    if (!timer.active) return;
+    if (!timerActive) return;
     const interval = setInterval(() => {
-      const ms = timer.getRemainingMs();
+      const ms = timerGetRemainingMs();
       setRemaining(ms);
       if (ms <= 0) clearInterval(interval);
     }, 1000);
     return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [timer.active, timer.endTime]);
+  }, [timerActive, timerEndTime]);
 
   const formatRemaining = (ms: number) => {
     const totalSec = Math.floor(ms / 1000);
@@ -50,7 +56,7 @@ export default function SleepTimerScreen() {
       >
         <View style={[s.px4, s.py4, s.gap6]}>
           {/* Active Timer */}
-          {timer.active && remaining > 0 && (
+          {timerActive && remaining > 0 && (
             <View
               style={[s.rounded3xl, s.overflowHidden, { padding: 24, alignItems: 'center', backgroundColor: colors.surface }]}
             >
@@ -64,13 +70,13 @@ export default function SleepTimerScreen() {
                 style={[s.textSm, s.mt2, { color: colors.textMuted }]}
               >
                 Timer ends at{" "}
-                {new Date(timer.endTime).toLocaleTimeString([], {
+                {new Date(timerEndTime).toLocaleTimeString([], {
                   hour: "2-digit",
                   minute: "2-digit",
                 })}
               </Text>
               <Pressable
-                onPress={timer.cancel}
+                onPress={timerCancel}
                 style={[s.mt4, s.px8, { paddingVertical: 12, borderRadius: 9999, backgroundColor: colors.card }]}
               >
                 <Text
@@ -91,7 +97,7 @@ export default function SleepTimerScreen() {
               {SLEEP_TIMER_OPTIONS.map((option, i) => (
                 <Pressable
                   key={option.minutes}
-                  onPress={() => timer.start(option.minutes)}
+                  onPress={() => timerStart(option.minutes)}
                   style={[s.flexRow, s.itemsCenter, s.justifyBetween, s.p4]}
                 >
                   <View style={[s.flexRow, s.itemsCenter, s.gap3]}>
@@ -137,16 +143,16 @@ export default function SleepTimerScreen() {
                 </View>
                 <Pressable
                   onPress={() => {
-                    if (timer.active) {
-                      timer.start(timer.totalMinutes, !timer.stopAtEndOfTrack);
+                    if (timerActive) {
+                      timerStart(timerTotalMinutes, !timerStopAtEndOfTrack);
                     } else {
-                      timer.start(60, !timer.stopAtEndOfTrack);
+                      timerStart(60, !timerStopAtEndOfTrack);
                     }
                   }}
-                  style={[{ width: 56, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'flex-end', paddingHorizontal: 4, backgroundColor: timer.stopAtEndOfTrack ? colors.accent : colors.card }]}
+                  style={[{ width: 56, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'flex-end', paddingHorizontal: 4, backgroundColor: timerStopAtEndOfTrack ? colors.accent : colors.card }]}
                 >
                   <View
-                    style={[{ width: 24, height: 24, borderRadius: 12, backgroundColor: "#fff", transform: [{ translateX: timer.stopAtEndOfTrack ? 0 : -22 }] }]}
+                    style={[{ width: 24, height: 24, borderRadius: 12, backgroundColor: "#fff", transform: [{ translateX: timerStopAtEndOfTrack ? 0 : -22 }] }]}
                   />
                 </Pressable>
               </View>

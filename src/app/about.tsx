@@ -1,4 +1,5 @@
-import { View, Text, ScrollView, Pressable, Image } from 'react-native';
+import { View, Text, ScrollView, Pressable } from 'react-native';
+import { Image } from 'expo-image';
 import { s } from '@/styles';
 import { useTheme } from '@/hooks/use-theme';
 import { useRouter } from 'expo-router';
@@ -22,7 +23,7 @@ export default function AboutScreen() {
         <View style={s.px5}>
           <View style={[s.itemsCenter, s.mb8]}>
             <View style={[{ width: 80, height: 80, borderRadius: 24, alignItems: 'center', justifyContent: 'center', marginBottom: 16, backgroundColor: colors.accent + '25' }]}>
-              <Image source={require('../../assets/favicon.png')} style={{ width: 40, height: 40 }} />
+              <Image source={require('../../assets/favicon.png')} style={{ width: 40, height: 40 }} contentFit="contain" />
             </View>
             <Text style={[s.textXl, s.fontBold, { color: colors.text }]}>Lumora</Text>
             <Text style={[s.textSm, s.mt1, { color: colors.textMuted }]}>Version 1.0.0</Text>

@@ -37,13 +37,19 @@ export default function CloudSyncScreen() {
   const insets = useSafeAreaInsets();
   const songs = useMusicStore((s) => s.songs);
   const showToast = useToastStore((s) => s.showToast);
-  const {
-    googleClientId, dropboxAppKey,
-    lastBackupTimestamp, autoBackup, autoBackupInterval,
-    setGoogleCredentials, setDropboxCredentials,
-    setLastBackup, setAutoBackup, setAutoBackupInterval,
-    refreshConnectionStatus, isConnected, connectedProviders,
-  } = useCloudStore();
+  const googleClientId = useCloudStore((s) => s.googleClientId);
+  const dropboxAppKey = useCloudStore((s) => s.dropboxAppKey);
+  const lastBackupTimestamp = useCloudStore((s) => s.lastBackupTimestamp);
+  const autoBackup = useCloudStore((s) => s.autoBackup);
+  const autoBackupInterval = useCloudStore((s) => s.autoBackupInterval);
+  const connectedProviders = useCloudStore((s) => s.connectedProviders);
+  const setGoogleCredentials = useCloudStore((s) => s.setGoogleCredentials);
+  const setDropboxCredentials = useCloudStore((s) => s.setDropboxCredentials);
+  const setLastBackup = useCloudStore((s) => s.setLastBackup);
+  const setAutoBackup = useCloudStore((s) => s.setAutoBackup);
+  const setAutoBackupInterval = useCloudStore((s) => s.setAutoBackupInterval);
+  const refreshConnectionStatus = useCloudStore((s) => s.refreshConnectionStatus);
+  const isConnected = useCloudStore((s) => s.isConnected);
 
   const [isExporting, setIsExporting] = useState(false);
   const [isImporting, setIsImporting] = useState(false);

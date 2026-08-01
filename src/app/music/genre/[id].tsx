@@ -51,6 +51,7 @@ export default function GenreDetailScreen() {
       <FlashList
         data={genreSongs}
         keyExtractor={(item) => item.id}
+        estimatedItemSize={rowHeight}
         contentContainerStyle={{ paddingBottom: 120 }}
         renderItem={({ item, index }) => (
           <Pressable

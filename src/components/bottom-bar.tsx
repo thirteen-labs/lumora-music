@@ -5,6 +5,7 @@ import { Music, ListMusic, Heart, LayoutGrid } from 'lucide-react-native';
 import { useRouter, useSegments } from 'expo-router';
 import { s } from '@/styles';
 import { useTheme } from '@/hooks/use-theme';
+import { useTranslation } from '@/hooks/use-translation';
 import Animated, { useSharedValue, useAnimatedStyle, withTiming } from 'react-native-reanimated';
 
 const NAV_ITEMS = [
@@ -19,6 +20,7 @@ export function BottomBar() {
   const router = useRouter();
   const segments = useSegments();
   const { colors } = useTheme();
+  const { t } = useTranslation();
 
   const isTabScreen = segments.length > 0 && segments[0] === "(tabs)";
 
@@ -96,6 +98,8 @@ export function BottomBar() {
             onPress={() => router.push(item.route)}
             onLayout={(e) => handleLayout(item.key, e)}
             style={{ padding: 8, alignItems: 'center' }}
+            accessibilityLabel={t(item.labelKey)}
+            accessibilityRole={'button' as const}
           >
             <Icon
               size={24}

@@ -20,6 +20,7 @@ export default function ArtistsScreen() {
       <FlashList
         data={artists}
         keyExtractor={(item) => item.id}
+        estimatedItemSize={80}
         contentContainerStyle={{ padding: 12, paddingBottom: 120 }}
         renderItem={({ item }) => (
           <Pressable

@@ -43,6 +43,12 @@ function savePlaylists(playlists: Playlist[]) {
   } catch (e) { reportWarning('Playlist', e); }
 }
 
+let saveTimer: ReturnType<typeof setTimeout> | null = null;
+function debouncedSavePlaylists(playlists: Playlist[]) {
+  if (saveTimer) clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => savePlaylists(playlists), 300);
+}
+
 export const usePlaylistStore = create<PlaylistState>()(
   immer((set, get) => ({
     playlists: loadPlaylists(),
@@ -66,7 +72,7 @@ export const usePlaylistStore = create<PlaylistState>()(
       set((state) => {
         state.playlists = state.playlists.filter(p => p.id !== id);
       });
-      savePlaylists(get().playlists);
+      debouncedSavePlaylists(get().playlists);
     },
 
     renamePlaylist: (id, name) => {
@@ -74,7 +80,7 @@ export const usePlaylistStore = create<PlaylistState>()(
         const p = state.playlists.find(p => p.id === id);
         if (p) p.name = name;
       });
-      savePlaylists(get().playlists);
+      debouncedSavePlaylists(get().playlists);
     },
 
     addSongToPlaylist: (playlistId, songId) => {
@@ -84,7 +90,7 @@ export const usePlaylistStore = create<PlaylistState>()(
           p.songIds.push(songId);
         }
       });
-      savePlaylists(get().playlists);
+      debouncedSavePlaylists(get().playlists);
     },
 
     addSongsToPlaylist: (playlistId, songIds) => {
@@ -98,7 +104,7 @@ export const usePlaylistStore = create<PlaylistState>()(
           }
         }
       });
-      savePlaylists(get().playlists);
+      debouncedSavePlaylists(get().playlists);
     },
 
     removeSongFromPlaylist: (playlistId, songId) => {
@@ -108,7 +114,7 @@ export const usePlaylistStore = create<PlaylistState>()(
           p.songIds = p.songIds.filter(id => id !== songId);
         }
       });
-      savePlaylists(get().playlists);
+      debouncedSavePlaylists(get().playlists);
     },
 
     reorderSongs: (playlistId, fromIndex, toIndex) => {
@@ -119,16 +125,17 @@ export const usePlaylistStore = create<PlaylistState>()(
           p.songIds.splice(toIndex, 0, moved);
         }
       });
-      savePlaylists(get().playlists);
+      debouncedSavePlaylists(get().playlists);
     },
 
     getPlaylistSongs: (playlistId) => {
       const playlist = get().playlists.find(p => p.id === playlistId);
       if (!playlist) return [];
       const allSongs = useMusicStore.getState().songs;
+      const songMap = new Map(allSongs.map(s => [s.id, s]));
       return playlist.songIds
-        .map(id => allSongs.find(s => s.id === id))
-        .filter(s => !!s);
+        .map(id => songMap.get(id))
+        .filter((s): s is typeof allSongs[0] => !!s);
     },
 
     reloadPlaylists: () => {

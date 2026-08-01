@@ -19,7 +19,7 @@ import { formatDuration } from '@/utils/format';
 import { useRouter } from 'expo-router';
 import { useTranslation } from '@/hooks/use-translation';
 import { ScrollView } from 'react-native-gesture-handler';
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { s } from '@/styles';
 
 const { width: SCREEN_W } = Dimensions.get('window');
@@ -60,12 +60,12 @@ export default function HomeScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const recentSongs = [...songs].sort((a, b) => b.dateAdded - a.dateAdded).slice(0, 10);
-  const favSongs = songs.filter((s) => favoriteSongIds.includes(s.id)).slice(0, 10);
-  const recentlyPlayed = [...songs]
+  const recentSongs = useMemo(() => [...songs].sort((a, b) => b.dateAdded - a.dateAdded).slice(0, 10), [songs]);
+  const favSongs = useMemo(() => songs.filter((s) => favoriteSongIds.includes(s.id)).slice(0, 10), [songs, favoriteSongIds]);
+  const recentlyPlayed = useMemo(() => [...songs]
     .filter((s) => trackStats[s.id]?.lastPlayed)
     .sort((a, b) => (trackStats[b.id]?.lastPlayed || 0) - (trackStats[a.id]?.lastPlayed || 0))
-    .slice(0, 10);
+    .slice(0, 10), [songs, trackStats]);
 
   const hasContent = recentlyPlayed.length > 0 || recentSongs.length > 0 || favSongs.length > 0;
 

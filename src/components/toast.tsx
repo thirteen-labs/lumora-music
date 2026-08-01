@@ -56,6 +56,8 @@ export function Toast() {
         zIndex: 9999,
         pointerEvents: 'none',
       }, animatedStyle]}
+      accessibilityRole={'alert' as const}
+      accessibilityLiveRegion={'polite' as const}
     >
       <View style={{
         flexDirection: 'row',

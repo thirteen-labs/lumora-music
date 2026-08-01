@@ -19,6 +19,7 @@ export default function GenresScreen() {
       <FlashList
         data={genres}
         keyExtractor={(item) => item.id}
+        estimatedItemSize={72}
         contentContainerStyle={{ padding: 12, paddingBottom: 120 }}
         renderItem={({ item }) => (
           <Pressable

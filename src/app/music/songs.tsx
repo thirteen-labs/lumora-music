@@ -149,6 +149,7 @@ export default function SongsScreen() {
           data={sortedSongs}
           keyExtractor={(item) => item.id}
           numColumns={GRID_COLUMNS}
+          estimatedItemSize={gridConfig.thumbHeight || GRID_ITEM_WIDTH}
           contentContainerStyle={{ paddingBottom: 120 + insets.bottom, paddingHorizontal: 16 }}
           renderItem={({ item }: { item: Song }) => {
             const isSelected = selectedIds.has(item.id);
@@ -225,6 +226,7 @@ export default function SongsScreen() {
         <FlashList
           data={sortedSongs}
           keyExtractor={(item) => item.id}
+          estimatedItemSize={rowHeight}
           contentContainerStyle={{ paddingBottom: 120 + insets.bottom }}
           renderItem={({ item }: { item: Song }) => {
             const isSelected = selectedIds.has(item.id);

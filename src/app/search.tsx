@@ -204,6 +204,8 @@ export default function SearchScreen() {
     results.artists.length +
     results.genres.length;
 
+  const songMap = useMemo(() => new Map(songs.map((s) => [s.id, s])), [songs]);
+
   type ResultItem =
     | {
         type: "song";
@@ -439,6 +441,8 @@ export default function SearchScreen() {
         <FlashList
           data={items}
           keyExtractor={(item) => `${item.type}-${item.id}`}
+          estimatedItemSize={64}
+          getItemType={(item: ResultItem) => item.type}
           contentContainerStyle={{ paddingBottom: 120 + insets.bottom }}
           ListHeaderComponent={
             <Text
@@ -448,7 +452,7 @@ export default function SearchScreen() {
             </Text>
           }
           renderItem={({ item }: { item: ResultItem }) => {
-            const song = item.type === 'song' ? songs.find((s) => s.id === item.id) : null;
+            const song = item.type === 'song' ? songMap.get(item.id) : null;
             return (
             <Pressable
               onPress={() => {
@@ -473,7 +477,7 @@ export default function SearchScreen() {
               }}
               onLongPress={() => {
                 if (item.type === "song") {
-                  const s = songs.find((s) => s.id === item.id);
+                  const s = songMap.get(item.id);
                   if (s) present(s);
                 }
               }}

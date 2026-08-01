@@ -151,7 +151,7 @@ export default function SmartPlaylistsScreen() {
 
 function CreateSmartPlaylist({ onClose }: { onClose: () => void }) {
   const { colors } = useTheme();
-  const smartPlaylists = useSmartPlaylistStore();
+  const addPlaylist = useSmartPlaylistStore((s) => s.addPlaylist);
   const [name, setName] = useState('');
   const [rules, setRules] = useState<SmartPlaylistRule[]>([
     { field: 'genre', operator: 'equals', value: '' },
@@ -176,7 +176,7 @@ function CreateSmartPlaylist({ onClose }: { onClose: () => void }) {
       Alert.alert('Error', 'Please enter a playlist name');
       return;
     }
-    smartPlaylists.addPlaylist({
+    addPlaylist({
       name: name.trim(),
       icon: 'zap',
       rules: rules.filter((r) => r.value !== ''),

@@ -165,6 +165,7 @@ export default function PlaylistDetailScreen() {
       <FlashList
         data={playlistSongs}
         keyExtractor={(item) => item.id}
+        estimatedItemSize={72}
         contentContainerStyle={{ paddingBottom: 120 }}
         ListHeaderComponent={
           <View style={[s.px4, s.py4]}>

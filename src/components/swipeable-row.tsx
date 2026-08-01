@@ -26,14 +26,16 @@ const THRESHOLD = 60;
 
 function SwipeActionButton({ type, onPress, colors }: { key?: number; type: SwipeAction; onPress: () => void; colors: { accent: string; info: string; error: string } }) {
   const iconMap = {
-    queue: { icon: ListPlus, color: colors.info },
-    favorite: { icon: Heart, color: colors.error },
-    remove: { icon: Trash2, color: colors.error },
+    queue: { icon: ListPlus, color: colors.info, label: 'Add to queue' },
+    favorite: { icon: Heart, color: colors.error, label: 'Add to favorites' },
+    remove: { icon: Trash2, color: colors.error, label: 'Remove' },
   };
-  const { icon: Icon, color } = iconMap[type];
+  const { icon: Icon, color, label } = iconMap[type];
   return (
     <Pressable
       onPress={onPress}
+      accessibilityLabel={label}
+      accessibilityRole={'button' as const}
       style={{
         width: ACTION_WIDTH,
         height: '100%',

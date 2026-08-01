@@ -67,6 +67,9 @@ export default function PlaylistPickerScreen() {
         keyExtractor={item => item.id}
         renderItem={renderItem}
         contentContainerStyle={{ padding: 20, paddingBottom: 100 }}
+        windowSize={5}
+        maxToRenderPerBatch={10}
+        initialNumToRender={10}
         ListHeaderComponent={
           <Pressable
             onPress={() => setModalVisible(true)}

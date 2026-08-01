@@ -50,6 +50,7 @@ export default function AlbumDetailScreen() {
       <FlashList
         data={albumSongs}
         keyExtractor={(item) => item.id}
+        estimatedItemSize={rowHeight}
         contentContainerStyle={{ paddingBottom: 120 }}
         renderItem={({ item, index }) => (
           <Pressable

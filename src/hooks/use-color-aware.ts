@@ -5,7 +5,8 @@ import { useSettingsStore } from '@/store/settings-store';
 import { usePlayerStore } from '@/store/player-store';
 
 export function useColorAware() {
-  const { setExtractedColors, clearColors } = useColorAwareStore();
+  const setExtractedColors = useColorAwareStore((s) => s.setExtractedColors);
+  const clearColors = useColorAwareStore((s) => s.clearColors);
   const colorAware = useSettingsStore((s) => s.colorAware);
   const backgroundImage = useSettingsStore((s) => s.backgroundImage);
   const currentTrack = usePlayerStore((s) => s.currentTrack);

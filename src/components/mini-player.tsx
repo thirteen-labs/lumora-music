@@ -52,7 +52,10 @@ export const MiniPlayer = React.memo(function MiniPlayer() {
           <Text style={[s.textSm, s.fontMedium, { color: colors.accent }]}>
             {Math.round(progress * 100)}%
           </Text>
-          <Pressable onPress={togglePlay} hitSlop={8} style={[s.w10, s.h10, s.roundedFull, s.itemsCenter, s.justifyCenter, { backgroundColor: colors.card }]}>
+          <Pressable onPress={togglePlay} hitSlop={8} style={[s.w10, s.h10, s.roundedFull, s.itemsCenter, s.justifyCenter, { backgroundColor: colors.card }]}
+            accessibilityLabel={isPlaying ? 'Pause' : 'Play'}
+            accessibilityRole={'button' as const}
+          >
             <Svg width={40} height={40} style={{ position: 'absolute' }}>
               <Circle cx={20} cy={20} r={17} stroke={colors.border} strokeWidth={3} fill="none" />
               <G transform={`rotate(-90, 20, 20)`}>
@@ -71,7 +74,10 @@ export const MiniPlayer = React.memo(function MiniPlayer() {
               <Play size={18} color={colors.accent} fill={colors.accent} />
             )}
           </Pressable>
-          <Pressable onPress={next} hitSlop={8} style={[s.w10, s.h10, s.roundedFull, s.itemsCenter, s.justifyCenter, { backgroundColor: colors.card }]}>
+          <Pressable onPress={next} hitSlop={8} style={[s.w10, s.h10, s.roundedFull, s.itemsCenter, s.justifyCenter, { backgroundColor: colors.card }]}
+            accessibilityLabel="Skip forward"
+            accessibilityRole={'button' as const}
+          >
             <SkipForward size={18} color={colors.text} fill={colors.text} />
           </Pressable>
         </View>

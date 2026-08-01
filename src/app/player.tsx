@@ -61,7 +61,7 @@ import { s } from '@/styles';
 
 const QUEUE_ITEM_HEIGHT = 72;
 
-const SeekBar = React.memo(({
+const SeekBar = React.memo(function SeekBar({
   colors,
   sliderAccent,
   sliderTrack,
@@ -77,7 +77,7 @@ const SeekBar = React.memo(({
   showDuration?: boolean;
   showPercentage?: boolean;
   sliderHeight?: number;
-}) => {
+}) {
   const position = usePlayerStore((s) => s.position);
   const duration = usePlayerStore((s) => s.duration);
   const seekTo = usePlayerStore((s) => s.seekTo);
@@ -109,8 +109,6 @@ const SeekBar = React.memo(({
     </>
   );
 });
-(SeekBar as any).displayName = 'SeekBar';
-
 export default function PlayerScreen() {
   const { colors } = useTheme();
   const currentTrack = usePlayerStore((s) => s.currentTrack);
@@ -153,6 +151,17 @@ export default function PlayerScreen() {
   const [editAlbum, setEditAlbum] = useState(track?.album ?? '');
   const [editArtwork, setEditArtwork] = useState<string | null>(track?.artwork ?? null);
 
+  const prevTrackRef = useRef(track);
+  if (track !== prevTrackRef.current) {
+    prevTrackRef.current = track;
+    if (track) {
+      setEditTitle(track.title);
+      setEditArtist(track.artist ?? '');
+      setEditAlbum(track.album ?? '');
+      setEditArtwork(track.artwork ?? null);
+    }
+  }
+
   const syncEditState = useCallback((t: typeof track) => {
     if (!t) return;
     setEditTitle(t.title);
@@ -160,10 +169,6 @@ export default function PlayerScreen() {
     setEditAlbum(t.album ?? '');
     setEditArtwork(t.artwork ?? null);
   }, []);
-
-  useEffect(() => {
-    syncEditState(track);
-  }, [track, syncEditState]);
 
 useEffect(() => {
     ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.DEFAULT).catch((e) => reportWarning('Player', e, 'Failed to lock orientation'));
@@ -685,7 +690,7 @@ function RepeatButton({ repeat, setRepeat, colors }: { repeat: RepeatMode; setRe
 
 
 
-const ModernLayout = React.memo((props: LayoutProps) => {
+const ModernLayout = React.memo(function ModernLayout(props: LayoutProps) {
   const { colors, currentTrack, isPlaying, isFav, shuffle, repeat } = props;
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
@@ -729,7 +734,10 @@ const ModernLayout = React.memo((props: LayoutProps) => {
 
       <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>
         <View style={[s.flexRow, s.itemsCenter, s.justifyBetween, s.px4, { paddingTop: insets.top + 4 }]}>
-          <Pressable onPress={props.hideFullPlayer} style={[s.w11, s.h11, s.itemsCenter, s.justifyCenter]}>
+          <Pressable onPress={props.hideFullPlayer} style={[s.w11, s.h11, s.itemsCenter, s.justifyCenter]}
+            accessibilityLabel="Close player"
+            accessibilityRole={'button' as const}
+          >
             <ChevronDown size={28} color={m.text} />
           </Pressable>
           <Text style={[s.textSm, s.fontSemibold, { color: m.textSecondary }]}>
@@ -763,36 +771,60 @@ const ModernLayout = React.memo((props: LayoutProps) => {
             </View>
 
             <View style={[s.flexRow, s.itemsCenter, s.justifyCenter, { gap: 24 }]}>
-              <Pressable onPress={() => props.setShuffle(!shuffle)}>
+              <Pressable onPress={() => props.setShuffle(!shuffle)}
+                accessibilityLabel={shuffle ? 'Disable shuffle' : 'Enable shuffle'}
+                accessibilityRole={'button' as const}
+              >
                 <Shuffle size={22} color={shuffle ? m.text : m.textFaint} />
               </Pressable>
-              <Pressable onPress={props.previous} style={[s.w14, s.h14, s.roundedFull, s.itemsCenter, s.justifyCenter]}>
+              <Pressable onPress={props.previous} style={[s.w14, s.h14, s.roundedFull, s.itemsCenter, s.justifyCenter]}
+                accessibilityLabel="Previous track"
+                accessibilityRole={'button' as const}
+              >
                 <SkipBack size={28} color={m.text} fill={m.text} />
               </Pressable>
-              <Pressable onPress={props.togglePlay} style={[s.roundedFull, s.itemsCenter, s.justifyCenter, { width: 72, height: 72, backgroundColor: m.playBg }]}>
+              <Pressable onPress={props.togglePlay} style={[s.roundedFull, s.itemsCenter, s.justifyCenter, { width: 72, height: 72, backgroundColor: m.playBg }]}
+                accessibilityLabel={isPlaying ? 'Pause' : 'Play'}
+                accessibilityRole={'button' as const}
+              >
                 {isPlaying ? (
                   <Pause size={32} color={m.text} fill={m.text} />
                 ) : (
                   <Play size={32} color={m.text} fill={m.text} />
                 )}
               </Pressable>
-              <Pressable onPress={props.next} style={[s.w14, s.h14, s.roundedFull, s.itemsCenter, s.justifyCenter]}>
+              <Pressable onPress={props.next} style={[s.w14, s.h14, s.roundedFull, s.itemsCenter, s.justifyCenter]}
+                accessibilityLabel="Next track"
+                accessibilityRole={'button' as const}
+              >
                 <SkipForward size={28} color={m.text} fill={m.text} />
               </Pressable>
               <RepeatButton repeat={repeat} setRepeat={props.setRepeat} colors={{ ...colors, accent: m.text, textMuted: m.textFaint }} />
             </View>
 
             <View style={[s.flexRow, s.itemsCenter, s.justifyCenter, { gap: 24 }]}>
-              <Pressable onPress={() => props.toggleSongFavorite(currentTrack)}>
+              <Pressable onPress={() => props.toggleSongFavorite(currentTrack)}
+                accessibilityLabel={isFav ? 'Remove from favorites' : 'Add to favorites'}
+                accessibilityRole={'button' as const}
+              >
                 <Heart size={22} color={isFav ? m.text : m.textFaint} fill={isFav ? m.text : 'none'} />
               </Pressable>
-              <Pressable onPress={props.onQueuePress}>
+              <Pressable onPress={props.onQueuePress}
+                accessibilityLabel="Open queue"
+                accessibilityRole={'button' as const}
+              >
                 <ListMusic size={22} color={m.textFaint} />
               </Pressable>
-              <Pressable onPress={props.onLyricsPress}>
+              <Pressable onPress={props.onLyricsPress}
+                accessibilityLabel="Open lyrics"
+                accessibilityRole={'button' as const}
+              >
                 <AlignLeft size={22} color={m.textFaint} />
               </Pressable>
-              <Pressable onPress={props.onInfoPress}>
+              <Pressable onPress={props.onInfoPress}
+                accessibilityLabel="Open song info"
+                accessibilityRole={'button' as const}
+              >
                 <Info size={22} color={m.textFaint} />
               </Pressable>
             </View>
@@ -802,7 +834,7 @@ const ModernLayout = React.memo((props: LayoutProps) => {
     </View>
   );
 });
-(ModernLayout as any).displayName = 'ModernLayout';
+
 
 
 

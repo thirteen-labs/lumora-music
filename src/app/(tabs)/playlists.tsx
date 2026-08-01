@@ -163,6 +163,7 @@ export default function PlaylistsScreen() {
           data={playlists}
           keyExtractor={(item) => item.id}
           numColumns={1}
+          estimatedItemSize={72}
           ListHeaderComponent={renderListHeader}
           contentContainerStyle={{ paddingBottom: 120 + insets.bottom, paddingHorizontal: 20 }}
           showsVerticalScrollIndicator={false}

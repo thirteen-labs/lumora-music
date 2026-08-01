@@ -17,6 +17,12 @@ function saveIds(key: string, ids: string[]): void {
   try { storage.set(key, JSON.stringify(ids)); } catch (e) { reportWarning('Favorites', e); }
 }
 
+let saveTimer: ReturnType<typeof setTimeout> | null = null;
+function debouncedSaveIds(key: string, ids: string[]) {
+  if (saveTimer) clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => saveIds(key, ids), 300);
+}
+
 interface FavoritesState {
   favoriteSongIds: string[];
   songs: Song[];
@@ -42,7 +48,7 @@ export const useFavoritesStore = create<FavoritesState>()(
           state.songs.push(song);
         }
       });
-      saveIds(FAV_SONGS_KEY, get().favoriteSongIds);
+      debouncedSaveIds(FAV_SONGS_KEY, get().favoriteSongIds);
     },
 
     isSongFavorite: (id) => get().favoriteSongIds.includes(id),

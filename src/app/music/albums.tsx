@@ -23,6 +23,7 @@ export default function AlbumsScreen() {
         data={albums}
         numColumns={2}
         keyExtractor={(item) => item.id}
+        estimatedItemSize={220}
         contentContainerStyle={{ padding: 6, paddingBottom: 120 + insets.bottom }}
         renderItem={({ item }) => (
           <Pressable
