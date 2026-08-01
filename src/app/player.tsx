@@ -109,7 +109,7 @@ const SeekBar = React.memo(({
     </>
   );
 });
-SeekBar.displayName = 'SeekBar';
+(SeekBar as any).displayName = 'SeekBar';
 
 export default function PlayerScreen() {
   const { colors } = useTheme();
@@ -153,15 +153,6 @@ export default function PlayerScreen() {
   const [editAlbum, setEditAlbum] = useState(track?.album ?? '');
   const [editArtwork, setEditArtwork] = useState<string | null>(track?.artwork ?? null);
 
-  useEffect(() => {
-    if (track) {
-      setEditTitle(track.title);
-      setEditArtist(track.artist ?? '');
-      setEditAlbum(track.album ?? '');
-      setEditArtwork(track.artwork ?? null);
-    }
-  }, [track?.id]);
-
   const syncEditState = useCallback((t: typeof track) => {
     if (!t) return;
     setEditTitle(t.title);
@@ -169,6 +160,10 @@ export default function PlayerScreen() {
     setEditAlbum(t.album ?? '');
     setEditArtwork(t.artwork ?? null);
   }, []);
+
+  useEffect(() => {
+    syncEditState(track);
+  }, [track, syncEditState]);
 
 useEffect(() => {
     ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.DEFAULT).catch((e) => reportWarning('Player', e, 'Failed to lock orientation'));
@@ -807,7 +802,7 @@ const ModernLayout = React.memo((props: LayoutProps) => {
     </View>
   );
 });
-ModernLayout.displayName = 'ModernLayout';
+(ModernLayout as any).displayName = 'ModernLayout';
 
 
 

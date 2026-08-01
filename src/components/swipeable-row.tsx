@@ -12,6 +12,7 @@ interface SwipeActionConfig {
 }
 
 interface SwipeableRowProps {
+  key?: string;
   children: React.ReactNode;
   leftActions?: SwipeActionConfig[];
   rightActions?: SwipeActionConfig[];
@@ -23,7 +24,7 @@ interface SwipeableRowProps {
 const ACTION_WIDTH = 72;
 const THRESHOLD = 60;
 
-function SwipeActionButton({ type, onPress, colors }: { type: SwipeAction; onPress: () => void; colors: { accent: string; info: string; error: string } }) {
+function SwipeActionButton({ type, onPress, colors }: { key?: number; type: SwipeAction; onPress: () => void; colors: { accent: string; info: string; error: string } }) {
   const iconMap = {
     queue: { icon: ListPlus, color: colors.info },
     favorite: { icon: Heart, color: colors.error },

@@ -48,7 +48,7 @@ function saveRecent(items: string[]): void {
   }
 }
 
-function FilterChip({ label, selected, onPress, colors }: { label: string; selected: boolean; onPress: () => void; colors: ThemeColors }) {
+function FilterChip({ label, selected, onPress, colors }: { key?: string; label: string; selected: boolean; onPress: () => void; colors: ThemeColors }) {
   return (
     <Pressable
       onPress={onPress}

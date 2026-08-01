@@ -29,7 +29,6 @@
       },
       "predictiveBackGestureEnabled": false,
       "allowBackup": true,
-      "enableProguardInRelease": true,
       "permissions": [
         "FOREGROUND_SERVICE",
         "FOREGROUND_SERVICE_MEDIA_PLAYBACK",

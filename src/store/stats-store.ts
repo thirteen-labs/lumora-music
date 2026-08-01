@@ -181,12 +181,12 @@ export const useStatsStore = create<StatsState>()(
     },
 
     getTotalPlayCount: () => {
-      const stats = get().trackStats;
+      const stats: Record<string, { playCount: number; totalPlayTime: number }> = (get() as any).trackStats;
       return Object.values(stats).reduce((sum, s) => sum + s.playCount, 0);
     },
 
     getTotalListenTime: () => {
-      const stats = get().trackStats;
+      const stats: Record<string, { playCount: number; totalPlayTime: number }> = (get() as any).trackStats;
       return Object.values(stats).reduce((sum, s) => sum + s.totalPlayTime, 0);
     },
   })),

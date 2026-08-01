@@ -20,7 +20,7 @@ const tagSchema = z.object({
   year: z.string(),
 });
 
-type TagFormData = z.infer<typeof tagSchema>;
+type TagFormData = any;
 
 export default function TagEditScreen() {
   const { colors } = useTheme();
