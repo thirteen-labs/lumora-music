@@ -41,6 +41,20 @@ jobs:
       - name: Generate native Android project
         run: npx expo prebuild --platform android --clean
 
+      - name: Patch gradle.properties for memory
+        run: |
+          node -e "
+          const fs = require('fs');
+          const gradlePropsPath = 'android/gradle.properties';
+          let content = fs.readFileSync(gradlePropsPath, 'utf8');
+          content = content.replace(
+            /org\.gradle\.jvmargs=-Xmx\d+m -XX:MaxMetaspaceSize=\d+m/,
+            'org.gradle.jvmargs=-Xmx4096m -XX:MaxMetaspaceSize=1024m'
+          );
+          fs.writeFileSync(gradlePropsPath, content);
+          console.log('Patched gradle.properties with increased memory');
+          "
+
       - name: Generate signing keystore
         run: |
           keytool -genkeypair -v \
