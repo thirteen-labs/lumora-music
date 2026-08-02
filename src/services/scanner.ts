@@ -131,6 +131,9 @@ async function ensureModulesLoaded(): Promise<boolean> {
     moduleLoadAttempted = true;
     modulesLoaded = await loadModules();
   }
+  if (!modulesLoaded) {
+    moduleLoadAttempted = false;
+  }
   return modulesLoaded;
 }
 
@@ -250,7 +253,7 @@ export async function requestPermissions(force = false): Promise<boolean> {
     if (isAndroid) {
       if (MediaStore) {
         const status = await MediaStore.requestPermissions();
-        const granted = status?.granted ?? false;
+        const granted = status?.granted ?? status?.audio ?? false;
         permissionCache = granted;
         return granted;
       }
@@ -470,17 +473,24 @@ async function fetchSongsAndroid(
   if (!MediaStore) return [];
 
   try {
+    if (typeof MediaStore.refresh === 'function') {
+      await MediaStore.refresh();
+    }
+
     const songs: any[] = await fetchWithTimeout(
-      retryWithBackoff(() => MediaStore.getAudio({ field: 'dateAdded', order: 'desc' }), 'getAudio'),
+      retryWithBackoff(() => MediaStore.getAudio({ field: 'dateAdded', order: 'desc' }, null, null), 'getAudio'),
       MEDIA_FETCH_TIMEOUT,
       'getAudio',
     );
+
+    console.log(`[Scanner] MediaStore.getAudio returned ${songs.length} items`);
 
     const results: Song[] = [];
     for (const item of songs) {
       const song = processMediaStoreItem(item);
       if (song) results.push(song);
     }
+    console.log(`[Scanner] Processed ${results.length} songs from ${songs.length} items`);
     onProgress?.(results.length);
     return results;
   } catch (e) {
