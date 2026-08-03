@@ -125,6 +125,7 @@ export const useMusicStore = create<MusicState>()(
               state.scanProgress = { processed, total };
             });
           },
+          force,
         );
 
         const knownUris = new Set(Object.keys(getKnownFiles()));

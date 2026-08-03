@@ -18,6 +18,8 @@ const SCAN_RETRY_DELAY = 2000;
 const PAGE_BATCH_SIZE = 500;
 const WORKER_CONCURRENCY = 20;
 const META_CACHE_SAVE_DEBOUNCE_MS = 5000;
+const PERMISSION_POLL_TIMEOUT = 15000;
+const PERMISSION_POLL_INTERVAL = 500;
 
 interface AssetsResult {
   assets: any[];
@@ -247,23 +249,40 @@ export function getCachedGenres(): Genre[] { ensureCacheLoaded(); return cachedG
 
 export async function requestPermissions(force = false): Promise<boolean> {
   if (force) permissionCache = null;
-  if (!force && permissionCache !== null) return permissionCache;
+  if (!force && permissionCache === true) return true;
 
   try {
     if (isAndroid) {
-      if (MediaStore) {
-        const status = await MediaStore.requestPermissions();
-        const granted = status?.granted ?? status?.audio ?? false;
-        permissionCache = granted;
-        return granted;
+      if (!MediaStore) return false;
+
+      const status = await MediaStore.requestPermissions();
+      const granted = status?.granted ?? status?.audio ?? false;
+      if (granted) {
+        permissionCache = true;
+        return true;
       }
+
+      // The native requestPermissions resolves shortly after the dialog is shown
+      // (500ms), before the user usually answers. Poll until granted or timeout.
+      const deadline = Date.now() + PERMISSION_POLL_TIMEOUT;
+      while (Date.now() < deadline) {
+        await new Promise((r) => setTimeout(r, PERMISSION_POLL_INTERVAL));
+        const check = await MediaStore.checkPermissions();
+        const polled = check?.granted ?? check?.audio ?? false;
+        if (polled) {
+          permissionCache = true;
+          return true;
+        }
+      }
+
+      console.warn('[Scanner] Media permission not granted within timeout');
       return false;
     }
 
     if (!MediaLibrary) return false;
     const { status } = await MediaLibrary.requestPermissionsAsync();
     const mediaLibraryGranted = status === 'granted';
-    permissionCache = mediaLibraryGranted;
+    if (mediaLibraryGranted) permissionCache = true;
     return mediaLibraryGranted;
   } catch (error) {
     console.error('[Scanner] Permission request failed:', error);
@@ -491,6 +510,14 @@ async function fetchSongsAndroid(
       if (song) results.push(song);
     }
     console.log(`[Scanner] Processed ${results.length} songs from ${songs.length} items`);
+    if (results.length === 0 && typeof MediaStore.getStatistics === 'function') {
+      try {
+        const stats = await MediaStore.getStatistics();
+        console.log(`[Scanner] getAudio returned 0 items. MediaStore stats: audio=${stats?.totalAudio}, video=${stats?.totalVideo}, totalSize=${stats?.totalSize}`);
+      } catch (statsError) {
+        console.warn('[Scanner] Failed to read MediaStore statistics:', statsError);
+      }
+    }
     onProgress?.(results.length);
     return results;
   } catch (e) {
@@ -563,6 +590,7 @@ async function fetchSongs(
 export async function scanMediaLibrary(
   onStatusChange?: (status: MediaScanStatus) => void,
   onProgress?: (processed: number, total: number) => void,
+  force = false,
 ): Promise<{ songs: Song[]; albums: LumoraAlbum[]; artists: Artist[]; genres: Genre[] }> {
   onStatusChange?.('scanning');
   onProgress?.(0, 1);
@@ -576,8 +604,9 @@ export async function scanMediaLibrary(
   }
 
   try {
-    const hasPermission = await requestPermissions();
+    const hasPermission = await requestPermissions(force);
     if (!hasPermission) {
+      console.warn('[Scanner] Scan aborted: media permission not granted');
       onStatusChange?.('error');
       return { songs: [], albums: [], artists: [], genres: [] };
     }
