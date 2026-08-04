@@ -39,6 +39,10 @@ function RootStack() {
           >
             <Stack.Screen name="(tabs)" />
             <Stack.Screen
+              name="onboarding"
+              options={{ animation: "fade" }}
+            />
+            <Stack.Screen
               name="music/albums"
               options={{ animation: "slide_from_right" }}
             />

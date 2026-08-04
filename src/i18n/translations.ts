@@ -338,6 +338,23 @@ const en = {
   'lyrics.no.song': 'No song selected',
   'lyrics.play.song': 'Play a song to edit its lyrics',
   'lyrics.edit': 'Edit Lyrics',
+
+  // Onboarding
+  'onboarding.skip': 'Skip',
+  'onboarding.next': 'Next',
+  'onboarding.get.started': 'Get Started',
+  'onboarding.page1.eyebrow': 'Welcome',
+  'onboarding.page1.title': 'Your music, one place',
+  'onboarding.page1.subtitle': 'Lumora brings your entire library together — easy to browse, ready to play.',
+  'onboarding.page2.eyebrow': 'Immersive Sound',
+  'onboarding.page2.title': 'Sound that moves you',
+  'onboarding.page2.subtitle': 'High-quality playback with an equalizer, replay gain and rich detail in every track.',
+  'onboarding.page3.eyebrow': 'Take Control',
+  'onboarding.page3.title': 'Play it your way',
+  'onboarding.page3.subtitle': 'Queues, crossfade, smart playlists and lyrics — built for the way you listen.',
+  'onboarding.page4.eyebrow': 'Wind Down',
+  'onboarding.page4.title': 'Relax after dark',
+  'onboarding.page4.subtitle': 'Sleep timers and calm playback modes let you drift off without a worry.',
 };
 
 export const translations: Record<string, TranslationDict> = {

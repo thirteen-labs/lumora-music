@@ -146,12 +146,12 @@ declare module 'react-native' {
   export class RefreshControl extends React.Component<RefreshControlProps> {}
   export interface SwitchProps { value?: boolean; onValueChange?: (value: boolean) => void; disabled?: boolean; trackColor?: { false?: string; true?: string }; thumbColor?: string; style?: any }
   export class Switch extends React.Component<SwitchProps> {}
-  export interface FlatListProps<ItemT> { data: ItemT[]; renderItem: (info: { item: ItemT; index: number; separators: any }) => React.ReactElement | null; keyExtractor?: (item: ItemT, index: number) => string; style?: any; contentContainerStyle?: any; horizontal?: boolean; showsHorizontalScrollIndicator?: boolean; showsVerticalScrollIndicator?: boolean; onRefresh?: () => void; refreshing?: boolean; ListHeaderComponent?: React.ReactElement | (() => React.ReactElement); ListFooterComponent?: React.ReactElement | (() => React.ReactElement); ListEmptyComponent?: React.ReactElement | (() => React.ReactElement); ItemSeparatorComponent?: React.ReactElement | (() => React.ReactElement); numColumns?: number; extraData?: any; initialNumToRender?: number; maxToRenderPerBatch?: number; windowSize?: number; getItemLayout?: any; onEndReached?: () => void; onEndReachedThreshold?: number; removeClippedSubviews?: boolean }
-  export class FlatList<ItemT> extends React.Component<FlatListProps<ItemT>> {}
+  export interface FlatListProps<ItemT> { data: ItemT[]; renderItem: (info: { item: ItemT; index: number; separators: any }) => React.ReactElement | null; keyExtractor?: (item: ItemT, index: number) => string; style?: any; contentContainerStyle?: any; horizontal?: boolean; pagingEnabled?: boolean; showsHorizontalScrollIndicator?: boolean; showsVerticalScrollIndicator?: boolean; onRefresh?: () => void; refreshing?: boolean; ListHeaderComponent?: React.ReactElement | (() => React.ReactElement); ListFooterComponent?: React.ReactElement | (() => React.ReactElement); ListEmptyComponent?: React.ReactElement | (() => React.ReactElement); ItemSeparatorComponent?: React.ReactElement | (() => React.ReactElement); numColumns?: number; extraData?: any; initialNumToRender?: number; maxToRenderPerBatch?: number; windowSize?: number; getItemLayout?: any; onEndReached?: () => void; onEndReachedThreshold?: number; removeClippedSubviews?: boolean; ref?: any; bounces?: boolean; onMomentumScrollEnd?: (event: any) => void }
+  export class FlatList<ItemT> extends React.Component<FlatListProps<ItemT>> { scrollToOffset(options: { offset: number; animated?: boolean }): void; }
   export type ColorValue = string;
   export type DimensionValue = number | string | undefined;
   export const Platform: { OS: string; Version: number | string; select: <T>(specifics: Record<string, T>) => T };
-  export const StyleSheet: { create: <T extends Record<string, any>>(styles: T) => T; flatten: (style: any) => any; hairlineWidth: () => number; absoluteFill: any };
+  export const StyleSheet: { create: <T extends Record<string, any>>(styles: T) => T; flatten: (style: any) => any; hairlineWidth: () => number; absoluteFill: any; absoluteFillObject: any };
   export const Dimensions: { get: (dim: string) => { width: number; height: number; scale: number; fontScale: number } };
   export const Animated: any; export const Easing: any; export const StatusBar: any;
   export const Appearance: { getColorScheme: () => string | null; addChangeListener: (handler: any) => { remove: () => void } };
@@ -163,6 +163,7 @@ declare module 'react-native' {
   export const PixelRatio: { get: () => number; getFontScale: () => number; roundToNearestPixel: (size: number) => number };
   export function useWindowDimensions(): { width: number; height: number; scale: number; fontScale: number };
   export type LayoutChangeEvent = { nativeEvent: { layout: { x: number; y: number; width: number; height: number } } };
+  export type NativeSyntheticEvent<T> = { nativeEvent: T };
   export type NativeScrollEvent = { nativeEvent: { contentOffset: { x: number; y: number }; contentSize: { width: number; height: number }; layoutMeasurement: { width: number; height: number } } };
   export type GestureResponderEvent = { nativeEvent: any };
   export interface ListRenderItemInfo<ItemT> { item: ItemT; index: number; separators: any }
@@ -206,7 +207,7 @@ declare module 'lucide-react-native' {
   export const Server: Icon; export const ScanLine: Icon; export const Link2: Icon; export const Pencil: Icon;
   export const AudioLines: Icon; export const Battery: Icon; export const Bell: Icon; export const CircleCheck: Icon;
   export const Download: Icon; export const Gauge: Icon; export const HelpCircle: Icon; export const ImageIcon: Icon;
-  export const Volume: Icon; export const Users: Icon;
+  export const Volume: Icon; export const Users: Icon; export const ArrowRight: Icon;
 }
 
 declare module 'expo-status-bar' {
@@ -483,6 +484,7 @@ declare module 'expo-router' {
   export function useFocusEffect(callback: () => (() => void) | void): void;
   export const Stack: React.FC<any> & { Screen: React.FC<any> };
   export const Tabs: React.FC<any> & { Screen: React.FC<any> };
+  export const Redirect: React.FC<{ href: Href; withAnchor?: boolean }>;
 }
 declare module '@shopify/flash-list' {
   import * as React from 'react';
