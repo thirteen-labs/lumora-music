@@ -267,9 +267,12 @@ declare module 'expo-audio/build/AudioModule' {
 
 declare module '@missingcore/react-native-metadata-retriever' {
   export interface MediaMetadata { bitrate: number | null; channelCount: number | null; codecs: string | null; sampleMimeType: string | null; sampleRate: number | null; albumArtist: string | null; albumTitle: string | null; artist: string | null; artworkData: string | null; artworkDataType: string | null; artworkUri: string | null; compilation: string | null; composer: string | null; duration: number | null; genre: string | null; mimeType: string | null; title: string | null; trackNumber: number | null; trackCount: number | null; discNumber: number | null; discCount: number | null; releaseDate: string | null; year: number | null; author: string | null; mediaId: string | null; }
+  export interface ArtworkOptions { compress?: number; format?: 'jpeg' | 'png' | 'webp'; saveUri?: string; }
   export const MetadataPresets: Record<string, string[]>;
+  export const SaveFormat: { JPEG: 'jpeg'; PNG: 'png'; WEBP: 'webp' };
   export function getMetadata(uri: string, preset: string[]): Promise<MediaMetadata>;
   export function getArtwork(uri: string): Promise<string | null>;
+  export function saveArtwork(uri: string, options?: ArtworkOptions): Promise<string | null>;
   export function getBulkMetadata(uris: string[], preset: string[]): Promise<any>;
   export function updateConfigs(config: { maxImageSizeMB?: number }): void;
 }

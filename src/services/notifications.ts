@@ -86,32 +86,7 @@ export async function initializeNotifications(): Promise<void> {
 
   addListener('playbackNotificationStop', () => wrapHandler(() => { usePlayerStore.getState().stop(); }));
 
-  addListener('playbackNotificationFavorite', () => wrapHandler(() => {
-    const state = usePlayerStore.getState();
-    const track = state.currentTrack;
-    if (track) {
-      useFavoritesStore.getState().toggleSongFavorite(track);
-      preloadColorsForTrack(track.artwork);
-      showNowPlayingNotification(track, state.isPlaying);
-    }
-  }));
-
-  addListener('playbackNotificationClose', () => wrapHandler(() => {
-    const state = usePlayerStore.getState();
-    if (state.currentTrack) {
-      try {
-        useQueuePersistStore.getState().saveQueue(
-          state.currentTrack, state.queue, state.queueIndex,
-          state.shuffle, state.repeat, state.position,
-          false,
-        );
-      } catch {}
-    }
-    state.pause();
-    dismissNowPlayingNotification();
-  }));
-
-  addListener('playbackNotificationDismiss', () => wrapHandler(() => {
+  addListener('playbackNotificationDismissed', () => wrapHandler(() => {
     const state = usePlayerStore.getState();
     state.pause();
     try {
@@ -338,8 +313,6 @@ export async function showNowPlayingNotification(
       PlaybackNotificationManager.enableControl('skipBackward', true),
       PlaybackNotificationManager.enableControl('skipForward', true),
       PlaybackNotificationManager.enableControl('stop', true),
-      (PlaybackNotificationManager.enableControl as (name: string, enabled: boolean) => Promise<void>)('favorite', true),
-      (PlaybackNotificationManager.enableControl as (name: string, enabled: boolean) => Promise<void>)('close', true),
     ]);
   } catch (e) {
     reportWarning('Notifications', e);

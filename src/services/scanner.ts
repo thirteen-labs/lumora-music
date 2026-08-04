@@ -2,6 +2,16 @@ import { Platform } from 'react-native';
 import type { Song, Album as LumoraAlbum, Artist, Genre, MediaScanStatus } from '@/types/media';
 import { storage } from '@/services/mmkv';
 import { reportWarning } from '@/utils/error-handler';
+import {
+  saveSongArtworkFile,
+  getCachedAlbumArtwork,
+  setCachedAlbumArtwork,
+} from '@/services/artwork-cache';
+import {
+  parseFilenameMetadata,
+  cleanString,
+  parseAlbumFromPath,
+} from '@/utils/filename-metadata';
 
 const CACHED_SONGS_KEY = 'lumora-cached-songs';
 const CACHED_ALBUMS_KEY = 'lumora-cached-albums';
@@ -10,7 +20,7 @@ const CACHED_GENRES_KEY = 'lumora-cached-genres';
 const CACHED_VERSION_KEY = 'lumora-cache-version';
 const SCANNER_LAST_SCAN_KEY = 'lumora-scanner-last-scan';
 
-const CACHE_VERSION = 2;
+const CACHE_VERSION = 3;
 
 const MEDIA_FETCH_TIMEOUT = 30000;
 const SCAN_MAX_RETRIES = 2;
@@ -264,6 +274,33 @@ function loadCachedDataFromStorage(): void {
   cachedGenres = tryParse(CACHED_GENRES_KEY, cachedGenres);
 }
 
+function getCacheVersion(): number {
+  try {
+    return storage.getNumber(CACHED_VERSION_KEY) ?? 0;
+  } catch {
+    return 0;
+  }
+}
+
+function clearCachedData(): void {
+  _metadataCache = {};
+  cachedSongs = [];
+  cachedAlbums = [];
+  cachedArtists = [];
+  cachedGenres = [];
+  for (const key of [
+    CACHED_SONGS_KEY,
+    CACHED_ALBUMS_KEY,
+    CACHED_ARTISTS_KEY,
+    CACHED_GENRES_KEY,
+    METADATA_CACHE_KEY,
+  ]) {
+    try {
+      storage.remove(key);
+    } catch {}
+  }
+}
+
 function saveCachedDataToStorage(): void {
   try {
     storage.set(CACHED_SONGS_KEY, JSON.stringify(cachedSongs));
@@ -279,6 +316,10 @@ function saveCachedDataToStorage(): void {
 function ensureCacheLoaded(): void {
   if (!_cacheLoaded) {
     _cacheLoaded = true;
+    if (getCacheVersion() !== CACHE_VERSION) {
+      clearCachedData();
+      return;
+    }
     loadMetadataCache();
     loadCachedDataFromStorage();
   }
@@ -439,19 +480,16 @@ async function parseAudioMetadata(uri: string): Promise<{
       'genre',
       'bitrate',
       'sampleRate',
-      'artworkData',
     ];
-    const [meta, artwork] = await Promise.all([
-      MetadataRetriever.getMetadata(uri, fields),
-      MetadataRetriever.getArtwork(uri),
-    ]);
+    const meta = await MetadataRetriever.getMetadata(uri, fields);
+    const artwork = await saveSongArtworkFile(uri);
 
     const result = {
       title: meta.title ?? null,
       artist: meta.artist ?? null,
       album: meta.albumTitle ?? null,
       genre: meta.genre ?? null,
-      artwork: artwork ?? meta.artworkData ?? null,
+      artwork,
       bitrate: meta.bitrate ?? null,
       sampleRate: meta.sampleRate ?? null,
     };
@@ -473,18 +511,27 @@ function processMediaStoreItem(item: any): Song | null {
       fileSize = estimateFileSizeFromBitrate(item.bitrate ?? null, item.sampleRate ?? null, item.duration ?? 0);
     }
 
+    const filenameMeta = parseFilenameMetadata(item.displayName ?? item.title ?? '');
+    const title = cleanString(item.title) ?? filenameMeta.title;
+    const artist = cleanString(item.artist) ?? filenameMeta.artist ?? 'Unknown Artist';
+    const album =
+      cleanString(item.album) ??
+      parseAlbumFromPath(item.relativePath) ??
+      filenameMeta.album ??
+      'Unknown Album';
+
     return {
       id: item.id ?? uri,
       uri,
-      title: item.title ?? 'Unknown',
-      artist: item.artist ?? 'Unknown Artist',
-      album: item.album ?? 'Unknown Album',
+      title,
+      artist,
+      album,
       albumId: item.albumId ?? item.id ?? uri,
       duration: item.duration ?? 0,
       fileSize,
       dateAdded: item.dateAdded ?? 0,
       artwork: item.artworkUri ?? null,
-      genre: item.genre ?? null,
+      genre: cleanString(item.genre) ?? null,
       bitrate: item.bitrate ?? null,
       sampleRate: item.sampleRate ?? null,
     };
@@ -509,18 +556,23 @@ async function processAsset(asset: any): Promise<Song | null> {
       fileSize = estimateFileSizeFromBitrate(meta.bitrate, meta.sampleRate, asset.duration ?? 0);
     }
 
+    const filenameMeta = parseFilenameMetadata(asset.filename ?? meta.title ?? '');
+    const title = cleanString(meta.title) ?? filenameMeta.title;
+    const artist = cleanString(meta.artist) ?? filenameMeta.artist ?? 'Unknown Artist';
+    const album = cleanString(meta.album) ?? filenameMeta.album ?? 'Unknown Album';
+
     return {
       id: asset.id,
       uri,
-      title: meta.title ?? asset.filename?.replace(/\.[^/.]+$/, '') ?? 'Unknown',
-      artist: meta.artist ?? 'Unknown Artist',
-      album: meta.album ?? 'Unknown Album',
+      title,
+      artist,
+      album,
       albumId: asset.albumId ?? asset.id,
       duration: asset.duration ?? 0,
       fileSize,
       dateAdded: asset.creationTime ?? 0,
       artwork: meta.artwork,
-      genre: meta.genre,
+      genre: cleanString(meta.genre) ?? null,
       bitrate: meta.bitrate,
       sampleRate: meta.sampleRate,
     };
@@ -685,6 +737,38 @@ async function fetchSongs(
   return isAndroid ? fetchSongsAndroid(onProgress) : fetchSongsViaMediaLibrary(onProgress);
 }
 
+/**
+ * Assigns MediaStore album artwork (content URIs) to songs that lack artwork.
+ * Results are cached by album id so the MediaStore is not re-queried on every scan.
+ */
+async function enrichAlbumArtwork(songs: Song[]): Promise<void> {
+  if (!MediaStore || typeof MediaStore.getAlbumArtwork !== 'function') return;
+
+  const albumIds = [...new Set(songs.map((s) => s.albumId).filter(Boolean))];
+  await Promise.all(
+    albumIds.map(async (albumId) => {
+      try {
+        let artwork = getCachedAlbumArtwork(albumId);
+        if (!artwork) {
+          const fetched = await MediaStore.getAlbumArtwork(albumId);
+          if (fetched && typeof fetched === 'string' && fetched.length > 0) {
+            artwork = fetched;
+            setCachedAlbumArtwork(albumId, fetched);
+          }
+        }
+        if (!artwork) return;
+        for (const song of songs) {
+          if (song.albumId === albumId && !song.artwork) {
+            song.artwork = artwork;
+          }
+        }
+      } catch (error) {
+        console.warn('[Scanner] getAlbumArtwork failed for album:', albumId, error);
+      }
+    }),
+  );
+}
+
 export async function scanMediaLibrary(
   onStatusChange?: (status: MediaScanStatus) => void,
   onProgress?: (processed: number, total: number) => void,
@@ -741,6 +825,10 @@ export async function scanMediaLibrary(
       } else {
         song.dateAdded = Date.now();
       }
+    }
+
+    if (isAndroid) {
+      await enrichAlbumArtwork(songs);
     }
 
     const albumMap = new Map<string, LumoraAlbum>();

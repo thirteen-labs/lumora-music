@@ -34,6 +34,10 @@ import {
   showScanCompleteNotification,
 } from "@/services/notifications";
 import { useToastStore } from "@/store/toast-store";
+import {
+  enrichMissingArtwork,
+  pruneArtworkCache,
+} from "@/services/artwork-cache";
 
 const LAST_SCAN_TIME_KEY = "lumora-last-scan-time";
 const SORT_FIELD_KEY = "lumora-sort-field";
@@ -181,6 +185,25 @@ export const useMusicStore = create<MusicState>()(
           state.removedSongsCount = removedUris.length;
           state.scanProgress = null;
         });
+
+        if (result.songs.length > 0) {
+          enrichMissingArtwork(result.songs)
+            .then((updates) => {
+              const keys = Object.keys(updates);
+              if (keys.length > 0) {
+                set((state) => {
+                  for (const song of state.songs) {
+                    const path = updates[song.uri];
+                    if (path) song.artwork = path;
+                  }
+                });
+              }
+              pruneArtworkCache(new Set(result.songs.map((s) => s.uri)));
+            })
+            .catch((error) => {
+              console.warn('[MusicStore] Artwork enrichment failed:', error);
+            });
+        }
       } catch {
         set((state) => {
           state.scanStatus = "error";
