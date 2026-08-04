@@ -21,6 +21,31 @@ const META_CACHE_SAVE_DEBOUNCE_MS = 5000;
 const PERMISSION_POLL_TIMEOUT = 15000;
 const PERMISSION_POLL_INTERVAL = 500;
 
+export type ScanErrorCode =
+  | 'MODULES_FAILED'
+  | 'PERMISSION_DENIED'
+  | 'SCAN_FAILED';
+
+export interface ScanDiagnostics {
+  android: boolean;
+  mediaStore: boolean;
+  mediaLibrary: boolean;
+  metadataRetriever: boolean;
+  fileSystem: boolean;
+}
+
+export interface ScanResult {
+  songs: Song[];
+  albums: LumoraAlbum[];
+  artists: Artist[];
+  genres: Genre[];
+  error?: {
+    code: ScanErrorCode;
+    message: string;
+  };
+  diagnostics?: ScanDiagnostics;
+}
+
 interface AssetsResult {
   assets: any[];
   hasNextPage: boolean;
@@ -65,6 +90,8 @@ let MetadataRetriever: any = null;
 let FileSystemLegacy: any = null;
 
 async function loadModules(): Promise<boolean> {
+  let hasMediaLibrary = false;
+
   if (isAndroid) {
     try {
       const ms = await import('@obsidian_north/react-native-mediastore');
@@ -78,14 +105,29 @@ async function loadModules(): Promise<boolean> {
     } catch (e) {
       reportWarning('Scanner', e, 'Failed to load expo-file-system/legacy');
     }
-    if (!MediaStore) {
-      reportWarning('Scanner', null, 'MediaStore module is required but failed to load');
+    try {
+      const ml = await import('expo-media-library/legacy');
+      MediaLibrary = ml;
+      hasMediaLibrary = true;
+    } catch (e) {
+      reportWarning('Scanner', e, 'Failed to load expo-media-library/legacy (android)');
+      try {
+        const ml2 = await import('expo-media-library');
+        if (typeof ml2.getAssetsAsync === 'function') {
+          MediaLibrary = ml2;
+          hasMediaLibrary = true;
+        }
+      } catch (e2) {
+        reportWarning('Scanner', e2, 'Failed to load expo-media-library (android)');
+      }
+    }
+    if (!MediaStore && !hasMediaLibrary) {
+      reportWarning('Scanner', null, 'No media module available on Android (mediastore + media-library both failed)');
       return false;
     }
     return true;
   }
 
-  let hasMediaLibrary = false;
   try {
     const ml = await import('expo-media-library/legacy');
     MediaLibrary = ml;
@@ -242,6 +284,21 @@ function ensureCacheLoaded(): void {
   }
 }
 
+function getDiagnostics(): ScanDiagnostics {
+  return {
+    android: isAndroid,
+    mediaStore: !!MediaStore,
+    mediaLibrary: !!MediaLibrary,
+    metadataRetriever: !!MetadataRetriever,
+    fileSystem: !!FileSystemLegacy,
+  };
+}
+
+export async function diagnoseMediaModule(): Promise<ScanDiagnostics> {
+  await ensureModulesLoaded();
+  return getDiagnostics();
+}
+
 export function getCachedSongs(): Song[] { ensureCacheLoaded(); return cachedSongs; }
 export function getCachedAlbums(): LumoraAlbum[] { ensureCacheLoaded(); return cachedAlbums; }
 export function getCachedArtists(): Artist[] { ensureCacheLoaded(); return cachedArtists; }
@@ -253,29 +310,44 @@ export async function requestPermissions(force = false): Promise<boolean> {
 
   try {
     if (isAndroid) {
-      if (!MediaStore) return false;
+      if (MediaStore) {
+        try {
+          const status = await MediaStore.requestPermissions();
+          const granted = status?.audio ?? status?.granted ?? false;
+          if (granted) {
+            permissionCache = true;
+            return true;
+          }
 
-      const status = await MediaStore.requestPermissions();
-      const granted = status?.granted ?? status?.audio ?? false;
-      if (granted) {
-        permissionCache = true;
-        return true;
-      }
+          const deadline = Date.now() + PERMISSION_POLL_TIMEOUT;
+          while (Date.now() < deadline) {
+            await new Promise((r) => setTimeout(r, PERMISSION_POLL_INTERVAL));
+            const check = await MediaStore.checkPermissions();
+            const polled = check?.audio ?? check?.granted ?? false;
+            if (polled) {
+              permissionCache = true;
+              return true;
+            }
+          }
 
-      // The native requestPermissions resolves shortly after the dialog is shown
-      // (500ms), before the user usually answers. Poll until granted or timeout.
-      const deadline = Date.now() + PERMISSION_POLL_TIMEOUT;
-      while (Date.now() < deadline) {
-        await new Promise((r) => setTimeout(r, PERMISSION_POLL_INTERVAL));
-        const check = await MediaStore.checkPermissions();
-        const polled = check?.granted ?? check?.audio ?? false;
-        if (polled) {
-          permissionCache = true;
-          return true;
+          console.warn('[Scanner] Media permission not granted within timeout');
+        } catch (error) {
+          console.error('[Scanner] MediaStore permission request failed:', error);
         }
       }
 
-      console.warn('[Scanner] Media permission not granted within timeout');
+      if (MediaLibrary && typeof MediaLibrary.requestPermissionsAsync === 'function') {
+        try {
+          const { status } = await MediaLibrary.requestPermissionsAsync();
+          if (status === 'granted' || status === 'limited') {
+            permissionCache = true;
+            return true;
+          }
+        } catch (error) {
+          console.error('[Scanner] MediaLibrary permission request failed:', error);
+        }
+      }
+
       return false;
     }
 
@@ -486,47 +558,7 @@ async function processBatch(assets: any[], concurrency = 10): Promise<Song[]> {
   return results;
 }
 
-async function fetchSongsAndroid(
-  onProgress?: (batchCount: number) => void,
-): Promise<Song[]> {
-  if (!MediaStore) return [];
-
-  try {
-    if (typeof MediaStore.refresh === 'function') {
-      await MediaStore.refresh();
-    }
-
-    const songs: any[] = await fetchWithTimeout(
-      retryWithBackoff(() => MediaStore.getAudio({ field: 'dateAdded', order: 'desc' }, null, null), 'getAudio'),
-      MEDIA_FETCH_TIMEOUT,
-      'getAudio',
-    );
-
-    console.log(`[Scanner] MediaStore.getAudio returned ${songs.length} items`);
-
-    const results: Song[] = [];
-    for (const item of songs) {
-      const song = processMediaStoreItem(item);
-      if (song) results.push(song);
-    }
-    console.log(`[Scanner] Processed ${results.length} songs from ${songs.length} items`);
-    if (results.length === 0 && typeof MediaStore.getStatistics === 'function') {
-      try {
-        const stats = await MediaStore.getStatistics();
-        console.log(`[Scanner] getAudio returned 0 items. MediaStore stats: audio=${stats?.totalAudio}, video=${stats?.totalVideo}, totalSize=${stats?.totalSize}`);
-      } catch (statsError) {
-        console.warn('[Scanner] Failed to read MediaStore statistics:', statsError);
-      }
-    }
-    onProgress?.(results.length);
-    return results;
-  } catch (e) {
-    console.warn('[Scanner] fetchSongsAndroid failed:', e);
-    return [];
-  }
-}
-
-async function fetchSongsIos(
+async function fetchSongsViaMediaLibrary(
   onProgress?: (batchCount: number) => void,
 ): Promise<Song[]> {
   if (!MediaLibrary || typeof MediaLibrary.getAssetsAsync !== 'function') return [];
@@ -581,17 +613,83 @@ async function fetchSongsIos(
   return allSongs;
 }
 
+async function fetchSongsAndroid(
+  onProgress?: (batchCount: number) => void,
+): Promise<Song[]> {
+  if (!MediaStore && !MediaLibrary) return [];
+
+  let primaryError: unknown = null;
+
+  if (MediaStore) {
+    try {
+      if (typeof MediaStore.refresh === 'function') {
+        await MediaStore.refresh();
+      }
+
+      const songs: any[] = await fetchWithTimeout(
+        retryWithBackoff(() => MediaStore.getAudio({ field: 'dateAdded', order: 'desc' }, null, null), 'getAudio'),
+        MEDIA_FETCH_TIMEOUT,
+        'getAudio',
+      );
+
+      console.log(`[Scanner] MediaStore.getAudio returned ${songs.length} items`);
+
+      const results: Song[] = [];
+      for (const item of songs) {
+        const song = processMediaStoreItem(item);
+        if (song) results.push(song);
+      }
+      console.log(`[Scanner] Processed ${results.length} songs from ${songs.length} items`);
+      if (results.length > 0) {
+        onProgress?.(results.length);
+        return results;
+      }
+
+      if (typeof MediaStore.getStatistics === 'function') {
+        try {
+          const stats = await MediaStore.getStatistics();
+          console.log(`[Scanner] MediaStore returned 0 songs. stats: audio=${stats?.totalAudio}, video=${stats?.totalVideo}, images=${stats?.totalImages}, documents=${stats?.totalDocuments}, totalSize=${stats?.totalSize}`);
+        } catch (statsError) {
+          console.warn('[Scanner] Failed to read MediaStore statistics:', statsError);
+        }
+      }
+    } catch (e) {
+      console.warn('[Scanner] fetchSongsAndroid (mediastore) failed:', e);
+      primaryError = e;
+    }
+  } else {
+    console.warn('[Scanner] MediaStore module unavailable on Android');
+  }
+
+  if (MediaLibrary && typeof MediaLibrary.getAssetsAsync === 'function') {
+    try {
+      console.log('[Scanner] Falling back to expo-media-library on Android');
+      const fallbackSongs = await fetchSongsViaMediaLibrary(onProgress);
+      if (fallbackSongs.length > 0) {
+        console.log(`[Scanner] MediaLibrary fallback returned ${fallbackSongs.length} songs`);
+        return fallbackSongs;
+      }
+      console.warn('[Scanner] MediaLibrary fallback returned 0 songs');
+    } catch (fallbackError) {
+      console.warn('[Scanner] MediaLibrary fallback failed:', fallbackError);
+      if (primaryError) console.warn('[Scanner] Primary mediastore error was:', primaryError);
+    }
+  }
+
+  return [];
+}
+
 async function fetchSongs(
   onProgress?: (batchCount: number) => void,
 ): Promise<Song[]> {
-  return isAndroid ? fetchSongsAndroid(onProgress) : fetchSongsIos(onProgress);
+  return isAndroid ? fetchSongsAndroid(onProgress) : fetchSongsViaMediaLibrary(onProgress);
 }
 
 export async function scanMediaLibrary(
   onStatusChange?: (status: MediaScanStatus) => void,
   onProgress?: (processed: number, total: number) => void,
   force = false,
-): Promise<{ songs: Song[]; albums: LumoraAlbum[]; artists: Artist[]; genres: Genre[] }> {
+): Promise<ScanResult> {
   onStatusChange?.('scanning');
   onProgress?.(0, 1);
 
@@ -600,7 +698,14 @@ export async function scanMediaLibrary(
   if (!loaded) {
     console.warn('Media scanner modules failed to load');
     onStatusChange?.('error');
-    return { songs: [], albums: [], artists: [], genres: [] };
+    return {
+      songs: [],
+      albums: [],
+      artists: [],
+      genres: [],
+      error: { code: 'MODULES_FAILED', message: 'No media module could be loaded.' },
+      diagnostics: getDiagnostics(),
+    };
   }
 
   try {
@@ -608,7 +713,14 @@ export async function scanMediaLibrary(
     if (!hasPermission) {
       console.warn('[Scanner] Scan aborted: media permission not granted');
       onStatusChange?.('error');
-      return { songs: [], albums: [], artists: [], genres: [] };
+      return {
+        songs: [],
+        albums: [],
+        artists: [],
+        genres: [],
+        error: { code: 'PERMISSION_DENIED', message: 'Media permission not granted.' },
+        diagnostics: getDiagnostics(),
+      };
     }
 
     const songs: Song[] = [];
@@ -691,16 +803,20 @@ export async function scanMediaLibrary(
 
     onProgress?.(songs.length, songs.length);
     onStatusChange?.('complete');
-    return { songs, albums, artists, genres };
+    return { songs, albums, artists, genres, diagnostics: getDiagnostics() };
   } catch (error) {
     console.error('Media scan error:', error);
+    const errorInfo = {
+      code: 'SCAN_FAILED' as ScanErrorCode,
+      message: error instanceof Error ? error.message : String(error),
+    };
     if (cachedSongs.length > 0) {
       console.warn('[Scanner] Scan failed – returning cached data as fallback');
       onStatusChange?.('complete');
       onProgress?.(cachedSongs.length, cachedSongs.length);
-      return { songs: cachedSongs, albums: cachedAlbums, artists: cachedArtists, genres: cachedGenres };
+      return { songs: cachedSongs, albums: cachedAlbums, artists: cachedArtists, genres: cachedGenres, error: errorInfo, diagnostics: getDiagnostics() };
     }
     onStatusChange?.('error');
-    return { songs: [], albums: [], artists: [], genres: [] };
+    return { songs: [], albums: [], artists: [], genres: [], error: errorInfo, diagnostics: getDiagnostics() };
   }
 }

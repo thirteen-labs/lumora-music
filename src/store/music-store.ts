@@ -131,12 +131,14 @@ export const useMusicStore = create<MusicState>()(
         const knownUris = new Set(Object.keys(getKnownFiles()));
         const newSongs = findNewSongs(result.songs, knownUris);
         const removedUris = findRemovedFiles(result.songs.map((s) => s.uri));
-        updateKnownFiles(result.songs);
-        saveScanHistory({
-          lastFullScan: force ? Date.now() : getScanHistory().lastFullScan,
-          lastIncrementalScan: Date.now(),
-          fileCount: result.songs.length,
-        });
+        if (!result.error) {
+          updateKnownFiles(result.songs);
+          saveScanHistory({
+            lastFullScan: force ? Date.now() : getScanHistory().lastFullScan,
+            lastIncrementalScan: Date.now(),
+            fileCount: result.songs.length,
+          });
+        }
 
         const now = Date.now();
         try {
@@ -144,9 +146,17 @@ export const useMusicStore = create<MusicState>()(
         } catch {
           console.warn('[MusicStore] Failed to save last scan time');
         }
-        showScanCompleteNotification(result.songs.length);
+        if (!result.error) {
+          showScanCompleteNotification(result.songs.length);
+        }
 
-        if (newSongs.length > 0) {
+        if (result.error?.code === 'MODULES_FAILED') {
+          useToastStore.getState().showToast("Media scanner unavailable. Reinstall or rebuild the app.", "music");
+        } else if (result.error?.code === 'PERMISSION_DENIED') {
+          useToastStore.getState().showToast("Music permission required. Allow media access in Settings.", "music");
+        } else if (result.error?.code === 'SCAN_FAILED') {
+          useToastStore.getState().showToast("Scan failed. Please try again.", "music");
+        } else if (newSongs.length > 0) {
           useToastStore.getState().showToast(`Found ${newSongs.length} new song${newSongs.length !== 1 ? 's' : ''}`, "check");
         } else if (result.songs.length > 0) {
           useToastStore.getState().showToast(`Library has ${result.songs.length} songs`, "check");
@@ -154,12 +164,18 @@ export const useMusicStore = create<MusicState>()(
           useToastStore.getState().showToast("No songs found in library", "music");
         }
 
+        console.log('[MusicStore] Scan result:', {
+          error: result.error,
+          diagnostics: result.diagnostics,
+          songs: result.songs.length,
+        });
+
         set((state) => {
           state.songs = result.songs;
           state.albums = result.albums;
           state.artists = result.artists;
           state.genres = result.genres;
-          state.scanStatus = "complete";
+          state.scanStatus = result.error ? "error" : "complete";
           state.lastScanTime = now;
           state.newSongsCount = newSongs.length;
           state.removedSongsCount = removedUris.length;
