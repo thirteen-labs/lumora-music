@@ -221,12 +221,23 @@ export function useTrackPlayerSync() {
         wasPlayingRef.current &&
         !isNowPlaying &&
         duration > 0 &&
-        currentTime >= duration - 0.5
+        currentTime >= duration - Math.min(0.5, duration * 0.1)
       ) {
         if (!trackEndedRef.current) {
           trackEndedRef.current = true;
           handleTrackEndRef.current();
         }
+      }
+
+      /* Also detect track end while still playing (for edge cases where onEnded fires late) */
+      if (
+        isNowPlaying &&
+        duration > 0 &&
+        currentTime >= duration - 0.1 &&
+        !trackEndedRef.current
+      ) {
+        trackEndedRef.current = true;
+        handleTrackEndRef.current();
       }
 
       handleSleepTimer();

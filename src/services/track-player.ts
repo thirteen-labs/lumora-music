@@ -4,15 +4,19 @@ import { setAudioModeAsync } from "expo-audio";
 import {
   showNowPlayingNotification,
   dismissNowPlayingNotification,
+  updateNotificationPlaybackState,
 } from "@/services/notifications";
 import { reportWarning } from "@/utils/error-handler";
 import {
   useTelemetryStore,
 } from "@/store/telemetry-store";
+import { storage } from "@/services/mmkv";
 
 let crossfadeEnabled = false;
 let crossfadeDuration = 5;
-let currentVolume = 1;
+let currentVolume = (() => {
+  try { return storage.getNumber('lumora-volume') ?? 1; } catch { return 1; }
+})();
 let crossfadeInProgress = false;
 
 const playerAdapter = {
@@ -43,6 +47,7 @@ const playerAdapter = {
   set volume(v: number) {
     currentVolume = v;
     audioEngine.setVolume(v);
+    try { storage.set('lumora-volume', v); } catch {}
   },
   play() {
     audioEngine.play();
@@ -152,8 +157,7 @@ export async function loadTrack(track: Song): Promise<void> {
   audioEngine.setSpeed(speedState.speed);
   audioEngine.setPitchCorrection(speedState.pitchCorrection);
   audioEngine.play();
-  audioEngine.setVolume(1);
-  currentVolume = 1;
+  audioEngine.setVolume(currentVolume);
   setLockScreenMetadata(track);
 }
 

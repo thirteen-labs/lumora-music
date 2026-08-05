@@ -11,7 +11,6 @@ import {
   clearLockScreenControls,
 } from "@/services/track-player";
 import { useStatsStore } from "@/store/stats-store";
-import { useQueuePersistStore } from "@/store/queue-persist-store";
 import { preloadArtworkForTrack, preloadColorsForTrack } from "@/services/notifications";
 import { reportWarning } from "@/utils/error-handler";
 
@@ -72,23 +71,7 @@ interface PlayerState {
   syncFromPlayer: () => void;
 }
 
-let _saveTimer: ReturnType<typeof setTimeout> | null = null;
 let _shuffledPositionMap = new Map<number, number>();
-
-function debouncedSaveQueue() {
-  if (_saveTimer) clearTimeout(_saveTimer);
-  _saveTimer = setTimeout(() => {
-    _saveTimer = null;
-    try {
-      const state = usePlayerStore.getState();
-      useQueuePersistStore.getState().saveQueue(
-        state.currentTrack, state.queue, state.queueIndex,
-        state.shuffle, state.repeat, state.position,
-        state.isPlaying,
-      );
-    } catch (e) { reportWarning('PlayerStore', e, 'Failed to save queue'); }
-  }, 300);
-}
 
 let trackChangeChain: Promise<void> = Promise.resolve();
 
@@ -142,7 +125,6 @@ export const usePlayerStore = create<PlayerState>()(
       });
 
       try { useStatsStore.getState().recordPlay(track.id); } catch (e) { reportWarning('PlayerStore', e, 'Failed to record play'); }
-      debouncedSaveQueue();
 
       preloadArtworkForTrack(track);
       preloadColorsForTrack(track.artwork);
@@ -164,7 +146,6 @@ export const usePlayerStore = create<PlayerState>()(
     },
 
     pause: async () => {
-      debouncedSaveQueue();
       set((s) => {
         s.isPlaying = false;
       });
@@ -172,7 +153,6 @@ export const usePlayerStore = create<PlayerState>()(
     },
 
     stop: async () => {
-      debouncedSaveQueue();
       set((s) => {
         s.isPlaying = false;
         s.currentTrack = null;
@@ -210,8 +190,6 @@ export const usePlayerStore = create<PlayerState>()(
       if (currentTrack) {
         try { useStatsStore.getState().recordSkip(currentTrack.id); } catch (e) { reportWarning('PlayerStore', e, 'Failed to record skip'); }
       }
-
-      debouncedSaveQueue();
 
       let nextOriginalIndex: number;
 
@@ -268,15 +246,12 @@ export const usePlayerStore = create<PlayerState>()(
           reportWarning('PlayerStore', e, 'Failed to load next track');
           set((s) => { s.isPlaying = false; });
         }
-        debouncedSaveQueue();
       }
     },
 
     previous: async () => {
       const { queue, shuffle, shuffledOrder, position } = get();
       if (queue.length === 0) return;
-
-      debouncedSaveQueue();
 
       if (position > 3) {
         await serviceSeekTo(0);
@@ -322,7 +297,6 @@ export const usePlayerStore = create<PlayerState>()(
           reportWarning('PlayerStore', e, 'Failed to load previous track');
           set((s) => { s.isPlaying = false; });
         }
-        debouncedSaveQueue();
       }
     },
 
@@ -334,12 +308,8 @@ export const usePlayerStore = create<PlayerState>()(
     },
 
     setShuffle: (shuffle) => {
-      set((s) => {
-        s.shuffle = shuffle;
-      });
-
       const state = get();
-      if (!state.currentTrack || state.queue.length === 0) return;
+      if (shuffle === state.shuffle) return;
 
       if (shuffle) {
         if (state.queue.length === 0) return;
@@ -352,11 +322,13 @@ export const usePlayerStore = create<PlayerState>()(
           order[currentShuffledIdx] = tmp;
         }
         set((s) => {
+          s.shuffle = true;
           s.shuffledOrder = order;
           s.queueIndex = order[0] ?? 0;
         });
       } else {
         set((s) => {
+          s.shuffle = false;
           s.shuffledOrder = [];
         });
       }

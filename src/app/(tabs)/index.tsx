@@ -13,14 +13,15 @@ import { MiniPlayer } from '@/components/mini-player';
 import { SongContextMenu, useSongContextMenu } from '@/components/song-context-menu';
 import { SwipeableRow } from '@/components/swipeable-row';
 import { LyricsBadge } from '@/components/lyrics-badge';
-import { Music, Play, Sparkles, FileMusic } from 'lucide-react-native';
+import { Music, Play, Sparkles, FileMusic, Shuffle } from 'lucide-react-native';
 import { Artwork } from '@/components/artwork';
 import { formatDuration } from '@/utils/format';
 import { useRouter } from 'expo-router';
 import { useTranslation } from '@/hooks/use-translation';
 import { ScrollView } from 'react-native-gesture-handler';
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { s } from '@/styles';
+import type { Song } from '@/types/media';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 const CARD_W = (SCREEN_W - 40) / 2.2;
@@ -47,18 +48,12 @@ export default function HomeScreen() {
   const trackStats = useStatsStore((s) => s.trackStats);
   const lyricsMap = useLyricsStore((s) => s.lyricsMap);
 
-  useEffect(() => {
-    const init = async () => {
-      let allSongs = useMusicStore.getState().songs;
-      if (allSongs.length === 0) {
-        await scan();
-        allSongs = useMusicStore.getState().songs;
-      }
-      hydrateFavorites(allSongs);
-    };
-    init();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  const randomSong = useMemo(() => {
+    if (songs.length === 0) return null;
+    const key = songs.reduce((sum, s, idx) => sum + s.id.charCodeAt(0) * idx, 0);
+    const index = Math.abs(key) % songs.length;
+    return songs[index];
+  }, [songs]);
 
   const recentSongs = useMemo(() => [...songs].sort((a, b) => b.dateAdded - a.dateAdded).slice(0, 10), [songs]);
   const favSongs = useMemo(() => songs.filter((s) => favoriteSongIds.includes(s.id)).slice(0, 10), [songs, favoriteSongIds]);
@@ -178,11 +173,38 @@ export default function HomeScreen() {
                     </Text>
                   </Pressable>
                 </View>
-                <Text style={[s.textLg, s.fontBold, s.px5, s.mb3, { color: colors.text }]}>
-                  Pick Up Where You Left Off
-                </Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, gap: 12 }}>
-                  {recentlyPlayed.map((song) => (
+                 <Text style={[s.textLg, s.fontBold, s.px5, s.mb3, { color: colors.text }]}>
+                   Pick Up Where You Left Off
+                 </Text>
+                 {randomSong && (
+                   <Pressable
+                     onPress={() => usePlayerStore.getState().play(randomSong, songs)}
+                     onLongPress={() => present(randomSong)}
+                     style={[s.mb4, s.rounded3xl, s.overflowHidden, { marginHorizontal: 20, height: SCREEN_W * 0.85, backgroundColor: colors.surface }]}
+                   >
+                     <Artwork uri={randomSong.artwork} size={SCREEN_W * 0.85} borderRadius={24} iconSize={64} iconColor={colors.accent} backgroundColor="transparent" />
+                     <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: 20, paddingBottom: 16 }}>
+                       <View style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' }}>
+                         <View style={{ flex: 1, marginRight: 16 }}>
+                           <Text style={[s.textXs, s.fontSemibold, s.uppercase, { letterSpacing: 1, color: colors.accent, marginBottom: 6 }]}>
+                             <Shuffle size={10} color={colors.accent} /> For You
+                           </Text>
+                           <Text style={[s.textXl, s.fontBold, { color: '#fff' }]} numberOfLines={1}>
+                             {randomSong.title}
+                           </Text>
+                           <Text style={[s.textSm, s.mt1, { color: 'rgba(255,255,255,0.7)' }]} numberOfLines={1}>
+                             {randomSong.artist}
+                           </Text>
+                         </View>
+                         <View style={[s.w14, s.h14, s.roundedFull, s.itemsCenter, s.justifyCenter, { backgroundColor: colors.accent }]}>
+                           <Play size={24} color="#fff" fill="#fff" />
+                         </View>
+                       </View>
+                     </View>
+                   </Pressable>
+                 )}
+                 <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, gap: 12 }}>
+                   {recentlyPlayed.map((song) => (
                     <Pressable
                       key={song.id}
                       onPress={() => usePlayerStore.getState().play(song, recentlyPlayed)}

@@ -17,6 +17,7 @@ import { ArrowRight, Check, Sparkles } from 'lucide-react-native';
 import { useTheme } from '@/hooks/use-theme';
 import { useTranslation } from '@/hooks/use-translation';
 import { useOnboardingStore } from '@/store/onboarding-store';
+import { initializeNotifications } from '@/services/notifications';
 import type { TranslationKey } from '@/i18n/translations';
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
@@ -156,6 +157,8 @@ export default function OnboardingScreen() {
   const finish = () => {
     completeOnboarding();
     router.replace('/(tabs)');
+    /* Request notification permission after onboarding — non-blocking */
+    initializeNotifications().catch(() => {});
   };
 
   const goToNext = () => {

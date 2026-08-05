@@ -7,6 +7,7 @@ import { usePlayerStore } from '@/store/player-store';
 import { useMusicStore } from '@/store/music-store';
 import { useQueuePersistStore, reconstructQueue } from '@/store/queue-persist-store';
 import { initializeNotifications, dismissNowPlayingNotification } from '@/services/notifications';
+import { useOnboardingStore } from '@/store/onboarding-store';
 import { syncEqualizerToEngine } from '@/store/equalizer-store';
 import { syncReplayGainToEngine } from '@/store/replay-gain-store';
 import { useLoudnessEnhancerStore } from '@/store/loudness-enhancer-store';
@@ -162,18 +163,22 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         );
       }
 
-      postSetupPromises.push(
-        retryWithBackoff(initializeNotifications, 'initializeNotifications').catch((e) => {
-          reportWarning('PlayerProvider', e, 'Notification setup failed');
-        })
-      );
-
       await Promise.all(postSetupPromises);
 
       await restoreQueueWithTimeout();
 
       if (!cancelled && mountedRef.current) {
         setReady(true);
+      }
+
+      /* Initialize notifications after UI is visible — not blocking init.
+         Only if onboarding is already complete; otherwise onboarding screen handles it. */
+      if (Platform.OS !== 'web' && useOnboardingStore.getState().completed) {
+        try {
+          await initializeNotifications();
+        } catch (e) {
+          reportWarning('PlayerProvider', e, 'Notification setup failed');
+        }
       }
     }
 

@@ -48,7 +48,12 @@ export async function initializeNotifications(): Promise<void> {
 
   if (Platform.OS !== 'web') {
     try {
-      const { status } = await ExpoNotifications.requestPermissionsAsync();
+      const { status } = await Promise.race([
+        ExpoNotifications.requestPermissionsAsync(),
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error('Notification permission timeout')), 8000)
+        ),
+      ]);
       if (status !== 'granted') {
         console.warn('[Notifications] Notification permission not granted:', status);
       }
