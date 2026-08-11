@@ -40,20 +40,47 @@ function computeFFT(samples: Float32Array): Float32Array {
   const n = samples.length;
   const real = new Float64Array(n);
   const imag = new Float64Array(n);
+  
+  // Apply window and copy to real part
   for (let i = 0; i < n; i++) {
     real[i] = samples[i] * HANN[i];
   }
-  for (let k = 0; k < n / 2; k++) {
-    let sumReal = 0;
-    let sumImag = 0;
-    for (let t = 0; t < n; t++) {
-      const angle = (-2 * Math.PI * k * t) / n;
-      sumReal += real[t] * Math.cos(angle);
-      sumImag += real[t] * Math.sin(angle);
+  
+  // Bit-reversal permutation
+  let j = 0;
+  for (let i = 0; i < n; i++) {
+    if (i < j) {
+      let temp = real[i]; real[i] = real[j]; real[j] = temp;
+      temp = imag[i]; imag[i] = imag[j]; imag[j] = temp;
     }
-    real[k] = sumReal;
-    imag[k] = sumImag;
+    let m = n >> 1;
+    while (m >= 1 && j >= m) {
+      j -= m;
+      m >>= 1;
+    }
+    j += m;
   }
+  
+  // Cooley-Tukey FFT butterfly operations
+  for (let step = 2; step <= n; step <<= 1) {
+    const halfStep = step >> 1;
+    const angleStep = -2 * Math.PI / step;
+    for (let k = 0; k < n; k += step) {
+      for (let m = 0; m < halfStep; m++) {
+        const angle = angleStep * m;
+        const cosA = Math.cos(angle);
+        const sinA = Math.sin(angle);
+        const tReal = cosA * real[k + m + halfStep] - sinA * imag[k + m + halfStep];
+        const tImag = sinA * real[k + m + halfStep] + cosA * imag[k + m + halfStep];
+        real[k + m + halfStep] = real[k + m] - tReal;
+        imag[k + m + halfStep] = imag[k + m] - tImag;
+        real[k + m] += tReal;
+        imag[k + m] += tImag;
+      }
+    }
+  }
+  
+  // Compute magnitudes (only first n/2 bins)
   const mags = new Float32Array(n / 2);
   for (let i = 0; i < n / 2; i++) {
     mags[i] = Math.sqrt(real[i] * real[i] + imag[i] * imag[i]);
@@ -107,9 +134,7 @@ async function decodeAudioFile(uri: string): Promise<Float32Array | null> {
     if (!buffer) return null;
     const channelData = buffer.getChannelData(0);
     return channelData;
-  } catch {
-    return null;
-  }
+  } catch { /* decode failed */ return null; }
 }
 
 async function computeSongFingerprint(song: Song): Promise<Fingerprint | null> {
@@ -247,7 +272,7 @@ export async function recognizeAudio(
   } catch {
     try {
       await recorder.stop();
-    } catch {}
+    } catch { /* cleanup failed */ }
     return { song: null, confidence: 0, matches: [] };
   }
 }

@@ -4,7 +4,7 @@ import { s } from '@/styles';
 import { useTheme } from '@/hooks/use-theme';
 import { useMusicStore } from '@/store/music-store';
 import { useLyricsStore } from '@/store/lyrics-store';
-import { usePlayerStore } from '@/store/player-store';
+import { playerActions } from '@/player/actions';
 import { useRouter } from 'expo-router';
 import { ChevronLeft, Play, Mic2 } from 'lucide-react-native';
 import { LyricsBadge } from '@/components/lyrics-badge';
@@ -40,7 +40,7 @@ export default function WithLyricsScreen() {
               withLyrics.map((song, i) => (
                 <Pressable
                   key={song.id}
-                  onPress={() => usePlayerStore.getState().play(song, withLyrics)}
+                  onPress={() => playerActions.play(song, withLyrics)}
                   onLongPress={() => present(song)}
                   style={[s.flexRow, s.itemsCenter, s.gap3, s.p4]}
                 >

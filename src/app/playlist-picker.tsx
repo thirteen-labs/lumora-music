@@ -32,7 +32,7 @@ export default function PlaylistPickerScreen() {
     if (songId) router.back();
   };
 
-  const handleSelect = (playlist: any) => {
+  const handleSelect = (playlist: { id: string; name: string; songIds: string[] }) => {
     if (songId) {
       addSongToPlaylist(playlist.id, songId);
       showToast(`Added to ${playlist.name}`, 'list');
@@ -42,7 +42,7 @@ export default function PlaylistPickerScreen() {
     }
   };
 
-  const renderItem = ({ item }: { item: any }) => (
+  const renderItem = ({ item }: { item: { id: string; name: string; songIds: string[] } }) => (
     <Pressable
       onPress={() => handleSelect(item)}
       style={[s.flexRow, s.itemsCenter, s.p4, s.mb2, { backgroundColor: colors.surface, borderRadius: 16 }]}

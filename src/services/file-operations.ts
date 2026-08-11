@@ -13,8 +13,9 @@ async function deleteFile(uri: string): Promise<FileOperationResult> {
     const file = new File(uri);
     await file.delete();
     return { success: true };
-  } catch (e: any) {
-    return { success: false, error: e?.message ?? 'Failed to delete file' };
+  } catch (e: unknown) {
+    const message = e instanceof Error ? e.message : String(e);
+    return { success: false, error: message };
   }
 }
 
@@ -56,8 +57,9 @@ async function shareFile(uri: string): Promise<FileOperationResult> {
       dialogTitle: 'Share file',
     });
     return { success: true };
-  } catch (e: any) {
-    return { success: false, error: e?.message ?? 'Failed to share file' };
+  } catch (e: unknown) {
+    const message = e instanceof Error ? e.message : String(e);
+    return { success: false, error: message };
   }
 }
 
@@ -78,8 +80,9 @@ export async function shareFiles(uris: string[]): Promise<FileOperationResult> {
       dialogTitle: `Share ${uris.length} files`,
     });
     return { success: true };
-  } catch (e: any) {
-    return { success: false, error: e?.message ?? 'Failed to share files' };
+  } catch (e: unknown) {
+    const message = e instanceof Error ? e.message : String(e);
+    return { success: false, error: message };
   }
 }
 

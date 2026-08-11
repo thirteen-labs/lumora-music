@@ -1,5 +1,6 @@
 import { storage } from "@/services/mmkv";
 import type { Song } from "@/types/media";
+import { logger } from '@/utils/logger';
 
 const SCAN_HISTORY_KEY = "lumora-scan-history";
 const KNOWN_FILES_KEY = "lumora-known-files";
@@ -15,7 +16,7 @@ export function getScanHistory(): ScanHistory {
     const raw = storage.getString(SCAN_HISTORY_KEY);
     if (raw) return JSON.parse(raw);
   } catch (error) {
-    console.warn("[EnhancedScanner] Failed to parse scan history:", error);
+    logger.warn("[EnhancedScanner] Failed to parse scan history:", error);
   }
   return { lastFullScan: 0, lastIncrementalScan: 0, fileCount: 0 };
 }
@@ -24,7 +25,7 @@ export function saveScanHistory(history: ScanHistory): void {
   try {
     storage.set(SCAN_HISTORY_KEY, JSON.stringify(history));
   } catch (error) {
-    console.warn("[EnhancedScanner] Failed to save scan history:", error);
+    logger.warn("[EnhancedScanner] Failed to save scan history:", error);
   }
 }
 
@@ -33,7 +34,7 @@ export function getKnownFiles(): Record<string, number> {
     const raw = storage.getString(KNOWN_FILES_KEY);
     if (raw) return JSON.parse(raw);
   } catch (error) {
-    console.warn("[EnhancedScanner] Failed to parse known files:", error);
+    logger.warn("[EnhancedScanner] Failed to parse known files:", error);
   }
   return {};
 }
@@ -42,7 +43,7 @@ export function saveKnownFiles(files: Record<string, number>): void {
   try {
     storage.set(KNOWN_FILES_KEY, JSON.stringify(files));
   } catch (error) {
-    console.warn("[EnhancedScanner] Failed to save known files:", error);
+    logger.warn("[EnhancedScanner] Failed to save known files:", error);
   }
 }
 

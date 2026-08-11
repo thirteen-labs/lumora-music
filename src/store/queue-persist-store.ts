@@ -3,6 +3,7 @@ import { immer } from 'zustand/middleware/immer';
 import { storage, removeItem } from '@/services/mmkv';
 import { reportWarning } from '@/utils/error-handler';
 import type { Song } from '@/types/media';
+import { logger } from '@/utils/logger';
 
 const QUEUE_KEY = 'lumora-persisted-queue';
 const QUEUE_VERSION = 4;
@@ -24,6 +25,8 @@ interface PersistedQueue {
   queueItems: StubSong[];
   currentTrackStub: StubSong | null;
   queueIndex: number;
+  priorityQueueIds: string[];
+  priorityQueueItems: StubSong[];
   shuffle: boolean;
   repeat: string;
   position: number;
@@ -32,7 +35,7 @@ interface PersistedQueue {
 }
 
 interface QueuePersistState {
-  saveQueue: (track: Song | null, queue: Song[], queueIndex: number, shuffle: boolean, repeat: string, position: number, isPlaying?: boolean) => void;
+  saveQueue: (track: Song | null, queue: Song[], queueIndex: number, shuffle: boolean, repeat: string, position: number, isPlaying?: boolean, priorityQueue?: Song[]) => void;
   loadQueue: () => PersistedQueue | null;
   clearQueue: () => void;
 }
@@ -70,7 +73,7 @@ function validatePersistedQueue(data: unknown): data is PersistedQueue {
 
 export const useQueuePersistStore = create<QueuePersistState>()(
   immer(() => ({
-    saveQueue: (track, queue, queueIndex, shuffle, repeat, position, isPlaying = false) => {
+    saveQueue: (track, queue, queueIndex, shuffle, repeat, position, isPlaying = false, priorityQueue = []) => {
       try {
         const data: PersistedQueue = {
           version: QUEUE_VERSION,
@@ -79,6 +82,8 @@ export const useQueuePersistStore = create<QueuePersistState>()(
           queueItems: queue.map((s) => toStub(s)),
           currentTrackStub: track ? toStub(track) : null,
           queueIndex: Math.max(0, Math.min(queueIndex, queue.length - 1)),
+          priorityQueueIds: priorityQueue.map((s) => s.id),
+          priorityQueueItems: priorityQueue.map((s) => toStub(s)),
           shuffle,
           repeat,
           position: Math.max(0, position),
@@ -95,17 +100,17 @@ export const useQueuePersistStore = create<QueuePersistState>()(
         if (!raw) return null;
         const parsed = JSON.parse(raw);
         if (!validatePersistedQueue(parsed)) {
-          console.warn('[QueuePersist] Invalid persisted queue data, discarding');
+          logger.warn('[QueuePersist] Invalid persisted queue data, discarding');
           removeItem(QUEUE_KEY);
           return null;
         }
         if (typeof parsed.version === 'number' && parsed.version < QUEUE_VERSION) {
-          console.warn('[QueuePersist] Migrating queue from version', parsed.version);
+          logger.warn('[QueuePersist] Migrating queue from version', parsed.version);
           parsed.version = QUEUE_VERSION;
         }
         const MAX_STALE_MS = 24 * 60 * 60 * 1000;
         if (Date.now() - (parsed.savedAt ?? 0) > MAX_STALE_MS) {
-          console.warn('[QueuePersist] Queue data is stale (>24h), discarding');
+          logger.warn('[QueuePersist] Queue data is stale (>24h), discarding');
           removeItem(QUEUE_KEY);
           return null;
         }
@@ -120,7 +125,7 @@ export const useQueuePersistStore = create<QueuePersistState>()(
   })),
 );
 
-export function reconstructQueue(persisted: PersistedQueue, allSongs: Song[]): { track: Song | null; queue: Song[]; queueIndex: number } {
+export function reconstructQueue(persisted: PersistedQueue, allSongs: Song[]): { track: Song | null; queue: Song[]; queueIndex: number; priorityQueue: Song[] } {
   const songMap = new Map(allSongs.map((s) => [s.id, s]));
   const hasFullSongs = allSongs.length > 0;
 
@@ -144,11 +149,13 @@ export function reconstructQueue(persisted: PersistedQueue, allSongs: Song[]): {
     const queue = persisted.queueIds.map((id) => songMap.get(id)).filter(Boolean) as Song[];
     const track = persisted.currentTrackId ? songMap.get(persisted.currentTrackId) ?? null : null;
     const queueIndex = queue.length > 0 ? Math.min(persisted.queueIndex, queue.length - 1) : 0;
-    return { track, queue, queueIndex };
+    const priorityQueue = (persisted.priorityQueueIds || []).map((id) => songMap.get(id)).filter(Boolean) as Song[];
+    return { track, queue, queueIndex, priorityQueue };
   }
 
   const queue = persisted.queueItems.map((stub) => promote(stub));
   const track = persisted.currentTrackStub ? promote(persisted.currentTrackStub) : null;
   const queueIndex = queue.length > 0 ? Math.min(persisted.queueIndex, queue.length - 1) : 0;
-  return { track, queue, queueIndex };
+  const priorityQueue = (persisted.priorityQueueItems || []).map((stub) => promote(stub));
+  return { track, queue, queueIndex, priorityQueue };
 }

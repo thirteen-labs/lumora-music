@@ -1,6 +1,7 @@
 import * as AuthSession from "expo-auth-session";
 import * as WebBrowser from "expo-web-browser";
 import { storage } from "@/services/mmkv";
+import { logger } from "@/utils/logger";
 import type { CloudProvider, CloudFile, TokenSet } from "./types";
 
 WebBrowser.maybeCompleteAuthSession();
@@ -32,7 +33,7 @@ function saveToken(token: TokenSet | null): void {
     } else {
       storage.remove(TOKEN_KEY);
     }
-  } catch {}
+  } catch (e) { logger.warn('Failed to save Dropbox token:', e); }
 }
 
 function isTokenValid(token: TokenSet): boolean {
@@ -186,8 +187,8 @@ export function createDropboxProvider(appKey: string): CloudProvider {
 
         const data = await response.json();
         return (data.entries || [])
-          .filter((e: any) => e[".tag"] === "file" && e.name.startsWith("lumora-backup-"))
-          .map((e: any) => ({
+          .filter((e: { ".tag"?: string; name: string; id?: string; path_lower?: string; client_modified?: string; size?: number }) => e[".tag"] === "file" && e.name.startsWith("lumora-backup-"))
+          .map((e: { ".tag"?: string; name: string; id?: string; path_lower?: string; client_modified?: string; size?: number }) => ({
             id: e.id || e.path_lower,
             name: e.name,
             createdAt: e.client_modified ? new Date(e.client_modified).getTime() : 0,

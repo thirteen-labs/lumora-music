@@ -9,6 +9,8 @@ import {
   seekTo as serviceSeekTo,
   getPlayer,
   clearLockScreenControls,
+  preloadNextTrack,
+  isGaplessEnabled,
 } from "@/services/track-player";
 import { useStatsStore } from "@/store/stats-store";
 import { preloadArtworkForTrack, preloadColorsForTrack } from "@/services/notifications";
@@ -41,6 +43,7 @@ interface PlayerState {
   currentTrack: Song | null;
   queue: Song[];
   queueIndex: number;
+  priorityQueue: Song[];
   isPlaying: boolean;
   position: number;
   duration: number;
@@ -59,8 +62,12 @@ interface PlayerState {
   seekTo: (position: number) => Promise<void>;
   setShuffle: (shuffle: boolean) => void;
   setRepeat: (mode: RepeatMode) => void;
+  playNext: (track: Song) => void;
   addToQueue: (track: Song) => Promise<void>;
+  addToPriorityQueue: (track: Song) => void;
+  appendAutoplayTracks: (tracks: Song[]) => void;
   removeFromQueue: (index: number) => void;
+  clearPriorityQueue: () => void;
   reorderQueue: (fromIndex: number, toIndex: number) => void;
   showMiniPlayer: () => void;
   hideMiniPlayer: () => void;
@@ -102,6 +109,7 @@ export const usePlayerStore = create<PlayerState>()(
     currentTrack: null,
     queue: [],
     queueIndex: 0,
+    priorityQueue: [],
     isPlaying: false,
     position: 0,
     duration: 0,
@@ -143,6 +151,14 @@ export const usePlayerStore = create<PlayerState>()(
         reportWarning('PlayerStore', e, 'Failed to load track');
         set((s) => { s.isPlaying = false; });
       }
+
+      if (isGaplessEnabled()) {
+        const stateNow = get();
+        const nextIdx = stateNow.queueIndex + 1;
+        if (nextIdx < stateNow.queue.length) {
+          preloadNextTrack(stateNow.queue[nextIdx]);
+        }
+      }
     },
 
     pause: async () => {
@@ -183,7 +199,40 @@ export const usePlayerStore = create<PlayerState>()(
     },
 
     next: async () => {
-      const { queue, shuffle, shuffledOrder, repeat } = get();
+      const { queue, priorityQueue, shuffle, shuffledOrder, repeat } = get();
+
+      if (priorityQueue.length > 0) {
+        const priorityTrack = priorityQueue[0];
+        set((s) => {
+          s.priorityQueue = s.priorityQueue.slice(1);
+        });
+        const mainIdx = queue.findIndex((t) => t.id === priorityTrack.id);
+        if (mainIdx >= 0) {
+          set((s) => {
+            s.queueIndex = mainIdx;
+            s.currentTrack = priorityTrack;
+            s.position = 0;
+            s.duration = 0;
+            s.isPlaying = true;
+          });
+          preloadArtworkForTrack(priorityTrack);
+          preloadColorsForTrack(priorityTrack.artwork);
+        try {
+          await guardedLoadTrack(priorityTrack);
+        } catch (e) {
+          reportWarning('PlayerStore', e, 'Failed to load priority track');
+          set((s) => { s.isPlaying = false; });
+        }
+
+        if (isGaplessEnabled()) {
+          const st = get();
+          const nxt = st.queueIndex + 1;
+          if (nxt < st.queue.length) preloadNextTrack(st.queue[nxt]);
+        }
+        }
+        return;
+      }
+
       if (queue.length === 0) return;
 
       const currentTrack = get().currentTrack;
@@ -246,6 +295,12 @@ export const usePlayerStore = create<PlayerState>()(
           reportWarning('PlayerStore', e, 'Failed to load next track');
           set((s) => { s.isPlaying = false; });
         }
+
+        if (isGaplessEnabled()) {
+          const st = get();
+          const nxt = st.queueIndex + 1;
+          if (nxt < st.queue.length) preloadNextTrack(st.queue[nxt]);
+        }
       }
     },
 
@@ -297,6 +352,12 @@ export const usePlayerStore = create<PlayerState>()(
           reportWarning('PlayerStore', e, 'Failed to load previous track');
           set((s) => { s.isPlaying = false; });
         }
+
+        if (isGaplessEnabled()) {
+          const st = get();
+          const nxt = st.queueIndex + 1;
+          if (nxt < st.queue.length) preloadNextTrack(st.queue[nxt]);
+        }
       }
     },
 
@@ -340,9 +401,50 @@ export const usePlayerStore = create<PlayerState>()(
       });
     },
 
+    playNext: (track) => {
+      const state = get();
+      if (!state.currentTrack) {
+        get().play(track);
+        return;
+      }
+      get().addToPriorityQueue(track);
+    },
+
     addToQueue: async (track) => {
       set((s) => {
         s.queue.push(track);
+      });
+    },
+
+    addToPriorityQueue: (track) => {
+      set((s) => {
+        if (!s.priorityQueue.find((t) => t.id === track.id)) {
+          s.priorityQueue.push(track);
+        }
+      });
+    },
+
+    clearPriorityQueue: () => {
+      set((s) => {
+        s.priorityQueue = [];
+      });
+    },
+
+    appendAutoplayTracks: (tracks) => {
+      set((s) => {
+        const existing = new Set(s.queue.map((t) => t.id));
+        const fresh = tracks.filter((t) => !existing.has(t.id));
+        if (fresh.length === 0) return;
+        const base = s.queue.length;
+        s.queue.push(...fresh);
+        if (s.shuffle && s.shuffledOrder.length > 0) {
+          const tail = fresh.map((_, i) => base + i);
+          for (let i = tail.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [tail[i], tail[j]] = [tail[j], tail[i]];
+          }
+          s.shuffledOrder.push(...tail);
+        }
       });
     },
 

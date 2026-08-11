@@ -3,7 +3,8 @@ import { View, Text, Pressable, ScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@/hooks/use-theme';
 import { useMusicStore } from '@/store/music-store';
-import { usePlayerStore, generateRandomQueue } from '@/store/player-store';
+import { generateRandomQueue } from '@/store/player-store';
+import { playerActions } from '@/player/actions';
 import { useToastStore } from '@/store/toast-store';
 import { useRouter } from 'expo-router';
 import { recognizeAudio, type RecognitionResult } from '@/services/audio-recognition';
@@ -46,7 +47,7 @@ export default function AudioRecognitionScreen() {
   const handlePlay = useCallback((songId: string) => {
     const song = songs.find((s) => s.id === songId);
     if (song) {
-      usePlayerStore.getState().play(song, generateRandomQueue(song, songs));
+      playerActions.play(song, generateRandomQueue(song, songs));
       router.back();
     }
   }, [songs, router]);

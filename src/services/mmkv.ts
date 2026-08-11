@@ -1,5 +1,6 @@
 import { createMMKV } from 'react-native-mmkv';
 import { reportWarning } from '@/utils/error-handler';
+import { logger } from '@/utils/logger';
 
 export const storage = createMMKV({ id: 'lumora-storage' });
 
@@ -19,7 +20,7 @@ function getStorageVersion(): number {
 function setStorageVersion(): void {
   try {
     storage.set(VERSION_KEY, CURRENT_VERSION);
-  } catch {}
+  } catch (e) { logger.warn('Failed to set storage version:', e); }
 }
 
 export function checkStorageIntegrity(): boolean {
@@ -30,7 +31,7 @@ export function checkStorageIntegrity(): boolean {
       return true;
     }
     if (version > CURRENT_VERSION) {
-      console.warn('[MMKV] Storage was written by a newer version of the app');
+      logger.warn('[MMKV] Storage was written by a newer version of the app');
       return true;
     }
     return true;
@@ -54,9 +55,9 @@ export function getCachedJSON<T>(key: string, fallback: T): T {
     if (raw) {
       const parsed = tryParseJSON<T>(raw);
       if (parsed !== null) return parsed;
-      console.warn(`[MMKV] Corrupt data detected for key: ${key}, using fallback`);
+      logger.warn(`[MMKV] Corrupt data detected for key: ${key}, using fallback`);
     }
-  } catch {}
+  } catch (e) { logger.warn('Failed to read cached JSON:', e); }
   return fallback;
 }
 
@@ -111,7 +112,7 @@ function trimBackups(): void {
     for (let i = 0; i < sorted.length - MAX_BACKUPS; i++) {
       storage.remove(sorted[i]);
     }
-  } catch {}
+  } catch (e) { logger.warn('Failed to trim backups:', e); }
 }
 
 export function restoreFromBackup(label: string): boolean {

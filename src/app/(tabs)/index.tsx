@@ -2,6 +2,7 @@ import { View, Text, Pressable, Dimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@/hooks/use-theme';
 import { usePlayerStore } from '@/store/player-store';
+import { playerActions } from '@/player/actions';
 import { useFavoritesStore } from '@/store/favorites-store';
 import { useMusicStore } from '@/store/music-store';
 import { useStatsStore } from '@/store/stats-store';
@@ -21,16 +22,15 @@ import { useTranslation } from '@/hooks/use-translation';
 import { ScrollView } from 'react-native-gesture-handler';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { s } from '@/styles';
-import type { Song } from '@/types/media';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 const CARD_W = (SCREEN_W - 40) / 2.2;
 
-function getGreeting(): string {
+function getGreeting(t: (key: string) => string): string {
   const hour = new Date().getHours();
-  if (hour < 12) return 'Good Morning';
-  if (hour < 17) return 'Good Afternoon';
-  return 'Good Evening';
+  if (hour < 12) return t('home.greeting.morning');
+  if (hour < 17) return t('home.greeting.afternoon');
+  return t('home.greeting.evening');
 }
 
 export default function HomeScreen() {
@@ -40,7 +40,6 @@ export default function HomeScreen() {
   const songs = useMusicStore((s) => s.songs);
   const scan = useMusicStore((s) => s.scan);
   const favoriteSongIds = useFavoritesStore((s) => s.favoriteSongIds);
-  const hydrateFavorites = useFavoritesStore((s) => s.hydrateFavorites);
   const currentTrack = usePlayerStore((s) => s.currentTrack);
   const playlists = usePlaylistStore((s) => s.playlists);
   const router = useRouter();
@@ -48,12 +47,24 @@ export default function HomeScreen() {
   const trackStats = useStatsStore((s) => s.trackStats);
   const lyricsMap = useLyricsStore((s) => s.lyricsMap);
 
+  const initialScanDone = useRef(false);
+  const randomSongIndexSet = useRef(false);
+  const [randomSongIndex, setRandomSongIndex] = useState<number | null>(null);
+  useEffect(() => {
+    if (songs.length === 0 && !initialScanDone.current) {
+      initialScanDone.current = true;
+      scan();
+    }
+    if (songs.length > 0 && !randomSongIndexSet.current) {
+      randomSongIndexSet.current = true;
+      setRandomSongIndex(Math.floor(Math.random() * songs.length));
+    }
+  }, [songs.length, scan]);
+
   const randomSong = useMemo(() => {
-    if (songs.length === 0) return null;
-    const key = songs.reduce((sum, s, idx) => sum + s.id.charCodeAt(0) * idx, 0);
-    const index = Math.abs(key) % songs.length;
-    return songs[index];
-  }, [songs]);
+    if (songs.length === 0 || randomSongIndex === null) return null;
+    return songs[randomSongIndex];
+  }, [songs, randomSongIndex]);
 
   const recentSongs = useMemo(() => [...songs].sort((a, b) => b.dateAdded - a.dateAdded).slice(0, 10), [songs]);
   const favSongs = useMemo(() => songs.filter((s) => favoriteSongIds.includes(s.id)).slice(0, 10), [songs, favoriteSongIds]);
@@ -91,7 +102,7 @@ export default function HomeScreen() {
               </View>
               <View style={[s.flex1]}>
                 <Text style={[s.text3xl, s.fontBold, { color: colors.text }]}>
-                  {getGreeting()}
+                  {getGreeting(t)}
                 </Text>
                 <Text style={[s.textSm, s.mt1, { color: colors.textMuted }]}>
                   {t('home.songs.favorites', { songs: songs.length, favorites: favoriteSongIds.length })}
@@ -104,11 +115,11 @@ export default function HomeScreen() {
               <View style={[s.mb8]}>
                 <View style={[s.flexRow, s.itemsCenter, s.justifyBetween, s.px5, s.mb3]}>
                    <Text style={[s.textXs, s.fontBold, s.uppercase, { letterSpacing: 1, color: colors.textMuted }]}>
-                    Your Playlists
-                  </Text>
+                     {t('home.your.playlists')}
+                   </Text>
                   <Pressable onPress={() => router.push('/playlist-picker')}>
                     <Text style={[s.textXs, s.fontSemibold, { color: colors.accent }]}>
-                      View All
+                      {t('home.view.all')}
                     </Text>
                   </Pressable>
                 </View>
@@ -169,16 +180,16 @@ export default function HomeScreen() {
                   </Text>
                   <Pressable onPress={() => router.push('/(tabs)/music')}>
                     <Text style={[s.textXs, s.fontSemibold, { color: colors.accent }]}>
-                      See All
+                      {t('home.see.all')}
                     </Text>
                   </Pressable>
                 </View>
                  <Text style={[s.textLg, s.fontBold, s.px5, s.mb3, { color: colors.text }]}>
-                   Pick Up Where You Left Off
-                 </Text>
+                   {t('home.pick.up')}
+                  </Text>
                  {randomSong && (
                    <Pressable
-                     onPress={() => usePlayerStore.getState().play(randomSong, songs)}
+                     onPress={() => playerActions.play(randomSong, songs)}
                      onLongPress={() => present(randomSong)}
                      style={[s.mb4, s.rounded3xl, s.overflowHidden, { marginHorizontal: 20, height: SCREEN_W * 0.85, backgroundColor: colors.surface }]}
                    >
@@ -186,9 +197,9 @@ export default function HomeScreen() {
                      <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: 20, paddingBottom: 16 }}>
                        <View style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' }}>
                          <View style={{ flex: 1, marginRight: 16 }}>
-                           <Text style={[s.textXs, s.fontSemibold, s.uppercase, { letterSpacing: 1, color: colors.accent, marginBottom: 6 }]}>
-                             <Shuffle size={10} color={colors.accent} /> For You
-                           </Text>
+                            <Text style={[s.textXs, s.fontSemibold, s.uppercase, { letterSpacing: 1, color: colors.accent, marginBottom: 6 }]}>
+                              <Shuffle size={10} color={colors.accent} /> {t('home.for.you')}
+                            </Text>
                            <Text style={[s.textXl, s.fontBold, { color: '#fff' }]} numberOfLines={1}>
                              {randomSong.title}
                            </Text>
@@ -207,7 +218,7 @@ export default function HomeScreen() {
                    {recentlyPlayed.map((song) => (
                     <Pressable
                       key={song.id}
-                      onPress={() => usePlayerStore.getState().play(song, recentlyPlayed)}
+                      onPress={() => playerActions.play(song, recentlyPlayed)}
                       onLongPress={() => present(song)}
                       style={{ width: CARD_W }}
                     >
@@ -242,14 +253,14 @@ export default function HomeScreen() {
                     </Text>
                   </Pressable>
                 </View>
-                <Text style={[s.textLg, s.fontBold, s.px5, s.mb3, { color: colors.text }]}>
-                  New in your Library
-                </Text>
+                   <Text style={[s.textLg, s.fontBold, s.px5, s.mb3, { color: colors.text }]}>
+                   {t('home.new.in.library')}
+                 </Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, gap: 12 }}>
                   {recentSongs.map((song) => (
                     <Pressable
                       key={song.id}
-                      onPress={() => usePlayerStore.getState().play(song, recentSongs)}
+                      onPress={() => playerActions.play(song, recentSongs)}
                       onLongPress={() => present(song)}
                       style={{ width: CARD_W }}
                     >
@@ -275,19 +286,19 @@ export default function HomeScreen() {
             {favSongs.length > 0 && (
               <View style={[s.mb6]}>
                 <Text style={[s.textXs, s.fontBold, s.uppercase, { letterSpacing: 1, color: colors.textMuted }, s.px5, s.mb3]}>
-                  Your Favorites
+                  {t('home.your.favorites')}
                 </Text>
                 <Text style={[s.textLg, s.fontBold, s.px5, s.mb3, { color: colors.text }]}>
-                  Liked Songs
+                   {t('home.liked.songs')}
                 </Text>
                 <View style={[s.px5]}>
                   {favSongs.map((song) => (
                     <SwipeableRow key={song.id} rightActions={[{ type: 'queue', onPress: () => {
                       const { queue } = usePlayerStore.getState();
-                      usePlayerStore.getState().play(song, [...queue, song]);
+                      playerActions.play(song, [...queue, song]);
                     } }]}>
                       <Pressable
-                        onPress={() => usePlayerStore.getState().play(song, favSongs)}
+                        onPress={() => playerActions.play(song, favSongs)}
                         onLongPress={() => present(song)}
                         style={[s.flexRow, s.itemsCenter, s.gap3, s.py3]}
                       >

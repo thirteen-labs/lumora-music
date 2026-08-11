@@ -3,6 +3,9 @@ import { View, Text, Pressable, ActivityIndicator, ScrollView, TextInput, useWin
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@/hooks/use-theme';
 import { usePlayerStore } from '@/store/player-store';
+import { playerActions } from '@/player/actions';
+import { generateUpNext } from '@/player/recommendations';
+import { useMusicStore } from '@/store/music-store';
 import { useMetadataStore, type MetadataOverride } from '@/store/metadata-store';
 import * as ScreenOrientation from 'expo-screen-orientation';
 import { reportWarning } from '@/utils/error-handler';
@@ -25,6 +28,7 @@ import {
   Info,
   Save,
   RotateCcw,
+  Sparkles,
 } from 'lucide-react-native';
 import {
   Gesture,
@@ -80,14 +84,13 @@ const SeekBar = React.memo(function SeekBar({
 }) {
   const position = usePlayerStore((s) => s.position);
   const duration = usePlayerStore((s) => s.duration);
-  const seekTo = usePlayerStore((s) => s.seekTo);
   const progress = duration > 0 ? position / duration : 0;
 
   return (
     <>
       <Slider
         value={progress}
-        onValueChange={(val) => seekTo(val * duration)}
+        onValueChange={(val) => playerActions.seekTo(val * duration)}
         minimumValue={0}
         maximumValue={1}
         minimumTrackTintColor={sliderAccent ?? colors.accent}
@@ -113,19 +116,10 @@ export default function PlayerScreen() {
   const { colors } = useTheme();
   const currentTrack = usePlayerStore((s) => s.currentTrack);
   const isPlaying = usePlayerStore((s) => s.isPlaying);
-  const togglePlay = usePlayerStore((s) => s.togglePlay);
-  const next = usePlayerStore((s) => s.next);
-  const previous = usePlayerStore((s) => s.previous);
   const shuffle = usePlayerStore((s) => s.shuffle);
-  const setShuffle = usePlayerStore((s) => s.setShuffle);
   const repeat = usePlayerStore((s) => s.repeat);
-  const setRepeat = usePlayerStore((s) => s.setRepeat);
   const queue = usePlayerStore((s) => s.queue);
   const queueIndex = usePlayerStore((s) => s.queueIndex);
-  const reorderQueue = usePlayerStore((s) => s.reorderQueue);
-  const removeFromQueue = usePlayerStore((s) => s.removeFromQueue);
-  const play = usePlayerStore((s) => s.play);
-  const hideFullPlayer = usePlayerStore((s) => s.hideFullPlayer);
   const favoriteSongIds = useFavoritesStore((s) => s.favoriteSongIds);
   const toggleSongFavorite = useFavoritesStore((s) => s.toggleSongFavorite);
 
@@ -221,7 +215,7 @@ useEffect(() => {
   }, [currentTrack?.id, currentTrack?.artist, currentTrack?.title, localLyrics]);
 
   const renderBackdrop = useCallback(
-    (props: any) => (
+    (props: React.ComponentProps<typeof BottomSheetBackdrop>) => (
       <BottomSheetBackdrop {...props} disappearsOnIndex={-1} appearsOnIndex={0} opacity={0.5} />
     ),
     [],
@@ -231,12 +225,12 @@ useEffect(() => {
     const state = usePlayerStore.getState();
     const track = state.queue[index];
     if (track) {
-      play(track, state.queue);
+      playerActions.play(track, state.queue);
     }
-  }, [play]);
+  }, []);
 
   const renderQueueItem = useCallback(
-    ({ item, index }: { item: any; index: number }) => {
+    ({ item, index }: { item: Song; index: number }) => {
       const isCurrent = index === queueIndex;
       const isBeingDragged = draggedIndex === index;
 
@@ -260,7 +254,7 @@ useEffect(() => {
           const moveBy = Math.round(e.translationY / QUEUE_ITEM_HEIGHT);
           const toIndex = Math.max(0, Math.min(queue.length - 1, index + moveBy));
           if (toIndex !== index) {
-            runOnJS(reorderQueue)(index, toIndex);
+            runOnJS(playerActions.reorderQueue)(index, toIndex);
           }
           dragTranslateY.value = 0;
           isDragging.value = false;
@@ -324,7 +318,7 @@ useEffect(() => {
             </View>
             {index !== queueIndex && (
               <Pressable
-                onPress={() => removeFromQueue(index)}
+                onPress={() => playerActions.removeFromQueue(index)}
                 hitSlop={8}
                 style={{ padding: 4 }}
               >
@@ -338,7 +332,7 @@ useEffect(() => {
         </GestureDetector>
       );
     },
-    [queueIndex, queue.length, colors, removeFromQueue, reorderQueue, draggedIndex, isDragging, dragTranslateY, setDraggedIndex, dragAnimatedStyle, handlePlayFromQueue, lyricsMap],
+    [queueIndex, queue.length, colors, draggedIndex, isDragging, dragTranslateY, setDraggedIndex, dragAnimatedStyle, handlePlayFromQueue, lyricsMap],
   );
 
   const isFav = currentTrack ? favoriteSongIds.includes(currentTrack.id) : false;
@@ -352,9 +346,9 @@ useEffect(() => {
   }, [favoriteSongIds, toggleSongFavorite, showToast]);
 
   const hideAndGoBack = useCallback(() => {
-    hideFullPlayer();
+    playerActions.hideFullPlayer();
     router.back();
-  }, [hideFullPlayer, router]);
+  }, [router]);
 
   const onQueuePress = useCallback(() => queueSheetRef.current?.present(), []);
   const onLyricsPress = useCallback(() => lyricsSheetRef.current?.present(), []);
@@ -362,6 +356,20 @@ useEffect(() => {
     syncEditState(track);
     infoSheetRef.current?.present();
   }, [syncEditState, track]);
+
+  const handleAddUpNext = useCallback(() => {
+    const state = usePlayerStore.getState();
+    if (!state.currentTrack) return;
+    const allSongs = useMusicStore.getState().songs;
+    const exclude = new Set(state.queue.map((s) => s.id));
+    const recs = generateUpNext(state.currentTrack, allSongs, exclude);
+    if (recs.length === 0) {
+      showToast('No similar tracks found', 'music');
+      return;
+    }
+    usePlayerStore.getState().appendAutoplayTracks(recs);
+    showToast(`${recs.length} tracks added to Up Next`, 'music');
+  }, [showToast]);
 
   const translateY = useSharedValue(0);
   const isSwipingDown = useSharedValue(false);
@@ -382,12 +390,12 @@ useEffect(() => {
     .onEnd((e) => {
       if (!isMountedSV.value) return;
       if (e.translationY > 150) {
-        runOnJS(hideFullPlayer)();
+        runOnJS(playerActions.hideFullPlayer)();
         runOnJS(router.back)();
       }
       translateY.value = withSpring(0, { damping: 20, stiffness: 200 });
       isSwipingDown.value = false;
-    }), [hideFullPlayer, router, isMountedSV, isSwipingDown, translateY]);
+    }), [router, isMountedSV, isSwipingDown, translateY]);
   /* eslint-enable react-hooks/immutability */
 
   const animatedStyle = useAnimatedStyle(() => ({
@@ -417,11 +425,11 @@ useEffect(() => {
           shuffle={shuffle}
           repeat={repeat}
           colors={colors}
-          togglePlay={togglePlay}
-          next={next}
-          previous={previous}
-          setShuffle={setShuffle}
-          setRepeat={setRepeat}
+          togglePlay={playerActions.togglePlay}
+          next={playerActions.next}
+          previous={playerActions.previous}
+          setShuffle={playerActions.setShuffle}
+          setRepeat={playerActions.setRepeat}
           toggleSongFavorite={toggleFavWithToast}
           hideFullPlayer={hideAndGoBack}
           onQueuePress={onQueuePress}
@@ -442,16 +450,28 @@ useEffect(() => {
       >
         <View style={{ flex: 1 }}>
           <View style={{ paddingHorizontal: 20, paddingTop: 12, paddingBottom: 8 }}>
-            <Text style={{ fontSize: 17, fontWeight: '600', color: colors.text }}>
-              {t('player.queue')}
-            </Text>
-            <Text style={{ fontSize: 13, color: colors.textMuted, marginTop: 2 }}>
-              {queue.length} tracks
-            </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+              <View>
+                <Text style={{ fontSize: 17, fontWeight: '600', color: colors.text }}>
+                  {t('player.queue')}
+                </Text>
+                <Text style={{ fontSize: 13, color: colors.textMuted, marginTop: 2 }}>
+                  {queue.length} tracks
+                </Text>
+              </View>
+              <Pressable
+                onPress={handleAddUpNext}
+                hitSlop={8}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: colors.accent + '15', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 999 }}
+              >
+                <Sparkles size={14} color={colors.accent} />
+                <Text style={{ fontSize: 13, fontWeight: '600', color: colors.accent }}>Add Up Next</Text>
+              </Pressable>
+            </View>
           </View>
           <BottomSheetFlatList
             data={queue}
-            keyExtractor={(item: any) => item.id}
+            keyExtractor={(item: Song) => item.id}
             renderItem={renderQueueItem}
             contentContainerStyle={{ paddingBottom: 32 }}
           />

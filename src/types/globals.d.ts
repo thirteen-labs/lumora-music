@@ -1,20 +1,20 @@
-declare let require: any;
-declare let ErrorUtils: { getGlobalHandler: () => (error: any, isFatal?: boolean) => void; setGlobalHandler: (handler: (error: any, isFatal?: boolean) => void) => void; };
+declare let require: (id: string) => any;
+declare let ErrorUtils: { getGlobalHandler: () => (error: unknown, isFatal?: boolean) => void; setGlobalHandler: (handler: (error: unknown, isFatal?: boolean) => void) => void; };
 declare namespace React {
-  type FC<P = Record<string, never>> = { (props: P): any; displayName?: string; };
-  type ReactNode = any;
-  type Component = { props: any; state: any; setState: (state: any) => void; forceUpdate: () => void; render(): any; context: any; refs: any; };
+  type FC<P = Record<string, never>> = { (props: P): ReactNode; displayName?: string; };
+  type ReactNode = string | number | boolean | null | undefined | React.ReactElement | ReactNode[];
+  type Component = { props: Record<string, unknown>; state: unknown; setState: (state: unknown) => void; forceUpdate: () => void; render(): ReactNode; context: unknown; refs: Record<string, unknown>; };
   type ComponentClass<P = Record<string, never>> = new(props: P) => Component;
   type ComponentType<P = Record<string, never>> = FC<P> | ComponentClass<P>;
-  type Ref = any;
-  type RefObject<T> = { current: T; };
-  function useEffect(fn: () => void | (() => void), deps?: any[]): void;
+  type Ref = React.RefObject<unknown> | ((instance: unknown) => void) | null;
+  type RefObject<T> = { current: T | null; };
+  function useEffect(fn: () => void | (() => void), deps?: unknown[]): void;
   function useState<T>(init: T | (() => T)): [T, (v: T | ((prev: T) => T)) => void];
   function useRef<T>(init: T): { current: T };
-  function useCallback<T>(fn: T, deps: any[]): T;
-  function useMemo<T>(fn: () => T, deps: any[]): T;
-  function createContext<T>(defaultValue: T): any;
-  function useContext<T>(ctx: any): T;
+  function useCallback<T>(fn: T, deps: unknown[]): T;
+  function useMemo<T>(fn: () => T, deps: unknown[]): T;
+  function createContext<T>(defaultValue: T): React.Context<T>;
+  function useContext<T>(ctx: React.Context<T>): T;
   function memo<T>(fn: T): T;
 }
 
@@ -23,7 +23,7 @@ declare module 'react' {
 }
 declare module 'expo-image-picker' {
   export interface ImagePickerResult { canceled: boolean; assets?: ImagePickerAsset[] }
-  export interface ImagePickerAsset { uri: string; width: number; height: number; type?: string; fileName?: string; fileSize?: number; mimeType?: string; exif?: Record<string, any> }
+  export interface ImagePickerAsset { uri: string; width: number; height: number; type?: string; fileName?: string; fileSize?: number; mimeType?: string; exif?: Record<string, unknown> }
   export interface MediaLibraryPermissionResponse { granted: boolean; accessPrivileges?: string }
   export function launchImageLibraryAsync(options?: { mediaTypes?: string | string[]; quality?: number; allowsMultipleSelection?: boolean; selectionLimit?: number; base64?: boolean; exif?: boolean; allowsEditing?: boolean; aspect?: [number, number] }): Promise<ImagePickerResult>;
   export function requestMediaLibraryPermissionsAsync(writeOnly?: boolean): Promise<MediaLibraryPermissionResponse>;
@@ -34,8 +34,8 @@ declare module 'expo-image-picker' {
 
 declare module 'react-native-safe-area-context' {
   export function useSafeAreaInsets(): { top: number; bottom: number; left: number; right: number };
-  export const SafeAreaProvider: React.FC<{ children: React.ReactNode; style?: any }>;
-  export const SafeAreaView: React.FC<any>;
+  export const SafeAreaProvider: React.FC<{ children: React.ReactNode; style?: React.ViewProps['style'] }>;
+  export const SafeAreaView: React.FC<React.PropsWithChildren<unknown>>;
   export function useSafeAreaFrame(): { x: number; y: number; width: number; height: number };
 }
 
@@ -361,29 +361,77 @@ declare module 'zustand/middleware' {
 declare module 'zustand/middleware/immer' {
   export const immer: any;
 }
-declare module 'expo-linking' { }
+declare module 'expo-linking' {
+  export function openURL(url: string): Promise<void>;
+  export function canOpenURL(url: string): Promise<boolean>;
+  export function openSettings(): Promise<void>;
+  export function getInitialURL(): Promise<string>;
+}
 declare module 'expo-constants' {
   const c: any;
   export default c;
 }
-declare module 'expo-crypto' { }
+declare module 'expo-crypto' {
+  export function digestStringAsync(algorithm: 'MD5' | 'SHA-1' | 'SHA-256' | 'SHA-384' | 'SHA-512', data: string, options?: { encoding?: 'hex' | 'base64' }): Promise<string>;
+  export function randomUUID(): string;
+}
 declare module 'expo-document-picker' {
   export function getDocumentAsync(options?: { type?: string | string[]; copyToCacheDirectory?: boolean; multiple?: boolean; }): Promise<{ canceled: boolean; assets?: { uri: string; name?: string; mimeType?: string; size?: number }[] }>;
 }
-declare module 'expo-blur' { }
+declare module 'expo-blur' {
+  import * as React from 'react';
+  interface BlurViewProps {
+    children?: React.ReactNode;
+    intensity?: number;
+    tint?: 'light' | 'dark' | 'default' | 'xlight' | 'regular' | 'prominent' | 'systemUltraThinMaterial' | 'systemThinMaterial' | 'systemMaterial' | 'systemThickMaterial' | 'systemChromeMaterial';
+    style?: Record<string, unknown>;
+    blurReductionFactor?: number;
+  }
+  export const BlurView: React.FC<BlurViewProps>;
+}
 declare module 'expo-screen-orientation' {
   export const OrientationLock: { DEFAULT: number; PORTRAIT: number; LANDSCAPE: number; PORTRAIT_UP: number; PORTRAIT_DOWN: number; LANDSCAPE_LEFT: number; LANDSCAPE_RIGHT: number; };
   export function lockAsync(orientationLock: number): Promise<void>;
   export function unlockAsync(): Promise<void>;
 }
-declare module 'expo-secure-store' { }
-declare module 'expo-task-manager' { }
-declare module 'expo-background-fetch' { }
+declare module 'expo-secure-store' {
+  export function getItemAsync(key: string): Promise<string | null>;
+  export function setItemAsync(key: string, value: string): Promise<void>;
+  export function deleteItemAsync(key: string): Promise<void>;
+  export function isAvailableAsync(): Promise<boolean>;
+}
+declare module 'expo-task-manager' {
+  export function defineTask(taskName: string, taskExecutor: (event: { data: Record<string, unknown> }) => Promise<void>): void;
+  export function isTaskRegisteredAsync(taskName: string): Promise<boolean>;
+}
+declare module 'expo-background-fetch' {
+  export function registerTaskAsync(taskName: string, options?: { minimumInterval?: number; stopOnTerminate?: boolean; startOnBoot?: boolean }): Promise<void>;
+  export function unregisterTaskAsync(taskName: string): Promise<void>;
+  export function getStatusAsync(): Promise<number>;
+  export function setMinimumIntervalAsync(interval: number): Promise<void>;
+  export const BackgroundFetchStatus: { Denied: number; Available: number; Restricted: number };
+}
 declare module 'expo-web-browser' {
   export function maybeCompleteAuthSession(): void;
 }
-declare module 'expo-asset' { }
-declare module 'expo-splash-screen' { }
+declare module 'expo-asset' {
+  export class Asset {
+    static fromURI(uri: string): Asset;
+    static fromModule(module: number): Asset;
+    uri: string;
+    name: string | null;
+    type: string | null;
+    hash: string | null;
+    width: number;
+    height: number;
+    downloadAsync(): Promise<Asset>;
+  }
+}
+declare module 'expo-splash-screen' {
+  export function preventAutoHideAsync(): Promise<void>;
+  export function hideAsync(): Promise<void>;
+  export function setOptions(options: { duration?: number; fade?: boolean }): void;
+}
 declare module 'expo-image' {
   import * as React from 'react';
   interface ImageProps {
@@ -458,12 +506,20 @@ declare module 'react-native-audio-api' {
   }
   export type AudioEventSubscription = { remove(): void };
 }
-declare module 'react-native-view-shot' { }
+declare module 'react-native-view-shot' {
+  import * as React from 'react';
+  export function captureRef(ref: React.RefObject<unknown>, options?: { format?: string; quality?: number; result?: string }): Promise<string>;
+  export function captureScreen(options?: { format?: string; quality?: number; result?: string }): Promise<string>;
+}
 declare module 'react-native-image-colors' {
   export function getColors(uri: string, options?: any): Promise<any>;
 }
-declare module 'react-native-worklets' { }
-declare module 'react-native-web' { }
+declare module 'react-native-worklets' {
+  export function createWorkletRuntime(name?: string): { schedule: (task: () => void) => void };
+}
+declare module 'react-native-web' {
+  export * from 'react-native';
+}
 
 declare module 'expo-notifications' {
   export const AndroidImportance: { DEFAULT: number; HIGH: number; LOW: number; MAX: number; MIN: number; NONE: number; UNSPECIFIED: number };

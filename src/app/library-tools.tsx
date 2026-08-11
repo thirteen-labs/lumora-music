@@ -115,8 +115,9 @@ export default function LibraryToolsScreen() {
           "Done",
           `Kept "${kept.title}" and removed ${removed.length} duplicate(s).`,
         );
-      } catch (e: any) {
-        Alert.alert("Error", e?.message ?? "Failed to delete duplicates");
+      } catch (e: unknown) {
+        const message = e instanceof Error ? e.message : String(e);
+        Alert.alert("Error", message);
       } finally {
         setRemovingGroups((prev) => {
           const next = new Set(prev);

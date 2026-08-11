@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-require-imports */
 import { storage } from './mmkv';
 import { reportWarning } from '@/utils/error-handler';
+import { logger } from '@/utils/logger';
 
 const BACKGROUND_SCAN_TASK = 'lumora-background-scan';
 const SCAN_INTERVAL_KEY = 'lumora-bg-scan-interval';
@@ -12,8 +13,8 @@ let taskDefined = false;
 function ensureTaskDefined(): void {
   if (taskDefined) return;
   try {
-    const TaskManager = require('expo-task-manager');
-    const BackgroundFetch = require('expo-background-fetch');
+    const TaskManager: any = require('expo-task-manager');
+    const BackgroundFetch: any = require('expo-background-fetch');
 
     TaskManager.defineTask(BACKGROUND_SCAN_TASK, async () => {
       let hasData = false;
@@ -41,7 +42,7 @@ function ensureTaskDefined(): void {
           ? BackgroundFetch.BackgroundFetchResult.NewData
           : BackgroundFetch.BackgroundFetchResult.NoData;
       } catch (error) {
-        console.error('[BackgroundScanner] Background scan failed:', error);
+        logger.error('[BackgroundScanner] Background scan failed:', error);
         return BackgroundFetch.BackgroundFetchResult.Failed;
       }
     });
@@ -54,7 +55,7 @@ function ensureTaskDefined(): void {
 export async function registerBackgroundScan(): Promise<void> {
   ensureTaskDefined();
   try {
-    const BackgroundFetch = require('expo-background-fetch');
+    const BackgroundFetch: any = require('expo-background-fetch');
     await BackgroundFetch.registerTaskAsync(BACKGROUND_SCAN_TASK, {
       minimumFetchInterval: getScanInterval(),
       stopOnTerminate: false,
@@ -69,7 +70,7 @@ export async function registerBackgroundScan(): Promise<void> {
 export async function unregisterBackgroundScan(): Promise<void> {
   ensureTaskDefined();
   try {
-    const BackgroundFetch = require('expo-background-fetch');
+    const BackgroundFetch: any = require('expo-background-fetch');
     await BackgroundFetch.unregisterTaskAsync(BACKGROUND_SCAN_TASK);
   } catch (error) {
     reportWarning('BackgroundScanner', error, 'Failed to unregister background scan');
@@ -79,7 +80,7 @@ export async function unregisterBackgroundScan(): Promise<void> {
 export async function isBackgroundScanRegistered(): Promise<boolean> {
   ensureTaskDefined();
   try {
-    const TaskManager = require('expo-task-manager');
+    const TaskManager: any = require('expo-task-manager');
     return await TaskManager.isTaskRegisteredAsync(BACKGROUND_SCAN_TASK);
   } catch (e) {
     reportWarning('BackgroundScanner', e);

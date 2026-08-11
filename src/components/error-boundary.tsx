@@ -2,6 +2,7 @@
 import * as React from 'react';
 import { View, Text, Pressable, ScrollView } from 'react-native';
 import { persistCrashLog } from '@/utils/error-handler';
+import { logger } from '@/utils/logger';
 
 interface Props {
   children: React.ReactNode;
@@ -24,8 +25,8 @@ export class ErrorBoundary extends React.Component<Props, State> {
     return { hasError: true, error };
   }
 
-  componentDidCatch(error: Error, errorInfo: any) {
-    console.error(`[ErrorBoundary${this.props.name ? `:${this.props.name}` : ''}]`, error, errorInfo);
+  componentDidCatch(error: Error, errorInfo: { componentStack: string | null }) {
+    logger.error(`[ErrorBoundary${this.props.name ? `:${this.props.name}` : ''}]`, error, errorInfo);
     this.setState({
       errorInfo: errorInfo?.componentStack ?? null,
     });

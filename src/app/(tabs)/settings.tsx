@@ -1,10 +1,9 @@
-import { useMemo, useEffect, type ComponentType } from 'react';
+import { useMemo, type ComponentType } from 'react';
 import { View, Text, ScrollView, Pressable, Switch, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { ThemeColors } from '@/types/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { useSettingsStore, FONT_OPTIONS } from '@/store/settings-store';
-import { useOutputDevicesStore, startDeviceDetection } from '@/store/output-devices-store';
 import { useMusicStore } from '@/store/music-store';
 import { useThemeStore } from '@/store/theme-store';
 import { getThemeById } from '@/theme/themes';
@@ -17,7 +16,6 @@ import {
   Settings,
   Paintbrush,
   Palette,
-  Sun,
   Languages,
   Type,
   Music,
@@ -38,43 +36,9 @@ import {
   Headphones,
   Disc3,
   Cloud,
-  Smartphone,
-  Mic,
+  Sparkles,
 } from 'lucide-react-native';
 import { s } from '@/styles';
-
-const LIGHT_PAIRS: Record<string, string> = {
-  obsidian: 'light',
-  nebula: 'cool-light',
-  aurora: 'light',
-  sunset: 'warm-light',
-  rose: 'light',
-  ocean: 'cool-light',
-  midnight: 'cool-light',
-  forest: 'light',
-  lavender: 'light',
-  crimson: 'warm-light',
-  slate: 'light',
-  amber: 'warm-light',
-  teal: 'cool-light',
-  plum: 'light',
-  coral: 'warm-light',
-  ice: 'cool-light',
-};
-
-const DARK_PAIRS: Record<string, string> = {
-  light: 'obsidian',
-  'warm-light': 'amber',
-  'cool-light': 'ocean',
-};
-
-function getDarkCounterpart(lightId: string): string | null {
-  return DARK_PAIRS[lightId] ?? null;
-}
-
-function getLightCounterpart(darkId: string): string | null {
-  return LIGHT_PAIRS[darkId] ?? 'light';
-}
 
 export default function SettingsScreen() {
   const { colors } = useTheme();
@@ -102,14 +66,12 @@ export default function SettingsScreen() {
   const fontLabel = FONT_OPTIONS.find((f) => f.key === fontFamily)?.label ?? 'System';
   const gaplessPlayback = useSettingsStore((s) => s.gaplessPlayback);
   const setGaplessPlayback = useSettingsStore((s) => s.setGaplessPlayback);
+  const autoplay = useSettingsStore((s) => s.autoplay);
+  const setAutoplay = useSettingsStore((s) => s.setAutoplay);
   const connectedProviders = useCloudStore((s) => s.connectedProviders);
   const playTogether = useSettingsStore((s) => s.playTogether);
   const setPlayTogether = useSettingsStore((s) => s.setPlayTogether);
-  const devices = useOutputDevicesStore((s) => s.detectedDevices);
 
-  useEffect(() => {
-    return startDeviceDetection();
-  }, []);
 
   const accentLabel: Record<string, string> = {
     '#7C3AED': 'Purple', '#3B82F6': 'Blue', '#10B981': 'Green',
@@ -260,30 +222,7 @@ export default function SettingsScreen() {
               onPress={() => router.push('/accent-color' )}
               colors={colors}
             />
-            <View style={[s.flexRow, s.itemsCenter, s.gap4, s.p4]}>
-              <View style={[s.w10, s.h10, s.roundedXl, s.itemsCenter, s.justifyCenter, { backgroundColor: colors.accent + '15' }]}>
-                <Sun size={20} color={colors.accent} />
-              </View>
-              <View style={[s.flex1]}>
-                <Text style={[s.textSm, s.fontMedium, { color: colors.text }]}>Dark Mode</Text>
-                <Text style={[s.textXs, s.mt05, { color: colors.textMuted }]}>{currentTheme.isDark ? 'On' : 'Off'}</Text>
-              </View>
-              <Switch
-                value={currentTheme.isDark}
-                onValueChange={(isDark) => {
-                  const themeStore = useThemeStore.getState();
-                  if (isDark) {
-                    const darkId = getLightCounterpart(currentTheme.id) ?? 'obsidian';
-                    themeStore.setTheme(darkId);
-                  } else {
-                    const lightId = getDarkCounterpart(currentTheme.id) ?? 'light';
-                    themeStore.setTheme(lightId);
-                  }
-                }}
-                trackColor={{ false: colors.card, true: colors.accent + '80' }}
-                thumbColor="#fff"
-              />
-            </View>
+
             <SettingRow
               icon={Languages}
               label="Language"
@@ -334,6 +273,16 @@ export default function SettingsScreen() {
             </View>
             <View style={[s.flexRow, s.itemsCenter, s.gap4, s.p4]}>
               <View style={[s.w10, s.h10, s.roundedXl, s.itemsCenter, s.justifyCenter, { backgroundColor: colors.accent + '15' }]}>
+                <Sparkles size={20} color={colors.accent} />
+              </View>
+              <View style={[s.flex1]}>
+                <Text style={[s.textSm, s.fontMedium, { color: colors.text }]}>{t('settings.autoplay')}</Text>
+                <Text style={[s.textXs, s.mt05, { color: colors.textMuted }]}>{t('settings.autoplay.desc')}</Text>
+              </View>
+              <Switch value={autoplay} onValueChange={setAutoplay} trackColor={{ false: colors.card, true: colors.accent + '80' }} thumbColor="#fff" />
+            </View>
+            <View style={[s.flexRow, s.itemsCenter, s.gap4, s.p4]}>
+              <View style={[s.w10, s.h10, s.roundedXl, s.itemsCenter, s.justifyCenter, { backgroundColor: colors.accent + '15' }]}>
                 <Headphones size={20} color={colors.accent} />
               </View>
               <View style={[s.flex1]}>
@@ -349,24 +298,9 @@ export default function SettingsScreen() {
               onPress={() => router.push('/sleep-timer' )}
               colors={colors}
             />
-            <SettingRow
-              icon={Mic}
-              label="Audio Recognition"
-              subtitle="Identify songs playing near you"
-              onPress={() => router.push('/audio-recognition' )}
-              colors={colors}
-            />
+
           </Section>
 
-          <Section title="OUTPUT DEVICES" colors={colors}>
-            <SettingRow
-              icon={Smartphone}
-              label="Output Devices"
-              subtitle={`${devices.length} device(s) connected`}
-              onPress={() => router.push('/output-devices' )}
-              colors={colors}
-            />
-          </Section>
 
           <Section title="LIBRARY" colors={colors}>
             <SettingRow

@@ -1,5 +1,6 @@
 import { storage } from '@/services/mmkv';
 import { reportWarning } from '@/utils/error-handler';
+import { logger } from '@/utils/logger';
 
 const LYRICS_API = "https://api.lyrics.ovh/v1";
 const LRCLIB_API = "https://lrclib.net/api";
@@ -32,7 +33,7 @@ function persistCacheToMMKV(): void {
     const obj: Record<string, LyricsResult | null> = {};
     cache.forEach((v, k) => { obj[k] = v; });
     storage.set(LYRICS_CACHE_KEY, JSON.stringify(obj));
-  } catch {}
+  } catch (e) { logger.warn('Failed to persist lyrics cache:', e); }
 }
 
 function schedulePersist(): void {
@@ -56,7 +57,7 @@ function loadPersistedCache(): void {
       for (const k of keys) cache.set(k, obj[k]);
     }
   } catch {
-    try { storage.remove(LYRICS_CACHE_KEY); } catch {}
+    try { storage.remove(LYRICS_CACHE_KEY); } catch { /* cleanup failed */ }
   }
 }
 

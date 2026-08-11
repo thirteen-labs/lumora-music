@@ -1,4 +1,5 @@
 import * as ImageColors from "react-native-image-colors";
+import { logger } from '@/utils/logger';
 
 function luminance(hex: string): number {
   const r = parseInt(hex.slice(1, 3), 16) / 255;
@@ -66,7 +67,7 @@ export async function extractColorsFromImage(
       surface: midDark,
     };
   } catch (error) {
-    console.error("Color extraction error:", error);
+    logger.error("Color extraction error:", error);
     return null;
   }
 }

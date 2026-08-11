@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { View, Text, ScrollView, Pressable, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { s } from '@/styles';
@@ -9,7 +9,7 @@ import { TopBar } from '@/components/top-bar';
 import { SectionHeader } from '@/components/section-header';
 import { useMusicStore } from '@/store/music-store';
 import { useFavoritesStore } from '@/store/favorites-store';
-import { usePlayerStore } from '@/store/player-store';
+import { playerActions } from '@/player/actions';
 import { usePlaylistStore } from '@/store/playlist-store';
 import { useRouter } from 'expo-router';
 import {
@@ -31,8 +31,6 @@ export default function BatchOperationsScreen() {
   const songs = useMusicStore((s) => s.songs);
   const toggleSongFavorite = useFavoritesStore((s) => s.toggleSongFavorite);
   const isSongFavorite = useFavoritesStore((s) => s.isSongFavorite);
-  const play = usePlayerStore((s) => s.play);
-  const addToQueue = usePlayerStore((s) => s.addToQueue);
 
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [operating, setOperating] = useState(false);
@@ -63,7 +61,7 @@ export default function BatchOperationsScreen() {
   );
 
   const handleAddToQueue = () => {
-    selectedSongs.forEach((s) => addToQueue(s));
+    selectedSongs.forEach((s) => playerActions.addToQueue(s));
     Alert.alert(t('common.ok'), t('batch.added.queue', { count: selectedSongs.length }));
     setSelected(new Set());
   };
@@ -78,7 +76,7 @@ export default function BatchOperationsScreen() {
 
   const handlePlayNow = () => {
     if (selectedSongs.length === 0) return;
-    play(selectedSongs[0], selectedSongs);
+    playerActions.play(selectedSongs[0], selectedSongs);
     router.back();
   };
 
@@ -137,7 +135,7 @@ export default function BatchOperationsScreen() {
     playlistSheetRef.current?.dismiss();
   };
 
-  const renderBackdrop = (props: any) => (
+  const renderBackdrop = (props: React.ComponentProps<typeof BottomSheetBackdrop>) => (
     <BottomSheetBackdrop {...props} disappearsOnIndex={-1} appearsOnIndex={0} opacity={0.5} />
   );
 
@@ -274,7 +272,7 @@ export default function BatchOperationsScreen() {
 function ActionButton({
   icon: Icon, label, count, onPress, colors, danger, disabled,
 }: {
-  icon: any; label: string; count: number; onPress: () => void; colors: ThemeColors; danger?: boolean; disabled?: boolean;
+  icon: React.ComponentType<{ size?: number; color?: string }>; label: string; count: number; onPress: () => void; colors: ThemeColors; danger?: boolean; disabled?: boolean;
 }) {
   return (
     <Pressable

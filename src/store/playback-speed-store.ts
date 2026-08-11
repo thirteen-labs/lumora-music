@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 import { storage } from '@/services/mmkv';
 import { audioEngine } from '@/services/audio-engine';
+import { logger } from '@/utils/logger';
 import type { PlaybackSpeedSettings } from '@/types/audio';
 
 const SPEED_KEY = 'lumora-playback-speed';
@@ -12,12 +13,12 @@ function loadSpeed(): PlaybackSpeedSettings {
   try {
     const raw = storage.getString(SPEED_KEY);
     if (raw) return JSON.parse(raw);
-  } catch {}
+  } catch (e) { logger.warn('Failed to load playback speed:', e); }
   return { speed: 1.0, pitchCorrection: false };
 }
 
 function saveSpeed(settings: PlaybackSpeedSettings): void {
-  try { storage.set(SPEED_KEY, JSON.stringify(settings)); } catch {}
+  try { storage.set(SPEED_KEY, JSON.stringify(settings)); } catch (e) { logger.warn('Failed to save playback speed:', e); }
 }
 
 interface SpeedState extends PlaybackSpeedSettings {
@@ -59,7 +60,7 @@ export function subscribePlaybackSpeed(): () => void {
     try {
       audioEngine.setSpeed(state.speed);
       audioEngine.setPitchCorrection(state.pitchCorrection);
-    } catch {}
+    } catch (e) { logger.warn('Failed to sync playback speed to engine:', e); }
   });
   return () => { _speedUnsub?.(); _speedUnsub = null; };
 }

@@ -140,7 +140,7 @@ export async function exportBackup(data: BackupData): Promise<boolean> {
         if (ok) {
           uploaded = true;
         }
-      } catch {}
+      } catch { /* cloud upload failed */ }
     }
     if (uploaded) {
       useToastStore.getState().showToast(`Backup uploaded to ${connected.length} cloud provider(s)`);
@@ -183,9 +183,9 @@ export async function importBackup(): Promise<BackupData | null> {
           if (data.metadata && data.metadata.version === BACKUP_VERSION) {
             return data;
           }
-        }
       }
-    } catch {}
+    }
+  } catch { /* cloud import failed */ }
   }
 
   try {

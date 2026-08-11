@@ -10,6 +10,7 @@ import {
 import type { AudioEventSubscription } from 'react-native-audio-api';
 import type { EqualizerBand } from '@/types/audio';
 import { reportWarning } from '@/utils/error-handler';
+import { logger } from '@/utils/logger';
 
 const EQ_FREQUENCIES = [60, 170, 310, 600, 1000, 3000, 6000, 12000, 14000, 16000];
 const BASS_BOOST_FREQUENCY = 150;
@@ -204,10 +205,15 @@ class AudioEngine {
   private preloadedUri: string | null = null;
   private preloadedBuffer: AudioBuffer | null = null;
 
+  /** Gapless playback support */
+  private _gaplessEnabled = false;
+  private _gaplessNextUri: string | null = null;
+  private _gaplessCheckInterval: ReturnType<typeof setInterval> | null = null;
+
   async init(): Promise<void> {
     if (this.context) {
       if (this.context.state === 'closed') {
-        console.warn('[AudioEngine] Context was closed, creating new one');
+        logger.warn('[AudioEngine] Context was closed, creating new one');
         this.context = null;
       } else {
         try {
@@ -324,7 +330,7 @@ class AudioEngine {
       this.balancePanner.connect(this.mainGain);
       this.mainGain.connect(this.context.destination);
     } catch (e) {
-      console.warn('[AudioEngine] Failed to build processing chain:', e);
+      logger.warn('[AudioEngine] Failed to build processing chain:', e);
     }
   }
 
@@ -340,20 +346,20 @@ class AudioEngine {
       if (this.context && this._playing && !this._paused) {
         try {
           if (this.context.state === 'closed') {
-            console.warn('[AudioEngine] Watchdog: context was closed, triggering recovery');
+            logger.warn('[AudioEngine] Watchdog: context was closed, triggering recovery');
             this.ensureAlive().catch((e) => reportWarning('AudioEngine', e, 'Watchdog: ensureAlive failed'));
             return;
           }
           if (this.context.state !== 'running') {
-            console.warn('[AudioEngine] Watchdog: context not running, attempting resume');
+            logger.warn('[AudioEngine] Watchdog: context not running, attempting resume');
             this.context.resume().catch((e) => reportWarning('AudioEngine', e, 'Watchdog: context resume failed'));
           }
           consecutiveFailures = 0;
         } catch (e) {
           consecutiveFailures++;
-          console.warn('[AudioEngine] Watchdog health check failed:', e);
+          logger.warn('[AudioEngine] Watchdog health check failed:', e);
           if (consecutiveFailures >= 3) {
-            console.warn('[AudioEngine] Watchdog: too many failures, triggering full recovery');
+            logger.warn('[AudioEngine] Watchdog: too many failures, triggering full recovery');
             this.ensureAlive().catch((e) => reportWarning('AudioEngine', e, 'Watchdog: recovery ensureAlive failed'));
             consecutiveFailures = 0;
           }
@@ -415,7 +421,7 @@ class AudioEngine {
         }, 50);
       });
       if (!lockAcquired) {
-        console.warn('[AudioEngine] loadTrack lock timeout, proceeding anyway');
+        logger.warn('[AudioEngine] loadTrack lock timeout, proceeding anyway');
         this.loadingLock = false;
       }
     }
@@ -458,7 +464,7 @@ class AudioEngine {
       try {
         buffer = await decodeWithTimeout(this.context, uri, DECODE_TIMEOUT_MS);
       } catch (decodeError) {
-        console.warn('[AudioEngine] Decode failed for', uri.slice(0, 80), ':', decodeError);
+        logger.warn('[AudioEngine] Decode failed for', uri.slice(0, 80), ':', decodeError);
         this._currentTrackUri = null;
         this.currentBuffer = null;
         this._duration = 0;
@@ -472,7 +478,7 @@ class AudioEngine {
       this._startOffset = 0;
       this.emitState();
     } catch (e) {
-      console.warn('[AudioEngine] loadTrack error:', e);
+      logger.warn('[AudioEngine] loadTrack error:', e);
       this.currentBuffer = null;
       this._duration = 0;
       this._currentTrackUri = null;
@@ -498,7 +504,7 @@ class AudioEngine {
       this.preloadedUri = uri;
       this.preloadedBuffer = buffer;
     } catch (e) {
-      console.warn('[AudioEngine] Preload failed for', uri.slice(0, 80), e);
+      logger.warn('[AudioEngine] Preload failed for', uri.slice(0, 80), e);
     }
   }
 
@@ -518,7 +524,7 @@ class AudioEngine {
       source.connect(this.eqFilters[0]);
       return source;
     } catch (e) {
-      console.warn('[AudioEngine] Failed to create source:', e);
+      logger.warn('[AudioEngine] Failed to create source:', e);
       return null;
     }
   }
@@ -875,13 +881,104 @@ class AudioEngine {
         }
       }, stepMs);
     } catch (e) {
-      console.warn('Crossfade failed:', e);
+      logger.warn('Crossfade failed:', e);
       this._crossfading = false;
     }
   }
 
   isCrossfading(): boolean {
     return this._crossfading;
+  }
+
+  /** Enable/disable gapless playback mode */
+  setGaplessEnabled(enabled: boolean): void {
+    this._gaplessEnabled = enabled;
+    if (!enabled) {
+      this.stopGaplessMonitoring();
+      this._gaplessNextUri = null;
+    }
+  }
+
+  isGaplessEnabled(): boolean {
+    return this._gaplessEnabled;
+  }
+
+  /** Set the next track URI for gapless transition */
+  setGaplessNextTrack(uri: string | null): void {
+    this._gaplessNextUri = uri;
+    if (uri && this._gaplessEnabled) {
+      this.startGaplessMonitoring();
+    }
+  }
+
+  private startGaplessMonitoring(): void {
+    this.stopGaplessMonitoring();
+    if (!this._gaplessEnabled || !this._gaplessNextUri) return;
+
+    this._gaplessCheckInterval = setInterval(() => {
+      if (!this._playing || this._paused || !this._gaplessNextUri || this._crossfading) return;
+      const remaining = this._duration - this._currentTime;
+      if (remaining <= 2 && remaining > 0) {
+        this.performGaplessTransition();
+      }
+    }, 500);
+  }
+
+  private stopGaplessMonitoring(): void {
+    if (this._gaplessCheckInterval) {
+      clearInterval(this._gaplessCheckInterval);
+      this._gaplessCheckInterval = null;
+    }
+  }
+
+  private async performGaplessTransition(): Promise<void> {
+    if (!this._gaplessNextUri || this._crossfading) return;
+    const nextUri = this._gaplessNextUri;
+    this._gaplessNextUri = null;
+    this.stopGaplessMonitoring();
+
+    try {
+      let nextBuffer = this.bufferPool.get(nextUri);
+      if (!nextBuffer) {
+        nextBuffer = this.preloadedUri === nextUri ? this.preloadedBuffer : null;
+      }
+      if (!nextBuffer && this.context) {
+        nextBuffer = await decodeWithTimeout(this.context, nextUri, DECODE_TIMEOUT_MS);
+      }
+      if (!nextBuffer || !this.context) return;
+
+      this.bufferPool.set(nextUri, nextBuffer, 0);
+
+      const wasPlaying = this._playing;
+      this.stopCurrentSource();
+
+      this.currentBuffer = nextBuffer;
+      this._currentTrackUri = nextUri;
+      this._duration = nextBuffer.duration;
+      this._currentTime = 0;
+      this._startOffset = 0;
+
+      const source = this.createSource(nextBuffer, this._pitchCorrection);
+      if (source) {
+        this.currentSource = source;
+        this._startContextTime = this.context.currentTime;
+        this.currentSource.onEnded = () => {
+          if (this._playing && !this._seeking) {
+            this._playing = false;
+            this._currentTime = this._duration;
+            this.stopPositionTracking();
+            this.emitState();
+          }
+        };
+        source.start(0, 0);
+        this._playing = wasPlaying;
+        this._paused = false;
+        this.startPositionTracking();
+        this.emitState();
+      }
+    } catch (e) {
+      reportWarning('AudioEngine', e, 'Gapless transition failed');
+    }
   }
 
   /** Ensure audio context is alive. Re-initializes if destroyed by the OS. */
@@ -932,7 +1029,7 @@ class AudioEngine {
       await this.init();
       return this.context !== null;
     } catch (e) {
-      console.warn('[AudioEngine] ensureAlive failed:', e);
+      logger.warn('[AudioEngine] ensureAlive failed:', e);
       return false;
     }
   }
@@ -958,7 +1055,7 @@ class AudioEngine {
         this.play();
         return true;
       } catch (e) {
-        console.warn('[AudioEngine] restorePlayback failed:', e);
+        logger.warn('[AudioEngine] restorePlayback failed:', e);
       }
     }
     return this.context !== null;
@@ -967,6 +1064,7 @@ class AudioEngine {
   destroy(): void {
     this.stopWatchdog();
     this.stopPositionTracking();
+    this.stopGaplessMonitoring();
     this.stopCurrentSource();
     if (this.interruptionSubscription) {
       try {

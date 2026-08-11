@@ -9,6 +9,7 @@ import type {
   SortField,
   SortOrder,
 } from "@/types/media";
+import { logger } from "@/utils/logger";
 import {
   scanMediaLibrary,
   getCachedSongs,
@@ -148,7 +149,7 @@ export const useMusicStore = create<MusicState>()(
         try {
           storage.set(LAST_SCAN_TIME_KEY, now);
         } catch {
-          console.warn('[MusicStore] Failed to save last scan time');
+          logger.warn('[MusicStore] Failed to save last scan time');
         }
         if (!result.error) {
           showScanCompleteNotification(result.songs.length);
@@ -168,7 +169,7 @@ export const useMusicStore = create<MusicState>()(
           useToastStore.getState().showToast("No songs found in library", "music");
         }
 
-        console.log('[MusicStore] Scan result:', {
+        logger.log('[MusicStore] Scan result:', {
           error: result.error,
           diagnostics: result.diagnostics,
           songs: result.songs.length,
@@ -201,7 +202,7 @@ export const useMusicStore = create<MusicState>()(
               pruneArtworkCache(new Set(result.songs.map((s) => s.uri)));
             })
             .catch((error) => {
-              console.warn('[MusicStore] Artwork enrichment failed:', error);
+              logger.warn('[MusicStore] Artwork enrichment failed:', error);
             });
         }
       } catch {
@@ -218,7 +219,7 @@ export const useMusicStore = create<MusicState>()(
         state.sortField = field;
         state.sortOrder = order;
       });
-      try { storage.set(SORT_FIELD_KEY, field); storage.set(SORT_ORDER_KEY, order); } catch {}
+      try { storage.set(SORT_FIELD_KEY, field); storage.set(SORT_ORDER_KEY, order); } catch (e) { logger.warn('Failed to save sort settings:', e); }
     },
 
     setBackgroundScanEnabled: (enabled) => {

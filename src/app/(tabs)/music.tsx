@@ -3,7 +3,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FlashList } from '@shopify/flash-list';
 import { useTheme } from '@/hooks/use-theme';
 import { useMusicStore } from '@/store/music-store';
-import { usePlayerStore, generateRandomQueue } from '@/store/player-store';
+import { generateRandomQueue } from '@/store/player-store';
+import { playerActions } from '@/player/actions';
 import { useSmartPlaylistStore } from '@/store/smart-playlist-store';
 import { useStatsStore } from '@/store/stats-store';
 import { useLyricsStore } from '@/store/lyrics-store';
@@ -18,33 +19,18 @@ import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { Music, Clock, LayoutGrid, List, ListPlus, Play, X, SquareCheck } from 'lucide-react-native';
 import { Artwork } from '@/components/artwork';
 import { formatDuration } from '@/utils/format';
+import { sortSongs } from '@/utils/sort-songs';
+import { useTranslation } from '@/hooks/use-translation';
 import { s } from '@/styles';
-import type { SortField, SortOrder, Song } from '@/types/media';
+import type { Song } from '@/types/media';
 import { SORT_OPTIONS } from '@/types/media';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
-function sortSongs(songs: any[], sortField: SortField, sortOrder: SortOrder, stats: Record<string, any>) {
-  const sorted = [...songs];
-  sorted.sort((a, b) => {
-    let cmp = 0;
-    switch (sortField) {
-      case 'title': cmp = a.title.localeCompare(b.title); break;
-      case 'artist': cmp = a.artist.localeCompare(b.artist); break;
-      case 'dateAdded': cmp = a.dateAdded - b.dateAdded; break;
-      case 'duration': cmp = a.duration - b.duration; break;
-      case 'fileSize': cmp = a.fileSize - b.fileSize; break;
-      case 'playCount': cmp = (stats[a.id]?.playCount || 0) - (stats[b.id]?.playCount || 0); break;
-      case 'lastPlayed': cmp = (stats[a.id]?.lastPlayed || 0) - (stats[b.id]?.lastPlayed || 0); break;
-    }
-    return sortOrder === 'desc' ? -cmp : cmp;
-  });
-  return sorted;
-}
-
 export default function MusicScreen() {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
   const songs = useMusicStore((s) => s.songs);
   const scan = useMusicStore((s) => s.scan);
   const sortField = useMusicStore((s) => s.sortField);
@@ -87,7 +73,7 @@ export default function MusicScreen() {
     if (isSelecting) {
       toggleSelect(item.id);
     } else {
-      usePlayerStore.getState().play(item, generateRandomQueue(item, songs));
+      playerActions.play(item, generateRandomQueue(item, songs));
     }
   }, [isSelecting, toggleSelect, songs]);
 
@@ -100,10 +86,9 @@ export default function MusicScreen() {
   }, [isSelecting, present]);
 
   const handleAddSelectedToQueue = useCallback(() => {
-    const addToQueue = usePlayerStore.getState().addToQueue;
     selectedIds.forEach((id) => {
       const track = songs.find((s) => s.id === id);
-      if (track) addToQueue(track);
+      if (track) playerActions.addToQueue(track);
     });
     clearSelection();
   }, [selectedIds, songs, clearSelection]);
@@ -111,7 +96,7 @@ export default function MusicScreen() {
   const handlePlaySelected = useCallback(() => {
     const selectedSongs = songs.filter((s) => selectedIds.has(s.id));
     if (selectedSongs.length > 0) {
-      usePlayerStore.getState().play(selectedSongs[0], selectedSongs);
+      playerActions.play(selectedSongs[0], selectedSongs);
     }
     clearSelection();
   }, [selectedIds, songs, clearSelection]);
@@ -214,7 +199,7 @@ export default function MusicScreen() {
                   <View style={[s.flexRow, s.itemsCenter, s.gap1, s.mb1, s.px4, s.pt2]}>
                     <Clock size={13} color={colors.accent} />
                     <Text style={[s.textXs, s.fontSemibold, { color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.5 }]}>
-                      Recently Added
+                      {t('library.recently.added')}
                     </Text>
                   </View>
                   {recentlyAdded.slice(0, 5).map((item) => {
@@ -279,7 +264,7 @@ export default function MusicScreen() {
       ) : (
         <View style={[s.flex1, s.itemsCenter, s.justifyCenter]}>
           <Music size={48} color={colors.textMuted} />
-          <Text style={[s.textSm, s.mt3, { color: colors.textMuted }]}>No music found</Text>
+          <Text style={[s.textSm, s.mt3, { color: colors.textMuted }]}>{t('library.no.music')}</Text>
         </View>
       )}
       {isSelecting && (
@@ -292,14 +277,14 @@ export default function MusicScreen() {
               <X size={18} color={colors.text} />
             </Pressable>
             <Text style={{ flex: 1, fontSize: 14, fontWeight: '600', color: colors.text }}>
-              {selectedIds.size} selected
+              {selectedIds.size} {t('library.selected')}
             </Text>
             <Pressable
               onPress={handleAddSelectedToQueue}
               style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 20, backgroundColor: colors.accent }}
             >
               <ListPlus size={16} color={colors.background} />
-              <Text style={{ fontSize: 13, fontWeight: '600', color: colors.background }}>Add to Queue</Text>
+              <Text style={{ fontSize: 13, fontWeight: '600', color: colors.background }}>{t('library.add.to.queue')}</Text>
             </Pressable>
             <Pressable
               onPress={handlePlaySelected}

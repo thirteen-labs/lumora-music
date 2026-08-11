@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 import { storage } from '@/services/mmkv';
+import { logger } from '@/utils/logger';
 
 const LYRICS_STORAGE_KEY = 'lumora-lyrics';
 
@@ -12,7 +13,7 @@ function loadLyrics(): Record<string, string> {
 }
 
 function saveLyricsMap(map: Record<string, string>): void {
-  try { storage.set(LYRICS_STORAGE_KEY, JSON.stringify(map)); } catch {}
+  try { storage.set(LYRICS_STORAGE_KEY, JSON.stringify(map)); } catch (e) { logger.warn('Failed to save lyrics:', e); }
 }
 
 let _lyricsSaveTimer: ReturnType<typeof setTimeout> | null = null;

@@ -7,6 +7,9 @@ import { useSleepTimerStore } from '@/store/sleep-timer-store';
 import { useStatsStore } from '@/store/stats-store';
 import { useQueuePersistStore } from '@/store/queue-persist-store';
 import { useToastStore } from '@/store/toast-store';
+import { useSettingsStore } from '@/store/settings-store';
+import { useMusicStore } from '@/store/music-store';
+import { generateUpNext } from '@/player/recommendations';
 import { reportWarning } from '@/utils/error-handler';
 
 export function useTrackPlayerSync() {
@@ -66,13 +69,36 @@ export function useTrackPlayerSync() {
 
         if (hasNext) {
           state.next();
-        } else {
+        } else if (!ensureAutoplayFill()) {
           player.pause();
           usePlayerStore.setState({ isPlaying: false });
         }
         break;
       }
     }
+  }
+
+  function ensureAutoplayFill(): boolean {
+    const state = usePlayerStore.getState();
+    if (!state.currentTrack) return false;
+    if (!useSettingsStore.getState().autoplay) return false;
+
+    const allSongs = useMusicStore.getState().songs;
+    if (allSongs.length === 0) return false;
+
+    const exclude = new Set(state.queue.map((s) => s.id));
+    const recs = generateUpNext(state.currentTrack, allSongs, exclude);
+    if (recs.length === 0) return false;
+
+    usePlayerStore.getState().appendAutoplayTracks(recs);
+    useToastStore.getState().showToast(`${recs.length} similar tracks added — Up Next`, 'music');
+
+    const after = usePlayerStore.getState();
+    if (after.queueIndex + 1 < after.queue.length) {
+      after.next();
+      return true;
+    }
+    return false;
   }
 
   function handleCrossfade() {
@@ -94,7 +120,20 @@ export function useTrackPlayerSync() {
         player.seekTo(0);
         player.play();
       } else {
-        state.next();
+        const { queue, shuffle, shuffledOrder, queueIndex } = state;
+        let hasNext = false;
+        if (shuffle) {
+          const idx = shuffledOrder.indexOf(queueIndex);
+          hasNext = idx + 1 < shuffledOrder.length;
+        } else {
+          hasNext = queueIndex + 1 < queue.length;
+        }
+        if (hasNext || ensureAutoplayFill()) {
+          state.next();
+        } else {
+          player.pause();
+          usePlayerStore.setState({ isPlaying: false });
+        }
       }
     }
   }
@@ -135,6 +174,7 @@ export function useTrackPlayerSync() {
         state.repeat,
         state.position,
         state.isPlaying,
+        state.priorityQueue,
       );
     }
   }

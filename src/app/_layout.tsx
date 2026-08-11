@@ -102,10 +102,7 @@ function RootStack() {
               name="library-tools"
               options={{ animation: "slide_from_right" }}
             />
-            <Stack.Screen
-              name="ai-features"
-              options={{ animation: "slide_from_right" }}
-            />
+
             <Stack.Screen
               name="cloud-sync"
               options={{ animation: "slide_from_right" }}
@@ -182,10 +179,7 @@ function RootStack() {
               name="background-image-adjuster"
               options={{ animation: "slide_from_right" }}
             />
-            <Stack.Screen
-              name="output-devices"
-              options={{ animation: "slide_from_right" }}
-            />
+
             <Stack.Screen
               name="audio-quality"
               options={{ animation: "slide_from_right" }}

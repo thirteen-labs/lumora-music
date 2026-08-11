@@ -11,6 +11,7 @@ import { useFavoritesStore } from '@/store/favorites-store';
 import { useSettingsStore } from '@/store/settings-store';
 import { extractColorsFromImage } from '@/services/color-extraction';
 import { reportWarning } from '@/utils/error-handler';
+import { logger } from '@/utils/logger';
 
 let initialized = false;
 const colorCache = new Map<string, number | null>();
@@ -55,7 +56,7 @@ export async function initializeNotifications(): Promise<void> {
         ),
       ]);
       if (status !== 'granted') {
-        console.warn('[Notifications] Notification permission not granted:', status);
+        logger.warn('[Notifications] Notification permission not granted:', status);
       }
     } catch (e) {
       reportWarning('Notifications', e, 'Failed to request notification permissions');
@@ -103,14 +104,14 @@ export async function initializeNotifications(): Promise<void> {
           false,
         );
       }
-    } catch {}
+    } catch { /* save queue failed */ }
     dismissNowPlayingNotification();
   }));
 
   /* Dismiss any stale notification from prior session */
   try {
     await PlaybackNotificationManager.hide();
-  } catch {}
+  } catch { /* hide stale notification failed */ }
 
   await Promise.all([
     ensureChannel(SCAN_CHANNEL, 'Media Scan'),
@@ -127,7 +128,7 @@ async function ensureCacheDir(): Promise<void> {
     if (!dir.exists) {
       await FileSystem.makeDirectoryAsync(ARTWORK_CACHE_DIR, { intermediates: true });
     }
-  } catch {}
+  } catch (e) { logger.warn('Failed to create notification artwork cache dir:', e); }
 }
 
 const ARTWORK_CACHE_SIZE_LIMIT = 50 * 1024 * 1024;
@@ -139,7 +140,7 @@ async function cleanArtworkCacheIfNeeded(): Promise<void> {
     if (dir.size > ARTWORK_CACHE_SIZE_LIMIT) {
       await FileSystem.deleteAsync(ARTWORK_CACHE_DIR, { idempotent: true });
     }
-  } catch {}
+  } catch (e) { logger.warn('Failed to clean notification artwork cache:', e); }
 }
 
 async function cacheRemoteArtwork(uri: string): Promise<string> {
@@ -221,7 +222,7 @@ export async function preloadArtworkForTrack(track: Song): Promise<void> {
         cacheArtworkUri(resolved, cached);
       }
     }
-  } catch {}
+  } catch { /* preload artwork failed */ }
 }
 
 /** Preload artwork for multiple upcoming tracks in the background.
@@ -246,7 +247,7 @@ export async function preloadColorsForTrack(artworkUri: string | null): Promise<
         cacheArtworkColor(cacheUri, null);
       }
     }
-  } catch {}
+  } catch { /* preload colors failed */ }
 }
 
 export async function showNowPlayingNotification(
@@ -367,11 +368,11 @@ export async function cleanupOnAppExit(): Promise<void> {
         state.isPlaying,
       );
     }
-  } catch {}
+  } catch { /* save queue on exit failed */ }
   await dismissNowPlayingNotification();
   try {
     await ExpoNotifications.cancelAllScheduledNotificationsAsync();
-  } catch {}
+  } catch { /* cancel notifications on exit failed */ }
   initialized = false;
 }
 
@@ -425,7 +426,7 @@ export async function showSleepTimerNotification(minutesRemaining: number): Prom
     if (sleepTimerNotificationId) {
       try {
         await ExpoNotifications.cancelScheduledNotificationAsync(sleepTimerNotificationId);
-      } catch {}
+      } catch { /* cancel previous sleep timer failed */ }
     }
     const result = await ExpoNotifications.scheduleNotificationAsync({
       content: {

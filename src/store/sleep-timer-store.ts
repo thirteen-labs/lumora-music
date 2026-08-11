@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 import { storage } from '@/services/mmkv';
+import { logger } from '@/utils/logger';
 import type { SleepTimerSettings } from '@/types/audio';
 import { usePlayerStore } from '@/store/player-store';
 import { showSleepTimerNotification, dismissSleepTimerNotification } from '@/services/notifications';
@@ -29,7 +30,7 @@ function clearTickInterval() {
 function startTickInterval() {
   clearTickInterval();
   tickInterval = setInterval(() => {
-    try { useSleepTimerStore.getState().tick(); } catch {}
+    try { useSleepTimerStore.getState().tick(); } catch { /* tick failed */ }
   }, 1000);
 }
 
@@ -42,7 +43,7 @@ function loadTimer(): SleepTimerSettings {
         return parsed;
       }
     }
-  } catch {}
+  } catch (e) { logger.warn('Failed to load sleep timer:', e); }
   return { active: false, minutesRemaining: 0, totalMinutes: 0, endTime: 0, stopAtEndOfTrack: false };
 }
 
@@ -54,7 +55,7 @@ export function restoreSleepTimer(): void {
 }
 
 function saveTimer(settings: SleepTimerSettings): void {
-  try { storage.set(TIMER_KEY, JSON.stringify(settings)); } catch {}
+  try { storage.set(TIMER_KEY, JSON.stringify(settings)); } catch (e) { logger.warn('Failed to save sleep timer:', e); }
 }
 
 export const useSleepTimerStore = create<SleepTimerState>()(

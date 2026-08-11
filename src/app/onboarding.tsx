@@ -77,7 +77,7 @@ function FauxGradient({ height }: { height: number }) {
   );
 }
 
-function AnimatedBlock({ children, key }: { children: ReactNode; key?: any }) {
+function AnimatedBlock({ children, key }: { children: ReactNode; key?: string | number }) {
   const fade = useMemo(() => new Animated.Value(0), []);
   const slide = useMemo(() => new Animated.Value(26), []);
 
@@ -158,7 +158,7 @@ export default function OnboardingScreen() {
     completeOnboarding();
     router.replace('/(tabs)');
     /* Request notification permission after onboarding — non-blocking */
-    initializeNotifications().catch(() => {});
+    initializeNotifications().catch(() => { /* notification init failed */ });
   };
 
   const goToNext = () => {

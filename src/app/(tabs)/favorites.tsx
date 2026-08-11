@@ -4,6 +4,7 @@ import { FlashList } from '@shopify/flash-list';
 import { useTheme } from '@/hooks/use-theme';
 import { useFavoritesStore } from '@/store/favorites-store';
 import { usePlayerStore } from '@/store/player-store';
+import { playerActions } from '@/player/actions';
 import { useMusicStore } from '@/store/music-store';
 import { useLyricsStore } from '@/store/lyrics-store';
 import { hasCachedLyrics } from '@/services/lyrics';
@@ -43,7 +44,7 @@ export default function FavoritesScreen() {
   const renderItem = useCallback(({ item }: { item: Song }) => {
     const queueSong = () => {
       const { queue } = usePlayerStore.getState();
-      usePlayerStore.getState().play(item, [...queue, item]);
+      playerActions.play(item, [...queue, item]);
     };
     return (
       <SwipeableRow
@@ -51,7 +52,7 @@ export default function FavoritesScreen() {
         leftActions={[{ type: 'remove', onPress: () => toggleSongFavorite(item) }]}
       >
         <Pressable
-          onPress={() => usePlayerStore.getState().play(item, songs)}
+          onPress={() => playerActions.play(item, songs)}
           onLongPress={() => present(item)}
           style={[s.flexRow, s.itemsCenter, s.gap3, s.px4, s.py4]}
         >

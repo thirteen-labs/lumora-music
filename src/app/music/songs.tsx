@@ -7,6 +7,7 @@ import { s } from '@/styles';
 import { useTheme } from '@/hooks/use-theme';
 import { useMusicStore } from '@/store/music-store';
 import { usePlayerStore, generateRandomQueue } from '@/store/player-store';
+import { playerActions } from '@/player/actions';
 import { useLayoutStore } from '@/store/layout-store';
 import { useStatsStore } from '@/store/stats-store';
 import { useLyricsStore } from '@/store/lyrics-store';
@@ -20,27 +21,10 @@ import { LyricsBadge } from '@/components/lyrics-badge';
 import { Music, LayoutGrid, List, ListPlus, Play, X, SquareCheck } from 'lucide-react-native';
 import { Artwork } from '@/components/artwork';
 import { formatDuration, formatFileSize } from '@/utils/format';
-import { SORT_OPTIONS, type SortField, type SortOrder, type Song } from '@/types/media';
+import { sortSongs } from '@/utils/sort-songs';
+import { SORT_OPTIONS, type Song } from '@/types/media';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-
-function sortSongs(songs: any[], sortField: SortField, sortOrder: SortOrder, stats: Record<string, any>) {
-  const sorted = [...songs];
-  sorted.sort((a, b) => {
-    let cmp = 0;
-    switch (sortField) {
-      case 'title': cmp = a.title.localeCompare(b.title); break;
-      case 'artist': cmp = a.artist.localeCompare(b.artist); break;
-      case 'dateAdded': cmp = a.dateAdded - b.dateAdded; break;
-      case 'duration': cmp = a.duration - b.duration; break;
-      case 'fileSize': cmp = a.fileSize - b.fileSize; break;
-      case 'playCount': cmp = (stats[a.id]?.playCount || 0) - (stats[b.id]?.playCount || 0); break;
-      case 'lastPlayed': cmp = (stats[a.id]?.lastPlayed || 0) - (stats[b.id]?.lastPlayed || 0); break;
-    }
-    return sortOrder === 'desc' ? -cmp : cmp;
-  });
-  return sorted;
-}
 
 export default function SongsScreen() {
   const { colors } = useTheme();
@@ -75,7 +59,7 @@ export default function SongsScreen() {
     if (isSelecting) {
       toggleSelect(item.id);
     } else {
-      usePlayerStore.getState().play(item, generateRandomQueue(item, songs));
+      playerActions.play(item, generateRandomQueue(item, songs));
     }
   }, [isSelecting, toggleSelect, songs]);
 
@@ -88,10 +72,9 @@ export default function SongsScreen() {
   }, [isSelecting, present]);
 
   const handleAddSelectedToQueue = useCallback(() => {
-    const addToQueue = usePlayerStore.getState().addToQueue;
     selectedIds.forEach((id) => {
       const track = songs.find((s) => s.id === id);
-      if (track) addToQueue(track);
+      if (track) playerActions.addToQueue(track);
     });
     clearSelection();
   }, [selectedIds, songs, clearSelection]);
@@ -99,7 +82,7 @@ export default function SongsScreen() {
   const handlePlaySelected = useCallback(() => {
     const selectedSongsList = songs.filter((s) => selectedIds.has(s.id));
     if (selectedSongsList.length > 0) {
-      usePlayerStore.getState().play(selectedSongsList[0], selectedSongsList);
+      playerActions.play(selectedSongsList[0], selectedSongsList);
     }
     clearSelection();
   }, [selectedIds, songs, clearSelection]);
@@ -232,7 +215,7 @@ export default function SongsScreen() {
             const isSelected = selectedIds.has(item.id);
             const queueSong = () => {
               const { queue } = usePlayerStore.getState();
-              usePlayerStore.getState().play(item, [...queue, item]);
+              playerActions.play(item, [...queue, item]);
             };
             return (
               <SwipeableRow rightActions={isSelecting ? [] : [{ type: 'queue', onPress: queueSong }]} disabled={isSelecting}>

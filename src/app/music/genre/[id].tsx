@@ -3,7 +3,7 @@ import { FlashList } from '@shopify/flash-list';
 import { s } from '@/styles';
 import { useTheme } from '@/hooks/use-theme';
 import { useMusicStore } from '@/store/music-store';
-import { usePlayerStore } from '@/store/player-store';
+import { playerActions } from '@/player/actions';
 import { useLayoutStore } from '@/store/layout-store';
 import { useLyricsStore } from '@/store/lyrics-store';
 import { hasCachedLyrics } from '@/services/lyrics';
@@ -55,7 +55,7 @@ export default function GenreDetailScreen() {
         contentContainerStyle={{ paddingBottom: 120 }}
         renderItem={({ item, index }) => (
           <Pressable
-            onPress={() => usePlayerStore.getState().play(item, genreSongs)}
+            onPress={() => playerActions.play(item, genreSongs)}
             onLongPress={() => present(item)}
             style={[s.flexRowCenter, s.gap3, s.px4, { height: rowHeight }]}
           >

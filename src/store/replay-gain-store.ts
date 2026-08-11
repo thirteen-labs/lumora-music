@@ -3,6 +3,7 @@ import { immer } from 'zustand/middleware/immer';
 import { storage } from '@/services/mmkv';
 import { audioEngine } from '@/services/audio-engine';
 import { reportWarning } from '@/utils/error-handler';
+import { logger } from '@/utils/logger';
 import type { ReplayGainSettings } from '@/types/audio';
 
 const RG_KEY = 'lumora-replay-gain';
@@ -11,12 +12,12 @@ function loadRG(): ReplayGainSettings {
   try {
     const raw = storage.getString(RG_KEY);
     if (raw) return JSON.parse(raw);
-  } catch {}
+  } catch (e) { logger.warn('Failed to load replay gain settings:', e); }
   return { enabled: false, preamp: 0, trackGain: true, albumGain: false };
 }
 
 function saveRG(settings: ReplayGainSettings): void {
-  try { storage.set(RG_KEY, JSON.stringify(settings)); } catch {}
+  try { storage.set(RG_KEY, JSON.stringify(settings)); } catch (e) { logger.warn('Failed to save replay gain settings:', e); }
 }
 
 interface RGState extends ReplayGainSettings {

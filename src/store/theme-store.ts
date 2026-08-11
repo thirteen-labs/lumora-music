@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 import { storage } from '@/services/mmkv';
 import { ThemeId } from '@/types/theme';
+import { logger } from '@/utils/logger';
 import { DEFAULT_THEME_ID } from '@/theme/themes';
 
 const THEME_STORAGE_KEY = 'lumora-theme-id';
@@ -18,7 +19,7 @@ function loadThemeId(): ThemeId {
 function saveThemeId(id: ThemeId): void {
   try {
     storage.set(THEME_STORAGE_KEY, id);
-  } catch {}
+  } catch (e) { logger.warn('Failed to save theme:', e); }
 }
 
 interface ThemeState {

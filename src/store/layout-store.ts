@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 import { storage } from '@/services/mmkv';
+import { logger } from '@/utils/logger';
 
 type FileSizeTheme = 'small' | 'medium' | 'big';
 export type LibraryViewMode = 'list' | 'grid';
@@ -33,11 +34,11 @@ export const useLayoutStore = create<LayoutState>()(
     libraryViewMode: loadLibraryView(),
     setFileSizeTheme: (theme) => {
       set((s) => { s.fileSizeTheme = theme; });
-      try { storage.set(FILE_SIZE_KEY, theme); } catch {}
+      try { storage.set(FILE_SIZE_KEY, theme); } catch (e) { logger.warn('Failed to save file size theme:', e); }
     },
     setLibraryViewMode: (mode) => {
       set((s) => { s.libraryViewMode = mode; });
-      try { storage.set(LIBRARY_VIEW_KEY, mode); } catch {}
+      try { storage.set(LIBRARY_VIEW_KEY, mode); } catch (e) { logger.warn('Failed to save library view:', e); }
     },
   })),
 );

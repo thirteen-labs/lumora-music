@@ -3,6 +3,7 @@ import { Paths, File, Directory } from 'expo-file-system';
 import { StorageAccessFramework, getInfoAsync } from 'expo-file-system/legacy';
 import { useSettingsStore } from '@/store/settings-store';
 import { getCachedDirectory, setCachedDirectory } from '@/services/directory-cache';
+import { logger } from '@/utils/logger';
 
 export interface FileItem {
   name: string;
@@ -139,7 +140,7 @@ async function listDirectorySAF(uri: string, showHidden: boolean): Promise<FileI
 
     return results;
   } catch (error) {
-    console.warn('[FileBrowser] SAF listDirectory failed:', uri, error);
+    logger.warn('[FileBrowser] SAF listDirectory failed:', uri, error);
     return [];
   }
 }
@@ -185,7 +186,7 @@ async function listDirectoryLegacy(uri: string, showHidden: boolean): Promise<Fi
 
     return results;
   } catch (error) {
-    console.warn('[FileBrowser] Legacy listDirectory failed:', uri, error);
+    logger.warn('[FileBrowser] Legacy listDirectory failed:', uri, error);
     return [];
   }
 }
@@ -213,7 +214,7 @@ export async function getAccessibleRootPath(): Promise<string> {
         return result.directoryUri;
       }
     } catch (error) {
-      console.warn('[FileBrowser] SAF fallback also failed:', error);
+      logger.warn('[FileBrowser] SAF fallback also failed:', error);
     }
     const docUri = Paths.document.uri;
     if (docUri) return docUri;

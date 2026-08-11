@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 import { storage } from '@/services/mmkv';
+import { logger } from '@/utils/logger';
 
 const TELEMETRY_KEY = 'lumora-telemetry-events';
 const MAX_EVENTS = 500;
@@ -43,14 +44,14 @@ function loadEvents(): TelemetryEvent[] {
   try {
     const raw = storage.getString(TELEMETRY_KEY);
     if (raw) return JSON.parse(raw);
-  } catch {}
+  } catch (e) { logger.warn('Failed to load telemetry events:', e); }
   return [];
 }
 
 function persistEvents(events: TelemetryEvent[]): void {
   try {
     storage.set(TELEMETRY_KEY, JSON.stringify(events.slice(-MAX_EVENTS)));
-  } catch {}
+  } catch (e) { logger.warn('Failed to persist telemetry events:', e); }
 }
 
 let _telemetrySaveTimer: ReturnType<typeof setTimeout> | null = null;
@@ -156,7 +157,7 @@ export const useTelemetryStore = create<TelemetryState>()(
         s.decodeCount = 0;
         s.ensureAliveCount = 0;
       });
-      try { storage.set(TELEMETRY_KEY, JSON.stringify([])); } catch {}
+      try { storage.set(TELEMETRY_KEY, JSON.stringify([])); } catch (e) { logger.warn('Failed to clear telemetry:', e); }
     },
   }))
 );

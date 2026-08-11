@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, Pressable } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { usePlayerStore } from '@/store/player-store';
+import { playerActions } from '@/player/actions';
 import { s } from '@/styles';
 import { useTheme } from '@/hooks/use-theme';
 import { Play, Pause, SkipForward } from 'lucide-react-native';
@@ -18,8 +19,6 @@ export const MiniPlayer = React.memo(function MiniPlayer() {
   const isPlaying = usePlayerStore((s) => s.isPlaying);
   const position = usePlayerStore((s) => s.position);
   const duration = usePlayerStore((s) => s.duration);
-  const togglePlay = usePlayerStore((s) => s.togglePlay);
-  const next = usePlayerStore((s) => s.next);
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
@@ -52,7 +51,7 @@ export const MiniPlayer = React.memo(function MiniPlayer() {
           <Text style={[s.textSm, s.fontMedium, { color: colors.accent }]}>
             {Math.round(progress * 100)}%
           </Text>
-          <Pressable onPress={togglePlay} hitSlop={8} style={[s.w10, s.h10, s.roundedFull, s.itemsCenter, s.justifyCenter, { backgroundColor: colors.card }]}
+          <Pressable onPress={playerActions.togglePlay} hitSlop={8} style={[s.w10, s.h10, s.roundedFull, s.itemsCenter, s.justifyCenter, { backgroundColor: colors.card }]}
             accessibilityLabel={isPlaying ? 'Pause' : 'Play'}
             accessibilityRole={'button' as const}
           >
@@ -74,7 +73,7 @@ export const MiniPlayer = React.memo(function MiniPlayer() {
               <Play size={18} color={colors.accent} fill={colors.accent} />
             )}
           </Pressable>
-          <Pressable onPress={next} hitSlop={8} style={[s.w10, s.h10, s.roundedFull, s.itemsCenter, s.justifyCenter, { backgroundColor: colors.card }]}
+          <Pressable onPress={playerActions.next} hitSlop={8} style={[s.w10, s.h10, s.roundedFull, s.itemsCenter, s.justifyCenter, { backgroundColor: colors.card }]}
             accessibilityLabel="Skip forward"
             accessibilityRole={'button' as const}
           >

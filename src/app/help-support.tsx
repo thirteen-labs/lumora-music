@@ -4,17 +4,19 @@ import { useTheme } from '@/hooks/use-theme';
 import { useRouter } from 'expo-router';
 import { ChevronLeft, BookOpen, MessageCircle, Bug } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-
-const LINKS = [
-  { icon: BookOpen, label: 'FAQs', desc: 'Frequently asked questions', url: 'https://lumora.app/faq' },
-  { icon: MessageCircle, label: 'Contact Support', desc: 'Get help from our team', url: 'mailto:support@lumora.app' },
-  { icon: Bug, label: 'Report a Bug', desc: 'Found something wrong?', url: 'https://github.com/lumora-app/lumora/issues/new' },
-];
+import { useTranslation } from '@/hooks/use-translation';
 
 export default function HelpSupportScreen() {
   const { colors } = useTheme();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
+
+  const LINKS = [
+    { icon: BookOpen, label: t('help.faqs'), desc: t('help.faqs.desc'), url: 'https://lumora.app/faq' },
+    { icon: MessageCircle, label: t('help.contact'), desc: t('help.contact.desc'), url: 'mailto:support@lumora.app' },
+    { icon: Bug, label: t('help.report'), desc: t('help.report.desc'), url: 'https://github.com/lumora-app/lumora/issues/new' },
+  ];
 
   return (
     <View style={[s.flex1, { backgroundColor: colors.background }]}>
@@ -22,7 +24,7 @@ export default function HelpSupportScreen() {
         <Pressable onPress={() => router.back()} style={[s.w11, s.h11, s.roundedFull, s.itemsCenter, s.justifyCenter, { backgroundColor: colors.surface }]}>
           <ChevronLeft size={22} color={colors.text} />
         </Pressable>
-        <Text style={[s.textLg, s.fontBold, { color: colors.text }]}>Help & Support</Text>
+        <Text style={[s.textLg, s.fontBold, { color: colors.text }]}>{t('help.title')}</Text>
       </View>
       <ScrollView contentContainerStyle={{ paddingBottom: 120 + insets.bottom, paddingTop: 8 }} showsVerticalScrollIndicator={false}>
         <View style={s.px5}>

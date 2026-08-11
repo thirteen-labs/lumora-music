@@ -12,6 +12,7 @@ import {
   cleanString,
   parseAlbumFromPath,
 } from '@/utils/filename-metadata';
+import { logger } from '@/utils/logger';
 
 const CACHED_SONGS_KEY = 'lumora-cached-songs';
 const CACHED_ALBUMS_KEY = 'lumora-cached-albums';
@@ -56,8 +57,23 @@ export interface ScanResult {
   diagnostics?: ScanDiagnostics;
 }
 
+interface MediaLibraryAsset {
+  id: string;
+  uri: string;
+  filename: string;
+  fileSize: number;
+  size?: number;
+  duration: number;
+  creationTime: number;
+  modificationTime: number;
+  albumId: string;
+  width?: number;
+  height?: number;
+  mediaType?: string;
+}
+
 interface AssetsResult {
-  assets: any[];
+  assets: MediaLibraryAsset[];
   hasNextPage: boolean;
   endCursor: string | undefined;
   totalCount?: number;
@@ -82,7 +98,7 @@ async function retryWithBackoff<T>(fn: () => Promise<T>, label: string, maxRetri
     } catch (e) {
       if (attempt < maxRetries) {
         const delay = SCAN_RETRY_DELAY * Math.pow(2, attempt);
-        console.warn(`[Scanner] Retry ${attempt + 1}/${maxRetries} for ${label} in ${delay}ms:`, e);
+        logger.warn(`[Scanner] Retry ${attempt + 1}/${maxRetries} for ${label} in ${delay}ms:`, e);
         await new Promise(r => setTimeout(r, delay));
       } else {
         throw e;
@@ -94,10 +110,27 @@ async function retryWithBackoff<T>(fn: () => Promise<T>, label: string, maxRetri
 
 const isAndroid = Platform.OS === 'android';
 
-let MediaStore: any = null;
-let MediaLibrary: any = null;
-let MetadataRetriever: any = null;
-let FileSystemLegacy: any = null;
+let MediaStore: {
+  requestPermissions?: () => Promise<{ audio?: boolean; granted?: boolean }>;
+  checkPermissions?: () => Promise<{ audio?: boolean; granted?: boolean }>;
+  refresh?: () => Promise<void>;
+  getAudio?: (query: unknown, projection: unknown, selection: unknown) => Promise<MediaStoreItem[]>;
+  getAlbumArtwork?: (albumId: string) => Promise<string | null>;
+  getStatistics?: () => Promise<{ totalAudio?: number; totalVideo?: number; totalImages?: number; totalDocuments?: number; totalSize?: number }>;
+} | null = null;
+let MediaLibrary: {
+  requestPermissionsAsync?: () => Promise<{ status: string }>;
+  getAssetsAsync?: (params: { first: number; after?: string; mediaType: string; sortBy: string }) => Promise<AssetsResult>;
+  getAssetInfoAsync?: (assetId: string) => Promise<{ fileSize?: number; size?: number; localUri?: string }>;
+  MediaType?: { audio: string };
+} | null = null;
+let MetadataRetriever: {
+  MetadataPresets: Record<string, string[]>;
+  getMetadata: (uri: string, fields: string[]) => Promise<Record<string, unknown>>;
+} | null = null;
+let FileSystemLegacy: {
+  getInfoAsync: (uri: string) => Promise<{ exists: boolean; size?: number }>;
+} | null = null;
 
 async function loadModules(): Promise<boolean> {
   let hasMediaLibrary = false;
@@ -105,26 +138,26 @@ async function loadModules(): Promise<boolean> {
   if (isAndroid) {
     try {
       const ms = await import('@obsidian_north/react-native-mediastore');
-      MediaStore = ms;
+      MediaStore = ms as typeof MediaStore;
     } catch (e) {
       reportWarning('Scanner', e, 'Failed to load react-native-mediastore');
     }
     try {
       const fs = await import('expo-file-system/legacy');
-      FileSystemLegacy = fs;
+      FileSystemLegacy = fs as typeof FileSystemLegacy;
     } catch (e) {
       reportWarning('Scanner', e, 'Failed to load expo-file-system/legacy');
     }
     try {
       const ml = await import('expo-media-library/legacy');
-      MediaLibrary = ml;
+      MediaLibrary = ml as typeof MediaLibrary;
       hasMediaLibrary = true;
     } catch (e) {
       reportWarning('Scanner', e, 'Failed to load expo-media-library/legacy (android)');
       try {
         const ml2 = await import('expo-media-library');
         if (typeof ml2.getAssetsAsync === 'function') {
-          MediaLibrary = ml2;
+          MediaLibrary = ml2 as typeof MediaLibrary;
           hasMediaLibrary = true;
         }
       } catch (e2) {
@@ -140,14 +173,14 @@ async function loadModules(): Promise<boolean> {
 
   try {
     const ml = await import('expo-media-library/legacy');
-    MediaLibrary = ml;
+    MediaLibrary = ml as typeof MediaLibrary;
     hasMediaLibrary = true;
   } catch (e) {
     reportWarning('Scanner', e, 'Failed to load expo-media-library/legacy');
     try {
       const ml = await import('expo-media-library');
       if (typeof ml.getAssetsAsync === 'function') {
-        MediaLibrary = ml;
+        MediaLibrary = ml as typeof MediaLibrary;
         hasMediaLibrary = true;
       } else {
         reportWarning('Scanner', null, 'expo-media-library (new API) lacks getAssetsAsync');
@@ -158,13 +191,13 @@ async function loadModules(): Promise<boolean> {
   }
   try {
     const mr = await import('@missingcore/react-native-metadata-retriever');
-    MetadataRetriever = mr;
+    MetadataRetriever = mr as unknown as typeof MetadataRetriever;
   } catch (e) {
     reportWarning('Scanner', e, 'Metadata parsing disabled');
   }
   try {
     const fs = await import('expo-file-system/legacy');
-    FileSystemLegacy = fs;
+    FileSystemLegacy = fs as typeof FileSystemLegacy;
   } catch (e) {
     reportWarning('Scanner', e, 'Failed to load expo-file-system/legacy');
   }
@@ -215,12 +248,12 @@ function loadMetadataCache(): void {
   try {
     const raw = storage.getString(METADATA_CACHE_KEY);
     if (raw) _metadataCache = JSON.parse(raw);
-  } catch {}
+  } catch (e) { logger.warn('Failed to load metadata cache:', e); }
 }
 
 function saveMetadataCache(): void {
   trimMetadataCache();
-  try { storage.set(METADATA_CACHE_KEY, JSON.stringify(_metadataCache)); } catch {}
+  try { storage.set(METADATA_CACHE_KEY, JSON.stringify(_metadataCache)); } catch (e) { logger.warn('Failed to save metadata cache:', e); }
 }
 
 function scheduleMetadataCacheSave(): void {
@@ -297,7 +330,7 @@ function clearCachedData(): void {
   ]) {
     try {
       storage.remove(key);
-    } catch {}
+    } catch (e) { logger.warn('Failed to remove cached data key:', e); }
   }
 }
 
@@ -371,9 +404,9 @@ export async function requestPermissions(force = false): Promise<boolean> {
             }
           }
 
-          console.warn('[Scanner] Media permission not granted within timeout');
+          logger.warn('[Scanner] Media permission not granted within timeout');
         } catch (error) {
-          console.error('[Scanner] MediaStore permission request failed:', error);
+          logger.error('[Scanner] MediaStore permission request failed:', error);
         }
       }
 
@@ -385,7 +418,7 @@ export async function requestPermissions(force = false): Promise<boolean> {
             return true;
           }
         } catch (error) {
-          console.error('[Scanner] MediaLibrary permission request failed:', error);
+          logger.error('[Scanner] MediaLibrary permission request failed:', error);
         }
       }
 
@@ -398,7 +431,7 @@ export async function requestPermissions(force = false): Promise<boolean> {
     if (mediaLibraryGranted) permissionCache = true;
     return mediaLibraryGranted;
   } catch (error) {
-    console.error('[Scanner] Permission request failed:', error);
+    logger.error('[Scanner] Permission request failed:', error);
     return false;
   }
 }
@@ -407,11 +440,11 @@ async function getFileSize(uri: string): Promise<number> {
   if (!FileSystemLegacy) return 0;
   try {
     const info = await FileSystemLegacy.getInfoAsync(uri);
-    if (info.exists && 'size' in info) {
+    if (info.exists && typeof info.size === 'number' && info.size > 0) {
       return info.size;
     }
   } catch (error) {
-    console.warn('[Scanner] getFileSize failed for:', uri, error);
+    logger.warn('[Scanner] getFileSize failed for:', uri, error);
   }
   return 0;
 }
@@ -419,7 +452,7 @@ async function getFileSize(uri: string): Promise<number> {
 async function getAssetFileSize(
   assetUri: string,
   assetId?: string,
-  preloadedInfo?: any,
+  preloadedInfo?: { fileSize?: number; size?: number; localUri?: string } | null,
 ): Promise<number> {
   try {
     if (preloadedInfo && typeof preloadedInfo.fileSize === 'number' && preloadedInfo.fileSize > 0) {
@@ -442,7 +475,7 @@ async function getAssetFileSize(
       }
     }
   } catch (error) {
-    console.warn('[Scanner] getAssetFileSize failed:', assetUri, error);
+    logger.warn('[Scanner] getAssetFileSize failed:', assetUri, error);
   }
   const fsSize = await getFileSize(assetUri);
   if (fsSize > 0) return fsSize;
@@ -485,23 +518,42 @@ async function parseAudioMetadata(uri: string): Promise<{
     const artwork = await saveSongArtworkFile(uri);
 
     const result = {
-      title: meta.title ?? null,
-      artist: meta.artist ?? null,
-      album: meta.albumTitle ?? null,
-      genre: meta.genre ?? null,
+      title: String(meta.title ?? ''),
+      artist: String(meta.artist ?? ''),
+      album: String(meta.albumTitle ?? ''),
+      genre: String(meta.genre ?? ''),
       artwork,
-      bitrate: meta.bitrate ?? null,
-      sampleRate: meta.sampleRate ?? null,
+      bitrate: Number(meta.bitrate ?? 0),
+      sampleRate: Number(meta.sampleRate ?? 0),
     };
     setCachedMetadata(uri, result);
     return result;
   } catch (error) {
-    console.warn('[Scanner] parseAudioMetadata failed for:', uri, error);
+    logger.warn('[Scanner] parseAudioMetadata failed for:', uri, error);
     return { title: null, artist: null, album: null, genre: null, artwork: null, bitrate: null, sampleRate: null };
   }
 }
 
-function processMediaStoreItem(item: any): Song | null {
+interface MediaStoreItem {
+  id?: string;
+  contentUri?: string;
+  uri?: string;
+  displayName?: string;
+  title?: string;
+  artist?: string;
+  album?: string;
+  albumId?: string;
+  size?: number;
+  bitrate?: number;
+  sampleRate?: number;
+  duration?: number;
+  dateAdded?: number;
+  artworkUri?: string;
+  genre?: string;
+  relativePath?: string;
+}
+
+function processMediaStoreItem(item: MediaStoreItem): Song | null {
   try {
     const uri = item.contentUri ?? item.uri;
     if (!uri) return null;
@@ -536,12 +588,12 @@ function processMediaStoreItem(item: any): Song | null {
       sampleRate: item.sampleRate ?? null,
     };
   } catch (error) {
-    console.warn('[Scanner] Failed to process MediaStore item:', item?.id, error);
+    logger.warn('[Scanner] Failed to process MediaStore item:', item?.id, error);
     return null;
   }
 }
 
-async function processAsset(asset: any): Promise<Song | null> {
+async function processAsset(asset: MediaLibraryAsset): Promise<Song | null> {
   try {
     const uri = asset.uri as string | undefined;
     if (!uri) return null;
@@ -577,7 +629,7 @@ async function processAsset(asset: any): Promise<Song | null> {
       sampleRate: meta.sampleRate,
     };
   } catch (error) {
-    console.warn('[Scanner] Failed to process audio asset:', asset?.id, error);
+    logger.warn('[Scanner] Failed to process audio asset:', asset?.id, error);
     return null;
   }
 }
@@ -586,10 +638,10 @@ function markCacheValid(): void {
   try {
     storage.set(CACHED_VERSION_KEY, CACHE_VERSION);
     storage.set(SCANNER_LAST_SCAN_KEY, Date.now());
-  } catch {}
+  } catch (e) { logger.warn('Failed to mark cache valid:', e); }
 }
 
-async function processBatch(assets: any[], concurrency = 10): Promise<Song[]> {
+async function processBatch(assets: MediaLibraryAsset[], concurrency = 10): Promise<Song[]> {
   const results: Song[] = [];
   const queue = [...assets];
 
@@ -617,7 +669,7 @@ async function fetchSongsViaMediaLibrary(
   const allSongs: Song[] = [];
   const MediaType = MediaLibrary.MediaType;
 
-  const fetchPage = async (params: any): Promise<AssetsResult> => {
+  const fetchPage = async (params: { first: number; after?: string; mediaType: string; sortBy: string }): Promise<AssetsResult> => {
     const raw = await fetchWithTimeout(
       retryWithBackoff(() => MediaLibrary.getAssetsAsync(params), 'getAssetsAsync'),
       MEDIA_FETCH_TIMEOUT,
@@ -678,20 +730,20 @@ async function fetchSongsAndroid(
         await MediaStore.refresh();
       }
 
-      const songs: any[] = await fetchWithTimeout(
+      const songs: MediaStoreItem[] = await fetchWithTimeout(
         retryWithBackoff(() => MediaStore.getAudio({ field: 'dateAdded', order: 'desc' }, null, null), 'getAudio'),
         MEDIA_FETCH_TIMEOUT,
         'getAudio',
       );
 
-      console.log(`[Scanner] MediaStore.getAudio returned ${songs.length} items`);
+      logger.log(`[Scanner] MediaStore.getAudio returned ${songs.length} items`);
 
       const results: Song[] = [];
       for (const item of songs) {
         const song = processMediaStoreItem(item);
         if (song) results.push(song);
       }
-      console.log(`[Scanner] Processed ${results.length} songs from ${songs.length} items`);
+      logger.log(`[Scanner] Processed ${results.length} songs from ${songs.length} items`);
       if (results.length > 0) {
         onProgress?.(results.length);
         return results;
@@ -700,31 +752,31 @@ async function fetchSongsAndroid(
       if (typeof MediaStore.getStatistics === 'function') {
         try {
           const stats = await MediaStore.getStatistics();
-          console.log(`[Scanner] MediaStore returned 0 songs. stats: audio=${stats?.totalAudio}, video=${stats?.totalVideo}, images=${stats?.totalImages}, documents=${stats?.totalDocuments}, totalSize=${stats?.totalSize}`);
+          logger.log(`[Scanner] MediaStore returned 0 songs. stats: audio=${stats?.totalAudio}, video=${stats?.totalVideo}, images=${stats?.totalImages}, documents=${stats?.totalDocuments}, totalSize=${stats?.totalSize}`);
         } catch (statsError) {
-          console.warn('[Scanner] Failed to read MediaStore statistics:', statsError);
+          logger.warn('[Scanner] Failed to read MediaStore statistics:', statsError);
         }
       }
     } catch (e) {
-      console.warn('[Scanner] fetchSongsAndroid (mediastore) failed:', e);
+      logger.warn('[Scanner] fetchSongsAndroid (mediastore) failed:', e);
       primaryError = e;
     }
   } else {
-    console.warn('[Scanner] MediaStore module unavailable on Android');
+    logger.warn('[Scanner] MediaStore module unavailable on Android');
   }
 
   if (MediaLibrary && typeof MediaLibrary.getAssetsAsync === 'function') {
     try {
-      console.log('[Scanner] Falling back to expo-media-library on Android');
+      logger.log('[Scanner] Falling back to expo-media-library on Android');
       const fallbackSongs = await fetchSongsViaMediaLibrary(onProgress);
       if (fallbackSongs.length > 0) {
-        console.log(`[Scanner] MediaLibrary fallback returned ${fallbackSongs.length} songs`);
+        logger.log(`[Scanner] MediaLibrary fallback returned ${fallbackSongs.length} songs`);
         return fallbackSongs;
       }
-      console.warn('[Scanner] MediaLibrary fallback returned 0 songs');
+      logger.warn('[Scanner] MediaLibrary fallback returned 0 songs');
     } catch (fallbackError) {
-      console.warn('[Scanner] MediaLibrary fallback failed:', fallbackError);
-      if (primaryError) console.warn('[Scanner] Primary mediastore error was:', primaryError);
+      logger.warn('[Scanner] MediaLibrary fallback failed:', fallbackError);
+      if (primaryError) logger.warn('[Scanner] Primary mediastore error was:', primaryError);
     }
   }
 
@@ -763,7 +815,7 @@ async function enrichAlbumArtwork(songs: Song[]): Promise<void> {
           }
         }
       } catch (error) {
-        console.warn('[Scanner] getAlbumArtwork failed for album:', albumId, error);
+        logger.warn('[Scanner] getAlbumArtwork failed for album:', albumId, error);
       }
     }),
   );
@@ -780,7 +832,7 @@ export async function scanMediaLibrary(
   ensureCacheLoaded();
   const loaded = await ensureModulesLoaded();
   if (!loaded) {
-    console.warn('Media scanner modules failed to load');
+    logger.warn('Media scanner modules failed to load');
     onStatusChange?.('error');
     return {
       songs: [],
@@ -795,7 +847,7 @@ export async function scanMediaLibrary(
   try {
     const hasPermission = await requestPermissions(force);
     if (!hasPermission) {
-      console.warn('[Scanner] Scan aborted: media permission not granted');
+      logger.warn('[Scanner] Scan aborted: media permission not granted');
       onStatusChange?.('error');
       return {
         songs: [],
@@ -893,13 +945,13 @@ export async function scanMediaLibrary(
     onStatusChange?.('complete');
     return { songs, albums, artists, genres, diagnostics: getDiagnostics() };
   } catch (error) {
-    console.error('Media scan error:', error);
+    logger.error('Media scan error:', error);
     const errorInfo = {
       code: 'SCAN_FAILED' as ScanErrorCode,
       message: error instanceof Error ? error.message : String(error),
     };
     if (cachedSongs.length > 0) {
-      console.warn('[Scanner] Scan failed – returning cached data as fallback');
+      logger.warn('[Scanner] Scan failed – returning cached data as fallback');
       onStatusChange?.('complete');
       onProgress?.(cachedSongs.length, cachedSongs.length);
       return { songs: cachedSongs, albums: cachedAlbums, artists: cachedArtists, genres: cachedGenres, error: errorInfo, diagnostics: getDiagnostics() };

@@ -4,7 +4,7 @@ import { FlashList } from "@shopify/flash-list";
 import { useTheme } from "@/hooks/use-theme";
 import { useMusicStore } from "@/store/music-store";
 import { useHiddenFilesStore } from "@/store/hidden-files-store";
-import { usePlayerStore } from "@/store/player-store";
+import { playerActions } from '@/player/actions';
 import { useLyricsStore } from '@/store/lyrics-store';
 import { hasCachedLyrics } from '@/services/lyrics';
 import { TopBar } from "@/components/top-bar";
@@ -16,8 +16,10 @@ import { useState, useMemo, useCallback, useEffect } from "react";
 import { fuzzySearch } from "@/utils/fuzzy";
 import { useRouter, useFocusEffect } from "expo-router";
 import type { ThemeColors } from '@/types/theme';
+import type { Song } from '@/types/media';
 import { storage } from "@/services/mmkv";
 import { s } from "@/styles";
+import { logger } from '@/utils/logger';
 
 const RECENT_KEY = "lumora-recent-searches";
 const MAX_RECENT = 10;
@@ -44,7 +46,7 @@ function saveRecent(items: string[]): void {
   try {
     storage.set(RECENT_KEY, JSON.stringify(items));
   } catch (e) {
-    console.warn('[Search] Failed to save recent searches:', e);
+    logger.warn('[Search] Failed to save recent searches:', e);
   }
 }
 
@@ -168,7 +170,7 @@ export default function SearchScreen() {
       });
     }
 
-    const getSongFields = (s: any) => {
+    const getSongFields = (s: Song) => {
       const year = s.dateAdded ? new Date(s.dateAdded).getFullYear().toString() : '';
       const ext = s.uri ? s.uri.split('.').pop() || '' : '';
       return [s.title, s.artist, s.album, s.genre || '', year, ext];
@@ -457,7 +459,7 @@ export default function SearchScreen() {
             <Pressable
               onPress={() => {
                 if (item.type === "song") {
-                  if (song) usePlayerStore.getState().play(song, results.songs);
+                  if (song) playerActions.play(song, results.songs);
                 } else if (item.type === "album") {
                   router.push({
                     pathname: "/music/album/[id]",

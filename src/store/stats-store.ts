@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 import { getCachedJSON, setCachedJSON } from '@/services/mmkv';
+import { writePlayStart, writeListenTime, writeSkip } from '@/db/listening-repository';
 import type { TrackStats, ListeningStats } from '@/types/audio';
 import type { Song } from '@/types/media';
 
@@ -70,6 +71,7 @@ export const useStatsStore = create<StatsState>()(
       });
       _pendingTrackStats = get().trackStats;
       scheduleSave();
+      writePlayStart({ songId });
     },
 
     recordSkip: (songId) => {
@@ -80,6 +82,7 @@ export const useStatsStore = create<StatsState>()(
       });
       _pendingTrackStats = get().trackStats;
       scheduleSave();
+      writeSkip(songId);
     },
 
     addPlayTime: (songId, seconds) => {
@@ -90,6 +93,7 @@ export const useStatsStore = create<StatsState>()(
       });
       _pendingTrackStats = get().trackStats;
       scheduleSave();
+      writeListenTime(songId, Math.round(seconds * 1000));
     },
 
     recordDailyListening: (seconds) => {

@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 import { storage } from '@/services/mmkv';
 import { reportWarning } from '@/utils/error-handler';
+import { logger } from '@/utils/logger';
 import { audioEngine } from '@/services/audio-engine';
 import type { EqualizerSettings, EqualizerBand, EqualizerPreset } from '@/types/audio';
 
@@ -77,7 +78,7 @@ function loadEQ(): EqualizerSettings {
   try {
     const raw = storage.getString(EQ_KEY);
     if (raw) return JSON.parse(raw);
-  } catch {}
+  } catch (e) { logger.warn('Failed to load EQ settings:', e); }
   return {
     enabled: false,
     preset: 'flat',
@@ -88,7 +89,7 @@ function loadEQ(): EqualizerSettings {
 }
 
 function saveEQ(settings: EqualizerSettings): void {
-  try { storage.set(EQ_KEY, JSON.stringify(settings)); } catch {}
+  try { storage.set(EQ_KEY, JSON.stringify(settings)); } catch (e) { logger.warn('Failed to save EQ settings:', e); }
 }
 
 interface EQState extends EqualizerSettings {

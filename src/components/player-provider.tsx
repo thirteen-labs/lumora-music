@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef, useCallback, ReactNode } from 'react';
 import { View, Text, Pressable, ActivityIndicator, Platform, AppState } from 'react-native';
-import { setupPlayer, setCrossfadeEnabled, setCrossfadeDuration, loadTrack, pausePlayback, seekTo as serviceSeekTo, ensurePlayerAlive, destroyPlayer } from '@/services/track-player';
+import { setupPlayer, setCrossfadeEnabled, setCrossfadeDuration, loadTrack, pausePlayback, seekTo as serviceSeekTo, ensurePlayerAlive, destroyPlayer, setGaplessEnabled, setPlayTogetherEnabled } from '@/services/track-player';
 import { useTrackPlayerSync } from '@/hooks/use-track-player-sync';
 import { useSettingsStore } from '@/store/settings-store';
 import { usePlayerStore } from '@/store/player-store';
@@ -15,7 +15,9 @@ import { audioEngine } from '@/services/audio-engine';
 import { useTheme } from '@/hooks/use-theme';
 import { reportWarning, persistCrashLog } from '@/utils/error-handler';
 import { checkStorageIntegrity } from '@/services/mmkv';
+import { initDatabase } from '@/db/database';
 import type { RepeatMode } from '@/types/player';
+import { logger } from '@/utils/logger';
 
 const MAX_INIT_RETRIES = 3;
 const INIT_RETRY_DELAY = 1000;
@@ -33,7 +35,7 @@ async function retryWithBackoff<T>(fn: () => Promise<T>, label: string, maxRetri
     } catch (e) {
       if (attempt < maxRetries) {
         const delay = INIT_RETRY_DELAY * Math.pow(2, attempt);
-        console.warn(`[PlayerProvider] Retry ${attempt + 1}/${maxRetries} for ${label} in ${delay}ms:`, e);
+        logger.warn(`[PlayerProvider] Retry ${attempt + 1}/${maxRetries} for ${label} in ${delay}ms:`, e);
         await new Promise(r => setTimeout(r, delay));
       } else {
         throw e;
@@ -49,6 +51,8 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const [retryCount, setRetryCount] = useState(0);
   const crossfade = useSettingsStore((s) => s.crossfade);
   const crossfadeDuration = useSettingsStore((s) => s.crossfadeDuration);
+  const gaplessPlayback = useSettingsStore((s) => s.gaplessPlayback);
+  const playTogether = useSettingsStore((s) => s.playTogether);
   const restoreAttemptedRef = useRef(false);
   const initAttemptedRef = useRef(false);
   const destroyedRef = useRef(false);
@@ -60,7 +64,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       useQueuePersistStore.getState().saveQueue(
         state.currentTrack, state.queue, state.queueIndex,
         state.shuffle, state.repeat, state.position,
-        state.isPlaying,
+        state.isPlaying, state.priorityQueue,
       );
     } catch (e) {
       reportWarning('PlayerProvider', e, 'Failed to save state before exit');
@@ -85,7 +89,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     }
 
     const allSongs = useMusicStore.getState().songs;
-    const { track, queue, queueIndex } = reconstructQueue(persisted, allSongs);
+    const { track, queue, queueIndex, priorityQueue } = reconstructQueue(persisted, allSongs);
     if (!track) {
       return;
     }
@@ -96,6 +100,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       currentTrack: track,
       queue,
       queueIndex,
+      priorityQueue: priorityQueue || [],
       shuffle: persisted.shuffle,
       repeat: persisted.repeat as RepeatMode,
       isMiniPlayerVisible: true,
@@ -136,6 +141,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
 
     async function init() {
       checkStorageIntegrity();
+      initDatabase().catch(() => { /* db init failed */ });
 
       try {
         await retryWithBackoff(setupPlayer, 'setupPlayer');
@@ -157,7 +163,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
                 await requestMediaPermissions();
               }
             } catch (e) {
-              console.warn('[PlayerProvider] Media permissions request failed:', e);
+              logger.warn('[PlayerProvider] Media permissions request failed:', e);
             }
           })()
         );
@@ -221,8 +227,8 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
                 if (track) {
                   try {
                     const { AudioManager } = await import('react-native-audio-api');
-                    AudioManager.setAudioSessionActivity(true);
-                  } catch {}
+                  AudioManager.setAudioSessionActivity(true);
+                } catch { /* set audio session failed */ }
                 }
               }
               return;
@@ -299,6 +305,22 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       reportWarning('PlayerProvider', e, 'Failed to set crossfade settings');
     }
   }, [crossfade, crossfadeDuration]);
+
+  useEffect(() => {
+    try {
+      setGaplessEnabled(gaplessPlayback);
+    } catch (e) {
+      reportWarning('PlayerProvider', e, 'Failed to set gapless setting');
+    }
+  }, [gaplessPlayback]);
+
+  useEffect(() => {
+    try {
+      setPlayTogetherEnabled(playTogether);
+    } catch (e) {
+      reportWarning('PlayerProvider', e, 'Failed to set play together setting');
+    }
+  }, [playTogether]);
 
   useEffect(() => {
     try {

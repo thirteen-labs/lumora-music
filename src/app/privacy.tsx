@@ -4,17 +4,19 @@ import { useTheme } from '@/hooks/use-theme';
 import { useRouter } from 'expo-router';
 import { ChevronLeft, Shield, ShieldCheck, WifiOff, EyeOff } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-
-const PRIVACY_ITEMS = [
-  { icon: WifiOff, label: 'Offline Mode', desc: 'No internet access required' },
-  { icon: ShieldCheck, label: 'No Data Collection', desc: 'Your data stays on your device' },
-  { icon: EyeOff, label: 'No Analytics', desc: 'Usage analytics are disabled' },
-];
+import { useTranslation } from '@/hooks/use-translation';
 
 export default function PrivacyScreen() {
   const { colors } = useTheme();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
+
+  const PRIVACY_ITEMS = [
+    { icon: WifiOff, label: t('privacy.offline'), desc: t('privacy.offline.desc') },
+    { icon: ShieldCheck, label: t('privacy.no.collection'), desc: t('privacy.no.collection.desc') },
+    { icon: EyeOff, label: t('privacy.no.analytics'), desc: t('privacy.no.analytics.desc') },
+  ];
 
   return (
     <View style={[s.flex1, { backgroundColor: colors.background }]}>
@@ -22,7 +24,7 @@ export default function PrivacyScreen() {
         <Pressable onPress={() => router.back()} style={[s.w11, s.h11, s.roundedFull, s.itemsCenter, s.justifyCenter, { backgroundColor: colors.surface }]}>
           <ChevronLeft size={22} color={colors.text} />
         </Pressable>
-        <Text style={[s.textLg, s.fontBold, { color: colors.text }]}>Privacy</Text>
+        <Text style={[s.textLg, s.fontBold, { color: colors.text }]}>{t('privacy.title')}</Text>
       </View>
       <ScrollView contentContainerStyle={{ paddingBottom: 120 + insets.bottom, paddingTop: 8 }} showsVerticalScrollIndicator={false}>
         <View style={s.px5}>
@@ -30,9 +32,9 @@ export default function PrivacyScreen() {
             <View style={[s.w16, s.h16, s.roundedFull, s.itemsCenter, s.justifyCenter, { backgroundColor: colors.accent + '20' }]}>
               <Shield size={32} color={colors.accent} />
             </View>
-            <Text style={[s.textLg, s.fontBold, s.mt3, { color: colors.text }]}>Your Privacy Matters</Text>
+            <Text style={[s.textLg, s.fontBold, s.mt3, { color: colors.text }]}>{t('privacy.header')}</Text>
             <Text style={[s.textSm, s.textCenter, s.mt2, { color: colors.textMuted, lineHeight: 22 }]}>
-              Lumora is designed to work completely offline. No data is collected, tracked, or shared.
+              {t('privacy.description')}
             </Text>
           </View>
           <View style={{ backgroundColor: colors.surface, borderRadius: 16, overflow: 'hidden' }}>

@@ -1,4 +1,4 @@
-import { useState, useRef, useMemo, useCallback } from 'react';
+import React, { useState, useRef, useMemo, useCallback } from 'react';
 import { View, Text, Pressable, Alert, TextInput, ScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { s } from '@/styles';
@@ -11,7 +11,7 @@ import { usePlaylistStore } from '@/store/playlist-store';
 import { useMusicStore } from '@/store/music-store';
 import { useFavoritesStore } from '@/store/favorites-store';
 import { useStatsStore } from '@/store/stats-store';
-import { usePlayerStore } from '@/store/player-store';
+import { playerActions } from '@/player/actions';
 import { useRouter } from 'expo-router';
 import {
   Heart, Plus, ListMusic, Play, Tag, Users, Clock, TrendingUp, Disc3,
@@ -43,7 +43,6 @@ export default function PlaylistsScreen() {
   const albums = useMusicStore((s) => s.albums);
   const artists = useMusicStore((s) => s.artists);
   const genres = useMusicStore((s) => s.genres);
-  const play = usePlayerStore((s) => s.play);
   const favoriteCount = useFavoritesStore((s) => s.favoriteSongIds.length);
   const trackStats = useStatsStore((s) => s.trackStats);
 
@@ -92,12 +91,12 @@ export default function PlaylistsScreen() {
     const songMap = new Map(songs.map((s) => [s.id, s]));
     const playlistSongs = playlist.songIds.map((id) => songMap.get(id)).filter((s): s is typeof songs[0] => Boolean(s));
     if (playlistSongs.length > 0) {
-      play(playlistSongs[0], playlistSongs);
+      playerActions.play(playlistSongs[0], playlistSongs);
       router.push('/player');
     }
   };
 
-  const renderBackdrop = (props: any) => (
+  const renderBackdrop = (props: React.ComponentProps<typeof BottomSheetBackdrop>) => (
     <BottomSheetBackdrop {...props} disappearsOnIndex={-1} appearsOnIndex={0} opacity={0.5} />
   );
 

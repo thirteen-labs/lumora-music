@@ -9,7 +9,7 @@ import { useSmartPlaylistStore, BUILT_IN_PLAYLISTS } from '@/store/smart-playlis
 import { useStatsStore } from '@/store/stats-store';
 import { useMusicStore } from '@/store/music-store';
 import { useRouter } from 'expo-router';
-import { usePlayerStore } from '@/store/player-store';
+import { playerActions } from '@/player/actions';
 import type { SmartPlaylist, SmartPlaylistRule } from '@/types/audio';
 import {
   Clock, History, TrendingUp, Disc, Plus, Trash2, Music,
@@ -28,7 +28,6 @@ export default function SmartPlaylistsScreen() {
   const trackStats = useStatsStore((s) => s.trackStats);
   const resolveSongs = useSmartPlaylistStore((s) => s.resolveSongs);
   const customPlaylists = useSmartPlaylistStore((s) => s.playlists);
-  const play = usePlayerStore((s) => s.play);
   const [showCreate, setShowCreate] = useState(false);
 
   const builtInCounts = useMemo(() => {
@@ -53,9 +52,9 @@ export default function SmartPlaylistsScreen() {
       Alert.alert('Empty Playlist', 'No songs match the rules for this playlist.');
       return;
     }
-    play(resolved[0], resolved);
+    playerActions.play(resolved[0], resolved);
     router.back();
-  }, [resolveSongs, songs, trackStats, play, router]);
+  }, [resolveSongs, songs, trackStats, router]);
 
   const builtInIcon = (icon: string) => {
     const Icon = ICONS[icon] || Music;

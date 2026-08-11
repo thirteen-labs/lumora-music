@@ -24,7 +24,7 @@ export const useToastStore = create<ToastState>((set, get) => ({
       return { toasts: next };
     });
     setTimeout(() => {
-      try { get().dismissToast(id); } catch {}
+      try { get().dismissToast(id); } catch { /* toast already dismissed */ }
     }, 2200);
   },
   dismissToast: (id: string) => {

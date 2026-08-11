@@ -1,4 +1,5 @@
 import { storage, getCachedJSON, setCachedJSON } from '@/services/mmkv';
+import { logger } from '@/utils/logger';
 import type { FileItem } from '@/services/file-browser';
 
 const CACHE_PREFIX = 'lumora-dircache-';
@@ -35,7 +36,7 @@ export function setCachedDirectory(uri: string, items: FileItem[], showHidden: b
     const entry: CacheEntry = { items, timestamp: Date.now(), showHidden };
     setCachedJSON(key, entry);
     trimCache();
-  } catch {}
+  } catch (e) { logger.warn('Failed to cache directory:', e); }
 }
 
 export function invalidateCache(uri?: string): void {
@@ -47,7 +48,7 @@ export function invalidateCache(uri?: string): void {
       const keys = storage.getAllKeys().filter((k: string) => k.startsWith(CACHE_PREFIX));
       for (const k of keys) storage.remove(k);
     }
-  } catch {}
+  } catch (e) { logger.warn('Failed to invalidate directory cache:', e); }
 }
 
 function trimCache(): void {
@@ -68,5 +69,5 @@ function trimCache(): void {
     for (let i = 0; i < toRemove; i++) {
       storage.remove(entries[i].key);
     }
-  } catch {}
+  } catch (e) { logger.warn('Failed to trim directory cache:', e); }
 }

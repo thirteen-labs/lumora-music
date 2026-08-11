@@ -12,6 +12,7 @@ import { Search, FileUp, FileDown, Paperclip, Loader } from 'lucide-react-native
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
+import { logger } from '@/utils/logger';
 
 export default function LyricsEditorScreen() {
   const { colors } = useTheme();
@@ -59,7 +60,7 @@ export default function LyricsEditorScreen() {
       saveLyrics(songId, content);
       Alert.alert(t('common.ok') || 'Success', 'Lyrics imported successfully!');
     } catch (error) {
-      console.error('LRC import error:', error);
+      logger.error('LRC import error:', error);
       Alert.alert('Error', 'Failed to import lyrics. Please try again.');
     }
   };
@@ -107,7 +108,7 @@ export default function LyricsEditorScreen() {
         Alert.alert('Exported', `Lyrics saved to cache:\n${fileName}`);
       }
     } catch (error) {
-      console.error('LRC export error:', error);
+      logger.error('LRC export error:', error);
       Alert.alert('Error', 'Failed to export lyrics.');
     }
   };

@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import * as Font from "expo-font";
 import { View, ActivityIndicator } from "react-native";
 import { useSettingsStore } from "@/store/settings-store";
+import { logger } from '@/utils/logger';
 
 const FONT_MAP: Record<string, () => Promise<void>> = {
   system: async () => {},
@@ -63,7 +64,7 @@ export function FontProvider({ children }: FontProviderProps) {
           await loader();
         }
       } catch (e) {
-        console.warn("Failed to load font:", e);
+        logger.warn("Failed to load font:", e);
       }
       if (!cancelled) {
         setLoadedFont(fontFamily);

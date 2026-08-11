@@ -51,6 +51,7 @@ const SETTINGS_KEYS = {
   playTogether: "lumora-setting-play-together",
   newMediaNotification: "lumora-setting-new-media-notif",
   pushNotification: "lumora-setting-push-notif",
+  autoplay: "lumora-setting-autoplay",
 
 } as const;
 
@@ -99,7 +100,9 @@ interface SettingsState {
   playTogether: boolean;
   newMediaNotification: boolean;
   pushNotification: boolean;
+  autoplay: boolean;
 
+  setAutoplay: (v: boolean) => void;
   setShowSystemHiddenFiles: (v: boolean) => void;
   setDefaultShuffle: (v: boolean) => void;
   setDefaultRepeat: (v: RepeatMode) => void;
@@ -163,7 +166,12 @@ export const useSettingsStore = create<SettingsState>()(
     playTogether: loadBool(SETTINGS_KEYS.playTogether, false),
     newMediaNotification: loadBool(SETTINGS_KEYS.newMediaNotification, true),
     pushNotification: loadBool(SETTINGS_KEYS.pushNotification, true),
+    autoplay: loadBool(SETTINGS_KEYS.autoplay, true),
 
+    setAutoplay: (v) => {
+      set((s) => { s.autoplay = v; });
+      persistSetting(SETTINGS_KEYS.autoplay, v);
+    },
     setShowSystemHiddenFiles: (v) => {
       set((s) => { s.showSystemHiddenFiles = v; });
       persistSetting(SETTINGS_KEYS.showSystemHiddenFiles, v);

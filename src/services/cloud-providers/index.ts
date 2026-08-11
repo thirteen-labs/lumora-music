@@ -2,6 +2,7 @@ import type { CloudProvider } from "./types";
 import { createGoogleDriveProvider } from "./google-drive";
 import { createDropboxProvider } from "./dropbox";
 import { storage } from "@/services/mmkv";
+import { logger } from "@/utils/logger";
 
 const GOOGLE_CLIENT_ID_KEY = "lumora-google-drive-client-id";
 const DROPBOX_APP_KEY_KEY = "lumora-dropbox-app-key";
@@ -27,14 +28,14 @@ function getStoredDropboxAppKey(): string {
 export function setGoogleClientId(clientId: string): void {
   try {
     storage.set(GOOGLE_CLIENT_ID_KEY, clientId);
-  } catch {}
+  } catch (e) { logger.warn('Failed to save Google client ID:', e); }
   _providers = null;
 }
 
 export function setDropboxAppKey(appKey: string): void {
   try {
     storage.set(DROPBOX_APP_KEY_KEY, appKey);
-  } catch {}
+  } catch (e) { logger.warn('Failed to save Dropbox app key:', e); }
   _providers = null;
 }
 

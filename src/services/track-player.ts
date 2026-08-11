@@ -4,9 +4,9 @@ import { setAudioModeAsync } from "expo-audio";
 import {
   showNowPlayingNotification,
   dismissNowPlayingNotification,
-  updateNotificationPlaybackState,
 } from "@/services/notifications";
 import { reportWarning } from "@/utils/error-handler";
+import { logger } from "@/utils/logger";
 import {
   useTelemetryStore,
 } from "@/store/telemetry-store";
@@ -14,6 +14,8 @@ import { storage } from "@/services/mmkv";
 
 let crossfadeEnabled = false;
 let crossfadeDuration = 5;
+let gaplessEnabled = false;
+let playTogetherEnabled = false;
 let currentVolume = (() => {
   try { return storage.getNumber('lumora-volume') ?? 1; } catch { return 1; }
 })();
@@ -47,7 +49,7 @@ const playerAdapter = {
   set volume(v: number) {
     currentVolume = v;
     audioEngine.setVolume(v);
-    try { storage.set('lumora-volume', v); } catch {}
+    try { storage.set('lumora-volume', v); } catch (e) { logger.warn('Failed to save volume:', e); }
   },
   play() {
     audioEngine.play();
@@ -114,24 +116,46 @@ export function getCrossfadeDuration(): number {
   return crossfadeDuration;
 }
 
+export function setGaplessEnabled(enabled: boolean): void {
+  gaplessEnabled = enabled;
+  audioEngine.setGaplessEnabled(enabled);
+}
+
+export function isGaplessEnabled(): boolean {
+  return gaplessEnabled;
+}
+
+export function setPlayTogetherEnabled(enabled: boolean): void {
+  playTogetherEnabled = enabled;
+  applyAudioMode();
+}
+
+export function isPlayTogetherEnabled(): boolean {
+  return playTogetherEnabled;
+}
+
+async function applyAudioMode(): Promise<void> {
+  try {
+    await setAudioModeAsync({
+      playsInSilentMode: true,
+      shouldPlayInBackground: true,
+      interruptionMode: playTogetherEnabled ? 'mixWithOthers' : 'doNotMix',
+    });
+  } catch (e) {
+    reportWarning('TrackPlayer', e, 'Failed to set audio mode');
+  }
+}
+
 export async function setupPlayer(): Promise<void> {
   try {
     /* Destroy any existing context before init */
     audioEngine.destroy();
     await audioEngine.init();
   } catch (e) {
-    console.warn("Audio engine init failed:", e);
+    logger.warn("Audio engine init failed:", e);
   }
 
-  try {
-    await setAudioModeAsync({
-      playsInSilentMode: true,
-      shouldPlayInBackground: true,
-      interruptionMode: "doNotMix",
-    });
-  } catch (e) {
-    reportWarning('TrackPlayer', e, 'Failed to set audio mode');
-  }
+  await applyAudioMode();
 }
 
 export async function loadTrack(track: Song): Promise<void> {
@@ -168,6 +192,9 @@ function setLockScreenMetadata(track: Song): void {
 export async function preloadNextTrack(track: Song): Promise<void> {
   if (crossfadeInProgress) return;
   audioEngine.preloadTrack(track.uri);
+  if (gaplessEnabled) {
+    audioEngine.setGaplessNextTrack(track.uri);
+  }
 }
 
 

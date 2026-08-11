@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { immer } from "zustand/middleware/immer";
 import { storage } from "@/services/mmkv";
+import { logger } from "@/utils/logger";
 import type { SmartPlaylist, SmartPlaylistRule } from "@/types/audio";
 import type { Song } from "@/types/media";
 
@@ -10,22 +11,22 @@ function loadSmartPlaylists(): SmartPlaylist[] {
   try {
     const raw = storage.getString(SMART_PLAYLISTS_KEY);
     if (raw) return JSON.parse(raw);
-  } catch {}
+  } catch (e) { logger.warn('Failed to load smart playlists:', e); }
   return [];
 }
 
 function saveSmartPlaylists(playlists: SmartPlaylist[]): void {
   try {
     storage.set(SMART_PLAYLISTS_KEY, JSON.stringify(playlists));
-  } catch {}
+  } catch (e) { logger.warn('Failed to save smart playlists:', e); }
 }
 
 function evaluateRule(
   song: Song,
   rule: SmartPlaylistRule,
-  stats: Record<string, any>,
+  stats: Record<string, { playCount?: number; lastPlayed?: number }>,
 ): boolean {
-  let fieldValue: any;
+  let fieldValue: string | number | boolean | null;
 
   switch (rule.field) {
     case "genre":
@@ -86,7 +87,7 @@ function evaluateRule(
 function resolvePlaylist(
   songs: Song[],
   playlist: SmartPlaylist,
-  stats: Record<string, any>,
+  stats: Record<string, { playCount?: number; lastPlayed?: number }>,
 ): Song[] {
   let filtered = songs.filter((song) => {
     if (playlist.matchAll) {
@@ -133,7 +134,7 @@ interface SmartPlaylistState {
   resolveSongs: (
     id: string,
     allSongs: Song[],
-    trackStats: Record<string, any>,
+    trackStats: Record<string, { playCount?: number; lastPlayed?: number }>,
   ) => Song[];
   getBuiltInPlaylists: () => SmartPlaylist[];
 }

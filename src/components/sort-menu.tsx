@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef } from 'react';
+import React, { useCallback, useMemo, useRef } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import {
   BottomSheetModal,
@@ -28,7 +28,7 @@ export function SortMenu({ options, active, onSelect, count }: SortMenuProps) {
   }, []);
 
   const renderBackdrop = useCallback(
-    (props: any) => (
+    (props: React.ComponentProps<typeof BottomSheetBackdrop>) => (
       <BottomSheetBackdrop {...props} disappearsOnIndex={-1} appearsOnIndex={0} opacity={0.5} />
     ),
     [],

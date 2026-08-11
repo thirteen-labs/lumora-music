@@ -5,11 +5,14 @@ import { useTheme } from '@/hooks/use-theme';
 import { useRouter } from 'expo-router';
 import { ChevronLeft } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from '@/hooks/use-translation';
+import Constants from 'expo-constants';
 
 export default function AboutScreen() {
   const { colors } = useTheme();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
 
   return (
     <View style={[s.flex1, { backgroundColor: colors.background }]}>
@@ -17,7 +20,7 @@ export default function AboutScreen() {
         <Pressable onPress={() => router.back()} style={[s.w11, s.h11, s.roundedFull, s.itemsCenter, s.justifyCenter, { backgroundColor: colors.surface }]}>
           <ChevronLeft size={22} color={colors.text} />
         </Pressable>
-        <Text style={[s.textLg, s.fontBold, { color: colors.text }]}>About Lumora</Text>
+        <Text style={[s.textLg, s.fontBold, { color: colors.text }]}>{t('about.title')}</Text>
       </View>
       <ScrollView contentContainerStyle={{ paddingBottom: 120 + insets.bottom, paddingTop: 8 }} showsVerticalScrollIndicator={false}>
         <View style={s.px5}>
@@ -26,13 +29,13 @@ export default function AboutScreen() {
               <Image source={require('../../assets/favicon.png')} style={{ width: 40, height: 40 }} contentFit="contain" />
             </View>
             <Text style={[s.textXl, s.fontBold, { color: colors.text }]}>Lumora</Text>
-            <Text style={[s.textSm, s.mt1, { color: colors.textMuted }]}>Version 1.0.0</Text>
+            <Text style={[s.textSm, s.mt1, { color: colors.textMuted }]}>{t('about.version')} {Constants.expoConfig?.version ?? '1.0.1'}</Text>
           </View>
           <View style={{ backgroundColor: colors.surface, borderRadius: 16, overflow: 'hidden' }}>
             {[
-              { label: 'Version', value: '1.0.0' },
-              { label: 'Developer', value: 'Cadmus Labs' },
-              { label: 'Platform', value: 'React Native / Expo' },
+              { label: t('about.version'), value: Constants.expoConfig?.version ?? '1.0.1' },
+              { label: t('about.developer'), value: 'Northern Obsidian' },
+              { label: t('about.platform'), value: 'React Native / Expo' },
             ].map((item, i, arr) => (
               <View
                 key={item.label}
@@ -44,7 +47,7 @@ export default function AboutScreen() {
             ))}
           </View>
           <Text style={[s.textXs, s.textCenter, s.mt6, { color: colors.textMuted }]}>
-            Premium offline media player
+            {t('about.description')}
           </Text>
         </View>
       </ScrollView>

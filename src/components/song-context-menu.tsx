@@ -6,7 +6,7 @@ import {
   BottomSheetBackdrop,
 } from '@gorhom/bottom-sheet';
 import { useTheme } from '@/hooks/use-theme';
-import { usePlayerStore } from '@/store/player-store';
+import { playerActions } from '@/player/actions';
 import { useFavoritesStore } from '@/store/favorites-store';
 import { useToastStore } from '@/store/toast-store';
 import { useRouter } from 'expo-router';
@@ -14,6 +14,7 @@ import type { Song } from '@/types/media';
 import { Image } from 'expo-image';
 import {
   Play,
+  SkipForward,
   ListPlus,
   Heart,
   Share2,
@@ -45,15 +46,13 @@ interface SongContextMenuProps {
 
 export function SongContextMenu({ bottomSheetRef, song, onDismiss }: SongContextMenuProps) {
   const { colors } = useTheme();
-  const play = usePlayerStore((s) => s.play);
-  const addToQueue = usePlayerStore((s) => s.addToQueue);
   const favoriteSongIds = useFavoritesStore((s) => s.favoriteSongIds);
   const toggleSongFavorite = useFavoritesStore((s) => s.toggleSongFavorite);
   const showToast = useToastStore((s) => s.showToast);
   const router = useRouter();
 
   const renderBackdrop = useCallback(
-    (props: any) => (
+    (props: React.ComponentProps<typeof BottomSheetBackdrop>) => (
       <BottomSheetBackdrop {...props} disappearsOnIndex={-1} appearsOnIndex={0} opacity={0.5} />
     ),
     [],
@@ -86,7 +85,7 @@ export function SongContextMenu({ bottomSheetRef, song, onDismiss }: SongContext
   return (
     <BottomSheetModal
       ref={bottomSheetRef}
-      snapPoints={['40%']}
+      snapPoints={['52%']}
       backdropComponent={renderBackdrop}
       backgroundStyle={{ backgroundColor: colors.surface }}
       handleIndicatorStyle={{ backgroundColor: colors.textMuted }}
@@ -135,7 +134,7 @@ export function SongContextMenu({ bottomSheetRef, song, onDismiss }: SongContext
               </View>
             </View>
             <Pressable
-              onPress={() => { play(song); dismiss(); }}
+              onPress={() => { playerActions.play(song); dismiss(); }}
               style={{
                 flexDirection: 'row',
                 alignItems: 'center',
@@ -148,7 +147,7 @@ export function SongContextMenu({ bottomSheetRef, song, onDismiss }: SongContext
               <Text style={{ fontSize: 15, color: colors.text }}>Play Now</Text>
             </Pressable>
             <Pressable
-              onPress={() => { addToQueue(song); showToast('Added to queue', 'list'); dismiss(); }}
+              onPress={() => { playerActions.addToQueue(song); dismiss(); }}
               style={{
                 flexDirection: 'row',
                 alignItems: 'center',
@@ -159,6 +158,19 @@ export function SongContextMenu({ bottomSheetRef, song, onDismiss }: SongContext
             >
               <ListPlus size={20} color={colors.text} />
               <Text style={{ fontSize: 15, color: colors.text }}>Add to Queue</Text>
+            </Pressable>
+            <Pressable
+              onPress={() => { playerActions.playNext(song); dismiss(); }}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 16,
+                paddingHorizontal: 20,
+                paddingVertical: 14,
+              }}
+            >
+              <SkipForward size={20} color={colors.text} />
+              <Text style={{ fontSize: 15, color: colors.text }}>Play Next</Text>
             </Pressable>
             <Pressable
               onPress={() => { toggleSongFavorite(song); showToast(isFav ? 'Removed from favorites' : 'Added to favorites', 'heart'); dismiss(); }}

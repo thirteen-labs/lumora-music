@@ -1,6 +1,7 @@
 import { useToastStore } from "@/store/toast-store";
 import { Platform } from "react-native";
 import * as FileSystem from "expo-file-system/legacy";
+import { logger } from "@/utils/logger";
 
 const SILENT_ERRORS = new Set([
   "Failed to show notification",
@@ -43,7 +44,7 @@ function formatError(error: unknown): string {
 
 export function reportError(context: string, error: unknown, userMessage?: string): void {
   const message = formatError(error);
-  console.error(`[${context}]`, message, error instanceof Error ? error.stack : '');
+  logger.error(`[${context}]`, message, error instanceof Error ? error.stack : '');
   addToErrorLog(context, message, 'error');
 
   if (userMessage && !SILENT_ERRORS.has(message)) {
@@ -53,7 +54,7 @@ export function reportError(context: string, error: unknown, userMessage?: strin
 
 export function reportWarning(context: string, error: unknown, userMessage?: string): void {
   const message = formatError(error);
-  console.warn(`[${context}]`, message);
+  logger.warn(`[${context}]`, message);
   addToErrorLog(context, message, 'warning');
 
   if (userMessage) {
@@ -88,7 +89,7 @@ export async function persistCrashLog(name: string, error: Error): Promise<void>
         await FileSystem.deleteAsync(`${crashDir}${sorted[i]}`, { idempotent: true });
       }
     }
-  } catch {}
+  } catch (e) { logger.warn('Failed to persist crash log:', e); }
 }
 
 export async function getRecentCrashLogs(): Promise<string[]> {
@@ -110,7 +111,7 @@ export async function clearCrashLogs(): Promise<void> {
     if (dir.exists) {
       await FileSystem.deleteAsync(crashDir, { idempotent: true });
     }
-  } catch {}
+  } catch (e) { logger.warn('Failed to clear crash logs:', e); }
 }
 
 let globalErrorHandlerInstalled = false;
@@ -129,7 +130,7 @@ export function installGlobalErrorHandler(): void {
       defaultHandler(error, isFatal);
     });
   } catch (e) {
-    console.warn('[ErrorHandler] Failed to install sync handler:', e);
+    logger.warn('[ErrorHandler] Failed to install sync handler:', e);
   }
 
   try {
@@ -144,7 +145,7 @@ export function installGlobalErrorHandler(): void {
       });
     }
   } catch (e) {
-    console.warn('[ErrorHandler] Failed to install rejection handler:', e);
+    logger.warn('[ErrorHandler] Failed to install rejection handler:', e);
   }
 
   if (Platform.OS !== 'web') {

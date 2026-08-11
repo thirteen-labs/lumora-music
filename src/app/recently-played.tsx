@@ -4,7 +4,7 @@ import { s } from '@/styles';
 import { useTheme } from '@/hooks/use-theme';
 import { useMusicStore } from '@/store/music-store';
 import { useStatsStore } from '@/store/stats-store';
-import { usePlayerStore } from '@/store/player-store';
+import { playerActions } from '@/player/actions';
 import { useLyricsStore } from '@/store/lyrics-store';
 import { hasCachedLyrics } from '@/services/lyrics';
 import { useRouter } from 'expo-router';
@@ -43,7 +43,7 @@ export default function RecentlyPlayedScreen() {
               recentlyPlayed.map((song, i) => (
                 <Pressable
                   key={song.id}
-                  onPress={() => usePlayerStore.getState().play(song, recentlyPlayed)}
+                  onPress={() => playerActions.play(song, recentlyPlayed)}
                   onLongPress={() => present(song)}
                   style={[s.flexRow, s.itemsCenter, s.gap3, s.p4]}
                 >

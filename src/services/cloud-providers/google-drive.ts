@@ -2,6 +2,7 @@ import * as AuthSession from "expo-auth-session";
 import * as WebBrowser from "expo-web-browser";
 import { Platform } from "react-native";
 import { storage } from "@/services/mmkv";
+import { logger } from "@/utils/logger";
 import type { CloudProvider, CloudFile, TokenSet } from "./types";
 
 WebBrowser.maybeCompleteAuthSession();
@@ -33,7 +34,7 @@ function saveToken(token: TokenSet | null): void {
     } else {
       storage.remove(TOKEN_KEY);
     }
-  } catch {}
+  } catch (e) { logger.warn('Failed to save Google Drive token:', e); }
 }
 
 function isTokenValid(token: TokenSet): boolean {
@@ -168,7 +169,7 @@ export function createGoogleDriveProvider(clientId: string): CloudProvider {
         if (!response.ok) return [];
 
         const data = await response.json();
-        return (data.files || []).map((f: any) => ({
+        return (data.files || []).map((f: { id: string; name: string; createdTime?: string; size?: string }) => ({
           id: f.id,
           name: f.name,
           createdAt: f.createdTime ? new Date(f.createdTime).getTime() : 0,
@@ -208,8 +209,7 @@ export function createGoogleDriveProvider(clientId: string): CloudProvider {
             body: `token=${token.accessToken}`,
           });
         }
-      } catch {
-      } finally {
+      } catch { /* revoke token failed */ } finally {
         saveToken(null);
       }
     },

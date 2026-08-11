@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useCallback } from 'react';
+import React, { useState, useMemo, useRef, useCallback } from 'react';
 import { View, Text, Pressable, Alert, ScrollView, TextInput } from 'react-native';
 import { s } from '@/styles';
 import { FlashList } from '@shopify/flash-list';
@@ -8,7 +8,7 @@ import { MiniPlayer } from '@/components/mini-player';
 import { Artwork } from '@/components/artwork';
 import { usePlaylistStore } from '@/store/playlist-store';
 import { useMusicStore } from '@/store/music-store';
-import { usePlayerStore } from '@/store/player-store';
+import { playerActions } from '@/player/actions';
 import { useLyricsStore } from '@/store/lyrics-store';
 import { useMetadataStore, type MetadataOverride } from '@/store/metadata-store';
 import { hasCachedLyrics } from '@/services/lyrics';
@@ -31,8 +31,6 @@ export default function PlaylistDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const songs = useMusicStore((s) => s.songs);
-  const play = usePlayerStore((s) => s.play);
-  const setShuffle = usePlayerStore((s) => s.setShuffle);
   const playlists = usePlaylistStore((s) => s.playlists);
   const removeSongFromPlaylist = usePlaylistStore((s) => s.removeSongFromPlaylist);
 
@@ -64,7 +62,7 @@ export default function PlaylistDetailScreen() {
   const addSongsToPlaylist = usePlaylistStore((s) => s.addSongsToPlaylist);
 
   const renderBackdrop = useCallback(
-    (props: any) => (
+    (props: React.ComponentProps<typeof BottomSheetBackdrop>) => (
       <BottomSheetBackdrop {...props} disappearsOnIndex={-1} appearsOnIndex={0} opacity={0.5} />
     ),
     [],
@@ -115,7 +113,7 @@ export default function PlaylistDetailScreen() {
 
   const handlePlayAll = () => {
     if (playlistSongs.length > 0) {
-      play(playlistSongs[0], playlistSongs);
+      playerActions.play(playlistSongs[0], playlistSongs);
       router.push('/player');
     }
   };
@@ -123,8 +121,8 @@ export default function PlaylistDetailScreen() {
   const handleShufflePlay = () => {
     if (playlistSongs.length > 0) {
       const randomIndex = Math.floor(Math.random() * playlistSongs.length);
-      play(playlistSongs[randomIndex], playlistSongs);
-      setShuffle(true);
+      playerActions.play(playlistSongs[randomIndex], playlistSongs);
+      playerActions.setShuffle(true);
       router.push('/player');
     }
   };
@@ -436,7 +434,7 @@ export default function PlaylistDetailScreen() {
   );
 }
 
-function InfoRow({ label, value, colors, multiline }: { label: string; value: string; colors: any; multiline?: boolean }) {
+function InfoRow({ label, value, colors, multiline }: { label: string; value: string; colors: { text: string; textMuted: string }; multiline?: boolean }) {
   return (
     <View style={[s.flexRow, s.justifyBetween, { alignItems: multiline ? 'flex-start' : 'center', gap: 8 }]}>
       <Text style={{ fontSize: 12, color: colors.textMuted, width: 90 }}>{label}</Text>

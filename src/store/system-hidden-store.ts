@@ -65,10 +65,11 @@ export const useSystemHiddenStore = create<SystemHiddenState>()(
           s.status = 'complete';
           s.lastScanTime = now;
         });
-      } catch (e: any) {
+      } catch (e: unknown) {
+        const message = e instanceof Error ? e.message : String(e);
         set((s) => {
           s.status = 'error';
-          s.error = e?.message ?? 'Scan failed';
+          s.error = message;
         });
       }
     },

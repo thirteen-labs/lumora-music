@@ -6,6 +6,7 @@ import { useRouter } from 'expo-router';
 import { ChevronLeft, Lock, Shield } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { storage } from '@/services/mmkv';
+import { logger } from '@/utils/logger';
 
 const PIN_KEY = 'lumora-private-folder-pin';
 
@@ -29,13 +30,13 @@ function getStoredPinHash(): string | null {
 function setStoredPinHash(hash: string): void {
   try {
     storage.set(PIN_KEY, hash);
-  } catch {}
+  } catch (e) { logger.warn('Failed to save PIN hash:', e); }
 }
 
 function clearStoredPin(): void {
   try {
     storage.set(PIN_KEY, '');
-  } catch {}
+  } catch (e) { logger.warn('Failed to clear PIN:', e); }
 }
 
 export default function PrivateFolderScreen() {
