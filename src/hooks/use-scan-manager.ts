@@ -5,6 +5,7 @@ import {
   registerBackgroundScan,
   isBackgroundScanRegistered,
   isBackgroundScanEnabled,
+  getLastBackgroundScanTime,
 } from '@/services/background-scanner';
 import { reportWarning } from '@/utils/error-handler';
 
@@ -52,12 +53,19 @@ export function useScanManager() {
         const now = Date.now();
         if (now - lastForegroundScan.current < FOREGROUND_SCAN_COOLDOWN) return;
         lastForegroundScan.current = now;
-        await runSafeScans();
+        /* A background scan may have discovered new files while the app was
+           closed. The default (non-forced) scan returns the cached library,
+           so only force a re-scan when a background scan has run since our
+           last foreground scan. */
+        const lastBgScan = getLastBackgroundScanTime();
+        const lastScan = useMusicStore.getState().lastScanTime;
+        const force = lastBgScan > lastScan;
+        await runWithInterval(() => useMusicStore.getState().scan(force), 'Music');
       }
     };
     const subscription = AppState.addEventListener('change', handleAppState);
     return () => subscription?.remove();
-  }, [runSafeScans]);
+  }, []);
 
   useEffect(() => {
     if (songs.length > 0) return;

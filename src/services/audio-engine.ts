@@ -172,7 +172,6 @@ class AudioEngine {
   private volumeGain: GainNode | null = null;
   private replayGainNode: GainNode | null = null;
   private balancePanner: StereoPannerNode | null = null;
-  private crossfadeGain: GainNode | null = null;
   private mainGain: GainNode | null = null;
 
   private _playing = false;
@@ -287,9 +286,6 @@ class AudioEngine {
 
       this.mainGain = this.context.createGain();
       this.mainGain.gain.value = 1.0;
-
-      this.crossfadeGain = this.context.createGain();
-      this.crossfadeGain.gain.value = 0;
 
       this.loudnessFilters = [
         { freq: 100, type: 'lowshelf' as const, q: 0.7 },
@@ -536,6 +532,8 @@ class AudioEngine {
 
     if (this._paused && this.currentSource) {
       this.context.resume().catch((e) => reportWarning('AudioEngine', e, 'Play: context resume failed'));
+      this._startContextTime = this.context.currentTime;
+      this._startOffset = this._currentTime;
       this._paused = false;
       this._playing = true;
       this.startPositionTracking();
@@ -623,13 +621,6 @@ class AudioEngine {
       }
     }
     this.crossfadeBuffer = null;
-    if (this.crossfadeGain) {
-      try {
-        this.crossfadeGain.gain.value = 0;
-      } catch {
-        this.crossfadeGain = null;
-      }
-    }
   }
 
   seekTo(position: number): void {
@@ -822,7 +813,6 @@ class AudioEngine {
       crossfadeSource.start(0, 0);
 
       this.crossfadeSource = crossfadeSource;
-      this.crossfadeGain = newGain;
 
       const steps = 20;
       const stepMs = (durationSec * 1000) / steps;
@@ -1093,7 +1083,6 @@ class AudioEngine {
     this.replayGainNode = null;
     this.balancePanner = null;
     this.mainGain = null;
-    this.crossfadeGain = null;
     this.currentBuffer = null;
     this.crossfadeBuffer = null;
     this.preloadedBuffer = null;

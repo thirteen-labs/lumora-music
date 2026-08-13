@@ -188,8 +188,6 @@ export function useTrackPlayerSync() {
     handleTrackEndRef.current = handleTrackEnd;
   });
 
-  const crossfadeEnabled = isCrossfadeEnabled();
-
   useEffect(() => {
     mountedRef.current = true;
     function tick() {
@@ -268,7 +266,7 @@ export function useTrackPlayerSync() {
         dismissNowPlayingNotification();
       }
 
-      if (crossfadeEnabled && isNowPlaying) {
+      if (isCrossfadeEnabled() && isNowPlaying) {
         handleCrossfadeRef.current();
       }
 
@@ -402,5 +400,5 @@ export function useTrackPlayerSync() {
       saveQueueState();
       appStateSub.remove();
     };
-  }, [crossfadeEnabled]);
+  }, []);
 }

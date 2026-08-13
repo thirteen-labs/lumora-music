@@ -84,13 +84,20 @@ const SeekBar = React.memo(function SeekBar({
 }) {
   const position = usePlayerStore((s) => s.position);
   const duration = usePlayerStore((s) => s.duration);
+  const [dragProgress, setDragProgress] = useState<number | null>(null);
   const progress = duration > 0 ? position / duration : 0;
+  const displayProgress = dragProgress ?? progress;
+  const displayPosition = dragProgress !== null ? dragProgress * duration : position;
 
   return (
     <>
       <Slider
-        value={progress}
-        onValueChange={(val) => playerActions.seekTo(val * duration)}
+        value={displayProgress}
+        onValueChange={setDragProgress}
+        onSlidingComplete={(val) => {
+          playerActions.seekTo(val * duration);
+          setDragProgress(null);
+        }}
         minimumValue={0}
         maximumValue={1}
         minimumTrackTintColor={sliderAccent ?? colors.accent}
@@ -99,10 +106,10 @@ const SeekBar = React.memo(function SeekBar({
         style={{ width: '100%', height: sliderHeight }}
       />
       <View style={[s.flexRow, s.justifyBetween, s.px3]}>
-        <Text style={[s.textXs, { color: colors.textMuted }]}>{formatDuration(position)}</Text>
+        <Text style={[s.textXs, { color: colors.textMuted }]}>{formatDuration(displayPosition)}</Text>
         {showPercentage && (
           <Text style={[s.textXs, s.fontMedium, { color: sliderAccent ?? colors.accent }]}>
-            {Math.round(progress * 100)}%
+            {Math.round(displayProgress * 100)}%
           </Text>
         )}
         {showDuration && (
