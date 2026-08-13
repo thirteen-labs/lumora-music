@@ -34,7 +34,7 @@ export default function AlbumDetailScreen() {
   const artSize = artSizeMap[fileSizeTheme];
 
   return (
-    <View style={[s.flex1, { backgroundColor: colors.background }]}>
+    <View style={[s.flex1, { backgroundColor: colors.pageBackground }]}>
       <TopBar title={album?.title ?? 'Album'} />
       <View style={[s.px4, s.py4, s.flexRowCenter, s.gap4, { backgroundColor: colors.surface }]}>
         <Artwork uri={album?.artwork} size={80} borderRadius={24} iconSize={36} iconColor={colors.accent} backgroundColor={colors.card} />

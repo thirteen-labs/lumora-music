@@ -14,6 +14,7 @@ export interface ThemeColors {
   error: string;
   textSecondary: string;
   textMuted: string;
+  pageBackground: string;
 }
 
 export interface ThemeSpacing {

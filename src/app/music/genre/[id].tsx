@@ -33,7 +33,7 @@ export default function GenreDetailScreen() {
   const artSize = artSizeMap[fileSizeTheme];
 
   return (
-    <View style={[s.flex1, { backgroundColor: colors.background }]}>
+    <View style={[s.flex1, { backgroundColor: colors.pageBackground }]}>
       <TopBar title={genre?.name ?? 'Genre'} />
       <View style={[s.px4, s.py4, s.flexRowCenter, s.gap4, { backgroundColor: colors.surface }]}>
         <View style={[s.w14, s.h14, s.rounded3xl, s.center, { backgroundColor: colors.card }]}>

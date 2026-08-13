@@ -11,6 +11,7 @@ import { useSettingsStore } from '@/store/settings-store';
 import { useMusicStore } from '@/store/music-store';
 import { generateUpNext } from '@/player/recommendations';
 import { reportWarning } from '@/utils/error-handler';
+import { audioEngine } from '@/services/audio-engine';
 
 export function useTrackPlayerSync() {
   const syncFromPlayerRef = useRef(usePlayerStore.getState().syncFromPlayer);
@@ -212,6 +213,34 @@ export function useTrackPlayerSync() {
       const duration = player.duration;
       const now = Date.now();
 
+      /* Detect gapless / crossfade track transitions:
+         The engine may have switched to a new track without the store knowing.
+         Compare the engine's currentTrackUri with the store's currentTrack.uri. */
+      const engineUri = player.currentTrackUri;
+      if (engineUri && state.currentTrack && engineUri !== state.currentTrack.uri) {
+        const idx = state.queue.findIndex((t) => t.uri === engineUri);
+        if (idx >= 0 && state.queue[idx].id !== state.currentTrack.id) {
+          const newTrack = state.queue[idx];
+          usePlayerStore.setState({
+            currentTrack: newTrack,
+            queueIndex: idx,
+            position: currentTime,
+            duration,
+          });
+          lastTrackIdRef.current = newTrack.id;
+          playTimeAccumRef.current = 0;
+          lastMilestonePosRef.current = 0;
+          preloadArtworkForTrack(newTrack);
+          preloadColorsForTrack(newTrack.artwork);
+          showNowPlayingNotification(newTrack, isNowPlaying, currentTime);
+          lastNotifUpdateRef.current = now;
+          /* Reset track-end state so the new track can end properly */
+          wasPlayingRef.current = isNowPlaying;
+          trackEndedRef.current = false;
+          crossfadeTriggeredRef.current = false;
+        }
+      }
+
       if (isNowPlaying && player.volume === 0) {
         if (now - lastZeroVolNotifRef.current > 12000) {
           lastZeroVolNotifRef.current = now;
@@ -345,9 +374,30 @@ export function useTrackPlayerSync() {
 
     startInterval();
 
+    /* Register a state-change callback on the audio engine so that track-end
+       and gapless transitions are handled immediately, even when the JS
+       setInterval is throttled (e.g. background on iOS). */
+    const unsubEngine = audioEngine.onStateChange((engineState) => {
+      if (!mountedRef.current) return;
+
+      /* Immediate track-end handling: when the engine signals that playback
+         stopped at the end of a track, fire handleTrackEnd right away
+         instead of waiting for the next 250ms tick. */
+      if (
+        !engineState.playing &&
+        engineState.duration > 0 &&
+        engineState.currentTime >= engineState.duration - Math.min(0.5, engineState.duration * 0.1) &&
+        !trackEndedRef.current
+      ) {
+        trackEndedRef.current = true;
+        handleTrackEndRef.current();
+      }
+    });
+
     return () => {
       mountedRef.current = false;
       stopInterval();
+      unsubEngine();
       /* Final save before unmount */
       saveQueueState();
       appStateSub.remove();

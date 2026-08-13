@@ -76,7 +76,7 @@ export default function SystemHiddenFilesScreen() {
   const ungroupedCount = files.length - groups.reduce((sum, g) => sum + g.files.length, 0);
 
   return (
-    <View style={[s.flex1, { backgroundColor: colors.background }]}>
+    <View style={[s.flex1, { backgroundColor: colors.pageBackground }]}>
       <TopBar title={t('hidden.system.title')} showSettings={false} />
       <ScrollView style={s.flex1} contentContainerStyle={{ paddingBottom: 120 + insets.bottom }}>
         <View style={[s.px4, s.py4, s.gap6]}>

@@ -105,7 +105,7 @@ export default function SongsScreen() {
   const artSize = listArtSizeMap[fileSizeTheme];
 
   return (
-    <View style={[s.flex1, { backgroundColor: colors.background }]}>
+    <View style={[s.flex1, { backgroundColor: colors.pageBackground }]}>
       <TopBar title="Songs" />
       <SortMenu
         options={SORT_OPTIONS}
@@ -257,7 +257,7 @@ export default function SongsScreen() {
         />
       )}
       {isSelecting && (
-        <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, paddingHorizontal: 16, paddingBottom: insets.bottom + 8, paddingTop: 12, backgroundColor: colors.background + 'F2' }}>
+        <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, paddingHorizontal: 16, paddingBottom: insets.bottom + 8, paddingTop: 12, backgroundColor: colors.background }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
             <Pressable
               onPress={clearSelection}

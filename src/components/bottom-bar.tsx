@@ -27,7 +27,7 @@ export function BottomBar() {
   const getActiveKey = () => {
     if (segments[0] !== "(tabs)") return null;
     const tab = (segments as string[])[1];
-    if (tab === "index" || !tab) return null;
+    if (!tab) return "index";
     return tab;
   };
 

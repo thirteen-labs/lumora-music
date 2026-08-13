@@ -140,7 +140,7 @@ export default function BatchOperationsScreen() {
   );
 
   return (
-    <View style={[s.flex1, { backgroundColor: colors.background }]}>
+    <View style={[s.flex1, { backgroundColor: colors.pageBackground }]}>
       <TopBar
         title={t('batch.selected', { count: selected.size })}
         showSettings={false}

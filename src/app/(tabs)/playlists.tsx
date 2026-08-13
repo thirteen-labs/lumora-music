@@ -1,5 +1,5 @@
 import React, { useState, useRef, useMemo, useCallback } from 'react';
-import { View, Text, Pressable, Alert, TextInput, ScrollView } from 'react-native';
+import { View, Text, Pressable, Alert, TextInput, ScrollView, Dimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { s } from '@/styles';
 import { FlashList } from '@shopify/flash-list';
@@ -7,20 +7,24 @@ import { useTheme } from '@/hooks/use-theme';
 import { useTranslation } from '@/hooks/use-translation';
 import { TopBar } from '@/components/top-bar';
 import { MiniPlayer } from '@/components/mini-player';
+import { PlaylistCard } from '@/components/playlist-card';
 import { usePlaylistStore } from '@/store/playlist-store';
 import { useMusicStore } from '@/store/music-store';
 import { useFavoritesStore } from '@/store/favorites-store';
 import { useStatsStore } from '@/store/stats-store';
-import { playerActions } from '@/player/actions';
+import { useLayoutStore } from '@/store/layout-store';
 import { useRouter } from 'expo-router';
 import {
-  Heart, Plus, ListMusic, Play, Tag, Users, Clock, TrendingUp, Disc3,
+  Heart, Plus, ListMusic, Tag, Users, Clock, TrendingUp, Disc3,
+  LayoutGrid, List,
 } from 'lucide-react-native';
 import {
   BottomSheetModal,
   BottomSheetBackdrop,
   BottomSheetScrollView,
 } from '@gorhom/bottom-sheet';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 const PREDEFINED_SECTIONS = [
   { icon: Disc3, labelKey: 'library.albums' as const, route: '/music/albums' },
@@ -30,6 +34,10 @@ const PREDEFINED_SECTIONS = [
   { icon: TrendingUp, labelKey: 'library.most.played' as const, route: '/statistics' },
   { icon: Heart, labelKey: 'library.favorites' as const, route: '/(tabs)/favorites' },
 ];
+
+const LIST_CARD_WIDTH = SCREEN_WIDTH * 0.98;
+const GRID_CARD_WIDTH = (SCREEN_WIDTH - 32 - 12) / 2;
+const CARD_HEIGHT = 192;
 
 export default function PlaylistsScreen() {
   const { colors } = useTheme();
@@ -45,9 +53,17 @@ export default function PlaylistsScreen() {
   const genres = useMusicStore((s) => s.genres);
   const favoriteCount = useFavoritesStore((s) => s.favoriteSongIds.length);
   const trackStats = useStatsStore((s) => s.trackStats);
+  const { libraryViewMode, setLibraryViewMode } = useLayoutStore();
+
+  const sortedPlaylists = useMemo(() => {
+    return [...playlists].sort((a, b) => b.createdAt - a.createdAt);
+  }, [playlists]);
 
   const [newName, setNewName] = useState('');
   const createSheetRef = useRef<BottomSheetModal>(null);
+
+  const isGrid = libraryViewMode === 'grid';
+  const cardWidth = isGrid ? GRID_CARD_WIDTH : LIST_CARD_WIDTH;
 
   const recentlyPlayedCount = useMemo(
     () => songs.filter((s) => trackStats[s.id]?.lastPlayed).length,
@@ -85,22 +101,14 @@ export default function PlaylistsScreen() {
     ]);
   };
 
-  const handlePlayAll = (playlistId: string) => {
-    const playlist = playlists.find((p) => p.id === playlistId);
-    if (!playlist || playlist.songIds.length === 0) return;
-    const songMap = new Map(songs.map((s) => [s.id, s]));
-    const playlistSongs = playlist.songIds.map((id) => songMap.get(id)).filter((s): s is typeof songs[0] => Boolean(s));
-    if (playlistSongs.length > 0) {
-      playerActions.play(playlistSongs[0], playlistSongs);
-      router.push('/player');
-    }
-  };
-
-  const renderBackdrop = (props: React.ComponentProps<typeof BottomSheetBackdrop>) => (
-    <BottomSheetBackdrop {...props} disappearsOnIndex={-1} appearsOnIndex={0} opacity={0.5} />
+  const renderBackdrop = useCallback(
+    (props: React.ComponentProps<typeof BottomSheetBackdrop>) => (
+      <BottomSheetBackdrop {...props} disappearsOnIndex={-1} appearsOnIndex={0} opacity={0.5} />
+    ),
+    [],
   );
 
-  const renderListHeader = useCallback(() => (
+const renderListHeader = useCallback(() => (
     <View>
       <View style={[s.px5, s.py2]}>
         <Text style={[s.textSm, s.fontSemibold, s.mb3, { color: colors.textMuted }]}>Browse</Text>
@@ -131,72 +139,101 @@ export default function PlaylistsScreen() {
         </View>
       </View>
 
-      <View style={[s.px5, s.py3]}>
-        <Text style={[s.textSm, s.fontSemibold, s.mb3, { color: colors.textMuted }]}>My Playlists</Text>
-        <Pressable
-          onPress={() => createSheetRef.current?.present()}
-          style={[s.flexRow, s.itemsCenter, s.justifyCenter, s.gap2, { paddingVertical: 12, borderRadius: 16, backgroundColor: colors.accent }]}
-        >
-          <Plus size={18} color={colors.background} />
-          <Text style={[s.textSm, s.fontSemibold, { color: colors.background }]}>{t('playlist.new')}</Text>
-        </Pressable>
+      <View style={s.flexRowCenterBetween}>
+        <Text style={[s.textSm, s.fontSemibold, { color: colors.textMuted }]}>My Playlists</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+          <Pressable
+            onPress={() => setLibraryViewMode('list')}
+            style={{ padding: 6, borderRadius: 6, backgroundColor: !isGrid ? colors.accent + '20' : 'transparent' }}
+          >
+            <List size={18} color={!isGrid ? colors.accent : colors.textMuted} />
+          </Pressable>
+          <Pressable
+            onPress={() => setLibraryViewMode('grid')}
+            style={{ padding: 6, borderRadius: 6, backgroundColor: isGrid ? colors.accent + '20' : 'transparent' }}
+          >
+            <LayoutGrid size={18} color={isGrid ? colors.accent : colors.textMuted} />
+          </Pressable>
+        </View>
       </View>
 
-      {playlists.length === 0 && (
+      <Pressable
+        onPress={() => createSheetRef.current?.present()}
+        style={[
+          s.addPlaylistButton,
+          {
+            width: SCREEN_WIDTH,
+            height: CARD_HEIGHT,
+            backgroundColor: 'transparent',
+            borderWidth: 0,
+            borderRadius: 16,
+            marginBottom: 16,
+            justifyContent: 'center',
+            alignItems: 'center',
+          },
+        ]}
+      >
+        <Plus size={24} color={colors.accent} />
+        <Text style={{ fontSize: 14, fontWeight: '600', color: colors.text }}>{t('playlist.new')}</Text>
+      </Pressable>
+
+      {sortedPlaylists.length === 0 && (
         <View style={[s.itemsCenter, s.py16]}>
           <ListMusic size={40} color={colors.textMuted} />
           <Text style={[s.mt3, { color: colors.textMuted }]}>{t('playlist.no.playlists')}</Text>
         </View>
       )}
     </View>
-  ), [colors, t, playlists, getCount, router, createSheetRef]);
+  ), [colors, t, sortedPlaylists, getCount, router, createSheetRef, isGrid, setLibraryViewMode]);
+
+  const renderPlaylistCard = ({ item }: { item: typeof sortedPlaylists[0] }) => (
+    <PlaylistCard
+      playlist={item}
+      cardWidth={cardWidth}
+      onPress={() => router.push({ pathname: '/(tabs)/playlist/[id]', params: { id: item.id } })}
+      onLongPress={() => handleDelete(item.id, item.name)}
+    />
+  );
 
   return (
-    <View style={[s.flex1, { backgroundColor: colors.background }]}>
+    <View style={[s.flex1, { backgroundColor: colors.pageBackground }]}>
       <TopBar
         title={t('playlist.title')}
         showSettings={false}
       />
-      {playlists.length > 0 ? (
-        <FlashList
-          data={playlists}
-          keyExtractor={(item) => item.id}
-          numColumns={1}
-          estimatedItemSize={72}
-          ListHeaderComponent={renderListHeader}
-          contentContainerStyle={{ paddingBottom: 120 + insets.bottom, paddingHorizontal: 20 }}
-          showsVerticalScrollIndicator={false}
-          renderItem={({ item }) => (
-            <Pressable
-              onPress={() => router.push({ pathname: '/(tabs)/playlist/[id]', params: { id: item.id } })}
-              onLongPress={() => handleDelete(item.id, item.name)}
-              style={[s.flexRow, s.itemsCenter, s.gap3, s.p4, { marginBottom: 12, backgroundColor: colors.surface, borderRadius: 16, borderWidth: 1, borderColor: colors.accent + '30' }]}
-            >
-              <View style={[s.w14, s.h14, s.roundedXl, s.itemsCenter, s.justifyCenter, { backgroundColor: colors.accent + '15' }]}>
-                <ListMusic size={24} color={colors.accent} />
-              </View>
-              <View style={s.flex1}>
-                <Text style={[s.textSm, s.fontSemibold, { color: colors.text }]} numberOfLines={1}>{item.name}</Text>
-                <Text style={[s.textXs, { color: colors.textMuted }]}>
-                  {item.songIds.length} {item.songIds.length === 1 ? t('library.song') : t('library.tracks')}
-                </Text>
-              </View>
-              {item.songIds.length > 0 && (
-                <Pressable
-                  onPress={() => handlePlayAll(item.id)}
-                  style={[s.w11, s.h11, s.roundedFull, s.itemsCenter, s.justifyCenter, { backgroundColor: colors.accent }]}
-                >
-                  <Play size={18} color={colors.background} fill={colors.background} />
-                </Pressable>
-              )}
-            </Pressable>
-          )}
-        />
-      ) : (
-        <ScrollView contentContainerStyle={{ paddingBottom: 120 + insets.bottom }} showsVerticalScrollIndicator={false}>
-          {renderListHeader()}
-        </ScrollView>
-      )}
+
+      <View style={s.flex1}>
+        {sortedPlaylists.length > 0 ? (
+          isGrid ? (
+            <FlashList
+              data={sortedPlaylists}
+              keyExtractor={(item) => item.id}
+              numColumns={2}
+              estimatedItemSize={CARD_HEIGHT}
+              ListHeaderComponent={renderListHeader}
+              contentContainerStyle={{ paddingBottom: 120 + insets.bottom, paddingHorizontal: 16 }}
+              showsVerticalScrollIndicator={false}
+              renderItem={renderPlaylistCard}
+            />
+          ) : (
+            <FlashList
+              data={sortedPlaylists}
+              keyExtractor={(item) => item.id}
+              numColumns={1}
+              estimatedItemSize={CARD_HEIGHT}
+              ListHeaderComponent={renderListHeader}
+              contentContainerStyle={{ paddingBottom: 120 + insets.bottom }}
+              showsVerticalScrollIndicator={false}
+              renderItem={renderPlaylistCard}
+            />
+          )
+        ) : (
+          <ScrollView contentContainerStyle={{ paddingBottom: 120 + insets.bottom }} showsVerticalScrollIndicator={false}>
+            {renderListHeader()}
+          </ScrollView>
+        )}
+      </View>
+
       <MiniPlayer />
 
       <BottomSheetModal

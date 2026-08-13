@@ -278,7 +278,7 @@ export default function SearchScreen() {
   ], [results]);
 
   return (
-    <View style={[s.flex1, { backgroundColor: colors.background }]}>
+    <View style={[s.flex1, { backgroundColor: colors.pageBackground }]}>
       <TopBar title="Search Files" showSearch={false} />
       <View style={[s.px4, s.pt3, s.pb1]}>
         <View

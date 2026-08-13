@@ -64,6 +64,15 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
           background: hexToRgba(merged.colors.background, 0.82),
           surface: hexToRgba(merged.colors.surface, 0.82),
           card: hexToRgba(merged.colors.card, 0.82),
+          pageBackground: 'transparent',
+        },
+      };
+    } else {
+      merged = {
+        ...merged,
+        colors: {
+          ...merged.colors,
+          pageBackground: merged.colors.background,
         },
       };
     }

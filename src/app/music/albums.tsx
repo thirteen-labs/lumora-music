@@ -17,7 +17,7 @@ export default function AlbumsScreen() {
   const router = useRouter();
 
   return (
-    <View style={[s.flex1, { backgroundColor: colors.background }]}>
+    <View style={[s.flex1, { backgroundColor: colors.pageBackground }]}>
       <TopBar title="Albums" />
       <FlashList
         data={albums}

@@ -76,7 +76,7 @@ export default function HomeScreen() {
   const hasContent = recentlyPlayed.length > 0 || recentSongs.length > 0 || favSongs.length > 0;
 
   return (
-    <View style={[s.flex1, { backgroundColor: colors.background }]}>
+    <View style={[s.flex1, { backgroundColor: colors.pageBackground }]}>
       <TopBar />
       <View style={[s.flex1]}>
         {!hasContent ? (

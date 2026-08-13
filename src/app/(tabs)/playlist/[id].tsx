@@ -102,7 +102,7 @@ export default function PlaylistDetailScreen() {
 
   if (!playlist) {
     return (
-      <View style={[s.flex1, s.itemsCenter, s.justifyCenter, { backgroundColor: colors.background }]}>
+      <View style={[s.flex1, s.itemsCenter, s.justifyCenter, { backgroundColor: colors.pageBackground }]}>
         <Text style={{ color: colors.textMuted }}>Playlist not found</Text>
         <Pressable onPress={() => router.back()} style={s.mt4}>
           <Text style={{ color: colors.accent }}>Go back</Text>
@@ -158,7 +158,7 @@ export default function PlaylistDetailScreen() {
   };
 
   return (
-    <View style={[s.flex1, { backgroundColor: colors.background }]}>
+    <View style={[s.flex1, { backgroundColor: colors.pageBackground }]}>
       <TopBar title={playlist.name} showSettings={false} />
       <FlashList
         data={playlistSongs}

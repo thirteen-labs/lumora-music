@@ -48,7 +48,7 @@ export default function TagEditScreen() {
 
   if (!song) {
     return (
-      <View style={[s.flex1, s.itemsCenter, s.justifyCenter, { backgroundColor: colors.background }]}>
+      <View style={[s.flex1, s.itemsCenter, s.justifyCenter, { backgroundColor: colors.pageBackground }]}>
         <Text style={{ color: colors.textMuted }}>{t('tag.not.found')}</Text>
         <Pressable onPress={() => router.back()} style={s.mt4}>
           <Text style={{ color: colors.accent }}>Go back</Text>
@@ -72,7 +72,7 @@ export default function TagEditScreen() {
   };
 
   return (
-    <View style={[s.flex1, { backgroundColor: colors.background }]}>
+    <View style={[s.flex1, { backgroundColor: colors.pageBackground }]}>
       <TopBar title={t('tag.title')} showSettings={false} />
       <ScrollView style={s.flex1} contentContainerStyle={{ paddingBottom: 120 + insets.bottom }}>
         <View style={[s.px4, s.py4, s.gap4]}>

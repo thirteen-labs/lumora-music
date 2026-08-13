@@ -14,7 +14,7 @@ export default function GenresScreen() {
   const router = useRouter();
 
   return (
-    <View style={[s.flex1, { backgroundColor: colors.background }]}>
+    <View style={[s.flex1, { backgroundColor: colors.pageBackground }]}>
       <TopBar title="Genres" />
       <FlashList
         data={genres}

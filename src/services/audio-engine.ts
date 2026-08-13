@@ -155,6 +155,7 @@ interface AudioEngineState {
   duration: number;
   isBuffering: boolean;
   isLoaded: boolean;
+  currentTrackUri: string | null;
 }
 
 type StateChangeCallback = (state: AudioEngineState) => void;
@@ -382,6 +383,7 @@ class AudioEngine {
       duration: this._duration,
       isBuffering: false,
       isLoaded: this.currentBuffer !== null,
+      currentTrackUri: this._currentTrackUri,
     };
     this.stateCallbacks.forEach((cb) => cb(state));
   }
@@ -431,8 +433,8 @@ class AudioEngine {
       await this.init();
       if (!this.context) return;
 
-      this.cancelCrossfade();
       this.stopCurrentSource();
+      this.cancelCrossfade();
 
       const pooled = this.bufferPool.get(uri);
       if (pooled) {
@@ -588,6 +590,21 @@ class AudioEngine {
     this.emitState();
   }
 
+  private stopCurrentSource(): void {
+    if (this.currentSource) {
+      const src = this.currentSource;
+      this.currentSource = null;
+      try {
+        src.onEnded = null;
+        src.stop();
+        src.disconnect();
+      } catch {
+        // Ignore already stopped or disconnected source errors
+      }
+    }
+    this.cancelCrossfade();
+  }
+
   private cancelCrossfade(): void {
     this._crossfading = false;
     if (this._crossfadeInterval) {
@@ -595,14 +612,15 @@ class AudioEngine {
       this._crossfadeInterval = null;
     }
     if (this.crossfadeSource) {
-      try {
-        this.crossfadeSource.onEnded = null;
-        this.crossfadeSource.disconnect();
-        this.crossfadeSource.stop();
-      } catch (e) {
-        reportWarning('AudioEngine', e);
-      }
+      const src = this.crossfadeSource;
       this.crossfadeSource = null;
+      try {
+        src.onEnded = null;
+        src.stop();
+        src.disconnect();
+      } catch {
+        // Ignore crossfade source cleanup errors
+      }
     }
     this.crossfadeBuffer = null;
     if (this.crossfadeGain) {
@@ -612,20 +630,6 @@ class AudioEngine {
         this.crossfadeGain = null;
       }
     }
-  }
-
-  private stopCurrentSource(): void {
-    if (this.currentSource) {
-      try {
-        this.currentSource.onEnded = null;
-        this.currentSource.disconnect();
-        this.currentSource.stop();
-      } catch (e) {
-        reportWarning('AudioEngine', e);
-      }
-      this.currentSource = null;
-    }
-    this.cancelCrossfade();
   }
 
   seekTo(position: number): void {
@@ -761,6 +765,7 @@ class AudioEngine {
       duration: this._duration,
       isBuffering: false,
       isLoaded: this.currentBuffer !== null,
+      currentTrackUri: this._currentTrackUri,
     };
   }
 

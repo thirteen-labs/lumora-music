@@ -404,7 +404,7 @@ useEffect(() => {
 
   if (!currentTrack) {
     return (
-      <View style={[s.flex1, s.itemsCenter, s.justifyCenter, { backgroundColor: colors.background }]}>
+      <View style={[s.flex1, s.itemsCenter, s.justifyCenter, { backgroundColor: colors.pageBackground }]}>
         <Music size={48} color={colors.textMuted} />
         <Text style={[s.mt4, { color: colors.textMuted }]}>{t('player.no.track')}</Text>
         <Pressable onPress={() => router.back()} style={[s.mt4]}>
@@ -415,7 +415,7 @@ useEffect(() => {
   }
 
   return (
-    <View style={[s.flex1, { backgroundColor: colors.background }]}>
+    <View style={[s.flex1, { backgroundColor: colors.pageBackground }]}>
       <GestureDetector gesture={panGesture}>
         <Animated.View style={[s.flex1, animatedStyle]}>
         <ModernLayout

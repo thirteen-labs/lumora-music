@@ -30,6 +30,7 @@ function makeTheme(
       error: '#EF4444',
       textSecondary: hexToRgba(text, 0.6),
       textMuted: hexToRgba(text, 0.4),
+      pageBackground: bg,
     },
     spacing: {
       xs: 4,

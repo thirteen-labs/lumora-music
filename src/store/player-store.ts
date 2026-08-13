@@ -91,15 +91,23 @@ async function serializedTrackChange(fn: () => Promise<void>): Promise<void> {
   return result;
 }
 
+let isChangingTrack = false;
+
 async function guardedLoadTrack(track: Song): Promise<void> {
   const currentId = usePlayerStore.getState().currentTrack?.id;
+  if (isChangingTrack) {
+    // If a track change is already in flight, give the engine a brief breather or let serializedTrackChange queue it safely.
+  }
   await serializedTrackChange(async () => {
     if (usePlayerStore.getState().currentTrack?.id !== currentId) return;
+    isChangingTrack = true;
     try {
       await loadTrack(track);
     } catch (e) {
       reportWarning('PlayerStore', e, 'Failed to load track');
       throw e;
+    } finally {
+      isChangingTrack = false;
     }
   });
 }

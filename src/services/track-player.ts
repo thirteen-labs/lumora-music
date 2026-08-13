@@ -37,6 +37,9 @@ const playerAdapter = {
   get isLoaded(): boolean {
     return audioEngine.getState().isLoaded;
   },
+  get currentTrackUri(): string | null {
+    return audioEngine.getState().currentTrackUri;
+  },
   get playbackRate(): number {
     return audioEngine.getSpeed();
   },

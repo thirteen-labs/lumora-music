@@ -19,7 +19,7 @@ export default function StorageScreen() {
   const totalSize = info.totalAudioSize;
 
   return (
-    <View style={[s.flex1, { backgroundColor: colors.background }]}>
+    <View style={[s.flex1, { backgroundColor: colors.pageBackground }]}>
       <TopBar title="Storage Analysis" showSettings={false} />
       <ScrollView style={s.flex1} contentContainerStyle={{ paddingBottom: 120 + insets.bottom }}>
         <View style={[s.px4, s.py4, s.gap6]}>

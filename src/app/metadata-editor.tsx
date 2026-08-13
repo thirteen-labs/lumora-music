@@ -26,7 +26,7 @@ export default function MetadataEditorScreen() {
 
   if (!originalSong) {
     return (
-      <View style={[s.flex1, s.itemsCenter, s.justifyCenter, { backgroundColor: colors.background }]}>
+      <View style={[s.flex1, s.itemsCenter, s.justifyCenter, { backgroundColor: colors.pageBackground }]}>
         <Text style={{ color: colors.textMuted }}>Song not found</Text>
       </View>
     );
@@ -59,7 +59,7 @@ export default function MetadataEditorScreen() {
   };
 
   return (
-    <View style={[s.flex1, { backgroundColor: colors.background }]}>
+    <View style={[s.flex1, { backgroundColor: colors.pageBackground }]}>
       <TopBar title="Edit Metadata" showSettings={false} />
       
       <ScrollView 

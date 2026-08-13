@@ -15,7 +15,7 @@ export default function ArtistsScreen() {
   const router = useRouter();
 
   return (
-    <View style={[s.flex1, { backgroundColor: colors.background }]}>
+    <View style={[s.flex1, { backgroundColor: colors.pageBackground }]}>
       <TopBar title="Artists" />
       <FlashList
         data={artists}

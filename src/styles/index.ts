@@ -219,4 +219,14 @@ export const s = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  addPlaylistButton: {
+    width: '100%',
+    height: 192,
+    backgroundColor: 'transparent',
+    borderWidth: 0,
+    borderRadius: 16,
+    marginBottom: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
 });

@@ -60,7 +60,7 @@ export async function resolveArtworkForDisplay(uri: string): Promise<string | nu
     } catch (e) { logger.warn('Failed to check cached artwork:', e); }
   }
 
-  if (Platform.OS !== 'android') return uri;
+  if (Platform.OS !== 'android') return null;
 
   try {
     await ensureCacheDir();
@@ -72,6 +72,6 @@ export async function resolveArtworkForDisplay(uri: string): Promise<string | nu
     return path;
   } catch (e) {
     reportWarning('ArtworkResolver', e, `Failed to cache artwork: ${uri}`);
-    return uri;
+    return null;
   }
 }

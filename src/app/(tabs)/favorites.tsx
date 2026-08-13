@@ -76,7 +76,7 @@ export default function FavoritesScreen() {
   }, [songs, colors, present, toggleSongFavorite, lyricsMap]);
 
   return (
-    <View style={[s.flex1, { backgroundColor: colors.background }]}>
+    <View style={[s.flex1, { backgroundColor: colors.pageBackground }]}>
       <TopBar />
       <FlashList
         data={songs}

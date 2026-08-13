@@ -34,7 +34,7 @@ export default function ArtistDetailScreen() {
   const artSize = artSizeMap[fileSizeTheme];
 
   return (
-    <View style={[s.flex1, { backgroundColor: colors.background }]}>
+    <View style={[s.flex1, { backgroundColor: colors.pageBackground }]}>
       <TopBar title={artist?.name ?? 'Artist'} />
       <View style={[s.px4, s.py4, s.flexRowCenter, s.gap4, { backgroundColor: colors.surface }]}>
         <Artwork uri={artist?.artwork} size={80} borderRadius={40} iconSize={36} iconColor={colors.accent} backgroundColor={colors.card} />

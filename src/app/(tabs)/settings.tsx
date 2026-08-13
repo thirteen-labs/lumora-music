@@ -1,5 +1,5 @@
-import { useMemo, type ComponentType } from 'react';
-import { View, Text, ScrollView, Pressable, Switch, Alert } from 'react-native';
+import { useMemo, useRef, type ComponentType } from 'react';
+import { View, Text, ScrollView, Pressable, Switch } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { ThemeColors } from '@/types/theme';
 import { useTheme } from '@/hooks/use-theme';
@@ -11,7 +11,8 @@ import { useRouter } from 'expo-router';
 import { useTranslation } from '@/hooks/use-translation';
 import { useCloudStore } from '@/store/cloud-store';
 import { Image } from 'expo-image';
-import * as ImagePicker from 'expo-image-picker';
+import { BackgroundImageModal } from '@/components/background-image-modal';
+import { BottomSheetModal } from '@gorhom/bottom-sheet';
 import {
   Settings,
   Paintbrush,
@@ -79,34 +80,14 @@ export default function SettingsScreen() {
     '#06B6D4': 'Cyan', '#14B8A6': 'Teal', '#84CC16': 'Lime',
   };
 
-  const handleBackgroundImagePress = () => {
-    const options = ['Choose from Gallery'];
-    if (backgroundImage) options.push('Remove Background');
-    options.push('Cancel');
+  const backgroundSheetRef = useRef<BottomSheetModal>(null);
 
-    Alert.alert('Background Image', 'Set a custom background image for the app.', options.map((opt) => ({
-      text: opt,
-      style: opt === 'Cancel' ? 'cancel' : opt === 'Remove Background' ? 'destructive' : 'default',
-      onPress: async () => {
-        if (opt === 'Choose from Gallery') {
-          const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-          if (!permission.granted) {
-            Alert.alert('Permission Required', 'Allow access to your photo library to choose a background image.');
-            return;
-          }
-          const result = await ImagePicker.launchImageLibraryAsync({
-            mediaTypes: ['images'],
-            quality: 0.8,
-            allowsEditing: false,
-          });
-          if (!result.canceled && result.assets[0]) {
-            setBackgroundImage(result.assets[0].uri);
-          }
-        } else if (opt === 'Remove Background') {
-          setBackgroundImage(null);
-        }
-      },
-    })));
+  const handleSelectImage = (uri: string) => {
+    setBackgroundImage(uri);
+  };
+
+  const handleRemoveImage = () => {
+    setBackgroundImage(null);
   };
 
   const languageLabel: Record<string, string> = {
@@ -127,7 +108,7 @@ export default function SettingsScreen() {
   }, [scanStatus, lastScanTime]);
 
   return (
-    <View style={[s.flex1, { backgroundColor: colors.background }]}>
+    <View style={[s.flex1, { backgroundColor: colors.pageBackground }]}>
       <ScrollView contentContainerStyle={{ paddingBottom: 120 + insets.bottom, paddingTop: insets.top + 20 }} showsVerticalScrollIndicator={false}>
         <View style={[s.px5]}>
 
@@ -143,7 +124,7 @@ export default function SettingsScreen() {
 
           <Section title="APPEARANCE" colors={colors}>
             <Pressable
-              onPress={handleBackgroundImagePress}
+              onPress={() => backgroundSheetRef.current?.present()}
               style={[s.itemsCenter, s.justifyCenter, s.p4]}
             >
               <View
@@ -185,6 +166,12 @@ export default function SettingsScreen() {
               </View>
               <Text style={[s.textSm, s.fontMedium, s.mt2, { color: colors.text }]}>Background Image</Text>
             </Pressable>
+            <BackgroundImageModal
+              bottomSheetRef={backgroundSheetRef}
+              onSelectImage={handleSelectImage}
+              onRemoveImage={handleRemoveImage}
+              currentImage={backgroundImage}
+            />
             <Pressable
               onPress={() => router.push('/background-image-adjuster')}
               style={[s.flexRow, s.itemsCenter, s.gap4, s.p4]}

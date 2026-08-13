@@ -1,8 +1,9 @@
-import { View, Text, FlatList, Pressable, TextInput, Modal } from 'react-native';
+import { View, Text, FlatList, Pressable, TextInput } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { s } from '@/styles';
 import { useTheme } from '@/hooks/use-theme';
 import { TopBar } from '@/components/top-bar';
+import { CustomModal } from '@/components/custom-modal';
 import { usePlaylistStore } from '@/store/playlist-store';
 import { useState } from 'react';
 import { Plus, FileMusic, ChevronRight } from 'lucide-react-native';
@@ -59,7 +60,7 @@ export default function PlaylistPickerScreen() {
   );
 
   return (
-    <View style={[s.flex1, { backgroundColor: colors.background }]}>
+    <View style={[s.flex1, { backgroundColor: colors.pageBackground }]}>
       <TopBar title={songId ? "Add to Playlist" : "Playlists"} showSettings={false} />
       
       <FlatList
@@ -89,40 +90,36 @@ export default function PlaylistPickerScreen() {
         }
       />
 
-      <Modal
+      <CustomModal
         visible={modalVisible}
-        transparent
-        animationType="fade"
         onRequestClose={() => setModalVisible(false)}
       >
-        <View style={[s.flex1, s.itemsCenter, s.justifyCenter, { backgroundColor: 'rgba(0,0,0,0.5)' }]}>
-          <View style={[{ width: '80%', backgroundColor: colors.surface, borderRadius: 24, padding: 24 }]}>
-            <Text style={[s.textLg, s.fontBold, s.mb4, { color: colors.text }]}>New Playlist</Text>
-            <TextInput
-              autoFocus
-              placeholder="Playlist name"
-              placeholderTextColor={colors.textMuted}
-              value={newPlaylistName}
-              onChangeText={setNewPlaylistName}
-              style={[s.p4, s.mb6, { backgroundColor: colors.card, borderRadius: 16, color: colors.text }]}
-            />
-            <View style={[s.flexRow, s.gap3]}>
-              <Pressable
-                onPress={() => setModalVisible(false)}
-                style={[s.flex1, s.p4, s.itemsCenter, { backgroundColor: colors.card, borderRadius: 12 }]}
-              >
-                <Text style={{ color: colors.text }}>Cancel</Text>
-              </Pressable>
-              <Pressable
-                onPress={handleCreate}
-                style={[s.flex1, s.p4, s.itemsCenter, { backgroundColor: colors.accent, borderRadius: 12 }]}
-              >
-                <Text style={{ color: '#fff', fontWeight: 'bold' }}>Create</Text>
-              </Pressable>
-            </View>
+        <View style={[{ width: '80%', minWidth: 260, backgroundColor: colors.surface, borderRadius: 24, padding: 24, borderWidth: 1, borderColor: colors.border }]}>
+          <Text style={[s.textLg, s.fontBold, s.mb4, { color: colors.text }]}>New Playlist</Text>
+          <TextInput
+            autoFocus
+            placeholder="Playlist name"
+            placeholderTextColor={colors.textMuted}
+            value={newPlaylistName}
+            onChangeText={setNewPlaylistName}
+            style={[s.p4, s.mb6, { backgroundColor: colors.card, borderRadius: 16, color: colors.text }]}
+          />
+          <View style={[s.flexRow, s.gap3]}>
+            <Pressable
+              onPress={() => setModalVisible(false)}
+              style={[s.flex1, s.p4, s.itemsCenter, { backgroundColor: colors.card, borderRadius: 12 }]}
+            >
+              <Text style={{ color: colors.text }}>Cancel</Text>
+            </Pressable>
+            <Pressable
+              onPress={handleCreate}
+              style={[s.flex1, s.p4, s.itemsCenter, { backgroundColor: colors.accent, borderRadius: 12 }]}
+            >
+              <Text style={{ color: '#fff', fontWeight: 'bold' }}>Create</Text>
+            </Pressable>
           </View>
         </View>
-      </Modal>
+      </CustomModal>
     </View>
   );
 }
