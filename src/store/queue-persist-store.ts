@@ -143,6 +143,8 @@ export function reconstructQueue(persisted: PersistedQueue, allSongs: Song[]): {
     genre: null,
     bitrate: null,
     sampleRate: null,
+    channels: null,
+    codec: null,
   });
 
   if (hasFullSongs) {

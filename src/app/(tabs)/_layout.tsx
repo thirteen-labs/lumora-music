@@ -1,6 +1,6 @@
 import { Tabs } from 'expo-router';
 import { useTheme } from '@/hooks/use-theme';
-import { Music, Heart, Settings, LayoutGrid } from 'lucide-react-native';
+import { Music, Settings, LayoutGrid } from 'lucide-react-native';
 
 export default function TabLayout() {
   const { colors } = useTheme();
@@ -32,13 +32,6 @@ export default function TabLayout() {
         options={{
           title: 'Music',
           tabBarIcon: ({ color, size }) => <Music size={size} color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="favorites"
-        options={{
-          title: 'Favorites',
-          tabBarIcon: ({ color, size }) => <Heart size={size} color={color} />,
         }}
       />
       <Tabs.Screen

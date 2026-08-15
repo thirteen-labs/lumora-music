@@ -10,6 +10,8 @@ const en = {
   'nav.music': 'Music',
   'nav.favorites': 'Favorites',
   'nav.playlists': 'Playlists',
+  'nav.library': 'Library',
+  'nav.folders': 'Folders',
   'nav.settings': 'Settings',
   'nav.search': 'Search',
 
@@ -397,6 +399,27 @@ const en = {
   'home.new.in.library': 'New in your Library',
   'home.your.favorites': 'Your Favorites',
   'home.liked.songs': 'Liked Songs',
+  'home.continue.listening': 'Continue Listening',
+  'home.most.played': 'Most Played',
+
+  // Player more menu
+  'player.more': 'More',
+  'menu.add.to.playlist': 'Add to Playlist',
+  'menu.play.next': 'Play Next',
+  'menu.add.to.queue': 'Add to Queue',
+  'menu.view.album': 'View Album',
+  'menu.view.artist': 'View Artist',
+  'menu.song.info': 'Song Information',
+  'menu.sleep.timer': 'Sleep Timer',
+  'menu.audio.settings': 'Audio Settings',
+
+  // Queue
+  'queue.save.playlist': 'Save as Playlist',
+  'queue.clear.all': 'Clear Queue',
+  'queue.now.playing': 'Now Playing',
+  'queue.up.next': 'Up Next',
+  'queue.empty': 'Queue is empty',
+  'queue.saved': 'Queue saved as playlist',
 
   // Library (extended)
   'library.selected': 'selected',

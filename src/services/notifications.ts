@@ -10,6 +10,7 @@ import { useQueuePersistStore } from '@/store/queue-persist-store';
 import { useFavoritesStore } from '@/store/favorites-store';
 import { useSettingsStore } from '@/store/settings-store';
 import { extractColorsFromImage } from '@/services/color-extraction';
+import { audioEngine } from '@/services/audio-engine';
 import { reportWarning } from '@/utils/error-handler';
 import { logger } from '@/utils/logger';
 
@@ -108,9 +109,13 @@ export async function initializeNotifications(): Promise<void> {
     dismissNowPlayingNotification();
   }));
 
-  /* Dismiss any stale notification from prior session */
+  /* Dismiss any stale notification from a prior session — but never kill a
+     foreground service that is still actively playing (e.g. adopted after the
+     app was exited). */
   try {
-    await PlaybackNotificationManager.hide();
+    if (!audioEngine.getState().playing) {
+      await PlaybackNotificationManager.hide();
+    }
   } catch { /* hide stale notification failed */ }
 
   await Promise.all([

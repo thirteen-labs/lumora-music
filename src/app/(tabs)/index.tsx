@@ -33,11 +33,46 @@ function getGreeting(t: (key: string) => string): string {
   return t('home.greeting.evening');
 }
 
+function HorizontalSongCard({
+  key,
+  song,
+  colors,
+  lyricsMap,
+  onPress,
+  onLongPress,
+  width,
+}: {
+  key?: string;
+  song: import('@/types/media').Song;
+  colors: import('@/types/theme').ThemeColors;
+  lyricsMap: Record<string, string>;
+  onPress: () => void;
+  onLongPress: () => void;
+  width: number;
+}) {
+  return (
+    <Pressable onPress={onPress} onLongPress={onLongPress} style={{ width }}>
+      <View style={[s.rounded2xl, s.overflowHidden, s.mb2, { backgroundColor: colors.surface, width, height: width }]}>
+        <Artwork uri={song.artwork} size={width} borderRadius={16} iconSize={40} iconColor={colors.accent} backgroundColor="transparent" />
+      </View>
+      <Text style={[s.textSm, s.fontSemibold, { color: colors.text }]} numberOfLines={1}>{song.title}</Text>
+      <View style={[s.flexRow, s.itemsCenter, s.gap1]}>
+        <LyricsBadge colors={colors} show={!!lyricsMap[song.id] || hasCachedLyrics(song.artist, song.title) === true} />
+        <Text style={[s.textXs, s.mt05, { color: colors.textMuted }]} numberOfLines={1}>
+          {song.artist} · {formatDuration(song.duration)}
+        </Text>
+      </View>
+    </Pressable>
+  );
+}
+
 export default function HomeScreen() {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const { t } = useTranslation();
   const songs = useMusicStore((s) => s.songs);
+  const albums = useMusicStore((s) => s.albums);
+  const artists = useMusicStore((s) => s.artists);
   const scan = useMusicStore((s) => s.scan);
   const favoriteSongIds = useFavoritesStore((s) => s.favoriteSongIds);
   const currentTrack = usePlayerStore((s) => s.currentTrack);
@@ -72,6 +107,11 @@ export default function HomeScreen() {
     .filter((s) => trackStats[s.id]?.lastPlayed)
     .sort((a, b) => (trackStats[b.id]?.lastPlayed || 0) - (trackStats[a.id]?.lastPlayed || 0))
     .slice(0, 10), [songs, trackStats]);
+  const continueListening = useMemo(() => [...songs]
+    .filter((s) => (trackStats[s.id]?.playCount || 0) > 0)
+    .sort((a, b) => (trackStats[b.id]?.lastPlayed || 0) - (trackStats[a.id]?.lastPlayed || 0))
+    .slice(0, 12), [songs, trackStats]);
+  const mostPlayed = useMemo(() => useStatsStore.getState().getMostPlayed(songs, 12), [songs]);
 
   const hasContent = recentlyPlayed.length > 0 || recentSongs.length > 0 || favSongs.length > 0;
 
@@ -168,6 +208,60 @@ export default function HomeScreen() {
                   </View>
                   <Play size={28} color={colors.accent} fill={colors.accent} />
                 </Pressable>
+              </View>
+            )}
+
+            {/* Continue Listening */}
+            {continueListening.length > 0 && (
+              <View style={[s.mb6]}>
+                <View style={[s.flexRow, s.itemsCenter, s.justifyBetween, s.px5, s.mb3]}>
+                  <Text style={[s.textXs, s.fontBold, s.uppercase, { letterSpacing: 1, color: colors.textMuted }]}>
+                    {t('home.continue.listening')}
+                  </Text>
+                  <Pressable onPress={() => router.push('/(tabs)/music')}>
+                    <Text style={[s.textXs, s.fontSemibold, { color: colors.accent }]}>{t('home.see.all')}</Text>
+                  </Pressable>
+                </View>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, gap: 12 }}>
+                  {continueListening.map((song) => (
+                    <HorizontalSongCard
+                      key={song.id}
+                      song={song}
+                      colors={colors}
+                      lyricsMap={lyricsMap}
+                      width={CARD_W}
+                      onPress={() => playerActions.play(song, continueListening)}
+                      onLongPress={() => present(song)}
+                    />
+                  ))}
+                </ScrollView>
+              </View>
+            )}
+
+            {/* Most Played */}
+            {mostPlayed.length > 0 && (
+              <View style={[s.mb6]}>
+                <View style={[s.flexRow, s.itemsCenter, s.justifyBetween, s.px5, s.mb3]}>
+                  <Text style={[s.textXs, s.fontBold, s.uppercase, { letterSpacing: 1, color: colors.textMuted }]}>
+                    {t('home.most.played')}
+                  </Text>
+                  <Pressable onPress={() => router.push('/(tabs)/music')}>
+                    <Text style={[s.textXs, s.fontSemibold, { color: colors.accent }]}>{t('home.see.all')}</Text>
+                  </Pressable>
+                </View>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, gap: 12 }}>
+                  {mostPlayed.map((song) => (
+                    <HorizontalSongCard
+                      key={song.id}
+                      song={song}
+                      colors={colors}
+                      lyricsMap={lyricsMap}
+                      width={CARD_W}
+                      onPress={() => playerActions.play(song, mostPlayed)}
+                      onLongPress={() => present(song)}
+                    />
+                  ))}
+                </ScrollView>
               </View>
             )}
 
@@ -323,6 +417,63 @@ export default function HomeScreen() {
                     </SwipeableRow>
                   ))}
                 </View>
+              </View>
+            )}
+
+            {/* Albums */}
+            {albums.length > 0 && (
+              <View style={[s.mb6]}>
+                <View style={[s.flexRow, s.itemsCenter, s.justifyBetween, s.px5, s.mb3]}>
+                  <Text style={[s.textXs, s.fontBold, s.uppercase, { letterSpacing: 1, color: colors.textMuted }]}>
+                    {t('library.albums')}
+                  </Text>
+                  <Pressable onPress={() => router.push('/music/albums')}>
+                    <Text style={[s.textXs, s.fontSemibold, { color: colors.accent }]}>{t('home.see.all')}</Text>
+                  </Pressable>
+                </View>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, gap: 12 }}>
+                  {albums.slice(0, 12).map((album) => (
+                    <Pressable
+                      key={album.id}
+                      onPress={() => router.push({ pathname: '/music/album/[id]', params: { id: album.id } })}
+                      style={{ width: CARD_W }}
+                    >
+                      <View style={[s.rounded2xl, s.overflowHidden, s.mb2, { backgroundColor: colors.surface, width: CARD_W, height: CARD_W }]}>
+                        <Artwork uri={album.artwork} size={CARD_W} borderRadius={16} iconSize={40} iconColor={colors.accent} backgroundColor="transparent" />
+                      </View>
+                      <Text style={[s.textSm, s.fontSemibold, { color: colors.text }]} numberOfLines={1}>{album.title}</Text>
+                      <Text style={[s.textXs, { color: colors.textMuted }]} numberOfLines={1}>{album.artist}</Text>
+                    </Pressable>
+                  ))}
+                </ScrollView>
+              </View>
+            )}
+
+            {/* Artists */}
+            {artists.length > 0 && (
+              <View style={[s.mb6]}>
+                <View style={[s.flexRow, s.itemsCenter, s.justifyBetween, s.px5, s.mb3]}>
+                  <Text style={[s.textXs, s.fontBold, s.uppercase, { letterSpacing: 1, color: colors.textMuted }]}>
+                    {t('library.artists')}
+                  </Text>
+                  <Pressable onPress={() => router.push('/music/artists')}>
+                    <Text style={[s.textXs, s.fontSemibold, { color: colors.accent }]}>{t('home.see.all')}</Text>
+                  </Pressable>
+                </View>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, gap: 12 }}>
+                  {artists.slice(0, 12).map((artist) => (
+                    <Pressable
+                      key={artist.id}
+                      onPress={() => router.push({ pathname: '/music/artist/[id]', params: { id: artist.id } })}
+                      style={{ width: CARD_W }}
+                    >
+                      <View style={[s.roundedFull, s.overflowHidden, s.mb2, { backgroundColor: colors.surface, width: CARD_W, height: CARD_W }]}>
+                        <Artwork uri={artist.artwork} size={CARD_W} borderRadius={CARD_W / 2} iconSize={40} iconColor={colors.accent} backgroundColor="transparent" />
+                      </View>
+                      <Text style={[s.textSm, s.fontSemibold, { color: colors.text }]} numberOfLines={1}>{artist.name}</Text>
+                    </Pressable>
+                  ))}
+                </ScrollView>
               </View>
             )}
           </ScrollView>

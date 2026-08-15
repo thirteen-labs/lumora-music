@@ -199,7 +199,7 @@ export function SongContextMenu({ bottomSheetRef, song, onDismiss }: SongContext
               <Text style={{ fontSize: 15, color: colors.text }}>Add to Playlist</Text>
             </Pressable>
             <Pressable
-              onPress={() => { dismiss(); router.push({ pathname: '/metadata-editor', params: { songId: song.id } }); }}
+              onPress={() => { dismiss(); router.push({ pathname: '/song-info', params: { songId: song.id } }); }}
               style={{
                 flexDirection: 'row',
                 alignItems: 'center',

@@ -12,6 +12,8 @@ export interface Song {
   genre: string | null;
   bitrate: number | null;
   sampleRate: number | null;
+  channels: number | null;
+  codec: string | null;
 }
 
 export interface Album {

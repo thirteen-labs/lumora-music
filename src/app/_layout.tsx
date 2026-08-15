@@ -185,10 +185,6 @@ function RootStack() {
               options={{ animation: "slide_from_right" }}
             />
             <Stack.Screen
-              name="metadata-editor"
-              options={{ animation: "slide_from_right" }}
-            />
-            <Stack.Screen
               name="music/songs"
               options={{ animation: "slide_from_right" }}
             />

@@ -392,10 +392,23 @@ export function useTrackPlayerSync() {
       }
     });
 
+    /* Native "track ended" signal from the AudioBufferSourceNode onEnded
+       (dispatched on the native audio thread). This drives auto-advance even
+       when the app is backgrounded and the JS setInterval is throttled, so a
+       queue keeps playing after the app leaves the foreground. */
+    const unsubTrackEnded = audioEngine.onTrackEnded(() => {
+      if (!mountedRef.current) return;
+      if (!trackEndedRef.current) {
+        trackEndedRef.current = true;
+        handleTrackEndRef.current();
+      }
+    });
+
     return () => {
       mountedRef.current = false;
       stopInterval();
       unsubEngine();
+      unsubTrackEnded();
       /* Final save before unmount */
       saveQueueState();
       appStateSub.remove();

@@ -10,6 +10,8 @@ import Svg, { Circle, G } from 'react-native-svg';
 import { formatDuration } from '@/utils/format';
 import { useRouter } from 'expo-router';
 import { Artwork } from '@/components/artwork';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import { SongContextMenu, useSongContextMenu } from '@/components/song-context-menu';
 
 const CIRCUMFERENCE = 2 * Math.PI * 17;
 
@@ -22,35 +24,75 @@ export const MiniPlayer = React.memo(function MiniPlayer() {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { bottomSheetRef, present, song } = useSongContextMenu();
 
   if (!isMiniPlayerVisible || !currentTrack) return null;
 
   const progress = duration > 0 ? position / duration : 0;
 
+  const openPlayer = () => router.push('/player');
+
+  const pan = Gesture.Pan()
+    .activeOffsetX([-12, 12])
+    .activeOffsetY([-12, 12])
+    .onEnd((e) => {
+      const { translationX: tx, translationY: ty } = e;
+      if (ty < -50) {
+        openPlayer();
+      } else if (ty > 50) {
+        playerActions.hideMiniPlayer();
+      } else if (tx < -50) {
+        playerActions.next();
+      } else if (tx > 50) {
+        playerActions.previous();
+      }
+    });
+
+  const tap = Gesture.Tap().onEnd(() => {
+    openPlayer();
+  });
+
+  const longPress = Gesture.LongPress()
+    .minDuration(400)
+    .onStart(() => {
+      present(currentTrack);
+    });
+
+  const composed = Gesture.Exclusive(pan, tap, longPress);
+
   return (
-    <Pressable onPress={() => router.push('/player')} style={s.wFull}>
-      <View style={{ backgroundColor: colors.surface, paddingBottom: insets.bottom }}>
+    <View style={s.wFull}>
+      <View style={{ backgroundColor: colors.pageBackground, paddingBottom: insets.bottom }}>
         <View style={[s.wFull, s.h2px, { backgroundColor: colors.border }]}>
           <View style={[s.hFull, { width: `${progress * 100}%`, backgroundColor: colors.accent }]} />
         </View>
-          <View style={[s.flexRow, s.itemsCenter, s.px4, s.py3, s.gap3]}>
-          <View style={[s.roundedXl, s.overflowHidden, { backgroundColor: colors.card }]}>
-            <Artwork uri={currentTrack.artwork} size={52} borderRadius={12} iconSize={20} iconColor={colors.accent} backgroundColor="transparent" />
-          </View>
-          <View style={s.flex1}>
-            <Text style={[s.textBase, s.fontSemibold, { color: colors.text }]} numberOfLines={1}>
-              {currentTrack.title}
-            </Text>
-            <Text style={[s.textSm, s.mt05, { color: colors.textMuted }]} numberOfLines={1}>
-              {currentTrack.artist}
-            </Text>
-          </View>
-          <Text style={[s.textSm, { color: colors.textMuted }]}>
-            {formatDuration(position)}
-          </Text>
-          <Text style={[s.textSm, s.fontMedium, { color: colors.accent }]}>
-            {Math.round(progress * 100)}%
-          </Text>
+        <View style={[s.flexRow, s.itemsCenter, s.px4, s.py3, s.gap3]}>
+          <GestureDetector gesture={composed}>
+            <View
+              style={[s.flex1, s.flexRow, s.itemsCenter, s.gap3]}
+              accessible
+              accessibilityLabel={`${currentTrack.title} by ${currentTrack.artist}. Open player`}
+              accessibilityRole={'button' as const}
+            >
+              <View style={[s.roundedXl, s.overflowHidden, { backgroundColor: colors.card }]}>
+                <Artwork uri={currentTrack.artwork} size={52} borderRadius={12} iconSize={20} iconColor={colors.accent} backgroundColor="transparent" />
+              </View>
+              <View style={s.flex1}>
+                <Text style={[s.textBase, s.fontSemibold, { color: colors.text }]} numberOfLines={1}>
+                  {currentTrack.title}
+                </Text>
+                <Text style={[s.textSm, s.mt05, { color: colors.textMuted }]} numberOfLines={1}>
+                  {currentTrack.artist}
+                </Text>
+              </View>
+              <Text style={[s.textSm, { color: colors.textMuted }]}>
+                {formatDuration(position)}
+              </Text>
+              <Text style={[s.textSm, s.fontMedium, { color: colors.accent }]}>
+                {Math.round(progress * 100)}%
+              </Text>
+            </View>
+          </GestureDetector>
           <Pressable onPress={playerActions.togglePlay} hitSlop={8} style={[s.w10, s.h10, s.roundedFull, s.itemsCenter, s.justifyCenter, { backgroundColor: colors.card }]}
             accessibilityLabel={isPlaying ? 'Pause' : 'Play'}
             accessibilityRole={'button' as const}
@@ -81,6 +123,7 @@ export const MiniPlayer = React.memo(function MiniPlayer() {
           </Pressable>
         </View>
       </View>
-    </Pressable>
+      <SongContextMenu bottomSheetRef={bottomSheetRef} song={song} />
+    </View>
   );
 });

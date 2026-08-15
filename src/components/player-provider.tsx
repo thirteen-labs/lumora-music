@@ -6,10 +6,10 @@ import { useSettingsStore } from '@/store/settings-store';
 import { usePlayerStore } from '@/store/player-store';
 import { useMusicStore } from '@/store/music-store';
 import { useQueuePersistStore, reconstructQueue } from '@/store/queue-persist-store';
-import { initializeNotifications, dismissNowPlayingNotification } from '@/services/notifications';
+import { initializeNotifications, dismissNowPlayingNotification, showNowPlayingNotification } from '@/services/notifications';
 import { useOnboardingStore } from '@/store/onboarding-store';
-import { syncEqualizerToEngine } from '@/store/equalizer-store';
-import { syncReplayGainToEngine } from '@/store/replay-gain-store';
+import { syncEqualizerToEngine, subscribeEqualizer } from '@/store/equalizer-store';
+import { syncReplayGainToEngine, subscribeReplayGain } from '@/store/replay-gain-store';
 import { useLoudnessEnhancerStore } from '@/store/loudness-enhancer-store';
 import { audioEngine } from '@/services/audio-engine';
 import { useTheme } from '@/hooks/use-theme';
@@ -94,8 +94,40 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    const wasPlaying = persisted.isPlaying === true;
+    // Reconnect: if the native audio session survived a process restart
+    // (foreground service still playing this exact track), adopt it instead
+    // of reloading + pausing. This keeps playback going even if the app was
+    // exited/swiped from recents while audio was playing.
+    try {
+      await audioEngine.init();
+      const engineState = audioEngine.getState();
+      const engineUri = audioEngine.getCurrentUri();
+      if (engineState.playing && engineUri && engineUri === track.uri) {
+        usePlayerStore.setState({
+          currentTrack: track,
+          queue,
+          queueIndex,
+          priorityQueue: priorityQueue || [],
+          shuffle: persisted.shuffle,
+          repeat: persisted.repeat as RepeatMode,
+          isMiniPlayerVisible: true,
+          isFullPlayerVisible: false,
+          position: engineState.currentTime,
+          duration: engineState.duration,
+          isPlaying: true,
+        });
+        try {
+          await showNowPlayingNotification(track, true, engineState.currentTime);
+        } catch {
+          /* show notification on adopt failed */
+        }
+        return;
+      }
+    } catch (e) {
+      reportWarning('PlayerProvider', e, 'Failed to probe engine for live session');
+    }
 
+    // Otherwise restore paused at the saved position — never auto-blast audio.
     usePlayerStore.setState({
       currentTrack: track,
       queue,
@@ -105,7 +137,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       repeat: persisted.repeat as RepeatMode,
       isMiniPlayerVisible: true,
       position: persisted.position,
-      isPlaying: wasPlaying,
+      isPlaying: false,
     });
 
     try {
@@ -114,9 +146,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         const boundedPosition = Math.min(persisted.position, track.duration - 1);
         await serviceSeekTo(boundedPosition);
       }
-      if (!wasPlaying) {
-        await pausePlayback();
-      }
+      await pausePlayback();
     } catch (e) {
       reportWarning('PlayerProvider', e, 'Failed to restore track position after crash');
     }
@@ -247,6 +277,19 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
           }
         }
       } else if (nextState === 'background' || nextState === 'inactive') {
+        /* Keep audio playing when the app leaves the foreground.
+           The audio engine runs inside a foreground service
+           (react-native-audio-api, mediaPlayback) with
+           shouldPlayInBackground enabled, so the current track must
+           continue after the app is backgrounded or fully exited.
+           Do NOT pause here and do NOT wipe playback state — pausing
+           or clearing the queue would stop background playback. */
+        try {
+          const { AudioManager } = await import('react-native-audio-api');
+          AudioManager.setAudioSessionActivity(true);
+        } catch {
+          /* keep audio session active failed */
+        }
         saveStateBeforeExit();
       }
     };
@@ -332,6 +375,17 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     } catch (e) {
       reportWarning('PlayerProvider', e, 'Failed to sync audio settings to engine');
     }
+
+    // Keep the engine in sync with EQ / replay-gain store changes made from
+    // the UI (sliders, presets, toggles). Without this, edits only updated
+    // the store and never reached the running audio graph.
+    const unsubEq = subscribeEqualizer();
+    const unsubRg = subscribeReplayGain();
+
+    return () => {
+      unsubEq();
+      unsubRg();
+    };
   }, []);
 
   const { colors } = useTheme();

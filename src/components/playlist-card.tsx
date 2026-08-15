@@ -9,12 +9,14 @@ import { useMusicStore } from '@/store/music-store';
 import { playerActions } from '@/player/actions';
 import type { Playlist } from '@/store/playlist-store';
 
-const IMAGE_HEIGHT = 120;
-const CARD_HEIGHT = 192;
+const DEFAULT_CARD_HEIGHT = 192;
+const DEFAULT_IMAGE_HEIGHT = 120;
 
 interface PlaylistCardProps {
   playlist: Playlist;
   cardWidth: number;
+  cardHeight?: number;
+  imageHeight?: number;
   onPress: () => void;
   onLongPress?: () => void;
   showPlayButton?: boolean;
@@ -23,6 +25,8 @@ interface PlaylistCardProps {
 export const PlaylistCard = React.memo(function PlaylistCard({
   playlist,
   cardWidth,
+  cardHeight = DEFAULT_CARD_HEIGHT,
+  imageHeight = DEFAULT_IMAGE_HEIGHT,
   onPress,
   onLongPress,
   showPlayButton = true,
@@ -66,7 +70,7 @@ export const PlaylistCard = React.memo(function PlaylistCard({
         styles.card,
         {
           width: cardWidth,
-          height: CARD_HEIGHT,
+          height: cardHeight,
           backgroundColor: colors.surface,
           borderRadius: 16,
           borderWidth: 1,
@@ -75,7 +79,7 @@ export const PlaylistCard = React.memo(function PlaylistCard({
         },
       ]}
     >
-      <View style={[styles.imageContainer, { width: imageWidth, height: IMAGE_HEIGHT }]}>
+      <View style={[styles.imageContainer, { width: imageWidth, height: imageHeight }]}>
         <View style={[styles.image, { backgroundColor: colors.card }]}>
           <Artwork
             uri={playlistArtwork}
@@ -113,7 +117,7 @@ export const PlaylistCard = React.memo(function PlaylistCard({
 
       <View style={styles.content}>
         <Text
-          style={[styles.playlistName, { color: colors.text }]}
+          style={[styles.playlistName, { color: colors.text, fontSize: 13 }]}
           numberOfLines={1}
         >
           {playlist.name}
@@ -132,10 +136,10 @@ export const PlaylistCard = React.memo(function PlaylistCard({
                   backgroundColor={colors.card}
                 />
                 <View style={styles.songInfo}>
-                  <Text style={[styles.songTitle, { color: colors.text }]} numberOfLines={1}>
+                  <Text style={[styles.songTitle, { color: colors.text, fontSize: 11 }]} numberOfLines={1}>
                     {song.title}
                   </Text>
-                  <Text style={[styles.songArtist, { color: colors.textMuted }]} numberOfLines={1}>
+                  <Text style={[styles.songArtist, { color: colors.textMuted, fontSize: 10 }]} numberOfLines={1}>
                     {song.artist}
                   </Text>
                 </View>

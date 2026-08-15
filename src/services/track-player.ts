@@ -88,6 +88,8 @@ const playerAdapter = {
         genre: null,
         bitrate: null,
         sampleRate: null,
+        channels: null,
+        codec: null,
       };
       showNowPlayingNotification(fakeTrack, audioEngine.getState().playing);
     } else {

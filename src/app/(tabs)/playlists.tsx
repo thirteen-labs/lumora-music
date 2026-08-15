@@ -1,5 +1,5 @@
 import React, { useState, useRef, useMemo, useCallback } from 'react';
-import { View, Text, Pressable, Alert, TextInput, ScrollView, Dimensions } from 'react-native';
+import { View, Text, Pressable, Alert, TextInput, Dimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { s } from '@/styles';
 import { FlashList } from '@shopify/flash-list';
@@ -8,14 +8,14 @@ import { useTranslation } from '@/hooks/use-translation';
 import { TopBar } from '@/components/top-bar';
 import { MiniPlayer } from '@/components/mini-player';
 import { PlaylistCard } from '@/components/playlist-card';
-import { usePlaylistStore } from '@/store/playlist-store';
+import { usePlaylistStore, type Playlist } from '@/store/playlist-store';
 import { useMusicStore } from '@/store/music-store';
 import { useFavoritesStore } from '@/store/favorites-store';
 import { useStatsStore } from '@/store/stats-store';
 import { useLayoutStore } from '@/store/layout-store';
 import { useRouter } from 'expo-router';
 import {
-  Heart, Plus, ListMusic, Tag, Users, Clock, TrendingUp, Disc3,
+  Plus, Tag, Users, Clock, TrendingUp, Disc3,
   LayoutGrid, List,
 } from 'lucide-react-native';
 import {
@@ -32,12 +32,12 @@ const PREDEFINED_SECTIONS = [
   { icon: Users, labelKey: 'library.artists' as const, route: '/music/artists' },
   { icon: Clock, labelKey: 'library.recently.played' as const, route: '/recently-played' },
   { icon: TrendingUp, labelKey: 'library.most.played' as const, route: '/statistics' },
-  { icon: Heart, labelKey: 'library.favorites' as const, route: '/(tabs)/favorites' },
 ];
 
 const LIST_CARD_WIDTH = SCREEN_WIDTH * 0.98;
-const GRID_CARD_WIDTH = (SCREEN_WIDTH - 32 - 12) / 2;
-const CARD_HEIGHT = 192;
+const GRID_CARD_WIDTH = (SCREEN_WIDTH - 32) * 0.45;
+const LIST_CARD_HEIGHT = 10 * 16;
+const GRID_CARD_HEIGHT = 12 * 16;
 
 export default function PlaylistsScreen() {
   const { colors } = useTheme();
@@ -51,7 +51,7 @@ export default function PlaylistsScreen() {
   const albums = useMusicStore((s) => s.albums);
   const artists = useMusicStore((s) => s.artists);
   const genres = useMusicStore((s) => s.genres);
-  const favoriteCount = useFavoritesStore((s) => s.favoriteSongIds.length);
+  const favoriteSongIds = useFavoritesStore((s) => s.favoriteSongIds);
   const trackStats = useStatsStore((s) => s.trackStats);
   const { libraryViewMode, setLibraryViewMode } = useLayoutStore();
 
@@ -59,11 +59,47 @@ export default function PlaylistsScreen() {
     return [...playlists].sort((a, b) => b.createdAt - a.createdAt);
   }, [playlists]);
 
+  type PlaylistListItem =
+    | { kind: 'system'; id: string; section: (typeof PREDEFINED_SECTIONS)[number] }
+    | { kind: 'playlist'; id: string; playlist: Playlist };
+
+  const favoritesPlaylist = useMemo<Playlist>(
+    () => ({
+      id: 'favorites',
+      name: t('library.favorites'),
+      songIds: favoriteSongIds,
+      artwork: null,
+      createdAt: 0,
+    }),
+    [favoriteSongIds, t],
+  );
+
+  const combinedItems = useMemo<PlaylistListItem[]>(() => {
+    const systemItems: PlaylistListItem[] = PREDEFINED_SECTIONS.map((section) => ({
+      kind: 'system',
+      id: `system-${section.labelKey}`,
+      section,
+    }));
+    const favoritesItem: PlaylistListItem = {
+      kind: 'playlist',
+      id: 'favorites',
+      playlist: favoritesPlaylist,
+    };
+    const playlistItems: PlaylistListItem[] = sortedPlaylists.map((playlist) => ({
+      kind: 'playlist',
+      id: playlist.id,
+      playlist,
+    }));
+    return [...systemItems, favoritesItem, ...playlistItems];
+  }, [sortedPlaylists, favoritesPlaylist]);
+
   const [newName, setNewName] = useState('');
   const createSheetRef = useRef<BottomSheetModal>(null);
 
   const isGrid = libraryViewMode === 'grid';
   const cardWidth = isGrid ? GRID_CARD_WIDTH : LIST_CARD_WIDTH;
+  const cardHeight = isGrid ? GRID_CARD_HEIGHT : LIST_CARD_HEIGHT;
+  const imageHeight = Math.round(cardHeight * 0.625);
 
   const recentlyPlayedCount = useMemo(
     () => songs.filter((s) => trackStats[s.id]?.lastPlayed).length,
@@ -81,10 +117,9 @@ export default function PlaylistsScreen() {
       case 'library.artists': return artists.length;
       case 'library.recently.played': return recentlyPlayedCount;
       case 'library.most.played': return mostPlayedCount;
-      case 'library.favorites': return favoriteCount;
       default: return 0;
     }
-  }, [albums.length, artists.length, genres.length, recentlyPlayedCount, mostPlayedCount, favoriteCount]);
+  }, [albums.length, artists.length, genres.length, recentlyPlayedCount, mostPlayedCount]);
 
   const handleCreate = () => {
     if (newName.trim()) {
@@ -109,52 +144,20 @@ export default function PlaylistsScreen() {
   );
 
 const renderListHeader = useCallback(() => (
-    <View>
-      <View style={[s.px5, s.py2]}>
-        <Text style={[s.textSm, s.fontSemibold, s.mb3, { color: colors.textMuted }]}>Browse</Text>
-        <View style={[s.gap2]}>
-          {PREDEFINED_SECTIONS.map((section) => {
-            const Icon = section.icon;
-            const count = getCount(section.labelKey);
-            return (
-              <Pressable
-                key={section.labelKey}
-                onPress={() => router.push(section.route)}
-                style={[s.flexRow, s.itemsCenter, s.gap3, s.p4, { backgroundColor: colors.surface, borderRadius: 16, borderWidth: 1, borderColor: colors.accent + '30' }]}
-              >
-                <View style={[s.w14, s.h14, s.roundedXl, s.itemsCenter, s.justifyCenter, { backgroundColor: colors.accent + '15' }]}>
-                  <Icon size={24} color={colors.accent} />
-                </View>
-                <View style={s.flex1}>
-                  <Text style={[s.textSm, s.fontSemibold, { color: colors.text }]} numberOfLines={1}>
-                    {t(section.labelKey)}
-                  </Text>
-                  <Text style={[s.textXs, { color: colors.textMuted }]}>
-                    {count} {count === 1 ? t('library.song') : t('library.tracks')}
-                  </Text>
-                </View>
-              </Pressable>
-            );
-          })}
-        </View>
-      </View>
-
-      <View style={s.flexRowCenterBetween}>
-        <Text style={[s.textSm, s.fontSemibold, { color: colors.textMuted }]}>My Playlists</Text>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-          <Pressable
-            onPress={() => setLibraryViewMode('list')}
-            style={{ padding: 6, borderRadius: 6, backgroundColor: !isGrid ? colors.accent + '20' : 'transparent' }}
-          >
-            <List size={18} color={!isGrid ? colors.accent : colors.textMuted} />
-          </Pressable>
-          <Pressable
-            onPress={() => setLibraryViewMode('grid')}
-            style={{ padding: 6, borderRadius: 6, backgroundColor: isGrid ? colors.accent + '20' : 'transparent' }}
-          >
-            <LayoutGrid size={18} color={isGrid ? colors.accent : colors.textMuted} />
-          </Pressable>
-        </View>
+    <View style={{ paddingTop: 8 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', paddingHorizontal: 16, paddingBottom: 12, gap: 8 }}>
+        <Pressable
+          onPress={() => setLibraryViewMode('list')}
+          style={{ padding: 6, borderRadius: 6, backgroundColor: !isGrid ? colors.accent + '20' : 'transparent' }}
+        >
+          <List size={18} color={!isGrid ? colors.accent : colors.textMuted} />
+        </Pressable>
+        <Pressable
+          onPress={() => setLibraryViewMode('grid')}
+          style={{ padding: 6, borderRadius: 6, backgroundColor: isGrid ? colors.accent + '20' : 'transparent' }}
+        >
+          <LayoutGrid size={18} color={isGrid ? colors.accent : colors.textMuted} />
+        </Pressable>
       </View>
 
       <Pressable
@@ -162,8 +165,8 @@ const renderListHeader = useCallback(() => (
         style={[
           s.addPlaylistButton,
           {
-            width: SCREEN_WIDTH,
-            height: CARD_HEIGHT,
+            width: '100%',
+            height: cardHeight,
             backgroundColor: 'transparent',
             borderWidth: 0,
             borderRadius: 16,
@@ -176,62 +179,76 @@ const renderListHeader = useCallback(() => (
         <Plus size={24} color={colors.accent} />
         <Text style={{ fontSize: 14, fontWeight: '600', color: colors.text }}>{t('playlist.new')}</Text>
       </Pressable>
-
-      {sortedPlaylists.length === 0 && (
-        <View style={[s.itemsCenter, s.py16]}>
-          <ListMusic size={40} color={colors.textMuted} />
-          <Text style={[s.mt3, { color: colors.textMuted }]}>{t('playlist.no.playlists')}</Text>
-        </View>
-      )}
     </View>
-  ), [colors, t, sortedPlaylists, getCount, router, createSheetRef, isGrid, setLibraryViewMode]);
+  ), [colors, t, createSheetRef, isGrid, setLibraryViewMode, cardHeight]);
 
-  const renderPlaylistCard = ({ item }: { item: typeof sortedPlaylists[0] }) => (
-    <PlaylistCard
-      playlist={item}
-      cardWidth={cardWidth}
-      onPress={() => router.push({ pathname: '/(tabs)/playlist/[id]', params: { id: item.id } })}
-      onLongPress={() => handleDelete(item.id, item.name)}
-    />
-  );
+  const renderItem = ({ item }: { item: PlaylistListItem }) => {
+    if (item.kind === 'system') {
+      const { section } = item;
+      const Icon = section.icon;
+      const count = getCount(section.labelKey);
+        return (
+          <Pressable
+            onPress={() => router.push(section.route)}
+            style={{
+              width: cardWidth,
+              height: cardHeight,
+              backgroundColor: colors.surface,
+              borderRadius: 16,
+              borderWidth: 1,
+              borderColor: colors.accent + '30',
+              marginBottom: 16,
+              overflow: 'hidden',
+            }}
+          >
+            <View style={{ width: cardWidth, height: imageHeight, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.card }}>
+              <Icon size={40} color={colors.accent} />
+            </View>
+          <View style={{ paddingHorizontal: 12, paddingTop: 8 }}>
+            <Text style={{ fontSize: 14, fontWeight: '600', color: colors.text }} numberOfLines={1}>
+              {t(section.labelKey)}
+            </Text>
+            <Text style={{ fontSize: 11, color: colors.textMuted, marginTop: 4 }}>
+              {count} {count === 1 ? t('library.song') : t('library.tracks')}
+            </Text>
+          </View>
+        </Pressable>
+      );
+    }
+
+    const isFavorites = item.playlist.id === 'favorites';
+
+    return (
+      <PlaylistCard
+        playlist={item.playlist}
+        cardWidth={cardWidth}
+        cardHeight={cardHeight}
+        imageHeight={imageHeight}
+        onPress={() =>
+          isFavorites
+            ? router.push('/(tabs)/favorites')
+            : router.push({ pathname: '/(tabs)/playlist/[id]', params: { id: item.playlist.id } })
+        }
+        onLongPress={isFavorites ? undefined : () => handleDelete(item.playlist.id, item.playlist.name)}
+      />
+    );
+  };
 
   return (
     <View style={[s.flex1, { backgroundColor: colors.pageBackground }]}>
-      <TopBar
-        title={t('playlist.title')}
-        showSettings={false}
-      />
+      <TopBar />
 
-      <View style={s.flex1}>
-        {sortedPlaylists.length > 0 ? (
-          isGrid ? (
-            <FlashList
-              data={sortedPlaylists}
-              keyExtractor={(item) => item.id}
-              numColumns={2}
-              estimatedItemSize={CARD_HEIGHT}
-              ListHeaderComponent={renderListHeader}
-              contentContainerStyle={{ paddingBottom: 120 + insets.bottom, paddingHorizontal: 16 }}
-              showsVerticalScrollIndicator={false}
-              renderItem={renderPlaylistCard}
-            />
-          ) : (
-            <FlashList
-              data={sortedPlaylists}
-              keyExtractor={(item) => item.id}
-              numColumns={1}
-              estimatedItemSize={CARD_HEIGHT}
-              ListHeaderComponent={renderListHeader}
-              contentContainerStyle={{ paddingBottom: 120 + insets.bottom }}
-              showsVerticalScrollIndicator={false}
-              renderItem={renderPlaylistCard}
-            />
-          )
-        ) : (
-          <ScrollView contentContainerStyle={{ paddingBottom: 120 + insets.bottom }} showsVerticalScrollIndicator={false}>
-            {renderListHeader()}
-          </ScrollView>
-        )}
+      <View style={s.flex1} key={isGrid ? 'grid' : 'list'}>
+        <FlashList
+          data={combinedItems}
+          keyExtractor={(item) => item.id}
+          numColumns={isGrid ? 2 : 1}
+          estimatedItemSize={cardHeight}
+          ListHeaderComponent={renderListHeader}
+          contentContainerStyle={{ paddingBottom: 120 + insets.bottom, paddingHorizontal: isGrid ? 16 : 0 }}
+          showsVerticalScrollIndicator={false}
+          renderItem={renderItem}
+          />
       </View>
 
       <MiniPlayer />

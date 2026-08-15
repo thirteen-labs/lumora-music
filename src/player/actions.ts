@@ -27,6 +27,10 @@ export const playerActions = {
     usePlayerStore.getState().clearPriorityQueue();
     useToastStore.getState().showToast('Play Next queue cleared', 'check');
   },
+  clearUpNext: () => {
+    usePlayerStore.getState().clearUpNext();
+    useToastStore.getState().showToast('Queue cleared', 'check');
+  },
   clearQueue: () => {
     usePlayerStore.setState({
       queue: [],

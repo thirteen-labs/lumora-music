@@ -145,6 +145,7 @@ export default function MusicScreen() {
       </View>
       {sortedSongs.length > 0 ? (
         isGrid ? (
+          <View style={[s.flex1]} key="grid">
           <FlashList
             data={sortedSongs}
             keyExtractor={(item) => item.id}
@@ -186,7 +187,9 @@ export default function MusicScreen() {
             }}
             ListEmptyComponent={null}
           />
+          </View>
         ) : (
+          <View style={[s.flex1]} key="list">
           <FlashList
             data={sortedSongs}
             keyExtractor={(item) => item.id}
@@ -260,6 +263,7 @@ export default function MusicScreen() {
             }}
             ListEmptyComponent={null}
           />
+          </View>
         )
       ) : (
         <View style={[s.flex1, s.itemsCenter, s.justifyCenter]}>

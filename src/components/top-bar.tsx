@@ -1,6 +1,6 @@
 import { View, Text, Pressable } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Search, Settings } from 'lucide-react-native';
+import { Search, Settings, ChevronLeft } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { s } from '@/styles';
 import { useTheme } from '@/hooks/use-theme';
@@ -9,10 +9,11 @@ interface TopBarProps {
   showSearch?: boolean;
   showSettings?: boolean;
   title?: string;
+  showBack?: boolean;
   rightElement?: React.ReactNode;
 }
 
-export function TopBar({ showSearch = true, showSettings = true, title, rightElement }: TopBarProps) {
+export function TopBar({ showSearch = true, showSettings = true, title, showBack = false, rightElement }: TopBarProps) {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { colors } = useTheme();
@@ -21,11 +22,21 @@ export function TopBar({ showSearch = true, showSettings = true, title, rightEle
     <View
       style={[s.wFull, s.overflowHidden, {
         paddingTop: insets.top,
-        backgroundColor: colors.background,
+        backgroundColor: colors.pageBackground,
       }]}
     >
       <View style={[s.flexRow, s.itemsCenter, s.justifyBetween, s.px5, s.py3]}>
         <View style={[s.flexRow, s.itemsCenter]}>
+          {showBack && (
+            <Pressable
+              onPress={() => router.back()}
+              style={[s.w9, s.h9, s.roundedFull, s.itemsCenter, s.justifyCenter, { marginRight: 8 }]}
+              accessibilityRole="button"
+              accessibilityLabel="Back"
+            >
+              <ChevronLeft size={24} color={colors.text} />
+            </Pressable>
+          )}
           {title ? (
             <Text style={[s.textLg, s.fontBold, { color: colors.text }]}>
               {title}

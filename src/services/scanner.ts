@@ -117,6 +117,10 @@ let MediaStore: {
   getAudio?: (query: unknown, projection: unknown, selection: unknown) => Promise<MediaStoreItem[]>;
   getAlbumArtwork?: (albumId: string) => Promise<string | null>;
   getStatistics?: () => Promise<{ totalAudio?: number; totalVideo?: number; totalImages?: number; totalDocuments?: number; totalSize?: number }>;
+  getDetailedMetadataByUri?: (uri: string) => Promise<{
+    audio?: { codec?: string; bitrate?: number; sampleRate?: number; channels?: number };
+    containerFormat?: string;
+  } | null>;
 } | null = null;
 let MediaLibrary: {
   requestPermissionsAsync?: () => Promise<{ status: string }>;
@@ -240,6 +244,8 @@ let _metadataCache: Record<string, {
   artwork: string | null;
   bitrate: number | null;
   sampleRate: number | null;
+  channels: number | null;
+  codec: string | null;
 }> = {};
 
 let _metadataCacheTimer: ReturnType<typeof setTimeout> | null = null;
@@ -285,9 +291,57 @@ function setCachedMetadata(uri: string, meta: {
   artwork: string | null;
   bitrate: number | null;
   sampleRate: number | null;
+  channels?: number | null;
+  codec?: string | null;
 }): void {
-  _metadataCache[uri] = meta;
+  _metadataCache[uri] = { ..._metadataCache[uri], ...meta };
   scheduleMetadataCacheSave();
+}
+
+/**
+ * Enriches a song with accurate technical metadata (bitrate, sample rate,
+ * channel count, codec) by opening the file via the media-store module's
+ * deep metadata extractor. Catalog queries often leave these null, so this
+ * fills them in. Results are cached persistently per URI.
+ */
+async function enrichTechnicalMetadata(song: Song): Promise<Song> {
+  if (!MediaStore?.getDetailedMetadataByUri) return song;
+
+  const cached = _metadataCache[song.uri];
+  const hasDetailed =
+    !!cached && (cached.channels !== undefined || cached.codec !== undefined);
+  if (hasDetailed) {
+    if (song.bitrate == null && cached.bitrate != null) song.bitrate = cached.bitrate;
+    if (song.sampleRate == null && cached.sampleRate != null) song.sampleRate = cached.sampleRate;
+    song.channels = cached.channels ?? null;
+    song.codec = cached.codec ?? null;
+    return song;
+  }
+
+  try {
+    const detail = await MediaStore.getDetailedMetadataByUri(song.uri);
+    const audio = detail?.audio;
+    if (audio) {
+      if (song.bitrate == null && audio.bitrate != null) song.bitrate = audio.bitrate;
+      if (song.sampleRate == null && audio.sampleRate != null) song.sampleRate = audio.sampleRate;
+      song.channels = audio.channels ?? null;
+      song.codec = audio.codec ?? null;
+      setCachedMetadata(song.uri, {
+        title: cached?.title ?? null,
+        artist: cached?.artist ?? null,
+        album: cached?.album ?? null,
+        genre: cached?.genre ?? null,
+        artwork: cached?.artwork ?? null,
+        bitrate: song.bitrate,
+        sampleRate: song.sampleRate,
+        channels: song.channels,
+        codec: song.codec,
+      });
+    }
+  } catch (error) {
+    logger.warn('[Scanner] getDetailedMetadataByUri failed:', song.uri, error);
+  }
+  return song;
 }
 
 function loadCachedDataFromStorage(): void {
@@ -553,7 +607,7 @@ interface MediaStoreItem {
   relativePath?: string;
 }
 
-function processMediaStoreItem(item: MediaStoreItem): Song | null {
+async function processMediaStoreItem(item: MediaStoreItem): Promise<Song | null> {
   try {
     const uri = item.contentUri ?? item.uri;
     if (!uri) return null;
@@ -572,7 +626,7 @@ function processMediaStoreItem(item: MediaStoreItem): Song | null {
       filenameMeta.album ??
       'Unknown Album';
 
-    return {
+    const song: Song = {
       id: item.id ?? uri,
       uri,
       title,
@@ -586,7 +640,10 @@ function processMediaStoreItem(item: MediaStoreItem): Song | null {
       genre: cleanString(item.genre) ?? null,
       bitrate: item.bitrate ?? null,
       sampleRate: item.sampleRate ?? null,
+      channels: null,
+      codec: null,
     };
+    return await enrichTechnicalMetadata(song);
   } catch (error) {
     logger.warn('[Scanner] Failed to process MediaStore item:', item?.id, error);
     return null;
@@ -613,7 +670,7 @@ async function processAsset(asset: MediaLibraryAsset): Promise<Song | null> {
     const artist = cleanString(meta.artist) ?? filenameMeta.artist ?? 'Unknown Artist';
     const album = cleanString(meta.album) ?? filenameMeta.album ?? 'Unknown Album';
 
-    return {
+    const song: Song = {
       id: asset.id,
       uri,
       title,
@@ -627,7 +684,10 @@ async function processAsset(asset: MediaLibraryAsset): Promise<Song | null> {
       genre: cleanString(meta.genre) ?? null,
       bitrate: meta.bitrate,
       sampleRate: meta.sampleRate,
+      channels: null,
+      codec: null,
     };
+    return await enrichTechnicalMetadata(song);
   } catch (error) {
     logger.warn('[Scanner] Failed to process audio asset:', asset?.id, error);
     return null;
@@ -740,7 +800,7 @@ async function fetchSongsAndroid(
 
       const results: Song[] = [];
       for (const item of songs) {
-        const song = processMediaStoreItem(item);
+        const song = await processMediaStoreItem(item);
         if (song) results.push(song);
       }
       logger.log(`[Scanner] Processed ${results.length} songs from ${songs.length} items`);

@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useRef, useCallback } from 'react';
-import { View, Text, Pressable, Alert, ScrollView, TextInput } from 'react-native';
+import { View, Text, Pressable, Alert } from 'react-native';
 import { s } from '@/styles';
 import { FlashList } from '@shopify/flash-list';
 import { useTheme } from '@/hooks/use-theme';
@@ -10,11 +10,10 @@ import { usePlaylistStore } from '@/store/playlist-store';
 import { useMusicStore } from '@/store/music-store';
 import { playerActions } from '@/player/actions';
 import { useLyricsStore } from '@/store/lyrics-store';
-import { useMetadataStore, type MetadataOverride } from '@/store/metadata-store';
 import { hasCachedLyrics } from '@/services/lyrics';
 import { formatDuration } from '@/utils/format';
 import type { Song } from '@/types/media';
-import { Music, Play, Plus, Shuffle, Info, Save, RotateCcw } from 'lucide-react-native';
+import { Music, Play, Plus, Shuffle, Info } from 'lucide-react-native';
 import { LyricsBadge } from '@/components/lyrics-badge';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SongContextMenu, useSongContextMenu } from '@/components/song-context-menu';
@@ -23,8 +22,6 @@ import {
   BottomSheetBackdrop,
   BottomSheetFlatList,
 } from '@gorhom/bottom-sheet';
-import * as ImagePicker from 'expo-image-picker';
-import { Image } from 'expo-image';
 
 export default function PlaylistDetailScreen() {
   const { colors } = useTheme();
@@ -38,14 +35,7 @@ export default function PlaylistDetailScreen() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const lyricsMap = useLyricsStore((s) => s.lyricsMap);
   const addSheetRef = useRef<BottomSheetModal>(null);
-  const infoSheetRef = useRef<BottomSheetModal>(null);
   const { bottomSheetRef, present, song } = useSongContextMenu();
-  const setOverride = useMetadataStore((s) => s.setOverride);
-  const [infoSong, setInfoSong] = useState<Song | null>(null);
-  const [editTitle, setEditTitle] = useState('');
-  const [editArtist, setEditArtist] = useState('');
-  const [editAlbum, setEditAlbum] = useState('');
-  const [editArtwork, setEditArtwork] = useState<string | null>(null);
 
   const playlistSongs = useMemo(() => {
     if (!playlist) return [];
@@ -69,36 +59,8 @@ export default function PlaylistDetailScreen() {
   );
 
   const handleInfoPress = useCallback((item: Song) => {
-    setInfoSong(item);
-    setEditTitle(item.title);
-    setEditArtist(item.artist ?? '');
-    setEditAlbum(item.album ?? '');
-    setEditArtwork(item.artwork ?? null);
-    infoSheetRef.current?.present();
-  }, []);
-
-  const handleSaveInfo = useCallback(() => {
-    if (!infoSong) return;
-    const override: MetadataOverride = {};
-    if (editTitle !== infoSong.title) override.title = editTitle;
-    if (editArtist !== (infoSong.artist ?? '')) override.artist = editArtist;
-    if (editAlbum !== (infoSong.album ?? '')) override.album = editAlbum;
-    if (editArtwork !== (infoSong.artwork ?? null)) {
-      override.artwork = editArtwork ?? '';
-    }
-    if (Object.keys(override).length > 0) {
-      setOverride(infoSong.id, override);
-    }
-    infoSheetRef.current?.dismiss();
-  }, [infoSong, editTitle, editArtist, editAlbum, editArtwork, setOverride]);
-
-  const handleResetInfo = useCallback(() => {
-    if (!infoSong) return;
-    setEditTitle(infoSong.title);
-    setEditArtist(infoSong.artist ?? '');
-    setEditAlbum(infoSong.album ?? '');
-    setEditArtwork(infoSong.artwork ?? null);
-  }, [infoSong]);
+    router.push({ pathname: '/song-info', params: { songId: item.id } });
+  }, [router]);
 
   if (!playlist) {
     return (
@@ -323,133 +285,7 @@ export default function PlaylistDetailScreen() {
         </View>
       </BottomSheetModal>
 
-      {/* Song Info Bottom Sheet */}
-      <BottomSheetModal
-        ref={infoSheetRef}
-        snapPoints={['65%']}
-        backdropComponent={renderBackdrop}
-        backgroundStyle={{ backgroundColor: colors.surface }}
-        handleIndicatorStyle={{ backgroundColor: colors.textMuted }}
-      >
-        <View style={{ flex: 1, padding: 20 }}>
-          <ScrollView showsVerticalScrollIndicator={false}>
-            <Text style={{ fontSize: 17, fontWeight: '600', color: colors.text, marginBottom: 16 }}>
-              Song Information
-            </Text>
-
-            <View style={[s.itemsCenter, s.mb6]}>
-              <View style={[s.rounded2xl, s.overflowHidden, { width: 120, height: 120, backgroundColor: colors.card }]}>
-                {editArtwork ? (
-                  <Image source={{ uri: editArtwork }} style={{ width: 120, height: 120 }} contentFit="cover" />
-                ) : (
-                  <View style={[s.flex1, s.itemsCenter, s.justifyCenter]}>
-                    <Music size={36} color={colors.textMuted} />
-                  </View>
-                )}
-              </View>
-              <Pressable
-                onPress={async () => {
-                  const result = await ImagePicker.launchImageLibraryAsync({
-                    mediaTypes: ['images'],
-                    quality: 0.8,
-                    allowsEditing: true,
-                    aspect: [1, 1],
-                  });
-                  if (!result.canceled && result.assets[0]) {
-                    setEditArtwork(result.assets[0].uri);
-                  }
-                }}
-                style={[s.mt2, { paddingVertical: 4, paddingHorizontal: 12, borderRadius: 10, backgroundColor: colors.accent + '20' }]}
-              >
-                <Text style={{ fontSize: 12, fontWeight: '600', color: colors.accent }}>
-                  {editArtwork || infoSong?.artwork ? 'Change Artwork' : 'Add Artwork'}
-                </Text>
-              </Pressable>
-            </View>
-
-            <View style={[s.gap4, s.mb6]}>
-              <View>
-                <Text style={[s.textXs, s.fontSemibold, s.mb1, { color: colors.textMuted }]}>Title</Text>
-                <TextInput
-                  value={editTitle}
-                  onChangeText={setEditTitle}
-                  placeholder="Track title"
-                  placeholderTextColor={colors.textMuted}
-                  style={[{ padding: 12, backgroundColor: colors.card, borderRadius: 12, color: colors.text, fontSize: 15 }]}
-                />
-              </View>
-              <View>
-                <Text style={[s.textXs, s.fontSemibold, s.mb1, { color: colors.textMuted }]}>Artist</Text>
-                <TextInput
-                  value={editArtist}
-                  onChangeText={setEditArtist}
-                  placeholder="Artist name"
-                  placeholderTextColor={colors.textMuted}
-                  style={[{ padding: 12, backgroundColor: colors.card, borderRadius: 12, color: colors.text, fontSize: 15 }]}
-                />
-              </View>
-              <View>
-                <Text style={[s.textXs, s.fontSemibold, s.mb1, { color: colors.textMuted }]}>Album</Text>
-                <TextInput
-                  value={editAlbum}
-                  onChangeText={setEditAlbum}
-                  placeholder="Album name"
-                  placeholderTextColor={colors.textMuted}
-                  style={[{ padding: 12, backgroundColor: colors.card, borderRadius: 12, color: colors.text, fontSize: 15 }]}
-                />
-              </View>
-            </View>
-
-            <Text style={[s.textXs, s.fontBold, s.mb3, { color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 1 }]}>
-              Technical Information
-            </Text>
-            <View style={s.gap4}>
-              <InfoRow label="Format" value={infoSong?.uri.split('.').pop()?.toUpperCase() ?? 'NONE'} colors={colors} />
-              <InfoRow label="Bitrate" value={infoSong?.bitrate ? `${infoSong.bitrate} kbps` : 'Unknown'} colors={colors} />
-              <InfoRow label="Sample Rate" value={infoSong?.sampleRate ? `${infoSong.sampleRate} Hz` : 'Unknown'} colors={colors} />
-              <InfoRow label="File Size" value={infoSong ? formatFileSize(infoSong.fileSize) : '0 B'} colors={colors} />
-              <InfoRow label="File Path" value={infoSong?.uri ?? 'Unknown'} colors={colors} multiline />
-            </View>
-
-            <View style={[s.flexRow, s.gap4, s.mt6, s.mb4]}>
-              <Pressable
-                onPress={handleResetInfo}
-                style={[s.flex1, s.flexRow, s.itemsCenter, s.justifyCenter, s.gap2, { backgroundColor: colors.card, paddingVertical: 12, borderRadius: 16 }]}
-              >
-                <RotateCcw size={16} color={colors.text} />
-                <Text style={[s.fontSemibold, { color: colors.text }]}>Reset</Text>
-              </Pressable>
-              <Pressable
-                onPress={handleSaveInfo}
-                style={[s.flex1, s.flexRow, s.itemsCenter, s.justifyCenter, s.gap2, { backgroundColor: colors.accent, paddingVertical: 12, borderRadius: 16 }]}
-              >
-                <Save size={16} color="#fff" />
-                <Text style={[s.fontSemibold, { color: '#fff' }]}>Save</Text>
-              </Pressable>
-            </View>
-          </ScrollView>
-        </View>
-      </BottomSheetModal>
     </View>
   );
 }
 
-function InfoRow({ label, value, colors, multiline }: { label: string; value: string; colors: { text: string; textMuted: string }; multiline?: boolean }) {
-  return (
-    <View style={[s.flexRow, s.justifyBetween, { alignItems: multiline ? 'flex-start' : 'center', gap: 8 }]}>
-      <Text style={{ fontSize: 12, color: colors.textMuted, width: 90 }}>{label}</Text>
-      <Text
-        style={[s.flex1, { fontSize: 13, color: colors.text, textAlign: 'right' }]}
-        numberOfLines={multiline ? 3 : 1}
-      >
-        {value}
-      </Text>
-    </View>
-  );
-}
-
-function formatFileSize(bytes: number) {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}

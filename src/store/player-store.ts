@@ -68,6 +68,7 @@ interface PlayerState {
   appendAutoplayTracks: (tracks: Song[]) => void;
   removeFromQueue: (index: number) => void;
   clearPriorityQueue: () => void;
+  clearUpNext: () => void;
   reorderQueue: (fromIndex: number, toIndex: number) => void;
   showMiniPlayer: () => void;
   hideMiniPlayer: () => void;
@@ -434,6 +435,19 @@ export const usePlayerStore = create<PlayerState>()(
 
     clearPriorityQueue: () => {
       set((s) => {
+        s.priorityQueue = [];
+      });
+    },
+
+    clearUpNext: () => {
+      set((s) => {
+        if (s.currentTrack) {
+          s.queue = [s.currentTrack];
+          s.queueIndex = 0;
+        } else {
+          s.queue = [];
+          s.queueIndex = 0;
+        }
         s.priorityQueue = [];
       });
     },

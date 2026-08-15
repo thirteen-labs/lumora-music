@@ -185,6 +185,10 @@ class AudioEngine {
   private _startContextTime = 0;
   private _seeking = false;
   private _eqEnabled = false;
+  private _bandGains: number[] = EQ_FREQUENCIES.map(() => 0);
+  private _bassBoostValue = 0;
+  private _balanceValue = 0;
+  private _replayGainValue = 1.0;
   private _currentTrackUri: string | null = null;
   private _crossfading = false;
   private _crossfadeInterval: ReturnType<typeof setInterval> | null = null;
@@ -193,6 +197,7 @@ class AudioEngine {
   private _loudnessLevel = 6;
 
   private stateCallbacks: Set<StateChangeCallback> = new Set();
+  private trackEndedCallbacks: Set<() => void> = new Set();
   private positionInterval: ReturnType<typeof setInterval> | null = null;
   private loadingLock = false;
   private interruptionSubscription: AudioEventSubscription | null = null;
@@ -326,6 +331,24 @@ class AudioEngine {
 
       this.balancePanner.connect(this.mainGain);
       this.mainGain.connect(this.context.destination);
+
+      /* Re-apply cached audio-effect settings so EQ / bass boost / balance /
+         replay gain survive (re)building the graph (e.g. after a track load
+         or OS-triggered context reset). */
+      const now = this.context.currentTime;
+      this.eqFilters.forEach((filter, i) => {
+        const g = this._eqEnabled ? (this._bandGains[i] ?? 0) : 0;
+        filter.gain.setValueAtTime(g, now);
+      });
+      if (this.bassBoostFilter) {
+        this.bassBoostFilter.gain.setValueAtTime(this._bassBoostValue, now);
+      }
+      if (this.balancePanner) {
+        this.balancePanner.pan.setValueAtTime(this._balanceValue / 10, now);
+      }
+      if (this.replayGainNode) {
+        this.replayGainNode.gain.setValueAtTime(this._replayGainValue, now);
+      }
     } catch (e) {
       logger.warn('[AudioEngine] Failed to build processing chain:', e);
     }
@@ -334,6 +357,30 @@ class AudioEngine {
   onStateChange(callback: StateChangeCallback): () => void {
     this.stateCallbacks.add(callback);
     return () => this.stateCallbacks.delete(callback);
+  }
+
+  /**
+   * Subscribe to a native "track ended" signal. Fired directly from the
+   * AudioBufferSourceNode's onEnded callback (dispatched from the native audio
+   * thread), so it keeps working while the app is backgrounded — unlike the
+   * JS setInterval position polling. Used to drive auto-advance to the next
+   * track even when the UI/app is not in the foreground.
+   */
+  onTrackEnded(callback: () => void): () => void {
+    this.trackEndedCallbacks.add(callback);
+    return () => {
+      this.trackEndedCallbacks.delete(callback);
+    };
+  }
+
+  private notifyTrackEnded(): void {
+    this.trackEndedCallbacks.forEach((cb) => {
+      try {
+        cb();
+      } catch (e) {
+        reportWarning('AudioEngine', e, 'trackEnded callback failed');
+      }
+    });
   }
 
   private startWatchdog(): void {
@@ -554,6 +601,7 @@ class AudioEngine {
         this._currentTime = this._duration;
         this.stopPositionTracking();
         this.emitState();
+        this.notifyTrackEnded();
       }
     };
     this.currentSource.start(0, this._currentTime);
@@ -642,6 +690,7 @@ class AudioEngine {
             this._currentTime = this._duration;
             this.stopPositionTracking();
             this.emitState();
+            this.notifyTrackEnded();
           }
         };
         this.currentSource.start(0, this._currentTime);
@@ -681,11 +730,16 @@ class AudioEngine {
       this.eqFilters.forEach((filter) => {
         filter.gain.setValueAtTime(0, this.context?.currentTime ?? 0);
       });
+    } else {
+      this.eqFilters.forEach((filter, i) => {
+        filter.gain.setValueAtTime(this._bandGains[i] ?? 0, this.context?.currentTime ?? 0);
+      });
     }
   }
 
   setBandGain(index: number, gain: number): void {
-    if (this.eqFilters[index]) {
+    if (this._bandGains[index] !== undefined) this._bandGains[index] = gain;
+    if (this.eqFilters[index] && this._eqEnabled) {
       this.eqFilters[index].gain.setValueAtTime(
         gain,
         this.context?.currentTime ?? 0
@@ -695,7 +749,8 @@ class AudioEngine {
 
   setBandGains(bands: EqualizerBand[]): void {
     bands.forEach((band, i) => {
-      if (this.eqFilters[i]) {
+      if (this._bandGains[i] !== undefined) this._bandGains[i] = band.gain;
+      if (this.eqFilters[i] && this._eqEnabled) {
         this.eqFilters[i].gain.setValueAtTime(
           band.gain,
           this.context?.currentTime ?? 0
@@ -705,6 +760,7 @@ class AudioEngine {
   }
 
   setBassBoost(value: number): void {
+    this._bassBoostValue = value;
     if (this.bassBoostFilter) {
       this.bassBoostFilter.gain.setValueAtTime(
         value,
@@ -714,6 +770,7 @@ class AudioEngine {
   }
 
   setBalance(value: number): void {
+    this._balanceValue = value;
     if (this.balancePanner) {
       this.balancePanner.pan.setValueAtTime(
         value / 10,
@@ -723,6 +780,7 @@ class AudioEngine {
   }
 
   setReplayGainVolume(volume: number): void {
+    this._replayGainValue = volume;
     if (this.replayGainNode) {
       this.replayGainNode.gain.setValueAtTime(
         volume,
@@ -1078,6 +1136,7 @@ class AudioEngine {
       this.context = null;
     }
     this.eqFilters = [];
+    this.trackEndedCallbacks.clear();
     this.bassBoostFilter = null;
     this.volumeGain = null;
     this.replayGainNode = null;

@@ -1,12 +1,12 @@
 import React, { useCallback, useRef, useState, useEffect, useMemo } from 'react';
-import { View, Text, Pressable, ActivityIndicator, ScrollView, TextInput, useWindowDimensions } from 'react-native';
+import { View, Text, Pressable, ActivityIndicator, ScrollView, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@/hooks/use-theme';
 import { usePlayerStore } from '@/store/player-store';
 import { playerActions } from '@/player/actions';
 import { generateUpNext } from '@/player/recommendations';
 import { useMusicStore } from '@/store/music-store';
-import { useMetadataStore, type MetadataOverride } from '@/store/metadata-store';
+import { useMetadataStore } from '@/store/metadata-store';
 import * as ScreenOrientation from 'expo-screen-orientation';
 import { reportWarning } from '@/utils/error-handler';
 import {
@@ -26,9 +26,15 @@ import {
   Trash2,
   PenLine,
   Info,
-  Save,
-  RotateCcw,
   Sparkles,
+  MoreHorizontal,
+  Plus,
+  Share2,
+  AudioLines,
+  Clock,
+  Disc3,
+  User,
+  ListPlus,
 } from 'lucide-react-native';
 import {
   Gesture,
@@ -40,13 +46,14 @@ import Animated, {
   withSpring,
   runOnJS,
 } from 'react-native-reanimated';
-import { formatDuration, formatFileSize } from '@/utils/format';
+import { formatDuration } from '@/utils/format';
 import Slider from '@react-native-community/slider';
 import { useRouter } from 'expo-router';
 import { useFavoritesStore } from '@/store/favorites-store';
 import { useToastStore } from '@/store/toast-store';
 import { Image } from 'expo-image';
 import { useLyricsStore } from '@/store/lyrics-store';
+import { usePlaylistStore } from '@/store/playlist-store';
 import { fetchLyrics, parseSyncedLyrics, hasCachedLyrics, type LyricsResult, type SyncedLine } from '@/services/lyrics';
 import {
   BottomSheetModal,
@@ -56,7 +63,7 @@ import {
 } from '@gorhom/bottom-sheet';
 import { useSyncedLyricsScroll } from '@/hooks/use-synced-lyrics-scroll';
 import { useTranslation } from '@/hooks/use-translation';
-import * as ImagePicker from 'expo-image-picker';
+import * as Sharing from 'expo-sharing';
 import type { ThemeColors } from '@/types/theme';
 import type { Song } from '@/types/media';
 import type { RepeatMode } from '@/types/player';
@@ -143,42 +150,20 @@ export default function PlayerScreen() {
   }));
   const showToast = useToastStore((s) => s.showToast);
   const lyricsMap = useLyricsStore((s) => s.lyricsMap);
+  const albums = useMusicStore((s) => s.albums);
+  const artists = useMusicStore((s) => s.artists);
   const saveLyrics = useLyricsStore((s) => s.saveLyrics);
   const getOverriddenSong = useMetadataStore((s) => s.getOverriddenSong);
-  const setOverride = useMetadataStore((s) => s.setOverride);
   const track = currentTrack ? getOverriddenSong(currentTrack) : null;
-  const [editTitle, setEditTitle] = useState(track?.title ?? '');
-  const [editArtist, setEditArtist] = useState(track?.artist ?? '');
-  const [editAlbum, setEditAlbum] = useState(track?.album ?? '');
-  const [editArtwork, setEditArtwork] = useState<string | null>(track?.artwork ?? null);
 
-  const prevTrackRef = useRef(track);
-  if (track !== prevTrackRef.current) {
-    prevTrackRef.current = track;
-    if (track) {
-      setEditTitle(track.title);
-      setEditArtist(track.artist ?? '');
-      setEditAlbum(track.album ?? '');
-      setEditArtwork(track.artwork ?? null);
-    }
-  }
-
-  const syncEditState = useCallback((t: typeof track) => {
-    if (!t) return;
-    setEditTitle(t.title);
-    setEditArtist(t.artist ?? '');
-    setEditAlbum(t.album ?? '');
-    setEditArtwork(t.artwork ?? null);
-  }, []);
-
-useEffect(() => {
+  useEffect(() => {
     ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.DEFAULT).catch((e) => reportWarning('Player', e, 'Failed to lock orientation'));
     return () => { ScreenOrientation.unlockAsync().catch((e) => reportWarning('Player', e, 'Failed to unlock orientation')); };
   }, []);
 
-  const infoSheetRef = useRef<BottomSheetModal>(null);
   const queueSheetRef = useRef<BottomSheetModal>(null);
   const lyricsSheetRef = useRef<BottomSheetModal>(null);
+  const moreSheetRef = useRef<BottomSheetModal>(null);
 
   const [lyricsData, setLyricsData] = useState<{
     trackId: string | null;
@@ -270,12 +255,15 @@ useEffect(() => {
 
       const composedGesture = Gesture.Exclusive(gripGesture, tapGesture);
 
-      return (
-        <GestureDetector gesture={composedGesture}>
-          <Animated.View
-            style={[
-              {
-                flexDirection: 'row',
+  return (
+    <View>
+      {index === queueIndex && <SectionLabel text={t('queue.now.playing')} colors={colors} />}
+      {index === queueIndex + 1 && <SectionLabel text={t('queue.up.next')} colors={colors} />}
+    <GestureDetector gesture={composedGesture}>
+      <Animated.View
+        style={[
+          {
+            flexDirection: 'row',
                 alignItems: 'center',
                 gap: 8,
                 paddingHorizontal: 16,
@@ -337,9 +325,10 @@ useEffect(() => {
             )}
           </Animated.View>
         </GestureDetector>
+    </View>
       );
     },
-    [queueIndex, queue.length, colors, draggedIndex, isDragging, dragTranslateY, setDraggedIndex, dragAnimatedStyle, handlePlayFromQueue, lyricsMap],
+    [queueIndex, queue.length, colors, draggedIndex, isDragging, dragTranslateY, setDraggedIndex, dragAnimatedStyle, handlePlayFromQueue, lyricsMap, t],
   );
 
   const isFav = currentTrack ? favoriteSongIds.includes(currentTrack.id) : false;
@@ -360,9 +349,109 @@ useEffect(() => {
   const onQueuePress = useCallback(() => queueSheetRef.current?.present(), []);
   const onLyricsPress = useCallback(() => lyricsSheetRef.current?.present(), []);
   const onInfoPress = useCallback(() => {
-    syncEditState(track);
-    infoSheetRef.current?.present();
-  }, [syncEditState, track]);
+    router.push('/song-info');
+  }, [router]);
+
+  const onMorePress = useCallback(() => moreSheetRef.current?.present(), []);
+
+  const handleViewAlbum = useCallback(() => {
+    moreSheetRef.current?.dismiss();
+    if (!track?.album) {
+      showToast('No album information', 'music');
+      return;
+    }
+    const album = albums.find((a) => a.title === track.album);
+    if (album) {
+      router.push({ pathname: '/music/album/[id]', params: { id: album.id } });
+    } else {
+      showToast('Album not found in library', 'music');
+    }
+  }, [track, albums, router, showToast]);
+
+  const handleViewArtist = useCallback(() => {
+    moreSheetRef.current?.dismiss();
+    if (!track?.artist) {
+      showToast('No artist information', 'music');
+      return;
+    }
+    const artist = artists.find((a) => a.name === track.artist);
+    if (artist) {
+      router.push({ pathname: '/music/artist/[id]', params: { id: artist.id } });
+    } else {
+      showToast('Artist not found in library', 'music');
+    }
+  }, [track, artists, router, showToast]);
+
+  const handleShare = useCallback(async () => {
+    moreSheetRef.current?.dismiss();
+    if (!currentTrack) return;
+    try {
+      const isAvailable = await Sharing.isAvailableAsync();
+      if (!isAvailable) {
+        showToast('Sharing not available', 'music');
+        return;
+      }
+      await Sharing.shareAsync(currentTrack.uri, {
+        mimeType: 'audio/*',
+        dialogTitle: `Share ${currentTrack.title}`,
+      });
+    } catch {
+      showToast('Could not share this file', 'music');
+    }
+  }, [currentTrack, showToast]);
+
+  const handleMoreAction = useCallback((key: string) => {
+    moreSheetRef.current?.dismiss();
+    switch (key) {
+      case 'playlist':
+        if (currentTrack) {
+          router.push({ pathname: '/playlist-picker', params: { songId: currentTrack.id } });
+        }
+        break;
+      case 'next':
+        if (currentTrack) playerActions.playNext(currentTrack);
+        break;
+      case 'queue':
+        if (currentTrack) playerActions.addToQueue(currentTrack);
+        break;
+      case 'share':
+        handleShare();
+        break;
+      case 'album':
+        handleViewAlbum();
+        break;
+      case 'artist':
+        handleViewArtist();
+        break;
+      case 'lyrics':
+        onLyricsPress();
+        break;
+      case 'info':
+        onInfoPress();
+        break;
+      case 'audio':
+        router.push('/audio-features');
+        break;
+      case 'sleep':
+        router.push('/sleep-timer');
+        break;
+    }
+  }, [currentTrack, router, handleShare, handleViewAlbum, handleViewArtist, onLyricsPress, onInfoPress]);
+
+  // Plain data only — no handlers capturing refs, so it's safe to build/render
+  // during render. Presses route through the memoized handleMoreAction above.
+  const moreActions = useMemo(() => [
+    { key: 'playlist', label: t('menu.add.to.playlist'), icon: Plus, color: colors.accent },
+    { key: 'next', label: t('menu.play.next'), icon: SkipForward },
+    { key: 'queue', label: t('menu.add.to.queue'), icon: ListPlus },
+    { key: 'share', label: t('common.share'), icon: Share2 },
+    { key: 'album', label: t('menu.view.album'), icon: Disc3 },
+    { key: 'artist', label: t('menu.view.artist'), icon: User },
+    { key: 'lyrics', label: t('player.lyrics'), icon: AlignLeft },
+    { key: 'info', label: t('menu.song.info'), icon: Info },
+    { key: 'audio', label: t('menu.audio.settings'), icon: AudioLines },
+    { key: 'sleep', label: t('menu.sleep.timer'), icon: Clock },
+  ], [t, colors]);
 
   const handleAddUpNext = useCallback(() => {
     const state = usePlayerStore.getState();
@@ -377,6 +466,23 @@ useEffect(() => {
     usePlayerStore.getState().appendAutoplayTracks(recs);
     showToast(`${recs.length} tracks added to Up Next`, 'music');
   }, [showToast]);
+
+  const handleSaveQueue = useCallback(() => {
+    const state = usePlayerStore.getState();
+    if (state.queue.length === 0) {
+      showToast('Queue is empty', 'music');
+      return;
+    }
+    const id = usePlaylistStore.getState().createPlaylist(`Queue ${new Date().toLocaleDateString()}`);
+    usePlaylistStore.getState().addSongsToPlaylist(id, state.queue.map((s) => s.id));
+    showToast(t('queue.saved'), 'check');
+    queueSheetRef.current?.dismiss();
+  }, [showToast, t]);
+
+  const handleClearQueue = useCallback(() => {
+    playerActions.clearUpNext();
+    queueSheetRef.current?.dismiss();
+  }, []);
 
   const translateY = useSharedValue(0);
   const isSwipingDown = useSharedValue(false);
@@ -442,6 +548,7 @@ useEffect(() => {
           onQueuePress={onQueuePress}
           onLyricsPress={onLyricsPress}
           onInfoPress={onInfoPress}
+          onMorePress={onMorePress}
         />
 
       </Animated.View>
@@ -463,13 +570,39 @@ useEffect(() => {
                   {t('player.queue')}
                 </Text>
                 <Text style={{ fontSize: 13, color: colors.textMuted, marginTop: 2 }}>
-                  {queue.length} tracks
+                  {queue.length} tracks • {formatDuration(queue.reduce((sum, s) => sum + (s.duration || 0), 0))}
                 </Text>
               </View>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <Pressable
+                  onPress={handleSaveQueue}
+                  hitSlop={8}
+                  style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: colors.accent + '15', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 999 }}
+                  accessibilityLabel={t('queue.save.playlist')}
+                  accessibilityRole={'button' as const}
+                >
+                  <Plus size={14} color={colors.accent} />
+                  <Text style={{ fontSize: 13, fontWeight: '600', color: colors.accent }}>{t('queue.save.playlist')}</Text>
+                </Pressable>
+                <Pressable
+                  onPress={handleClearQueue}
+                  hitSlop={8}
+                  style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: colors.surface, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 999 }}
+                  accessibilityLabel={t('queue.clear.all')}
+                  accessibilityRole={'button' as const}
+                >
+                  <Trash2 size={14} color={colors.textMuted} />
+                  <Text style={{ fontSize: 13, fontWeight: '600', color: colors.textMuted }}>{t('queue.clear.all')}</Text>
+                </Pressable>
+              </View>
+            </View>
+            <View style={{ marginTop: 10 }}>
               <Pressable
                 onPress={handleAddUpNext}
                 hitSlop={8}
-                style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: colors.accent + '15', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 999 }}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', backgroundColor: colors.accent + '15', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 999 }}
+                accessibilityLabel="Add Up Next"
+                accessibilityRole={'button' as const}
               >
                 <Sparkles size={14} color={colors.accent} />
                 <Text style={{ fontSize: 13, fontWeight: '600', color: colors.accent }}>Add Up Next</Text>
@@ -542,138 +675,34 @@ useEffect(() => {
         </BottomSheetScrollView>
       </BottomSheetModal>
 
-      {/* Song Info Bottom Sheet */}
-      <BottomSheetModal
-        ref={infoSheetRef}
-        snapPoints={['65%']}
-        backdropComponent={renderBackdrop}
-        backgroundStyle={{ backgroundColor: colors.surface }}
-        handleIndicatorStyle={{ backgroundColor: colors.textMuted }}
-      >
-        <View style={{ flex: 1, padding: 20 }}>
-          <ScrollView showsVerticalScrollIndicator={false}>
-            <Text style={{ fontSize: 17, fontWeight: '600', color: colors.text, marginBottom: 16 }}>
-              Song Information
-            </Text>
-
-            {/* Artwork */}
-            <View style={[s.itemsCenter, s.mb6]}>
-              <View style={[s.rounded2xl, s.overflowHidden, { width: 120, height: 120, backgroundColor: colors.card }]}>
-                {editArtwork ? (
-                  <Image source={{ uri: editArtwork }} style={{ width: 120, height: 120 }} contentFit="cover" />
-                ) : (
-                  <View style={[s.flex1, s.itemsCenter, s.justifyCenter]}>
-                    <Music size={36} color={colors.textMuted} />
-                  </View>
-                )}
-              </View>
-              <Pressable
-                onPress={async () => {
-                  const result = await ImagePicker.launchImageLibraryAsync({
-                    mediaTypes: ['images'],
-                    quality: 0.8,
-                    allowsEditing: true,
-                    aspect: [1, 1],
-                  });
-                  if (!result.canceled && result.assets[0]) {
-                    setEditArtwork(result.assets[0].uri);
-                  }
-                }}
-                style={[s.mt2, { paddingVertical: 4, paddingHorizontal: 12, borderRadius: 10, backgroundColor: colors.accent + '20' }]}
-              >
-                <Text style={{ fontSize: 12, fontWeight: '600', color: colors.accent }}>
-                  {editArtwork || track?.artwork ? 'Change Artwork' : 'Add Artwork'}
-                </Text>
-              </Pressable>
-            </View>
-
-            {/* Editable fields */}
-            <View style={[s.gap4, s.mb6]}>
-              <View>
-                <Text style={[s.textXs, s.fontSemibold, s.mb1, { color: colors.textMuted }]}>Title</Text>
-                <TextInput
-                  value={editTitle}
-                  onChangeText={setEditTitle}
-                  placeholder="Track title"
-                  placeholderTextColor={colors.textMuted}
-                  style={[{ padding: 12, backgroundColor: colors.card, borderRadius: 12, color: colors.text, fontSize: 15 }]}
-                />
-              </View>
-              <View>
-                <Text style={[s.textXs, s.fontSemibold, s.mb1, { color: colors.textMuted }]}>Artist</Text>
-                <TextInput
-                  value={editArtist}
-                  onChangeText={setEditArtist}
-                  placeholder="Artist name"
-                  placeholderTextColor={colors.textMuted}
-                  style={[{ padding: 12, backgroundColor: colors.card, borderRadius: 12, color: colors.text, fontSize: 15 }]}
-                />
-              </View>
-              <View>
-                <Text style={[s.textXs, s.fontSemibold, s.mb1, { color: colors.textMuted }]}>Album</Text>
-                <TextInput
-                  value={editAlbum}
-                  onChangeText={setEditAlbum}
-                  placeholder="Album name"
-                  placeholderTextColor={colors.textMuted}
-                  style={[{ padding: 12, backgroundColor: colors.card, borderRadius: 12, color: colors.text, fontSize: 15 }]}
-                />
-              </View>
-            </View>
-
-            {/* Technical Info */}
-            <Text style={[s.textXs, s.fontBold, s.mb3, { color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 1 }]}>
-              Technical Information
-            </Text>
-            <View style={s.gap4}>
-              <InfoRow label="Format" value={track?.uri?.split('.').pop()?.toUpperCase() ?? 'NONE'} colors={colors} />
-              <InfoRow label="Bitrate" value={track?.bitrate ? `${track.bitrate} kbps` : 'Unknown'} colors={colors} />
-              <InfoRow label="Sample Rate" value={track?.sampleRate ? `${track.sampleRate} Hz` : 'Unknown'} colors={colors} />
-              <InfoRow label="File Size" value={track?.fileSize ? formatFileSize(track.fileSize) : '0 B'} colors={colors} />
-              <InfoRow label="File Path" value={track?.uri ?? 'Unknown'} colors={colors} multiline />
-            </View>
-
-            {/* Save / Reset */}
-            <View style={[s.flexRow, s.gap4, s.mt6, s.mb4]}>
-              <Pressable
-                onPress={() => {
-                  if (track) {
-                    setEditTitle(track.title);
-                    setEditArtist(track.artist ?? '');
-                    setEditAlbum(track.album ?? '');
-                    setEditArtwork(track.artwork ?? null);
-                  }
-                }}
-                style={[s.flex1, s.flexRow, s.itemsCenter, s.justifyCenter, s.gap2, { backgroundColor: colors.card, paddingVertical: 12, borderRadius: 16 }]}
-              >
-                <RotateCcw size={16} color={colors.text} />
-                <Text style={[s.fontSemibold, { color: colors.text }]}>Reset</Text>
-              </Pressable>
-              <Pressable
-                onPress={() => {
-                  if (!track) return;
-                  const override: MetadataOverride = {};
-                  if (editTitle !== track.title) override.title = editTitle;
-                  if (editArtist !== (track.artist ?? '')) override.artist = editArtist;
-                  if (editAlbum !== (track.album ?? '')) override.album = editAlbum;
-                  if (editArtwork !== (track.artwork ?? null)) {
-                    if (editArtwork) override.artwork = editArtwork;
-                    else override.artwork = '';
-                  }
-                  if (Object.keys(override).length > 0) {
-                    setOverride(track.id, override);
-                  }
-                  infoSheetRef.current?.dismiss();
-                }}
-                style={[s.flex1, s.flexRow, s.itemsCenter, s.justifyCenter, s.gap2, { backgroundColor: colors.accent, paddingVertical: 12, borderRadius: 16 }]}
-              >
-                <Save size={16} color="#fff" />
-                <Text style={[s.fontSemibold, { color: '#fff' }]}>Save</Text>
-              </Pressable>
-            </View>
-          </ScrollView>
-        </View>
-      </BottomSheetModal>
+       {/* More Bottom Sheet */}
+       <BottomSheetModal
+         ref={moreSheetRef}
+         snapPoints={['70%']}
+         backdropComponent={renderBackdrop}
+         backgroundStyle={{ backgroundColor: colors.surface }}
+         handleIndicatorStyle={{ backgroundColor: colors.textMuted }}
+       >
+         <BottomSheetScrollView contentContainerStyle={{ padding: 20, paddingBottom: 32 }}>
+           <Text style={{ fontSize: 17, fontWeight: '600', color: colors.text, marginBottom: 8 }}>
+             {t('player.more')}
+           </Text>
+            {moreActions.map((action) => {
+              const Icon = action.icon;
+              return (
+                <Pressable
+                  key={action.key}
+                  onPress={() => handleMoreAction(action.key)}
+                  style={{ flexDirection: 'row', alignItems: 'center', gap: 16, paddingVertical: 14 }}
+                  accessibilityRole={'button' as const}
+                >
+                 <Icon size={20} color={action.color ?? colors.text} />
+                 <Text style={{ fontSize: 15, color: colors.text }}>{action.label}</Text>
+               </Pressable>
+             );
+           })}
+         </BottomSheetScrollView>
+       </BottomSheetModal>
     </View>
   );
 }
@@ -695,6 +724,7 @@ interface LayoutProps {
   onQueuePress: () => void;
   onLyricsPress: () => void;
   onInfoPress: () => void;
+  onMorePress: () => void;
 }
 
 function RepeatButton({ repeat, setRepeat, colors }: { repeat: RepeatMode; setRepeat: (m: RepeatMode) => void; colors: Pick<ThemeColors, 'accent' | 'textMuted'> }) {
@@ -767,9 +797,11 @@ const ModernLayout = React.memo(function ModernLayout(props: LayoutProps) {
           >
             <ChevronDown size={28} color={m.text} />
           </Pressable>
-          <Text style={[s.textSm, s.fontSemibold, { color: m.textSecondary }]}>
-            {t('player.now.playing')}
-          </Text>
+          <Pressable onPress={props.onMorePress} style={[s.itemsCenter, s.justifyCenter, s.px3]} accessibilityLabel="Now playing options" accessibilityRole={'button' as const}>
+            <Text style={[s.textSm, s.fontSemibold, { color: m.textSecondary }]}>
+              {t('player.now.playing')}
+            </Text>
+          </Pressable>
           <View style={{ width: 44, height: 44 }} />
         </View>
 
@@ -829,30 +861,30 @@ const ModernLayout = React.memo(function ModernLayout(props: LayoutProps) {
               <RepeatButton repeat={repeat} setRepeat={props.setRepeat} colors={{ ...colors, accent: m.text, textMuted: m.textFaint }} />
             </View>
 
-            <View style={[s.flexRow, s.itemsCenter, s.justifyCenter, { gap: 24 }]}>
+            <View style={[s.flexRow, s.itemsCenter, s.justifyBetween, s.wFull, { marginTop: 16, paddingHorizontal: 10, paddingVertical: 12, backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 20, borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)' }]}>
               <Pressable onPress={() => props.toggleSongFavorite(currentTrack)}
                 accessibilityLabel={isFav ? 'Remove from favorites' : 'Add to favorites'}
                 accessibilityRole={'button' as const}
               >
-                <Heart size={22} color={isFav ? m.text : m.textFaint} fill={isFav ? m.text : 'none'} />
-              </Pressable>
-              <Pressable onPress={props.onQueuePress}
-                accessibilityLabel="Open queue"
-                accessibilityRole={'button' as const}
-              >
-                <ListMusic size={22} color={m.textFaint} />
+                <Heart size={26} color={isFav ? m.text : m.textFaint} fill={isFav ? m.text : 'none'} />
               </Pressable>
               <Pressable onPress={props.onLyricsPress}
                 accessibilityLabel="Open lyrics"
                 accessibilityRole={'button' as const}
               >
-                <AlignLeft size={22} color={m.textFaint} />
+                <AlignLeft size={26} color={m.textFaint} />
               </Pressable>
-              <Pressable onPress={props.onInfoPress}
-                accessibilityLabel="Open song info"
+              <Pressable onPress={props.onQueuePress}
+                accessibilityLabel="Open queue"
                 accessibilityRole={'button' as const}
               >
-                <Info size={22} color={m.textFaint} />
+                <ListMusic size={26} color={m.textFaint} />
+              </Pressable>
+              <Pressable onPress={props.onMorePress}
+                accessibilityLabel="More options"
+                accessibilityRole={'button' as const}
+              >
+                <MoreHorizontal size={26} color={m.textFaint} />
               </Pressable>
             </View>
           </View>
@@ -869,17 +901,11 @@ const ModernLayout = React.memo(function ModernLayout(props: LayoutProps) {
 
 
 
-function InfoRow({ label, value, colors, multiline }: { label: string; value: string; colors: Pick<ThemeColors, 'text' | 'textMuted'>; multiline?: boolean }) {
+function SectionLabel({ text, colors }: { text: string; colors: Pick<ThemeColors, 'textMuted' | 'accent'> }) {
   return (
-    <View style={[multiline ? s.flexCol : s.flexRow, multiline ? s.itemsStart : s.itemsCenter, s.justifyBetween, s.py1]}>
-      <Text style={[s.textXs, { color: colors.textMuted, width: multiline ? '100%' : 100 }]}>{label}</Text>
-      <Text 
-        style={[s.textSm, s.fontMedium, { color: colors.text, flex: 1, textAlign: multiline ? 'left' : 'right' }]} 
-        numberOfLines={multiline ? 3 : 1}
-      >
-        {value}
-      </Text>
-    </View>
+    <Text style={{ fontSize: 12, fontWeight: '700', color: colors.accent, textTransform: 'uppercase', letterSpacing: 1, marginTop: 12, marginBottom: 4, paddingHorizontal: 16 }}>
+      {text}
+    </Text>
   );
 }
 

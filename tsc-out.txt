@@ -1,0 +1,21 @@
+src/app/(tabs)/music.tsx(149,13): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(props: FlashListProps<Song>): FlashList<Song>', gave the following error.
+    Type '{ key: string; data: Song[]; keyExtractor: (item: Song) => string; numColumns: number; estimatedItemSize: number; contentContainerStyle: { paddingBottom: number; paddingHorizontal: number; }; renderItem: ({ item }: { ...; }) => any; ListEmptyComponent: null; }' is not assignable to type 'FlashListProps<Song>'.
+      Property 'key' does not exist on type 'FlashListProps<Song>'.
+  Overload 2 of 2, '(props: FlashListProps<Song>, context: any): FlashList<Song>', gave the following error.
+    Type '{ key: string; data: Song[]; keyExtractor: (item: Song) => string; numColumns: number; estimatedItemSize: number; contentContainerStyle: { paddingBottom: number; paddingHorizontal: number; }; renderItem: ({ item }: { ...; }) => any; ListEmptyComponent: null; }' is not assignable to type 'FlashListProps<Song>'.
+      Property 'key' does not exist on type 'FlashListProps<Song>'.
+src/app/(tabs)/music.tsx(192,13): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(props: FlashListProps<Song>): FlashList<Song>', gave the following error.
+    Type '{ key: string; data: Song[]; keyExtractor: (item: Song) => string; estimatedItemSize: number; contentContainerStyle: { paddingBottom: number; }; showsVerticalScrollIndicator: false; ListHeaderComponent: any; renderItem: ({ item }: { ...; }) => any; ListEmptyComponent: null; }' is not assignable to type 'FlashListProps<Song>'.
+      Property 'key' does not exist on type 'FlashListProps<Song>'.
+  Overload 2 of 2, '(props: FlashListProps<Song>, context: any): FlashList<Song>', gave the following error.
+    Type '{ key: string; data: Song[]; keyExtractor: (item: Song) => string; estimatedItemSize: number; contentContainerStyle: { paddingBottom: number; }; showsVerticalScrollIndicator: false; ListHeaderComponent: any; renderItem: ({ item }: { ...; }) => any; ListEmptyComponent: null; }' is not assignable to type 'FlashListProps<Song>'.
+      Property 'key' does not exist on type 'FlashListProps<Song>'.
+src/app/(tabs)/playlists.tsx(243,11): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(props: FlashListProps<PlaylistListItem>): FlashList<PlaylistListItem>', gave the following error.
+    Type '{ key: string; data: PlaylistListItem[]; keyExtractor: (item: PlaylistListItem) => string; numColumns: number; estimatedItemSize: number; ListHeaderComponent: () => any; contentContainerStyle: { ...; }; showsVerticalScrollIndicator: false; renderItem: ({ item }: { ...; }) => any; }' is not assignable to type 'FlashListProps<PlaylistListItem>'.
+      Property 'key' does not exist on type 'FlashListProps<PlaylistListItem>'.
+  Overload 2 of 2, '(props: FlashListProps<PlaylistListItem>, context: any): FlashList<PlaylistListItem>', gave the following error.
+    Type '{ key: string; data: PlaylistListItem[]; keyExtractor: (item: PlaylistListItem) => string; numColumns: number; estimatedItemSize: number; ListHeaderComponent: () => any; contentContainerStyle: { ...; }; showsVerticalScrollIndicator: false; renderItem: ({ item }: { ...; }) => any; }' is not assignable to type 'FlashListProps<PlaylistListItem>'.
+      Property 'key' does not exist on type 'FlashListProps<PlaylistListItem>'.
