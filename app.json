@@ -81,6 +81,7 @@
     },
     "plugins": [
       "./plugins/with-media3-exclude",
+      "./plugins/with-music-player-intents",
       "expo-router",
       [
         "expo-splash-screen",

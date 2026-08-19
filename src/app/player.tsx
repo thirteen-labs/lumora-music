@@ -146,7 +146,11 @@ export default function PlayerScreen() {
   const dragAnimatedStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: isDragging.value ? dragTranslateY.value : 0 }],
     zIndex: isDragging.value ? 999 : 0,
-    boxShadow: isDragging.value ? '0 8px 12px rgba(0,0,0,0.25)' : '0 0 0 rgba(0,0,0,0)',
+    elevation: isDragging.value ? 8 : 0,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: isDragging.value ? 4 : 0 },
+    shadowOpacity: isDragging.value ? 0.25 : 0,
+    shadowRadius: isDragging.value ? 12 : 0,
   }));
   const showToast = useToastStore((s) => s.showToast);
   const lyricsMap = useLyricsStore((s) => s.lyricsMap);
@@ -157,8 +161,18 @@ export default function PlayerScreen() {
   const track = currentTrack ? getOverriddenSong(currentTrack) : null;
 
   useEffect(() => {
-    ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.DEFAULT).catch((e) => reportWarning('Player', e, 'Failed to lock orientation'));
-    return () => { ScreenOrientation.unlockAsync().catch((e) => reportWarning('Player', e, 'Failed to unlock orientation')); };
+    try {
+      ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.DEFAULT).catch((e) => reportWarning('Player', e, 'Failed to lock orientation'));
+    } catch (e) {
+      reportWarning('Player', e, 'Failed to lock orientation');
+    }
+    return () => {
+      try {
+        ScreenOrientation.unlockAsync().catch((e) => reportWarning('Player', e, 'Failed to unlock orientation'));
+      } catch (e) {
+        reportWarning('Player', e, 'Failed to unlock orientation');
+      }
+    };
   }, []);
 
   const queueSheetRef = useRef<BottomSheetModal>(null);

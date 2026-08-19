@@ -64,8 +64,7 @@ export async function resolveArtworkForDisplay(uri: string): Promise<string | nu
 
   try {
     await ensureCacheDir();
-    const ext = uri.split('.').pop()?.split('?')[0] ?? 'jpg';
-    const path = `${ARTWORK_CACHE_DIR}${hashUri(uri)}.${ext}`;
+    const path = `${ARTWORK_CACHE_DIR}${hashUri(uri)}.jpg`;
     await FileSystem.copyAsync({ from: uri, to: path });
     index[uri] = path;
     writeIndex(index);

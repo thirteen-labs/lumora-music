@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { View, Text, Pressable } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { usePlayerStore } from '@/store/player-store';
@@ -25,12 +25,19 @@ export const MiniPlayer = React.memo(function MiniPlayer() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { bottomSheetRef, present, song } = useSongContextMenu();
+  const navigatingRef = useRef(false);
 
   if (!isMiniPlayerVisible || !currentTrack) return null;
 
   const progress = duration > 0 ? position / duration : 0;
 
-  const openPlayer = () => router.push('/player');
+  const openPlayer = () => {
+    if (navigatingRef.current) return;
+    navigatingRef.current = true;
+    playerActions.showFullPlayer();
+    router.push('/player');
+    setTimeout(() => { navigatingRef.current = false; }, 500);
+  };
 
   const pan = Gesture.Pan()
     .activeOffsetX([-12, 12])

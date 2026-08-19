@@ -1,4 +1,4 @@
-import { memo, useState, useEffect } from 'react';
+import { memo, useState, useEffect, useRef, useCallback } from 'react';
 import { View } from 'react-native';
 import { Image } from 'expo-image';
 import { Music } from 'lucide-react-native';
@@ -20,9 +20,13 @@ export const Artwork = memo(function Artwork({ uri, size, borderRadius, iconSize
   const iSize = iconSize ?? size * 0.4;
   const [failed, setFailed] = useState(false);
   const [resolvedUri, setResolvedUri] = useState<string | null>(null);
+  const triedOriginalRef = useRef(false);
 
   useEffect(() => {
     let cancelled = false;
+    setFailed(false);
+    setResolvedUri(null);
+    triedOriginalRef.current = false;
     if (uri) {
       resolveArtworkForDisplay(uri).then((resolved) => {
         if (!cancelled) setResolvedUri(resolved);
@@ -33,14 +37,25 @@ export const Artwork = memo(function Artwork({ uri, size, borderRadius, iconSize
     return () => { cancelled = true; };
   }, [uri]);
 
-  if (resolvedUri && !failed) {
+  const handleError = useCallback(() => {
+    if (!triedOriginalRef.current) {
+      triedOriginalRef.current = true;
+      setFailed(false);
+      return;
+    }
+    setFailed(true);
+  }, []);
+
+  const displayUri = resolvedUri || uri;
+
+  if (displayUri && !failed) {
     return (
       <Image
-        source={{ uri: resolvedUri }}
+        source={{ uri: displayUri }}
         style={{ width: size, height: size, borderRadius: r }}
         contentFit="cover"
         transition={200}
-        onError={() => setFailed(true)}
+        onError={handleError}
       />
     );
   }
