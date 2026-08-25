@@ -6,6 +6,7 @@ import {
   saveSongArtworkFile,
   getCachedAlbumArtwork,
   setCachedAlbumArtwork,
+  getCachedSongArtwork,
 } from '@/services/artwork-cache';
 import {
   parseFilenameMetadata,
@@ -626,6 +627,8 @@ async function processMediaStoreItem(item: MediaStoreItem): Promise<Song | null>
       filenameMeta.album ??
       'Unknown Album';
 
+    // Try cached embedded artwork to show thumbnails instantly before background enrichment
+    const cachedArt = getCachedSongArtwork(uri);
     const song: Song = {
       id: item.id ?? uri,
       uri,
@@ -636,7 +639,7 @@ async function processMediaStoreItem(item: MediaStoreItem): Promise<Song | null>
       duration: item.duration ?? 0,
       fileSize,
       dateAdded: item.dateAdded ?? 0,
-      artwork: item.artworkUri ?? null,
+      artwork: (item as any).artworkUri ?? cachedArt ?? null,
       genre: cleanString(item.genre) ?? null,
       bitrate: item.bitrate ?? null,
       sampleRate: item.sampleRate ?? null,

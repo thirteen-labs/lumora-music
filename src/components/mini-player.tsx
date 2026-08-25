@@ -33,10 +33,20 @@ export const MiniPlayer = React.memo(function MiniPlayer() {
 
   const openPlayer = () => {
     if (navigatingRef.current) return;
+    if (!currentTrack) return;
     navigatingRef.current = true;
-    playerActions.showFullPlayer();
-    router.push('/player');
-    setTimeout(() => { navigatingRef.current = false; }, 500);
+    try {
+      playerActions.showFullPlayer();
+    } catch {}
+    try {
+      router.push('/player');
+    } catch {
+      try {
+        // fallback for typedRoutes / missing route
+        (router as any).navigate?.('/player');
+      } catch {}
+    }
+    setTimeout(() => { navigatingRef.current = false; }, 600);
   };
 
   const pan = Gesture.Pan()

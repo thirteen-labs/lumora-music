@@ -11,7 +11,9 @@ import { useOnboardingStore } from '@/store/onboarding-store';
 import { syncEqualizerToEngine, subscribeEqualizer } from '@/store/equalizer-store';
 import { syncReplayGainToEngine, subscribeReplayGain } from '@/store/replay-gain-store';
 import { useLoudnessEnhancerStore } from '@/store/loudness-enhancer-store';
+import { usePlaybackSpeedStore, subscribePlaybackSpeed } from '@/store/playback-speed-store';
 import { audioEngine } from '@/services/audio-engine';
+import { watchForAudioIntents } from '@/services/intent-handler';
 import { useTheme } from '@/hooks/use-theme';
 import { reportWarning, persistCrashLog } from '@/utils/error-handler';
 import { checkStorageIntegrity } from '@/services/mmkv';
@@ -311,6 +313,11 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!ready) return;
+    return watchForAudioIntents();
+  }, [ready]);
+
+  useEffect(() => {
+    if (!ready) return;
     let healthCheckFails = 0;
     const interval = setInterval(async () => {
       try {
@@ -372,19 +379,27 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       const le = useLoudnessEnhancerStore.getState();
       audioEngine.setLoudnessEnabled(le.enabled);
       audioEngine.setLoudnessLevel(le.level);
+      // initial playback speed sync so current track respects saved speed
+      try {
+        const speedState = usePlaybackSpeedStore.getState();
+        audioEngine.setSpeed(speedState.speed);
+        audioEngine.setPitchCorrection(speedState.pitchCorrection);
+      } catch {}
     } catch (e) {
       reportWarning('PlayerProvider', e, 'Failed to sync audio settings to engine');
     }
 
-    // Keep the engine in sync with EQ / replay-gain store changes made from
+    // Keep the engine in sync with EQ / replay-gain / speed store changes made from
     // the UI (sliders, presets, toggles). Without this, edits only updated
     // the store and never reached the running audio graph.
     const unsubEq = subscribeEqualizer();
     const unsubRg = subscribeReplayGain();
+    const unsubSpeed = subscribePlaybackSpeed();
 
     return () => {
       unsubEq();
       unsubRg();
+      unsubSpeed();
     };
   }, []);
 

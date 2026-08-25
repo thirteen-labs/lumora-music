@@ -14,7 +14,7 @@ import { useReplayGainStore } from '@/store/replay-gain-store';
 import Slider from '@react-native-community/slider';
 import Svg, { Path, Defs, LinearGradient, Stop, Circle } from 'react-native-svg';
 import {
-  AudioLines, Volume2, Gauge, Music, Power,
+  AudioLines, Volume2, Gauge, Music, Zap,
   RotateCcw, ChevronDown, ChevronUp,
 } from 'lucide-react-native';
 import { useState, useMemo, useCallback } from 'react';
@@ -135,7 +135,7 @@ export default function EqualizerScreen() {
                 </View>
                 <View style={[s.itemsCenter, s.justifyCenter]}>
                   {isPlaying && (
-                    <View style={[s.w8, s.h8, s.roundedFull, s.itemsCenter, s.justifyCenter, { backgroundColor: colors.accent + '20' }]}>
+                    <View style={[s.roundedFull, s.itemsCenter, s.justifyCenter, { width: 32, height: 32, backgroundColor: colors.accent + '20' }]}>
                       <AudioLines size={16} color={colors.accent} />
                     </View>
                   )}
@@ -148,19 +148,19 @@ export default function EqualizerScreen() {
           <View style={[s.rounded3xl, s.overflowHidden, { backgroundColor: colors.surface }]}>
             <View style={[s.flexRow, s.itemsCenter, s.justifyBetween, s.p4]}>
               <View style={[s.flexRow, s.itemsCenter, s.gap2]}>
-                <Power size={18} color={eq.enabled ? colors.accent : colors.textMuted} />
+                <Zap size={18} color={eq.enabled ? colors.accent : colors.textMuted} />
                 <Text style={[s.textSm, s.fontSemibold, { color: colors.text }]}>
                   {t('audio.equalizer.10band')}
                 </Text>
               </View>
               <Pressable
                 onPress={() => eq.setEnabled(!eq.enabled)}
-                style={[s.w14, s.h8, s.roundedFull, s.itemsCenter, s.justifyCenter, {
-                  backgroundColor: eq.enabled ? colors.accent : colors.card,
+                style={[s.w14, s.roundedFull, s.itemsCenter, s.justifyCenter, {
+                  width: 56, height: 32, backgroundColor: eq.enabled ? colors.accent : colors.card,
                 }]}
               >
-                <View style={[s.w6, s.h6, s.roundedFull, {
-                  backgroundColor: '#fff',
+                <View style={[s.roundedFull, {
+                  width: 24, height: 24, backgroundColor: '#fff',
                   marginLeft: eq.enabled ? 24 : -24,
                 }]} />
               </Pressable>
@@ -168,158 +168,152 @@ export default function EqualizerScreen() {
           </View>
 
           {/* EQ Visual Curve */}
-          {eq.enabled && (
-            <View style={[s.rounded3xl, s.overflowHidden, { backgroundColor: colors.surface, padding: EQ_PADDING }]}>
-              <EQCurve bands={eq.bands} width={eqWidth} height={EQ_HEIGHT} color={colors.accent} />
-              <View style={[s.flexRow, s.justifyBetween, s.px1, s.mt2]}>
-                {eq.bands.map((band) => (
-                  <Text key={band.frequency} style={[s.text9, { color: colors.textMuted, width: 24, textAlign: 'center' }]}>
-                    {band.frequency >= 1000 ? `${band.frequency / 1000}k` : band.frequency}
-                  </Text>
-                ))}
-              </View>
+          <View style={[s.rounded3xl, s.overflowHidden, { backgroundColor: colors.surface, padding: EQ_PADDING, opacity: eq.enabled ? 1 : 0.45 }]}>
+            <EQCurve bands={eq.bands} width={eqWidth} height={EQ_HEIGHT} color={colors.accent} />
+            <View style={[s.flexRow, s.justifyBetween, s.px1, s.mt2]}>
+              {eq.bands.map((band) => (
+                <Text key={band.frequency} style={[s.text9, { color: colors.textMuted, width: 24, textAlign: 'center' }]}>
+                  {band.frequency >= 1000 ? `${band.frequency / 1000}k` : band.frequency}
+                </Text>
+              ))}
             </View>
-          )}
+            {!eq.enabled && (
+              <Text style={[s.textXs, s.textCenter, s.mt2, { color: colors.textMuted }]}>Enable equalizer to edit curve</Text>
+            )}
+          </View>
 
           {/* Quick Presets */}
-          {eq.enabled && (
-            <View>
-              <Text style={[s.textXs, s.fontBold, s.uppercase, { letterSpacing: 1, color: colors.textMuted }, s.mb3]}>
-                {t('audio.presets')}
-              </Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
-                {EQUALIZER_PRESETS.filter((p) => p.key !== 'custom').map((preset) => (
-                  <Pressable
-                    key={preset.key}
-                    onPress={() => eq.setPreset(preset.key)}
-                    style={[{ paddingHorizontal: 20, paddingVertical: 12, borderRadius: 16, backgroundColor: eq.preset === preset.key ? colors.accent : colors.surface }]}
-                  >
-                    <Text style={[s.textSm, s.fontSemibold, { color: eq.preset === preset.key ? colors.background : colors.textMuted }]}>
-                      {preset.label}
-                    </Text>
-                  </Pressable>
-                ))}
-              </ScrollView>
-            </View>
-          )}
+          <View style={{ opacity: eq.enabled ? 1 : 0.5 }} pointerEvents={eq.enabled ? 'auto' : 'none'}>
+            <Text style={[s.textXs, s.fontBold, s.uppercase, { letterSpacing: 1, color: colors.textMuted }, s.mb3]}>
+              {t('audio.presets')}
+            </Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+              {EQUALIZER_PRESETS.filter((p) => p.key !== 'custom').map((preset) => (
+                <Pressable
+                  key={preset.key}
+                  onPress={() => eq.setPreset(preset.key)}
+                  style={[{ paddingHorizontal: 20, paddingVertical: 12, borderRadius: 16, backgroundColor: eq.preset === preset.key ? colors.accent : colors.surface }]}
+                >
+                  <Text style={[s.textSm, s.fontSemibold, { color: eq.preset === preset.key ? colors.background : colors.textMuted }]}>
+                    {preset.label}
+                  </Text>
+                </Pressable>
+              ))}
+            </ScrollView>
+          </View>
 
           {/* Band Sliders */}
-          {eq.enabled && (
-            <View style={[s.rounded3xl, s.overflowHidden, { backgroundColor: colors.surface }]}>
-              <View style={[s.flexRow, s.itemsCenter, s.justifyBetween, s.p4, s.pb2]}>
-                <Text style={[s.textSm, s.fontSemibold, { color: colors.text }]}>
-                  Frequency Bands
-                </Text>
-                <Text style={[s.textXs, { color: colors.textMuted }]}>
-                  {eq.preset === 'custom' ? 'Custom' : EQUALIZER_PRESETS.find((p) => p.key === eq.preset)?.label ?? 'Custom'}
-                </Text>
-              </View>
-              <View style={[s.gap1, s.px4, s.pb4]}>
-                {eq.bands.map((band, i) => (
-                  <View key={band.frequency} style={[s.flexRow, s.itemsCenter, s.gap2]}>
-                    <Text style={[s.textXs, { width: 32, color: colors.textMuted, fontVariant: ['tabular-nums'] }]}>
-                      {band.frequency >= 1000 ? `${band.frequency / 1000}k` : band.frequency}
-                    </Text>
-                    <Slider
-                      value={(band.gain + 12) / 24}
-                      onValueChange={(val) => eq.setBandGain(i, Math.round((val * 24 - 12) * 2) / 2)}
-                      minimumValue={0}
-                      maximumValue={1}
-                      minimumTrackTintColor={colors.accent}
-                      maximumTrackTintColor={colors.border}
-                      thumbTintColor={colors.accent}
-                      style={{ flex: 1, height: 28 }}
-                    />
-                    <Text style={[s.textXs, { width: 28, textAlign: 'right', color: band.gain >= 0 ? colors.accent : colors.textMuted, fontVariant: ['tabular-nums'] }]}>
-                      {band.gain > 0 ? '+' : ''}{band.gain}
-                    </Text>
-                  </View>
-                ))}
-              </View>
+          <View style={[s.rounded3xl, s.overflowHidden, { backgroundColor: colors.surface, opacity: eq.enabled ? 1 : 0.5 }]} pointerEvents={eq.enabled ? 'auto' : 'none'}>
+            <View style={[s.flexRow, s.itemsCenter, s.justifyBetween, s.p4, s.pb2]}>
+              <Text style={[s.textSm, s.fontSemibold, { color: colors.text }]}>
+                Frequency Bands
+              </Text>
+              <Text style={[s.textXs, { color: colors.textMuted }]}>
+                {eq.preset === 'custom' ? 'Custom' : EQUALIZER_PRESETS.find((p) => p.key === eq.preset)?.label ?? 'Custom'}
+              </Text>
             </View>
-          )}
+            <View style={[s.gap1, s.px4, s.pb4]}>
+              {eq.bands.map((band, i) => (
+                <View key={band.frequency} style={[s.flexRow, s.itemsCenter, s.gap2]}>
+                  <Text style={[s.textXs, { width: 32, color: colors.textMuted, fontVariant: ['tabular-nums'] }]}>
+                    {band.frequency >= 1000 ? `${band.frequency / 1000}k` : band.frequency}
+                  </Text>
+                  <Slider
+                    value={(band.gain + 12) / 24}
+                    onValueChange={(val) => eq.setBandGain(i, Math.round((val * 24 - 12) * 2) / 2)}
+                    minimumValue={0}
+                    maximumValue={1}
+                    minimumTrackTintColor={colors.accent}
+                    maximumTrackTintColor={colors.border}
+                    thumbTintColor={colors.accent}
+                    style={{ flex: 1, height: 28 }}
+                    disabled={!eq.enabled}
+                  />
+                  <Text style={[s.textXs, { width: 28, textAlign: 'right', color: band.gain >= 0 ? colors.accent : colors.textMuted, fontVariant: ['tabular-nums'] }]}>
+                    {band.gain > 0 ? '+' : ''}{band.gain}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          </View>
 
           {/* Bass Boost */}
-          {eq.enabled && (
-            <View style={[s.rounded3xl, s.overflowHidden, { backgroundColor: colors.surface }]}>
-              <View style={[s.flexRow, s.itemsCenter, s.gap2, s.p4, s.pb2]}>
-                <Volume2 size={18} color={colors.accent} />
-                <Text style={[s.textSm, s.fontSemibold, { color: colors.text }]}>
-                  {t('audio.bass.boost')}
-                </Text>
-                <Text style={[s.textXs, { color: colors.textMuted, marginLeft: 'auto' }]}>
-                  Level {eq.bassBoost}
-                </Text>
-              </View>
-              <View style={[s.px4, s.pb4]}>
-                <Slider
-                  value={eq.bassBoost / 12}
-                  onValueChange={(val) => eq.setBassBoost(Math.round(val * 12))}
-                  minimumValue={0}
-                  maximumValue={1}
-                  minimumTrackTintColor={colors.accent}
-                  maximumTrackTintColor={colors.border}
-                  thumbTintColor={colors.accent}
-                  style={{ width: '100%', height: 32 }}
-                />
-                <View style={[s.flexRow, s.justifyBetween, s.px1]}>
-                  <Text style={[s.textXs, { color: colors.textMuted }]}>Off</Text>
-                  <Text style={[s.textXs, { color: colors.textMuted }]}>Max</Text>
-                </View>
+          <View style={[s.rounded3xl, s.overflowHidden, { backgroundColor: colors.surface, opacity: eq.enabled ? 1 : 0.5 }]} pointerEvents={eq.enabled ? 'auto' : 'none'}>
+            <View style={[s.flexRow, s.itemsCenter, s.gap2, s.p4, s.pb2]}>
+              <Volume2 size={18} color={colors.accent} />
+              <Text style={[s.textSm, s.fontSemibold, { color: colors.text }]}>
+                {t('audio.bass.boost')}
+              </Text>
+              <Text style={[s.textXs, { color: colors.textMuted, marginLeft: 'auto' }]}>
+                Level {eq.bassBoost}
+              </Text>
+            </View>
+            <View style={[s.px4, s.pb4]}>
+              <Slider
+                value={eq.bassBoost / 12}
+                onValueChange={(val) => eq.setBassBoost(Math.round(val * 12))}
+                minimumValue={0}
+                maximumValue={1}
+                minimumTrackTintColor={colors.accent}
+                maximumTrackTintColor={colors.border}
+                thumbTintColor={colors.accent}
+                style={{ width: '100%', height: 32 }}
+                disabled={!eq.enabled}
+              />
+              <View style={[s.flexRow, s.justifyBetween, s.px1]}>
+                <Text style={[s.textXs, { color: colors.textMuted }]}>Off</Text>
+                <Text style={[s.textXs, { color: colors.textMuted }]}>Max</Text>
               </View>
             </View>
-          )}
+          </View>
 
           {/* Balance */}
-          {eq.enabled && (
-            <View style={[s.rounded3xl, s.overflowHidden, { backgroundColor: colors.surface }]}>
-              <View style={[s.flexRow, s.itemsCenter, s.gap2, s.p4, s.pb2]}>
-                <Text style={[s.textSm, s.fontSemibold, { color: colors.text }]}>
-                  {t('audio.balance')}
-                </Text>
-                <Text style={[s.textXs, { color: colors.textMuted, marginLeft: 'auto' }]}>
-                  {eq.balance === 0 ? t('audio.balance.center') : eq.balance < 0 ? `L ${Math.abs(eq.balance)}` : `R ${eq.balance}`}
-                </Text>
-              </View>
-              <View style={[s.px4, s.pb4]}>
-                <View style={[s.flexRow, s.itemsCenter, s.justifyBetween, s.mb1]}>
-                  <Text style={[s.textXs, { color: colors.textMuted }]}>L</Text>
-                  <Text style={[s.textXs, { color: colors.textMuted }]}>R</Text>
-                </View>
-                <Slider
-                  value={(eq.balance + 10) / 20}
-                  onValueChange={(val) => eq.setBalance(Math.round((val * 20 - 10) * 2) / 2)}
-                  minimumValue={0}
-                  maximumValue={1}
-                  minimumTrackTintColor={colors.accent}
-                  maximumTrackTintColor={colors.border}
-                  thumbTintColor={colors.accent}
-                  style={{ width: '100%', height: 32 }}
-                />
-              </View>
+          <View style={[s.rounded3xl, s.overflowHidden, { backgroundColor: colors.surface, opacity: eq.enabled ? 1 : 0.5 }]} pointerEvents={eq.enabled ? 'auto' : 'none'}>
+            <View style={[s.flexRow, s.itemsCenter, s.gap2, s.p4, s.pb2]}>
+              <Text style={[s.textSm, s.fontSemibold, { color: colors.text }]}>
+                {t('audio.balance')}
+              </Text>
+              <Text style={[s.textXs, { color: colors.textMuted, marginLeft: 'auto' }]}>
+                {eq.balance === 0 ? t('audio.balance.center') : eq.balance < 0 ? `L ${Math.abs(eq.balance)}` : `R ${eq.balance}`}
+              </Text>
             </View>
-          )}
+            <View style={[s.px4, s.pb4]}>
+              <View style={[s.flexRow, s.itemsCenter, s.justifyBetween, s.mb1]}>
+                <Text style={[s.textXs, { color: colors.textMuted }]}>L</Text>
+                <Text style={[s.textXs, { color: colors.textMuted }]}>R</Text>
+              </View>
+              <Slider
+                value={(eq.balance + 10) / 20}
+                onValueChange={(val) => eq.setBalance(Math.round((val * 20 - 10) * 2) / 2)}
+                minimumValue={0}
+                maximumValue={1}
+                minimumTrackTintColor={colors.accent}
+                maximumTrackTintColor={colors.border}
+                thumbTintColor={colors.accent}
+                style={{ width: '100%', height: 32 }}
+                disabled={!eq.enabled}
+              />
+            </View>
+          </View>
 
           {/* Advanced Section Toggle */}
-          {eq.enabled && (
-            <Pressable
-              onPress={() => setShowAdvanced(!showAdvanced)}
-              style={[s.rounded3xl, s.overflowHidden, { backgroundColor: colors.surface }]}
-            >
-              <View style={[s.flexRow, s.itemsCenter, s.justifyBetween, s.p4]}>
-                <Text style={[s.textSm, s.fontSemibold, { color: colors.text }]}>Advanced Audio</Text>
-                {showAdvanced ? (
-                  <ChevronUp size={18} color={colors.textMuted} />
-                ) : (
-                  <ChevronDown size={18} color={colors.textMuted} />
-                )}
-              </View>
-            </Pressable>
-          )}
+          <Pressable
+            onPress={() => setShowAdvanced(!showAdvanced)}
+            style={[s.rounded3xl, s.overflowHidden, { backgroundColor: colors.surface }]}
+          >
+            <View style={[s.flexRow, s.itemsCenter, s.justifyBetween, s.p4]}>
+              <Text style={[s.textSm, s.fontSemibold, { color: colors.text }]}>Advanced Audio</Text>
+              {showAdvanced ? (
+                <ChevronUp size={18} color={colors.textMuted} />
+              ) : (
+                <ChevronDown size={18} color={colors.textMuted} />
+              )}
+            </View>
+          </Pressable>
 
           {/* Advanced Settings */}
-          {eq.enabled && showAdvanced && (
-            <>
+          {showAdvanced && (
+            <View>
               {/* Playback Speed */}
               <View style={[s.rounded3xl, s.overflowHidden, { backgroundColor: colors.surface }]}>
                 <View style={[s.flexRow, s.itemsCenter, s.gap2, s.p4, s.pb2]}>
@@ -357,12 +351,12 @@ export default function EqualizerScreen() {
                   </View>
                   <Pressable
                     onPress={() => le.setEnabled(!le.enabled)}
-                    style={[s.w12, s.h7, s.roundedFull, s.itemsCenter, s.justifyCenter, {
-                      backgroundColor: le.enabled ? colors.accent : colors.card,
+                    style={[s.roundedFull, s.itemsCenter, s.justifyCenter, {
+                      width: 48, height: 28, backgroundColor: le.enabled ? colors.accent : colors.card,
                     }]}
                   >
-                    <View style={[s.w5, s.h5, s.roundedFull, {
-                      backgroundColor: '#fff',
+                    <View style={[s.roundedFull, {
+                      width: 20, height: 20, backgroundColor: '#fff',
                       marginLeft: le.enabled ? 20 : -20,
                     }]} />
                   </Pressable>
@@ -399,12 +393,12 @@ export default function EqualizerScreen() {
                   </View>
                   <Pressable
                     onPress={() => rg.setEnabled(!rg.enabled)}
-                    style={[s.w12, s.h7, s.roundedFull, s.itemsCenter, s.justifyCenter, {
-                      backgroundColor: rg.enabled ? colors.accent : colors.card,
+                    style={[s.roundedFull, s.itemsCenter, s.justifyCenter, {
+                      width: 48, height: 28, backgroundColor: rg.enabled ? colors.accent : colors.card,
                     }]}
                   >
-                    <View style={[s.w5, s.h5, s.roundedFull, {
-                      backgroundColor: '#fff',
+                    <View style={[s.roundedFull, {
+                      width: 20, height: 20, backgroundColor: '#fff',
                       marginLeft: rg.enabled ? 20 : -20,
                     }]} />
                   </Pressable>
@@ -447,19 +441,18 @@ export default function EqualizerScreen() {
                   </View>
                 )}
               </View>
-            </>
+            </View>
           )}
 
           {/* Reset Button */}
-          {eq.enabled && (
-            <Pressable
-              onPress={handleReset}
-              style={[s.flexRow, s.itemsCenter, s.justifyCenter, s.gap2, { paddingVertical: 16, borderRadius: 24, backgroundColor: colors.surface }]}
-            >
-              <RotateCcw size={16} color={colors.textMuted} />
-              <Text style={[s.textSm, s.fontMedium, { color: colors.textMuted }]}>{t('audio.reset')}</Text>
-            </Pressable>
-          )}
+          <Pressable
+            onPress={handleReset}
+            style={[s.flexRow, s.itemsCenter, s.justifyCenter, s.gap2, { paddingVertical: 16, borderRadius: 24, backgroundColor: colors.surface, opacity: eq.enabled ? 1 : 0.5 }]}
+            disabled={!eq.enabled}
+          >
+            <RotateCcw size={16} color={colors.textMuted} />
+            <Text style={[s.textSm, s.fontMedium, { color: colors.textMuted }]}>{t('audio.reset')}</Text>
+          </Pressable>
         </View>
       </ScrollView>
       <MiniPlayer />

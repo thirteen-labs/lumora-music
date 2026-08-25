@@ -66,7 +66,11 @@ export function TopBar({ showSearch = true, showSettings = true, title, showBack
                   onPress={() => router.push('/search')}
                   style={[s.w11, s.h11, s.roundedFull, s.itemsCenter, s.justifyCenter, {
                     backgroundColor: colors.surface,
-                    boxShadow: '0 2px 4px rgba(0,0,0,0.25)',
+                    elevation: 3,
+                    shadowColor: '#000',
+                    shadowOpacity: 0.15,
+                    shadowRadius: 4,
+                    shadowOffset: { width: 0, height: 2 },
                   }]}
                 >
                   <Search size={20} color={colors.text} />
@@ -74,10 +78,14 @@ export function TopBar({ showSearch = true, showSettings = true, title, showBack
               )}
               {showSettings && (
                 <Pressable
-                  onPress={() => router.push('/settings')}
+                  onPress={() => router.push('/(tabs)/settings')}
                   style={[s.w11, s.h11, s.roundedFull, s.itemsCenter, s.justifyCenter, {
                     backgroundColor: colors.surface,
-                    boxShadow: '0 2px 4px rgba(0,0,0,0.25)',
+                    elevation: 3,
+                    shadowColor: '#000',
+                    shadowOpacity: 0.15,
+                    shadowRadius: 4,
+                    shadowOffset: { width: 0, height: 2 },
                   }]}
                 >
                   <Settings size={20} color={colors.text} />

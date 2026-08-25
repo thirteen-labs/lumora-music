@@ -365,7 +365,8 @@ declare module 'expo-linking' {
   export function openURL(url: string): Promise<void>;
   export function canOpenURL(url: string): Promise<boolean>;
   export function openSettings(): Promise<void>;
-  export function getInitialURL(): Promise<string>;
+  export function getInitialURL(): Promise<string | null>;
+  export function addEventListener(type: string, handler: (event: { url: string }) => void): { remove: () => void };
 }
 declare module 'expo-constants' {
   const c: any;

@@ -30,6 +30,8 @@ export const Artwork = memo(function Artwork({ uri, size, borderRadius, iconSize
     if (uri) {
       resolveArtworkForDisplay(uri).then((resolved) => {
         if (!cancelled) setResolvedUri(resolved);
+      }).catch(() => {
+        if (!cancelled) setResolvedUri(null);
       });
     } else {
       setResolvedUri(null);
@@ -38,15 +40,16 @@ export const Artwork = memo(function Artwork({ uri, size, borderRadius, iconSize
   }, [uri]);
 
   const handleError = useCallback(() => {
-    if (!triedOriginalRef.current) {
+    // First failure: we were showing cached file:// copy -> fallback to original uri
+    if (!triedOriginalRef.current && resolvedUri) {
       triedOriginalRef.current = true;
-      setFailed(false);
+      setResolvedUri(null);
       return;
     }
     setFailed(true);
-  }, []);
+  }, [resolvedUri]);
 
-  const displayUri = resolvedUri || uri;
+  const displayUri = resolvedUri ?? (uri && !failed ? uri : null);
 
   if (displayUri && !failed) {
     return (

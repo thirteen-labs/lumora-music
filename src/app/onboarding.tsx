@@ -186,14 +186,17 @@ export default function OnboardingScreen() {
         pagingEnabled
         bounces={false}
         showsHorizontalScrollIndicator={false}
-        onMomentumScrollEnd={onMomentumEnd}
+        onMomentumScrollEnd={onMomentumEnd as any}
+        style={StyleSheet.absoluteFillObject}
         renderItem={({ item }) => (
-          <View style={[styles.page, { width: SCREEN_W }]}>
+          <View style={[styles.page, { width: SCREEN_W, height: SCREEN_H }]}>
             <Image
               source={item.image}
               style={StyleSheet.absoluteFillObject}
               contentFit="cover"
               transition={350}
+              cachePolicy="memory-disk"
+              priority="high"
             />
           </View>
         )}

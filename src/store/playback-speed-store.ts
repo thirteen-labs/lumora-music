@@ -33,7 +33,12 @@ export const usePlaybackSpeedStore = create<SpeedState>()(
 
     setSpeed: (speed) => {
       set((s) => { s.speed = speed; });
-      saveSpeed(get());
+      const settings = get();
+      saveSpeed(settings);
+      try {
+        audioEngine.setSpeed(settings.speed);
+        audioEngine.setPitchCorrection(settings.pitchCorrection);
+      } catch (e) { logger.warn('Failed to sync playback speed to engine:', e); }
     },
 
     cycleSpeed: () => {
@@ -41,12 +46,22 @@ export const usePlaybackSpeedStore = create<SpeedState>()(
       const idx = SPEED_OPTIONS.indexOf(current);
       const nextIdx = (idx + 1) % SPEED_OPTIONS.length;
       set((s) => { s.speed = SPEED_OPTIONS[nextIdx]; });
-      saveSpeed(get());
+      const settings = get();
+      saveSpeed(settings);
+      try {
+        audioEngine.setSpeed(settings.speed);
+        audioEngine.setPitchCorrection(settings.pitchCorrection);
+      } catch (e) { logger.warn('Failed to sync playback speed to engine:', e); }
     },
 
     togglePitchCorrection: () => {
       set((s) => { s.pitchCorrection = !s.pitchCorrection; });
-      saveSpeed(get());
+      const settings = get();
+      saveSpeed(settings);
+      try {
+        audioEngine.setSpeed(settings.speed);
+        audioEngine.setPitchCorrection(settings.pitchCorrection);
+      } catch (e) { logger.warn('Failed to sync playback speed to engine:', e); }
     },
   })),
 );

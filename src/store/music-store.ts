@@ -197,6 +197,19 @@ export const useMusicStore = create<MusicState>()(
                     const path = updates[song.uri];
                     if (path) song.artwork = path;
                   }
+                  // Propagate newly found artwork to albums/artists so grids show thumbnails
+                  for (const album of state.albums) {
+                    if (!album.artwork) {
+                      const candidate = state.songs.find((s) => s.albumId === album.id && s.artwork);
+                      if (candidate?.artwork) album.artwork = candidate.artwork;
+                    }
+                  }
+                  for (const artist of state.artists) {
+                    if (!artist.artwork) {
+                      const candidate = state.songs.find((s) => s.artist === artist.name && s.artwork);
+                      if (candidate?.artwork) artist.artwork = candidate.artwork;
+                    }
+                  }
                 });
               }
               pruneArtworkCache(new Set(result.songs.map((s) => s.uri)));

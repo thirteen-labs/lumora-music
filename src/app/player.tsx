@@ -7,7 +7,6 @@ import { playerActions } from '@/player/actions';
 import { generateUpNext } from '@/player/recommendations';
 import { useMusicStore } from '@/store/music-store';
 import { useMetadataStore } from '@/store/metadata-store';
-import * as ScreenOrientation from 'expo-screen-orientation';
 import { reportWarning } from '@/utils/error-handler';
 import {
   Play,
@@ -161,17 +160,30 @@ export default function PlayerScreen() {
   const track = currentTrack ? getOverriddenSong(currentTrack) : null;
 
   useEffect(() => {
-    try {
-      ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.DEFAULT).catch((e) => reportWarning('Player', e, 'Failed to lock orientation'));
-    } catch (e) {
-      reportWarning('Player', e, 'Failed to lock orientation');
-    }
-    return () => {
+    let mounted = true;
+    // Screen orientation lock is non-essential — guard heavily so a missing
+    // native module never crashes the full player (previous native exits).
+    (async () => {
       try {
-        ScreenOrientation.unlockAsync().catch((e) => reportWarning('Player', e, 'Failed to unlock orientation'));
+        // Dynamic import avoids hard crash if module is not linked
+        const mod = await import('expo-screen-orientation').catch(() => null);
+        if (!mounted || !mod?.lockAsync) return;
+        await mod.lockAsync(mod.OrientationLock.DEFAULT).catch((e: unknown) => reportWarning('Player', e, 'Failed to lock orientation'));
       } catch (e) {
-        reportWarning('Player', e, 'Failed to unlock orientation');
+        reportWarning('Player', e, 'Failed to lock orientation');
       }
+    })();
+    return () => {
+      mounted = false;
+      (async () => {
+        try {
+          const mod = await import('expo-screen-orientation').catch(() => null);
+          if (!mod?.unlockAsync) return;
+          await mod.unlockAsync().catch((e: unknown) => reportWarning('Player', e, 'Failed to unlock orientation'));
+        } catch (e) {
+          reportWarning('Player', e, 'Failed to unlock orientation');
+        }
+      })();
     };
   }, []);
 
@@ -356,8 +368,16 @@ export default function PlayerScreen() {
   }, [favoriteSongIds, toggleSongFavorite, showToast]);
 
   const hideAndGoBack = useCallback(() => {
-    playerActions.hideFullPlayer();
-    router.back();
+    try { playerActions.hideFullPlayer(); } catch {}
+    try {
+      if ((router as any).canGoBack?.()) {
+        router.back();
+      } else {
+        router.replace('/(tabs)' as any);
+      }
+    } catch {
+      try { router.replace('/(tabs)' as any); } catch {}
+    }
   }, [router]);
 
   const onQueuePress = useCallback(() => queueSheetRef.current?.present(), []);
@@ -505,6 +525,15 @@ export default function PlayerScreen() {
   useEffect(() => { return () => { isMountedSV.value = false; }; }, [isMountedSV]);
 
   /* eslint-disable react-hooks/immutability */
+  const safeGoBack = useCallback(() => {
+    try { playerActions.hideFullPlayer(); } catch {}
+    try {
+      if ((router as any).canGoBack?.()) router.back();
+      else router.replace('/(tabs)' as any);
+    } catch {
+      try { router.replace('/(tabs)' as any); } catch {}
+    }
+  }, [router]);
   const panGesture = useMemo(() => Gesture.Pan()
     .onStart(() => {
       isSwipingDown.value = true;
@@ -517,12 +546,11 @@ export default function PlayerScreen() {
     .onEnd((e) => {
       if (!isMountedSV.value) return;
       if (e.translationY > 150) {
-        runOnJS(playerActions.hideFullPlayer)();
-        runOnJS(router.back)();
+        runOnJS(safeGoBack)();
       }
       translateY.value = withSpring(0, { damping: 20, stiffness: 200 });
       isSwipingDown.value = false;
-    }), [router, isMountedSV, isSwipingDown, translateY]);
+    }), [safeGoBack, isMountedSV, isSwipingDown, translateY]);
   /* eslint-enable react-hooks/immutability */
 
   const animatedStyle = useAnimatedStyle(() => ({
@@ -798,7 +826,9 @@ const ModernLayout = React.memo(function ModernLayout(props: LayoutProps) {
           source={{ uri: currentTrack.artwork }}
           style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
           contentFit="cover"
-          blurRadius={40}
+          blurRadius={20}
+          cachePolicy="memory-disk"
+          onError={() => {}}
         />
       ) : null}
       <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: m.overlay }} />
