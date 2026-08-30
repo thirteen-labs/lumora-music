@@ -53,18 +53,13 @@ export const useReplayGainStore = create<RGState>()(
   })),
 );
 
-function dbToLinear(db: number): number {
-  return Math.pow(10, db / 20);
-}
-
 export function syncReplayGainToEngine(): void {
   const state = useReplayGainStore.getState();
-  if (state.enabled) {
-    const preampLinear = dbToLinear(state.preamp);
-    audioEngine.setReplayGainVolume(preampLinear);
-  } else {
-    audioEngine.setReplayGainVolume(1.0);
-  }
+  audioEngine.applyReplayGainSettings({
+    enabled: state.enabled,
+    preampDb: state.preamp,
+    useAlbum: state.albumGain,
+  });
 }
 
 let _rgUnsub: (() => void) | null = null;

@@ -187,6 +187,7 @@ export async function loadTrack(track: Song): Promise<void> {
   audioEngine.setPitchCorrection(speedState.pitchCorrection);
   audioEngine.play();
   audioEngine.setVolume(currentVolume);
+  audioEngine.setCurrentTrackReplayGain(rgFromSong(track));
   setLockScreenMetadata(track);
 }
 
@@ -194,17 +195,27 @@ function setLockScreenMetadata(track: Song): void {
   showNowPlayingNotification(track, audioEngine.getState().playing);
 }
 
+function rgFromSong(track: Song) {
+  return {
+    trackGain: track.replayGainTrackGain ?? null,
+    albumGain: track.replayGainAlbumGain ?? null,
+    trackPeak: track.replayGainTrackPeak ?? null,
+    albumPeak: track.replayGainAlbumPeak ?? null,
+  };
+}
+
 export async function preloadNextTrack(track: Song): Promise<void> {
   if (crossfadeInProgress) return;
-  audioEngine.preloadTrack(track.uri);
+  audioEngine.preloadTrack(track.uri, track.duration);
   if (gaplessEnabled) {
-    audioEngine.setGaplessNextTrack(track.uri);
+    audioEngine.setGaplessNextTrack(track.uri, rgFromSong(track));
   }
 }
 
 
 
 async function crossfadeToTrack(track: Song): Promise<void> {
+  audioEngine.setCurrentTrackReplayGain(rgFromSong(track));
   if (crossfadeInProgress) {
     await audioEngine.loadTrack(track.uri);
     audioEngine.play();

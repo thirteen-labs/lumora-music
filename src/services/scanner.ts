@@ -14,6 +14,7 @@ import {
   parseAlbumFromPath,
 } from '@/utils/filename-metadata';
 import { logger } from '@/utils/logger';
+import { useReplayGainStore } from '@/store/replay-gain-store';
 
 const CACHED_SONGS_KEY = 'lumora-cached-songs';
 const CACHED_ALBUMS_KEY = 'lumora-cached-albums';
@@ -111,18 +112,8 @@ async function retryWithBackoff<T>(fn: () => Promise<T>, label: string, maxRetri
 
 const isAndroid = Platform.OS === 'android';
 
-let MediaStore: {
-  requestPermissions?: () => Promise<{ audio?: boolean; granted?: boolean }>;
-  checkPermissions?: () => Promise<{ audio?: boolean; granted?: boolean }>;
-  refresh?: () => Promise<void>;
-  getAudio?: (query: unknown, projection: unknown, selection: unknown) => Promise<MediaStoreItem[]>;
-  getAlbumArtwork?: (albumId: string) => Promise<string | null>;
-  getStatistics?: () => Promise<{ totalAudio?: number; totalVideo?: number; totalImages?: number; totalDocuments?: number; totalSize?: number }>;
-  getDetailedMetadataByUri?: (uri: string) => Promise<{
-    audio?: { codec?: string; bitrate?: number; sampleRate?: number; channels?: number };
-    containerFormat?: string;
-  } | null>;
-} | null = null;
+type MediaStoreModule = typeof import('@obsidian_north/react-native-mediastore');
+let MediaStore: MediaStoreModule | null = null;
 let MediaLibrary: {
   requestPermissionsAsync?: () => Promise<{ status: string }>;
   getAssetsAsync?: (params: { first: number; after?: string; mediaType: string; sortBy: string }) => Promise<AssetsResult>;
@@ -442,7 +433,7 @@ export async function requestPermissions(force = false): Promise<boolean> {
       if (MediaStore) {
         try {
           const status = await MediaStore.requestPermissions();
-          const granted = status?.audio ?? status?.granted ?? false;
+          const granted = status.audio;
           if (granted) {
             permissionCache = true;
             return true;
@@ -452,7 +443,7 @@ export async function requestPermissions(force = false): Promise<boolean> {
           while (Date.now() < deadline) {
             await new Promise((r) => setTimeout(r, PERMISSION_POLL_INTERVAL));
             const check = await MediaStore.checkPermissions();
-            const polled = check?.audio ?? check?.granted ?? false;
+            const polled = check.audio;
             if (polled) {
               permissionCache = true;
               return true;
@@ -547,6 +538,32 @@ function estimateFileSizeFromBitrate(bitrate: number | null, sampleRate: number 
   return 0;
 }
 
+/**
+ * Best-effort ReplayGain extraction. The metadata library only exposes a single
+ * R128 track gain (Android), so that is used as the track gain; album gain and
+ * peaks are not surfaced by the public API and stay null (the engine then falls
+ * back to preamp-only and skips peak clipping). Gated on the RG setting so we
+ * don't pay an extra native call per file for users who don't use ReplayGain.
+ */
+async function parseReplayGain(uri: string): Promise<{
+  trackGain: number | null;
+  albumGain: number | null;
+  trackPeak: number | null;
+  albumPeak: number | null;
+}> {
+  if (!useReplayGainStore.getState().enabled) {
+    return { trackGain: null, albumGain: null, trackPeak: null, albumPeak: null };
+  }
+  try {
+    const mod: any = await import('@missingcore/react-native-metadata-retriever');
+    const gain = await mod.getR128Gain?.(uri);
+    const trackGain = typeof gain === 'number' && isFinite(gain) ? gain : null;
+    return { trackGain, albumGain: null, trackPeak: null, albumPeak: null };
+  } catch {
+    return { trackGain: null, albumGain: null, trackPeak: null, albumPeak: null };
+  }
+}
+
 async function parseAudioMetadata(uri: string): Promise<{
   title: string | null;
   artist: string | null;
@@ -589,26 +606,9 @@ async function parseAudioMetadata(uri: string): Promise<{
   }
 }
 
-interface MediaStoreItem {
-  id?: string;
-  contentUri?: string;
-  uri?: string;
-  displayName?: string;
-  title?: string;
-  artist?: string;
-  album?: string;
-  albumId?: string;
-  size?: number;
-  bitrate?: number;
-  sampleRate?: number;
-  duration?: number;
-  dateAdded?: number;
-  artworkUri?: string;
-  genre?: string;
-  relativePath?: string;
-}
-
-async function processMediaStoreItem(item: MediaStoreItem): Promise<Song | null> {
+async function processMediaStoreItem(
+  item: import('@obsidian_north/react-native-mediastore').AudioItem,
+): Promise<Song | null> {
   try {
     const uri = item.contentUri ?? item.uri;
     if (!uri) return null;
@@ -639,13 +639,18 @@ async function processMediaStoreItem(item: MediaStoreItem): Promise<Song | null>
       duration: item.duration ?? 0,
       fileSize,
       dateAdded: item.dateAdded ?? 0,
-      artwork: (item as any).artworkUri ?? cachedArt ?? null,
+      artwork: cachedArt ?? null,
       genre: cleanString(item.genre) ?? null,
       bitrate: item.bitrate ?? null,
       sampleRate: item.sampleRate ?? null,
       channels: null,
       codec: null,
     };
+    const rg = await parseReplayGain(uri);
+    song.replayGainTrackGain = rg.trackGain;
+    song.replayGainAlbumGain = rg.albumGain;
+    song.replayGainTrackPeak = rg.trackPeak;
+    song.replayGainAlbumPeak = rg.albumPeak;
     return await enrichTechnicalMetadata(song);
   } catch (error) {
     logger.warn('[Scanner] Failed to process MediaStore item:', item?.id, error);
@@ -690,6 +695,11 @@ async function processAsset(asset: MediaLibraryAsset): Promise<Song | null> {
       channels: null,
       codec: null,
     };
+    const rg = await parseReplayGain(uri);
+    song.replayGainTrackGain = rg.trackGain;
+    song.replayGainAlbumGain = rg.albumGain;
+    song.replayGainTrackPeak = rg.trackPeak;
+    song.replayGainAlbumPeak = rg.albumPeak;
     return await enrichTechnicalMetadata(song);
   } catch (error) {
     logger.warn('[Scanner] Failed to process audio asset:', asset?.id, error);
@@ -793,16 +803,37 @@ async function fetchSongsAndroid(
         await MediaStore.refresh();
       }
 
-      const songs: MediaStoreItem[] = await fetchWithTimeout(
-        retryWithBackoff(() => MediaStore.getAudio({ field: 'dateAdded', order: 'desc' }, null, null), 'getAudio'),
-        MEDIA_FETCH_TIMEOUT,
-        'getAudio',
-      );
+      // Page the query so very large libraries don't materialize as a single
+      // giant native array / JS allocation. Limit/offset pagination is provided
+      // by the 3.3 API; we stop once a page returns fewer items than the limit.
+      const GET_AUDIO_PAGE_SIZE = 2000;
+      const songs: import('@obsidian_north/react-native-mediastore').AudioItem[] = [];
+      let offset = 0;
+      let page: import('@obsidian_north/react-native-mediastore').AudioItem[];
+      do {
+        page = await fetchWithTimeout(
+          retryWithBackoff(
+            () =>
+              MediaStore.getAudio(
+                { field: MediaStore.SortField.DateAdded, order: MediaStore.SortOrder.Descending },
+                { mimeTypes: ['audio/*'] },
+                { limit: GET_AUDIO_PAGE_SIZE, offset },
+              ),
+            'getAudio',
+          ),
+          MEDIA_FETCH_TIMEOUT,
+          'getAudio',
+        );
+        songs.push(...page);
+        offset += page.length;
+      } while (page.length === GET_AUDIO_PAGE_SIZE);
 
       logger.log(`[Scanner] MediaStore.getAudio returned ${songs.length} items`);
 
       const results: Song[] = [];
       for (const item of songs) {
+        // Skip non-music catalog entries (ringtone/alarm/notification tones)
+        if (item.isRingtone || item.isAlarm || item.isNotification) continue;
         const song = await processMediaStoreItem(item);
         if (song) results.push(song);
       }
@@ -882,6 +913,49 @@ async function enrichAlbumArtwork(songs: Song[]): Promise<void> {
       }
     }),
   );
+}
+
+const INCREMENTAL_TS_KEY = 'lumora-mediastore-inc-ts';
+
+function getIncrementalSyncTimestamp(): number {
+  try {
+    return storage.getNumber(INCREMENTAL_TS_KEY) ?? 0;
+  } catch {
+    return 0;
+  }
+}
+
+function setIncrementalSyncTimestamp(ts: number): void {
+  try {
+    storage.set(INCREMENTAL_TS_KEY, ts);
+  } catch {
+    /* ignore */
+  }
+}
+
+/**
+ * Uses the 3.3 `refreshIncremental` API to detect media changes since the last
+ * baseline without re-querying the whole library. Returns true when audio items
+ * were added/modified/removed, after invalidating the module's native cache so
+ * the next scan observes the changes. Android-only: the MediaStore module backs
+ * the Android path; iOS uses expo-media-library, which has no incremental API.
+ */
+export async function syncIncrementalIfChanged(): Promise<boolean> {
+  if (!isAndroid || !MediaStore) return false;
+  try {
+    const last = getIncrementalSyncTimestamp();
+    const changes = await MediaStore.refreshIncremental(last);
+    setIncrementalSyncTimestamp(changes.timestamp);
+    if (changes.added + changes.modified + changes.removed > 0) {
+      if (typeof MediaStore.refresh === 'function') {
+        await MediaStore.refresh();
+      }
+      return true;
+    }
+  } catch (e) {
+    logger.warn('[Scanner] refreshIncremental failed:', e);
+  }
+  return false;
 }
 
 export async function scanMediaLibrary(
@@ -1003,6 +1077,14 @@ export async function scanMediaLibrary(
     cachedGenres = genres;
     saveCachedDataToStorage();
     markCacheValid();
+
+    if (isAndroid && MediaStore && typeof MediaStore.getLastRefreshTimestamp === 'function') {
+      try {
+        setIncrementalSyncTimestamp(await MediaStore.getLastRefreshTimestamp());
+      } catch {
+        setIncrementalSyncTimestamp(Date.now());
+      }
+    }
 
     onProgress?.(songs.length, songs.length);
     onStatusChange?.('complete');

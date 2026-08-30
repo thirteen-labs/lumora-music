@@ -14,6 +14,10 @@ export interface Song {
   sampleRate: number | null;
   channels: number | null;
   codec: string | null;
+  replayGainTrackGain?: number | null;
+  replayGainAlbumGain?: number | null;
+  replayGainTrackPeak?: number | null;
+  replayGainAlbumPeak?: number | null;
 }
 
 export interface Album {

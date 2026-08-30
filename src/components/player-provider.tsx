@@ -10,6 +10,8 @@ import { initializeNotifications, dismissNowPlayingNotification, showNowPlayingN
 import { useOnboardingStore } from '@/store/onboarding-store';
 import { syncEqualizerToEngine, subscribeEqualizer } from '@/store/equalizer-store';
 import { syncReplayGainToEngine, subscribeReplayGain } from '@/store/replay-gain-store';
+import { useMediaChangeSync } from '@/hooks/use-media-change-sync';
+import { syncIncrementalIfChanged } from '@/services/scanner';
 import { useLoudnessEnhancerStore } from '@/store/loudness-enhancer-store';
 import { usePlaybackSpeedStore, subscribePlaybackSpeed } from '@/store/playback-speed-store';
 import { audioEngine } from '@/services/audio-engine';
@@ -27,6 +29,11 @@ const QUEUE_RESTORE_TIMEOUT = 10000;
 
 function PlayerSync() {
   useTrackPlayerSync();
+  return null;
+}
+
+function MediaChangeSync() {
+  useMediaChangeSync();
   return null;
 }
 
@@ -248,6 +255,16 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     const handleAppState = async (nextState: string) => {
       if (nextState === 'active') {
         saveStateBeforeExit();
+        // Fast delta check for media added/removed while the app was backgrounded
+        // (change events may not have fired reliably off-screen). Gated by
+        // refreshIncremental so it only rescans when something actually changed.
+        setTimeout(() => {
+          syncIncrementalIfChanged()
+            .then((changed) => {
+              if (changed) useMusicStore.getState().scan(false);
+            })
+            .catch(() => {});
+        }, 2500);
         for (let attempt = 0; attempt < 3; attempt++) {
           try {
             const playerState = usePlayerStore.getState();
@@ -444,6 +461,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   return (
     <>
       <PlayerSync />
+      <MediaChangeSync />
       {children}
     </>
   );

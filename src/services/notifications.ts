@@ -106,7 +106,15 @@ export async function initializeNotifications(): Promise<void> {
         );
       }
     } catch { /* save queue failed */ }
-    dismissNowPlayingNotification();
+    /* A swipe-dismiss must NOT tear down the foreground service (and thus kill
+       background playback / resume). The notification should only *reflect*
+       authoritative state, so re-show it as paused instead of hiding it. */
+    try {
+      const s = usePlayerStore.getState();
+      if (s.currentTrack) {
+        showNowPlayingNotification(s.currentTrack, false, s.position);
+      }
+    } catch { /* re-show paused notification failed */ }
   }));
 
   /* Dismiss any stale notification from a prior session — but never kill a

@@ -13,12 +13,17 @@ import { generateUpNext } from '@/player/recommendations';
 import { reportWarning } from '@/utils/error-handler';
 import { audioEngine } from '@/services/audio-engine';
 
+/** Consecutive decode failures across rapid skips. Reset whenever a track
+ *  actually plays, so we don't loop forever through a batch of corrupt files. */
+let decodeErrorStreak = 0;
+
 export function useTrackPlayerSync() {
   const syncFromPlayerRef = useRef(usePlayerStore.getState().syncFromPlayer);
   const wasPlayingRef = useRef(false);
   const trackEndedRef = useRef(false);
   const lastTimeRef = useRef(0);
   const crossfadeTriggeredRef = useRef(false);
+  const advancingRef = useRef(false);
   const lastTrackIdRef = useRef<string | null>(null);
   const playTimeAccumRef = useRef(0);
   const lastQueueSaveRef = useRef(0);
@@ -41,42 +46,56 @@ export function useTrackPlayerSync() {
     return state.isPlaying && !player.isLoaded && !player.playing;
   }
 
-  function handleTrackEnd() {
+  /**
+   * Single authoritative queue-advance decision. Every track-end / crossfade
+   * trigger (native onEnded, engine onStateChange, the 250ms poll, and the
+   * crossfade timer) routes through here. `advancingRef` guarantees that, no
+   * matter how many triggers fire for the same track end, only ONE transition
+   * happens. The repeat + autoplay logic lives in exactly one place.
+   */
+  function advancePlayback(): void {
+    if (advancingRef.current) return;
     if (isTransitioning()) return;
-
     const state = usePlayerStore.getState();
     const player = getPlayer();
     if (!player) return;
 
-    switch (state.repeat) {
-      case 'one':
-        player.seekTo(0);
-        player.play();
-        break;
-      case 'all':
-        state.next();
-        break;
-      case 'off':
-      default: {
-        const { queue, shuffle, shuffledOrder, queueIndex } = state;
-        let hasNext = false;
-
-        if (shuffle) {
-          const currentShuffledIdx = shuffledOrder.indexOf(queueIndex);
-          hasNext = currentShuffledIdx + 1 < shuffledOrder.length;
-        } else {
-          hasNext = queueIndex + 1 < queue.length;
-        }
-
-        if (hasNext) {
+    advancingRef.current = true;
+    try {
+      switch (state.repeat) {
+        case 'one':
+          player.seekTo(0);
+          player.play();
+          return;
+        case 'all':
           state.next();
-        } else if (!ensureAutoplayFill()) {
-          player.pause();
-          usePlayerStore.setState({ isPlaying: false });
+          return;
+        case 'off':
+        default: {
+          const { queue, shuffle, shuffledOrder, queueIndex } = state;
+          let hasNext = false;
+          if (shuffle) {
+            const currentShuffledIdx = shuffledOrder.indexOf(queueIndex);
+            hasNext = currentShuffledIdx + 1 < shuffledOrder.length;
+          } else {
+            hasNext = queueIndex + 1 < queue.length;
+          }
+          if (hasNext) {
+            state.next();
+          } else if (!ensureAutoplayFill()) {
+            player.pause();
+            usePlayerStore.setState({ isPlaying: false });
+          }
+          return;
         }
-        break;
       }
+    } finally {
+      advancingRef.current = false;
     }
+  }
+
+  function handleTrackEnd() {
+    advancePlayback();
   }
 
   function ensureAutoplayFill(): boolean {
@@ -117,25 +136,9 @@ export function useTrackPlayerSync() {
 
     if (remaining <= crossfadeDur && remaining > 0 && duration > 0) {
       crossfadeTriggeredRef.current = true;
-      if (state.repeat === 'one') {
-        player.seekTo(0);
-        player.play();
-      } else {
-        const { queue, shuffle, shuffledOrder, queueIndex } = state;
-        let hasNext = false;
-        if (shuffle) {
-          const idx = shuffledOrder.indexOf(queueIndex);
-          hasNext = idx + 1 < shuffledOrder.length;
-        } else {
-          hasNext = queueIndex + 1 < queue.length;
-        }
-        if (hasNext || ensureAutoplayFill()) {
-          state.next();
-        } else {
-          player.pause();
-          usePlayerStore.setState({ isPlaying: false });
-        }
-      }
+      /* Delegate the actual transition to the single authoritative path so
+         crossfade and end-of-track never produce divergent/duplicate advances. */
+      advancePlayback();
     }
   }
 
@@ -332,6 +335,7 @@ export function useTrackPlayerSync() {
       if (isNowPlaying) {
         wasPlayingRef.current = true;
         trackEndedRef.current = false;
+        decodeErrorStreak = 0;
         if (currentTime < 1) {
           crossfadeTriggeredRef.current = false;
         }
@@ -404,11 +408,32 @@ export function useTrackPlayerSync() {
       }
     });
 
+    /* A track failed to decode (corrupt/unsupported/missing). Skip to the next
+       playable track instead of leaving playback stuck on a dead buffer, but
+       guard against an infinite skip-loop through many bad files. */
+    const unsubDecodeError = audioEngine.onDecodeError((uri) => {
+      if (!mountedRef.current) return;
+      reportWarning('TrackPlayerSync', `Decode failed: ${uri?.slice(0, 80)}`);
+      decodeErrorStreak += 1;
+      if (decodeErrorStreak > 8) {
+        usePlayerStore.getState().pause();
+        useToastStore.getState().showToast('Multiple tracks could not be played', 'alert');
+        decodeErrorStreak = 0;
+        return;
+      }
+      useToastStore.getState().showToast('Track could not be played — skipping', 'alert');
+      const st = usePlayerStore.getState();
+      if (st.currentTrack && st.currentTrack.uri === uri) {
+        st.next();
+      }
+    });
+
     return () => {
       mountedRef.current = false;
       stopInterval();
       unsubEngine();
       unsubTrackEnded();
+      unsubDecodeError();
       /* Final save before unmount */
       saveQueueState();
       appStateSub.remove();

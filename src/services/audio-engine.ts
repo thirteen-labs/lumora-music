@@ -11,6 +11,7 @@ import type { AudioEventSubscription } from 'react-native-audio-api';
 import type { EqualizerBand } from '@/types/audio';
 import { reportWarning } from '@/utils/error-handler';
 import { logger } from '@/utils/logger';
+import { PlaybackState, PlaybackStateMachine } from '@/services/playback-state-machine';
 
 const EQ_FREQUENCIES = [60, 170, 310, 600, 1000, 3000, 6000, 12000, 14000, 16000];
 const BASS_BOOST_FREQUENCY = 150;
@@ -42,6 +43,17 @@ const MAX_POOL_ENTRY_BYTES = 30 * 1024 * 1024;
 
 function bufferByteSize(buf: AudioBuffer): number {
   return buf.length * buf.numberOfChannels * 4; // Float32
+}
+
+/** Tracks decoded to more than this are treated as "large" (long podcasts,
+ *  lossless). For these we avoid holding a second concurrent buffer (preload /
+ *  crossfade) and evict the pool, so peak PCM memory stays bounded to roughly
+ *  one current track instead of several. */
+const LARGE_TRACK_BYTES = 120 * 1024 * 1024;
+
+function estimateDecodedBytes(durationSec: number, channels = 2, sampleRate = 44100): number {
+  if (!durationSec || durationSec <= 0) return 0;
+  return Math.ceil(durationSec * sampleRate * channels * 4);
 }
 
 /** Bounded LRU pool for decoded audio buffers with total-byte cap. */
@@ -169,7 +181,6 @@ class AudioEngine {
 
   private eqFilters: BiquadFilterNode[] = [];
   private bassBoostFilter: BiquadFilterNode | null = null;
-  private volumeGain: GainNode | null = null;
   private replayGainNode: GainNode | null = null;
   private balancePanner: StereoPannerNode | null = null;
   private mainGain: GainNode | null = null;
@@ -188,7 +199,13 @@ class AudioEngine {
   private _bandGains: number[] = EQ_FREQUENCIES.map(() => 0);
   private _bassBoostValue = 0;
   private _balanceValue = 0;
-  private _replayGainValue = 1.0;
+  private _rgEnabled = false;
+  private _rgPreampDb = 0;
+  private _rgUseAlbum = false;
+  private _rgTrackGain: number | null = null;
+  private _rgAlbumGain: number | null = null;
+  private _rgTrackPeak: number | null = null;
+  private _rgAlbumPeak: number | null = null;
   private _currentTrackUri: string | null = null;
   private _crossfading = false;
   private _crossfadeInterval: ReturnType<typeof setInterval> | null = null;
@@ -198,10 +215,24 @@ class AudioEngine {
 
   private stateCallbacks: Set<StateChangeCallback> = new Set();
   private trackEndedCallbacks: Set<() => void> = new Set();
+  private decodeErrorCallbacks: Set<(uri: string) => void> = new Set();
   private positionInterval: ReturnType<typeof setInterval> | null = null;
   private loadingLock = false;
+
+  /** Monotonic operation ids. Each load/preload/transition captures the current
+   *  id and discards its result if a newer operation has since started, so a
+   *  slow/stale decode can never overwrite a newer track's buffer. */
+  private loadOpId = 0;
+  private preloadOpId = 0;
+  private gaplessOpId = 0;
+  private crossfadeOpId = 0;
   private interruptionSubscription: AudioEventSubscription | null = null;
+  private duckSubscription: AudioEventSubscription | null = null;
   private _watchdogTimer: ReturnType<typeof setInterval> | null = null;
+  private readonly stateMachine = new PlaybackStateMachine();
+  private _isDucked = false;
+  private _preDuckVolume = 1.0;
+  private _duckFactor = 0.25;
 
   /** Bounded buffer pool for decoded audio */
   private bufferPool = new AudioBufferPool(6);
@@ -213,6 +244,12 @@ class AudioEngine {
   /** Gapless playback support */
   private _gaplessEnabled = false;
   private _gaplessNextUri: string | null = null;
+  private _gaplessNextRg: {
+    trackGain?: number | null;
+    albumGain?: number | null;
+    trackPeak?: number | null;
+    albumPeak?: number | null;
+  } | null = null;
   private _gaplessCheckInterval: ReturnType<typeof setInterval> | null = null;
 
   async init(): Promise<void> {
@@ -240,22 +277,39 @@ class AudioEngine {
       AudioManager.observeAudioInterruptions(true);
       this.interruptionSubscription = AudioManager.addSystemEventListener('interruption', (event) => {
         if (event.type === 'began') {
+          if (this._isDucked) {
+            try {
+              this._restoreFromDuck(false);
+            } catch {}
+          }
           if (this._playing) {
-            this.context?.suspend();
+            this.stateMachine.transition(PlaybackState.Interrupted, 'interruption:began');
+            this.context?.suspend().catch(() => {});
             this._paused = true;
             this._playing = false;
             this.stopPositionTracking();
             this.emitState();
           }
-        } else if (event.type === 'ended' && event.shouldResume) {
-          if (this._paused && !this._playing) {
-            this.context?.resume();
-            this._playing = true;
-            this._paused = false;
-            this.startPositionTracking();
-            this.emitState();
+        } else if (event.type === 'ended') {
+          if (this._isDucked) {
+            this._restoreFromDuck(true);
+          }
+          if (event.shouldResume) {
+            if (this._paused && !this._playing) {
+              this.context?.resume().catch(() => {});
+              this._playing = true;
+              this._paused = false;
+              this.stateMachine.transition(PlaybackState.Playing, 'interruption:resume');
+              this.startPositionTracking();
+              this.emitState();
+            }
+          } else if (this.stateMachine.is(PlaybackState.Interrupted)) {
+            this.stateMachine.transition(PlaybackState.Paused, 'interruption:ended-no-resume');
           }
         }
+      });
+      this.duckSubscription = AudioManager.addSystemEventListener('duck', () => {
+        this._applyDuck();
       });
     } catch (e) {
       reportWarning('AudioEngine', e);
@@ -279,9 +333,6 @@ class AudioEngine {
       this.bassBoostFilter.type = 'lowshelf';
       this.bassBoostFilter.frequency.value = BASS_BOOST_FREQUENCY;
       this.bassBoostFilter.gain.value = 0;
-
-      this.volumeGain = this.context.createGain();
-      this.volumeGain.gain.value = 1.0;
 
       this.replayGainNode = this.context.createGain();
       this.replayGainNode.gain.value = 1.0;
@@ -311,10 +362,9 @@ class AudioEngine {
       const lastEq = this.eqFilters[this.eqFilters.length - 1];
       lastEq.connect(this.bassBoostFilter);
       this.bassBoostFilter.connect(this.replayGainNode);
-      this.replayGainNode.connect(this.volumeGain);
+      this.replayGainNode.connect(this.loudnessFilters[0]);
 
       if (this.loudnessFilters.length > 0) {
-        this.volumeGain.connect(this.loudnessFilters[0]);
         let lastLoudness: BiquadFilterNode | null = null;
         for (const filter of this.loudnessFilters) {
           if (lastLoudness) {
@@ -326,7 +376,7 @@ class AudioEngine {
           lastLoudness.connect(this.balancePanner);
         }
       } else {
-        this.volumeGain.connect(this.balancePanner);
+        this.replayGainNode.connect(this.balancePanner);
       }
 
       this.balancePanner.connect(this.mainGain);
@@ -346,9 +396,9 @@ class AudioEngine {
       if (this.balancePanner) {
         this.balancePanner.pan.setValueAtTime(this._balanceValue / 10, now);
       }
-      if (this.replayGainNode) {
-        this.replayGainNode.gain.setValueAtTime(this._replayGainValue, now);
-      }
+       if (this.replayGainNode) {
+         this._applyReplayGain();
+       }
     } catch (e) {
       logger.warn('[AudioEngine] Failed to build processing chain:', e);
     }
@@ -379,6 +429,28 @@ class AudioEngine {
         cb();
       } catch (e) {
         reportWarning('AudioEngine', e, 'trackEnded callback failed');
+      }
+    });
+  }
+
+  /**
+   * Subscribe to a native "decode error" signal. Fired when a track cannot be
+   * decoded (corrupt/unsupported/missing). Lets the controller skip to the next
+   * track or surface an error instead of leaving playback stuck on a dead buffer.
+   */
+  onDecodeError(callback: (uri: string) => void): () => void {
+    this.decodeErrorCallbacks.add(callback);
+    return () => {
+      this.decodeErrorCallbacks.delete(callback);
+    };
+  }
+
+  private notifyDecodeError(uri: string): void {
+    this.decodeErrorCallbacks.forEach((cb) => {
+      try {
+        cb(uri);
+      } catch (e) {
+        reportWarning('AudioEngine', e, 'decodeError callback failed');
       }
     });
   }
@@ -453,6 +525,11 @@ class AudioEngine {
     }
   }
 
+  private getPreciseCurrentTime(): number {
+    if (!this.context || !this._playing || this._paused || this._duration <= 0) return this._currentTime;
+    return (this.context.currentTime - this._startContextTime) * this._speed + this._startOffset;
+  }
+
   async loadTrack(uri: string): Promise<void> {
     if (this.loadingLock) {
       const lockAcquired = await new Promise<boolean>((resolve) => {
@@ -471,10 +548,13 @@ class AudioEngine {
       }
     }
     this.loadingLock = true;
+    const myOp = ++this.loadOpId;
+    this.stateMachine.transition(PlaybackState.Loading, 'loadTrack');
 
     try {
       await this.init();
       if (!this.context) return;
+      if (myOp !== this.loadOpId) return;
 
       this.stopCurrentSource();
       this.cancelCrossfade();
@@ -486,6 +566,7 @@ class AudioEngine {
         this._duration = pooled.duration;
         this._currentTime = 0;
         this._startOffset = 0;
+        this.stateMachine.transition(PlaybackState.Ready, 'loadTrack:pooled');
         this.emitState();
         return;
       }
@@ -498,6 +579,7 @@ class AudioEngine {
         this._duration = this.currentBuffer.duration;
         this._currentTime = 0;
         this._startOffset = 0;
+        this.stateMachine.transition(PlaybackState.Ready, 'loadTrack:preloaded');
         this.emitState();
         return;
       }
@@ -513,20 +595,32 @@ class AudioEngine {
         this._currentTrackUri = null;
         this.currentBuffer = null;
         this._duration = 0;
+        this.stateMachine.transition(PlaybackState.Error, 'loadTrack:decodeError');
         this.emitState();
+        this.notifyDecodeError(uri);
         return;
       }
+      /* Stale-decode guard: a newer load started while we were decoding.
+         Drop the result so it cannot clobber the current track. */
+      if (myOp !== this.loadOpId) return;
       this.bufferPool.set(uri, buffer, Date.now() - startTs);
+      /* Large tracks can't be pooled; clear the rest of the pool so the only
+         significant PCM retained is this one current buffer. */
+      if (bufferByteSize(buffer) > MAX_POOL_ENTRY_BYTES) {
+        this.bufferPool.clear();
+      }
       this.currentBuffer = buffer;
       this._duration = buffer.duration;
       this._currentTime = 0;
       this._startOffset = 0;
+      this.stateMachine.transition(PlaybackState.Ready, 'loadTrack:ready');
       this.emitState();
     } catch (e) {
       logger.warn('[AudioEngine] loadTrack error:', e);
       this.currentBuffer = null;
       this._duration = 0;
       this._currentTrackUri = null;
+      this.stateMachine.transition(PlaybackState.Error, 'loadTrack:error');
       this.emitState();
     } finally {
       this.loadingLock = false;
@@ -534,16 +628,19 @@ class AudioEngine {
   }
 
   /** Pre-decode a track into the buffer pool so a subsequent loadTrack is instant. */
-  async preloadTrack(uri: string): Promise<void> {
+  async preloadTrack(uri: string, durationSec = 0): Promise<void> {
     if (this._crossfading) return;
     if (this.loadingLock) return;
     if (this.bufferPool.has(uri)) return;
     if (this.preloadedUri === uri && this.preloadedBuffer) return;
+    if (durationSec > 0 && estimateDecodedBytes(durationSec) > LARGE_TRACK_BYTES) return;
     if (!this.context) await this.init();
     if (!this.context) return;
+    const myOp = ++this.preloadOpId;
     try {
       const startTs = Date.now();
       const buffer = await decodeWithTimeout(this.context!, uri, DECODE_TIMEOUT_MS);
+      if (myOp !== this.preloadOpId) return;
       const elapsed = Date.now() - startTs;
       this.bufferPool.set(uri, buffer, elapsed);
       this.preloadedUri = uri;
@@ -583,6 +680,7 @@ class AudioEngine {
       this._startOffset = this._currentTime;
       this._paused = false;
       this._playing = true;
+      this.stateMachine.transition(PlaybackState.Playing, 'play:resume');
       this.startPositionTracking();
       this.emitState();
       return;
@@ -600,6 +698,7 @@ class AudioEngine {
         this._playing = false;
         this._currentTime = this._duration;
         this.stopPositionTracking();
+        this.stateMachine.transition(PlaybackState.Paused, 'onEnded');
         this.emitState();
         this.notifyTrackEnded();
       }
@@ -607,6 +706,7 @@ class AudioEngine {
     this.currentSource.start(0, this._currentTime);
     this._playing = true;
     this._paused = false;
+    this.stateMachine.transition(PlaybackState.Playing, 'play:start');
     this.startPositionTracking();
     this.emitState();
   }
@@ -623,6 +723,7 @@ class AudioEngine {
     }
     this._paused = true;
     this._playing = false;
+    this.stateMachine.transition(PlaybackState.Paused, 'pause');
     this.stopPositionTracking();
     this.emitState();
   }
@@ -632,6 +733,8 @@ class AudioEngine {
     this._playing = false;
     this._paused = false;
     this._currentTime = 0;
+    this.currentBuffer = null;
+    this.stateMachine.transition(PlaybackState.Stopped, 'stop');
     this.stopPositionTracking();
     this.emitState();
   }
@@ -705,8 +808,72 @@ class AudioEngine {
 
   setVolume(volume: number): void {
     this._volume = volume;
-    if (this.mainGain) {
-      this.mainGain.gain.setValueAtTime(volume, this.context?.currentTime ?? 0);
+    if (!this.mainGain || !this.context) return;
+    const now = this.context.currentTime;
+    if (this._isDucked) {
+      this._preDuckVolume = volume;
+      const duckedGain = Math.max(0, volume * this._duckFactor);
+      try {
+        (this.mainGain.gain as any).cancelScheduledValues(now);
+        this.mainGain.gain.setValueAtTime(this.mainGain.gain.value, now);
+        this.mainGain.gain.linearRampToValueAtTime(duckedGain, now + 0.15);
+      } catch {
+        this.mainGain.gain.setValueAtTime(duckedGain, now);
+      }
+      return;
+    }
+    try {
+      (this.mainGain.gain as any).cancelScheduledValues(now);
+      this.mainGain.gain.setValueAtTime(this.mainGain.gain.value, now);
+      this.mainGain.gain.linearRampToValueAtTime(volume, now + 0.05);
+    } catch {
+      this.mainGain.gain.setValueAtTime(volume, now);
+    }
+  }
+
+  isDucked(): boolean {
+    return this._isDucked;
+  }
+
+  private _applyDuck(): void {
+    if (this._isDucked || !this._playing || !this.mainGain || !this.context) return;
+    this._isDucked = true;
+    this._preDuckVolume = this._volume;
+    this.stateMachine.transition(PlaybackState.Ducked, 'duck');
+    const now = this.context.currentTime;
+    const duckedGain = Math.max(0, this._volume * this._duckFactor);
+    try {
+      (this.mainGain.gain as any).cancelScheduledValues(now);
+      this.mainGain.gain.setValueAtTime(this.mainGain.gain.value, now);
+      this.mainGain.gain.linearRampToValueAtTime(duckedGain, now + 0.3);
+    } catch {
+      try {
+        this.mainGain.gain.setValueAtTime(duckedGain, now);
+      } catch {}
+    }
+  }
+
+  private _restoreFromDuck(ramp = true): void {
+    if (!this._isDucked || !this.mainGain || !this.context) {
+      this._isDucked = false;
+      return;
+    }
+    const now = this.context.currentTime;
+    const target = this._preDuckVolume;
+    this._isDucked = false;
+    this.stateMachine.transition(PlaybackState.Playing, 'unduck');
+    try {
+      (this.mainGain.gain as any).cancelScheduledValues(now);
+      this.mainGain.gain.setValueAtTime(this.mainGain.gain.value, now);
+      if (ramp) {
+        this.mainGain.gain.linearRampToValueAtTime(target, now + 0.5);
+      } else {
+        this.mainGain.gain.setValueAtTime(target, now);
+      }
+    } catch {
+      try {
+        this.mainGain.gain.setValueAtTime(target, now);
+      } catch {}
     }
   }
 
@@ -779,14 +946,55 @@ class AudioEngine {
     }
   }
 
-  setReplayGainVolume(volume: number): void {
-    this._replayGainValue = volume;
-    if (this.replayGainNode) {
-      this.replayGainNode.gain.setValueAtTime(
-        volume,
-        this.context?.currentTime ?? 0
-      );
+  /** Configure ReplayGain mode + preamp. Reapplies using the currently stored
+   *  track tags so a runtime toggle/change takes effect on the live graph. */
+  applyReplayGainSettings(opts: {
+    enabled: boolean;
+    preampDb: number;
+    useAlbum: boolean;
+  }): void {
+    this._rgEnabled = opts.enabled;
+    this._rgPreampDb = opts.preampDb;
+    this._rgUseAlbum = opts.useAlbum;
+    this._applyReplayGain();
+  }
+
+  /** Provide the playing track's ReplayGain tags so track vs album gain and
+   *  peak-based clipping prevention are actually applied (not just preamp). */
+  setCurrentTrackReplayGain(tags: {
+    trackGain?: number | null;
+    albumGain?: number | null;
+    trackPeak?: number | null;
+    albumPeak?: number | null;
+  } | null): void {
+    this._rgTrackGain = tags?.trackGain ?? null;
+    this._rgAlbumGain = tags?.albumGain ?? null;
+    this._rgTrackPeak = tags?.trackPeak ?? null;
+    this._rgAlbumPeak = tags?.albumPeak ?? null;
+    this._applyReplayGain();
+  }
+
+  private _applyReplayGain(): void {
+    if (!this.replayGainNode) return;
+    const now = this.context?.currentTime ?? 0;
+    if (!this._rgEnabled) {
+      this.replayGainNode.gain.setValueAtTime(1.0, now);
+      return;
     }
+    const gainDb =
+      this._rgUseAlbum && this._rgAlbumGain != null
+        ? this._rgAlbumGain
+        : (this._rgTrackGain ?? 0);
+    const peak =
+      this._rgUseAlbum && this._rgAlbumPeak != null
+        ? this._rgAlbumPeak
+        : (this._rgTrackPeak ?? 1);
+    let linear = Math.pow(10, (gainDb + this._rgPreampDb) / 20);
+    /* Clipping prevention: never let peak * gain exceed 0 dBFS. */
+    if (peak && peak > 0 && linear * peak > 1) {
+      linear = 1 / peak;
+    }
+    this.replayGainNode.gain.setValueAtTime(linear, now);
   }
 
   setLoudnessEnabled(enabled: boolean): void {
@@ -830,20 +1038,51 @@ class AudioEngine {
     return this._duration;
   }
 
+  getPlaybackState(): PlaybackState {
+    return this.stateMachine.state;
+  }
+
+  onPlaybackStateChange(cb: (next: PlaybackState, prev: PlaybackState | null, trigger: string) => void): () => void {
+    return this.stateMachine.onStateChange(cb);
+  }
+
+  isTransitioningState(): boolean {
+    return this.stateMachine.is(PlaybackState.Loading, PlaybackState.Crossfading, PlaybackState.GaplessTransition);
+  }
+
   async startCrossfade(newUri: string, durationSec: number): Promise<void> {
     if (!this.context || !this.currentBuffer || !this.currentSource) return;
     if (this._crossfading || this.loadingLock) return;
 
     this._crossfading = true;
+    this.stateMachine.transition(PlaybackState.Crossfading, 'crossfade:start');
+    const myOp = ++this.crossfadeOpId;
+
+    /* Never hold two huge PCM buffers at once (long lossless / podcasts).
+       Fall back to a plain transition instead of concurrent crossfade. */
+    if (this.currentBuffer && bufferByteSize(this.currentBuffer) > LARGE_TRACK_BYTES) {
+      this._crossfading = false;
+      this.stateMachine.transition(PlaybackState.Playing, 'crossfade:large-fallback');
+      await this.loadTrack(newUri);
+      this.play();
+      return;
+    }
 
     try {
       const newBuffer = await this.context.decodeAudioData(newUri);
       if (!newBuffer || !this.context) {
         this._crossfading = false;
+        this.stateMachine.transition(PlaybackState.Playing, 'crossfade:decode-null');
+        return;
+      }
+      if (myOp !== this.crossfadeOpId) {
+        this._crossfading = false;
+        this.stateMachine.transition(PlaybackState.Playing, 'crossfade:stale');
         return;
       }
       if (!this._crossfading) {
         this._crossfading = false;
+        this.stateMachine.transition(PlaybackState.Playing, 'crossfade:cancelled');
         return;
       }
 
@@ -914,6 +1153,7 @@ class AudioEngine {
             this._currentTime = 0;
             this._startOffset = 0;
             this._startContextTime = this.context?.currentTime ?? 0;
+            this.stateMachine.transition(PlaybackState.Playing, 'crossfade:complete');
 
             if (this.currentSource) {
               this.currentSource.onEnded = () => {
@@ -921,6 +1161,7 @@ class AudioEngine {
                   this._playing = false;
                   this._currentTime = this._duration;
                   this.stopPositionTracking();
+                  this.stateMachine.transition(PlaybackState.Paused, 'crossfade:onEnded');
                   this.emitState();
                 }
               };
@@ -931,11 +1172,13 @@ class AudioEngine {
         } catch (e) {
           reportWarning('AudioEngine', e, 'Crossfade interval error');
           this.cancelCrossfade();
+          this.stateMachine.transition(PlaybackState.Playing, 'crossfade:intervalError');
         }
       }, stepMs);
     } catch (e) {
       logger.warn('Crossfade failed:', e);
       this._crossfading = false;
+      this.stateMachine.transition(PlaybackState.Playing, 'crossfade:failed');
     }
   }
 
@@ -957,8 +1200,17 @@ class AudioEngine {
   }
 
   /** Set the next track URI for gapless transition */
-  setGaplessNextTrack(uri: string | null): void {
+  setGaplessNextTrack(
+    uri: string | null,
+    rg?: {
+      trackGain?: number | null;
+      albumGain?: number | null;
+      trackPeak?: number | null;
+      albumPeak?: number | null;
+    } | null,
+  ): void {
     this._gaplessNextUri = uri;
+    this._gaplessNextRg = uri ? (rg ?? null) : null;
     if (uri && this._gaplessEnabled) {
       this.startGaplessMonitoring();
     }
@@ -970,11 +1222,18 @@ class AudioEngine {
 
     this._gaplessCheckInterval = setInterval(() => {
       if (!this._playing || this._paused || !this._gaplessNextUri || this._crossfading) return;
-      const remaining = this._duration - this._currentTime;
-      if (remaining <= 2 && remaining > 0) {
+      const precise = this.getPreciseCurrentTime();
+      const remaining = this._duration - precise;
+      // Trigger within ~350ms of the end so only a tiny tail is truncated.
+      // Previously this was 2s, which cut the last 2 seconds of every track.
+      // True sample-accurate scheduling (schedule next start at
+      // context.currentTime + remaining) would require keeping both sources
+      // alive and is left for a dedicated native gapless effort; this reduces
+      // truncation by ~85% with minimal risk.
+      if (remaining <= 0.35 && remaining > 0.02) {
         this.performGaplessTransition();
       }
-    }, 500);
+    }, 100);
   }
 
   private stopGaplessMonitoring(): void {
@@ -989,6 +1248,8 @@ class AudioEngine {
     const nextUri = this._gaplessNextUri;
     this._gaplessNextUri = null;
     this.stopGaplessMonitoring();
+    const myOp = ++this.gaplessOpId;
+    this.stateMachine.transition(PlaybackState.GaplessTransition, 'gapless:start');
 
     try {
       let nextBuffer = this.bufferPool.get(nextUri);
@@ -997,8 +1258,33 @@ class AudioEngine {
       }
       if (!nextBuffer && this.context) {
         nextBuffer = await decodeWithTimeout(this.context, nextUri, DECODE_TIMEOUT_MS);
+        if (myOp !== this.gaplessOpId) {
+          this.stateMachine.transition(PlaybackState.Playing, 'gapless:stale-decode');
+          return;
+        }
       }
-      if (!nextBuffer || !this.context) return;
+      if (!nextBuffer || !this.context) {
+        this.stateMachine.transition(PlaybackState.Playing, 'gapless:no-buffer');
+        return;
+      }
+
+      // Keep the tail: if we were triggered at ~350ms, wait until ~50ms
+      // before the end so the audible loss is negligible. This keeps the
+      // logic simple (still an immediate swap) but preserves ~300ms of audio
+      // that the old 2-second window would have cut.
+      const preciseBeforeSwap = this.getPreciseCurrentTime();
+      const remainingBeforeSwap = this._duration - preciseBeforeSwap;
+      if (remainingBeforeSwap > 0.08) {
+        await new Promise<void>((resolve) => setTimeout(resolve, (remainingBeforeSwap - 0.05) * 1000));
+        if (myOp !== this.gaplessOpId) {
+          this.stateMachine.transition(PlaybackState.Playing, 'gapless:stale-after-wait');
+          return;
+        }
+        if (!this._playing || this._paused || !this.context) {
+          this.stateMachine.transition(PlaybackState.Paused, 'gapless:paused-after-wait');
+          return;
+        }
+      }
 
       this.bufferPool.set(nextUri, nextBuffer, 0);
 
@@ -1007,6 +1293,7 @@ class AudioEngine {
 
       this.currentBuffer = nextBuffer;
       this._currentTrackUri = nextUri;
+      this.setCurrentTrackReplayGain(this._gaplessNextRg);
       this._duration = nextBuffer.duration;
       this._currentTime = 0;
       this._startOffset = 0;
@@ -1026,11 +1313,17 @@ class AudioEngine {
         source.start(0, 0);
         this._playing = wasPlaying;
         this._paused = false;
+        if (wasPlaying) {
+          this.stateMachine.transition(PlaybackState.Playing, 'gapless:complete-playing');
+        } else {
+          this.stateMachine.transition(PlaybackState.Ready, 'gapless:complete-paused');
+        }
         this.startPositionTracking();
         this.emitState();
       }
     } catch (e) {
       reportWarning('AudioEngine', e, 'Gapless transition failed');
+      this.stateMachine.transition(PlaybackState.Error, 'gapless:failed');
     }
   }
 
@@ -1127,6 +1420,16 @@ class AudioEngine {
       }
       this.interruptionSubscription = null;
     }
+    if (this.duckSubscription) {
+      try {
+        this.duckSubscription.remove();
+      } catch (e) {
+        reportWarning('AudioEngine', e);
+      }
+      this.duckSubscription = null;
+    }
+    this._isDucked = false;
+    this.stateMachine.force(PlaybackState.Idle, 'destroy');
     if (this.context) {
       try {
         this.context.close();
@@ -1138,7 +1441,6 @@ class AudioEngine {
     this.eqFilters = [];
     this.trackEndedCallbacks.clear();
     this.bassBoostFilter = null;
-    this.volumeGain = null;
     this.replayGainNode = null;
     this.balancePanner = null;
     this.mainGain = null;
@@ -1148,6 +1450,7 @@ class AudioEngine {
     this.preloadedUri = null;
     this.loudnessFilters = [];
     this.stateCallbacks.clear();
+    this.decodeErrorCallbacks.clear();
     this.loadingLock = false;
     this.bufferPool.clear();
   }
