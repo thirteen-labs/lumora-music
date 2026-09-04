@@ -1,7 +1,17 @@
 import { Platform } from 'react-native';
-import {
-  PlaybackNotificationManager,
-} from 'react-native-audio-api';
+// TrackPlayer now owns the media notification (ExoPlayer/Media3).
+// Keep PlaybackNotificationManager as no-op shim so old callers don't crash.
+const PlaybackNotificationManager: {
+  show?: (data: unknown) => Promise<void>;
+  hide?: () => Promise<void>;
+  enableControl?: (...args: unknown[]) => Promise<void>;
+  addEventListener?: (event: string, handler: () => void) => void;
+} = {
+  show: async () => {},
+  hide: async () => {},
+  enableControl: async () => {},
+  addEventListener: () => {},
+};
 import * as ExpoNotifications from 'expo-notifications';
 import * as FileSystem from 'expo-file-system/legacy';
 import type { Song } from '@/types/media';

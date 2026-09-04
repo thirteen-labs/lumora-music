@@ -5,4 +5,9 @@ import { checkStorageIntegrity } from '@/services/mmkv';
 installGlobalErrorHandler();
 checkStorageIntegrity();
 
+import TrackPlayer from 'react-native-track-player';
+import { PlaybackService } from '@/services/playback-service';
+
+TrackPlayer.registerPlaybackService(() => PlaybackService);
+
 import 'expo-router/entry';

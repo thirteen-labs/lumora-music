@@ -34,15 +34,36 @@ export default function AboutScreen() {
           <View style={{ backgroundColor: colors.surface, borderRadius: 16, overflow: 'hidden' }}>
             {[
               { label: t('about.version'), value: Constants.expoConfig?.version ?? '1.0.1' },
-              { label: t('about.developer'), value: 'Northern Obsidian' },
               { label: t('about.platform'), value: 'React Native / Expo' },
-            ].map((item, i, arr) => (
+            ].map((item) => (
               <View
                 key={item.label}
-                style={[s.flexRow, s.itemsCenter, s.justifyBetween, s.p4]}
+                style={[s.flexRow, s.itemsCenter, s.justifyBetween, s.p4, { borderBottomWidth: 1, borderBottomColor: colors.border }]}
               >
                 <Text style={[s.textSm, s.fontMedium, { color: colors.text }]}>{item.label}</Text>
                 <Text style={[s.textSm, { color: colors.textMuted }]}>{item.value}</Text>
+              </View>
+            ))}
+          </View>
+
+          <Text style={[s.textSm, s.fontBold, s.mt6, s.mb3, { color: colors.text }]}>{t('about.developer')}</Text>
+          <View style={{ backgroundColor: colors.surface, borderRadius: 16, overflow: 'hidden' }}>
+            {[
+              { name: 'Thirteen Labs', image: require('../../assets/thirteen-labs.png') },
+              { name: 'Obsidian Northern', image: require('../../assets/obsidian-northern.png') },
+            ].map((dev, idx, arr) => (
+              <View
+                key={dev.name}
+                style={[
+                  s.flexRow,
+                  s.itemsCenter,
+                  s.gap4,
+                  s.p4,
+                  idx < arr.length - 1 ? { borderBottomWidth: 1, borderBottomColor: colors.border } : null,
+                ]}
+              >
+                <Image source={dev.image} style={{ width: 40, height: 40, borderRadius: 20 }} contentFit="cover" />
+                <Text style={[s.textSm, s.fontMedium, { color: colors.text }]}>{dev.name}</Text>
               </View>
             ))}
           </View>
