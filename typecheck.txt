@@ -1,0 +1,5 @@
+src/services/playback-service.ts(1,10): error TS2305: Module '"react-native"' has no exported member 'NativeEventEmitter'.
+src/services/playback-service.ts(1,30): error TS2305: Module '"react-native"' has no exported member 'NativeModules'.
+src/services/playback-service.ts(2,30): error TS2307: Cannot find module '@/core/Events' or its corresponding type declarations.
+src/services/playback-service.ts(3,35): error TS2307: Cannot find module '@/hooks/useRemoteControls' or its corresponding type declarations.
+src/services/track-player.ts(211,9): error TS2353: Object literal may only specify known properties, and 'seekToAsync' does not exist in type '{ readonly playing: boolean; readonly currentTime: number; readonly duration: number; readonly isBuffering: boolean; readonly isLoaded: boolean; readonly currentTrackUri: string; playbackRate: number; ... 7 more ...; clearLockScreenControls: () => Promise<...>; }'.

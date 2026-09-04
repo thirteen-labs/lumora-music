@@ -15,6 +15,7 @@
     "target": "ESNext",
     "paths": {
       "@/*": ["./src/*"],
+      "@/": ["./src/"],
       "@/assets/*": ["./assets/*"]
     }
   },

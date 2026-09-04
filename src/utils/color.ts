@@ -28,6 +28,26 @@ export function darken(hex: string, amount: number): string {
   return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
 }
 
+export function mix(hexA: string, hexB: string, weight: number): string {
+  const w = Math.max(0, Math.min(1, weight));
+  const r = Math.round(parseInt(hexA.slice(1, 3), 16) * (1 - w) + parseInt(hexB.slice(1, 3), 16) * w);
+  const g = Math.round(parseInt(hexA.slice(3, 5), 16) * (1 - w) + parseInt(hexB.slice(3, 5), 16) * w);
+  const b = Math.round(parseInt(hexA.slice(5, 7), 16) * (1 - w) + parseInt(hexB.slice(5, 7), 16) * w);
+  return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
+}
+
+export function toRgbaChannels(hex: string): [number, number, number] {
+  return [parseInt(hex.slice(1, 3), 16), parseInt(hex.slice(3, 5), 16), parseInt(hex.slice(5, 7), 16)];
+}
+
+export function glassColor(hex: string, alpha: number, isDark: boolean): string {
+  const [r, g, b] = toRgbaChannels(hex);
+  if (isDark) {
+    return `rgba(${Math.min(255, r + 12)}, ${Math.min(255, g + 12)}, ${Math.min(255, b + 12)}, ${alpha})`;
+  }
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
 export function luminance(hex: string): number {
   const r = parseInt(hex.slice(1, 3), 16) / 255;
   const g = parseInt(hex.slice(3, 5), 16) / 255;

@@ -54,8 +54,10 @@ export function setCachedAlbumArtwork(albumId: string, artwork: string): void {
 }
 
 type MetadataRetrieverModule = typeof import('@missingcore/react-native-metadata-retriever');
+type MediaStoreModule = typeof import('@obsidian_north/react-native-mediastore');
 
 let retrieverPromise: Promise<MetadataRetrieverModule | null> | null = null;
+let mediaStorePromise: Promise<MediaStoreModule | null> | null = null;
 
 function loadMetadataRetriever(): Promise<MetadataRetrieverModule | null> {
   if (Platform.OS !== 'android') return Promise.resolve(null);
@@ -70,16 +72,72 @@ function loadMetadataRetriever(): Promise<MetadataRetrieverModule | null> {
   return retrieverPromise;
 }
 
+function loadMediaStore(): Promise<MediaStoreModule | null> {
+  if (Platform.OS !== 'android') return Promise.resolve(null);
+  if (!mediaStorePromise) {
+    mediaStorePromise = import('@obsidian_north/react-native-mediastore')
+      .then((mod) => mod as unknown as MediaStoreModule)
+      .catch(() => null);
+  }
+  return mediaStorePromise;
+}
+
 /**
  * Saves the embedded artwork of a song as a thumbnail file (Android only).
  * Returns a `file://` URI, or null when there is no artwork or saving fails.
  * Paths are cached in MMKV so repeated calls resolve instantly.
+ *
+ * Prefers the latest MediaStore extraction (`getDetailedMetadataByUri` /
+ * `getMetadata(level:full)`) which surfaces embedded artwork via the
+ * artwork field, then falls back to the legacy metadata-retriever saveArtwork.
  */
 export async function saveSongArtworkFile(songUri: string): Promise<string | null> {
   if (Platform.OS !== 'android') return null;
 
   const cached = getCachedSongArtwork(songUri);
   if (cached) return cached;
+
+  // Try latest MediaStore deep extractor first — no extra native dependency
+  try {
+    const ms = await loadMediaStore();
+    if (ms?.getDetailedMetadataByUri) {
+      const detail = await ms.getDetailedMetadataByUri(songUri) as unknown as Record<string, unknown> | null;
+      const artwork = detail?.['artwork'] as { uri?: string; available?: boolean } | string | undefined;
+      const uri = typeof artwork === 'string' ? artwork : artwork?.uri;
+      if (uri && typeof uri === 'string' && uri.length > 0) {
+        // artwork may already be a file:// or content:// URI; if content://,
+        // leave persistence to thumbnail-cache; for file:// we can cache directly
+        if (uri.startsWith('file://')) {
+          setCachedSongArtwork(songUri, uri);
+          return uri;
+        }
+        if (uri.startsWith('content://')) {
+          // content artwork URIs are valid directly; cache them as well
+          setCachedSongArtwork(songUri, uri);
+          return uri;
+        }
+      }
+    }
+    if (ms?.getMetadata) {
+      try {
+        const res = await (ms as unknown as { getMetadata: (u: string, o?: unknown) => Promise<unknown> }).getMetadata(songUri, { level: 'full' });
+        const payload = res as { metadata?: Record<string, unknown> } | Record<string, unknown> | null;
+        const meta: Record<string, unknown> | null = payload && typeof payload === 'object' && 'metadata' in (payload as Record<string, unknown>) && (payload as { metadata?: Record<string, unknown> }).metadata
+          ? (payload as { metadata: Record<string, unknown> }).metadata
+          : (payload as Record<string, unknown>) ?? null;
+        const art = meta?.['artwork'] as string | { uri?: string } | undefined;
+        const uri = typeof art === 'string' ? art : art && typeof art === 'object' ? (art as { uri?: string }).uri : undefined;
+        if (uri && uri.length > 0) {
+          setCachedSongArtwork(songUri, uri);
+          return uri;
+        }
+      } catch {
+        // getMetadata full may fail for some formats — fall through
+      }
+    }
+  } catch {
+    // MediaStore attempt failed — fall through to retriever
+  }
 
   const mr = await loadMetadataRetriever();
   if (!mr?.saveArtwork) return null;

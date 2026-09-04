@@ -1,5 +1,5 @@
 import { useMemo, useRef, type ComponentType } from 'react';
-import { View, Text, ScrollView, Pressable, Switch } from 'react-native';
+import { View, Text, ScrollView, Pressable, Switch, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { ThemeColors } from '@/types/theme';
 import { useTheme } from '@/hooks/use-theme';
@@ -130,41 +130,60 @@ export default function SettingsScreen() {
               <View
                 style={{
                   width: '100%',
-                  height: 160,
-                  borderRadius: 16,
+                  height: 168,
+                  borderRadius: 20,
                   overflow: 'hidden',
                   backgroundColor: colors.card,
+                  borderWidth: StyleSheet.hairlineWidth,
+                  borderColor: colors.glassBorder,
                 }}
               >
                 {backgroundImage ? (
-                  <Image
-                    source={{ uri: backgroundImage }}
-                    style={{ width: '100%', height: '100%' }}
-                    contentFit="cover"
-                  />
+                  <>
+                    <Image
+                      source={{ uri: backgroundImage }}
+                      style={{ width: '100%', height: '100%' }}
+                      contentFit="cover"
+                      transition={300}
+                    />
+                    <View style={[StyleSheet.absoluteFill, { backgroundColor: colors.scrim, opacity: 0.22 }]} />
+                  </>
                 ) : (
                   <View style={[s.flex1, s.itemsCenter, s.justifyCenter, { backgroundColor: colors.card }]}>
-                    <ImageIcon size={32} color={colors.textMuted} />
-                    <Text style={[s.textXs, s.mt2, { color: colors.textMuted }]}>No background set</Text>
+                    <View style={{ width: 52, height: 52, borderRadius: 16, backgroundColor: colors.accentSoft, alignItems: 'center', justifyContent: 'center', marginBottom: 8 }}>
+                      <ImageIcon size={24} color={colors.accent} />
+                    </View>
+                    <Text style={[s.textXs, s.fontSemibold, { color: colors.textMuted }]}>No background set</Text>
+                    <Text style={[s.textXs, { color: colors.textFaint, marginTop: 2 }]}>Tap to add image + glass</Text>
                   </View>
                 )}
                 <View
                   style={{
                     position: 'absolute',
-                    top: 8,
-                    right: 8,
-                    width: 32,
-                    height: 32,
-                    borderRadius: 16,
+                    top: 10,
+                    right: 10,
+                    width: 34,
+                    height: 34,
+                    borderRadius: 17,
                     backgroundColor: colors.accent,
                     alignItems: 'center',
                     justifyContent: 'center',
+                    shadowColor: '#000',
+                    shadowOpacity: 0.22,
+                    shadowRadius: 8,
+                    shadowOffset: { width: 0, height: 4 },
                   }}
                 >
-                  <Pencil size={16} color={colors.background} />
+                  <Pencil size={16} color="#fff" />
                 </View>
+                {backgroundImage && (
+                  <View style={{ position: 'absolute', bottom: 10, left: 10, backgroundColor: 'rgba(0,0,0,0.42)', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999, borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.18)' }}>
+                    <Text style={{ fontSize: 11, fontWeight: '700', color: '#fff', letterSpacing: 0.4 }}>GLASS ACTIVE</Text>
+                  </View>
+                )}
               </View>
               <Text style={[s.textSm, s.fontMedium, s.mt2, { color: colors.text }]}>Background Image</Text>
+              <Text style={[s.textXs, { color: colors.textMuted }]}>Translucent layers & blur polish</Text>
             </Pressable>
             <BackgroundImageModal
               bottomSheetRef={backgroundSheetRef}
@@ -387,8 +406,8 @@ export default function SettingsScreen() {
 function Section({ title, colors, children }: { title: string; colors: ThemeColors; children: React.ReactNode }) {
   return (
     <View style={[s.mb6]}>
-      <Text style={[s.textXs, s.fontBold, s.uppercase, { letterSpacing: 1, color: colors.textMuted }, s.mb3]}>{title}</Text>
-      <View style={{ backgroundColor: colors.surface, borderRadius: 16, overflow: 'hidden' }}>
+      <Text style={[s.textXs, s.fontBold, s.uppercase, { letterSpacing: 1.1, color: colors.textFaint }, s.mb3, s.px1]}>{title}</Text>
+      <View style={{ backgroundColor: colors.surface, borderRadius: 20, overflow: 'hidden', borderWidth: StyleSheet.hairlineWidth, borderColor: colors.glassBorder, shadowColor: '#000', shadowOpacity: colors.pageBackground === 'transparent' ? 0.10 : 0.06, shadowRadius: 16, shadowOffset: { width: 0, height: 8 } }}>
         {children}
       </View>
     </View>
@@ -397,15 +416,17 @@ function Section({ title, colors, children }: { title: string; colors: ThemeColo
 
 function SettingRow({ icon: Icon, label, subtitle, onPress, colors }: { icon: ComponentType<{ size?: number; color?: string }>; label: string; subtitle: string; onPress: () => void; colors: ThemeColors }) {
   return (
-    <Pressable onPress={onPress} style={[s.flexRow, s.itemsCenter, s.gap4, s.p4]}>
-      <View style={[s.w10, s.h10, s.roundedXl, s.itemsCenter, s.justifyCenter, { backgroundColor: colors.accent + '15' }]}>
-        <Icon size={20} color={colors.accent} />
+    <Pressable onPress={onPress} style={[s.flexRow, s.itemsCenter, s.gap4, s.p4, { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border }]}>
+      <View style={[s.w10, s.h10, s.roundedXl, s.itemsCenter, s.justifyCenter, { backgroundColor: colors.accentSoft, borderWidth: StyleSheet.hairlineWidth, borderColor: colors.accent + '14' }]}>
+        <Icon size={18} color={colors.accent} />
       </View>
       <View style={[s.flex1]}>
-        <Text style={[s.textSm, s.fontMedium, { color: colors.text }]}>{label}</Text>
+        <Text style={[s.textSm, s.fontSemibold, { color: colors.text }]}>{label}</Text>
         <Text style={[s.textXs, s.mt05, { color: colors.textMuted }]}>{subtitle}</Text>
       </View>
-      <ChevronRight size={16} color={colors.textMuted} />
+      <View style={{ width: 26, height: 26, borderRadius: 13, backgroundColor: colors.card, alignItems: 'center', justifyContent: 'center', borderWidth: StyleSheet.hairlineWidth, borderColor: colors.border }}>
+        <ChevronRight size={14} color={colors.textMuted} />
+      </View>
     </Pressable>
   );
 }

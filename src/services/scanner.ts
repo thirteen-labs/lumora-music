@@ -292,12 +292,17 @@ function setCachedMetadata(uri: string, meta: {
 
 /**
  * Enriches a song with accurate technical metadata (bitrate, sample rate,
- * channel count, codec) by opening the file via the media-store module's
- * deep metadata extractor. Catalog queries often leave these null, so this
- * fills them in. Results are cached persistently per URI.
+ * channel count, codec) by opening the file via the latest MediaStore
+ * deep extractor (MediaExtractor / AVAsset). Uses:
+ *  - getDetailedMetadataByUri(uri) — full container + audio/video/image metadata
+ *  - getMetadata(uri, {level:"full"}) — fallback unified extractor (3.4.0+)
+ * Catalog queries often leave these null, so this fills them in.
+ * Results are cached persistently per URI.
  */
 async function enrichTechnicalMetadata(song: Song): Promise<Song> {
-  if (!MediaStore?.getDetailedMetadataByUri) return song;
+  const canUseDetailed = !!MediaStore?.getDetailedMetadataByUri;
+  const canUseUnified = !!MediaStore?.getMetadata;
+  if (!canUseDetailed && !canUseUnified) return song;
 
   const cached = _metadataCache[song.uri];
   const hasDetailed =
@@ -310,28 +315,89 @@ async function enrichTechnicalMetadata(song: Song): Promise<Song> {
     return song;
   }
 
-  try {
-    const detail = await MediaStore.getDetailedMetadataByUri(song.uri);
-    const audio = detail?.audio;
-    if (audio) {
-      if (song.bitrate == null && audio.bitrate != null) song.bitrate = audio.bitrate;
-      if (song.sampleRate == null && audio.sampleRate != null) song.sampleRate = audio.sampleRate;
-      song.channels = audio.channels ?? null;
-      song.codec = audio.codec ?? null;
-      setCachedMetadata(song.uri, {
-        title: cached?.title ?? null,
-        artist: cached?.artist ?? null,
-        album: cached?.album ?? null,
-        genre: cached?.genre ?? null,
-        artwork: cached?.artwork ?? null,
-        bitrate: song.bitrate,
-        sampleRate: song.sampleRate,
-        channels: song.channels,
-        codec: song.codec,
-      });
+  // Primary: detailed extractor (most accurate: codec, channels, bitrate, sampleRate)
+  if (canUseDetailed) {
+    try {
+      const detail = await MediaStore!.getDetailedMetadataByUri(song.uri);
+      const audio = (detail as unknown as { audio?: { bitrate?: number; sampleRate?: number; channels?: number; codec?: string } })?.audio;
+      if (audio) {
+        if (song.bitrate == null && audio.bitrate != null) song.bitrate = audio.bitrate;
+        if (song.sampleRate == null && audio.sampleRate != null) song.sampleRate = audio.sampleRate;
+        song.channels = audio.channels ?? song.channels ?? null;
+        song.codec = audio.codec ?? song.codec ?? null;
+        setCachedMetadata(song.uri, {
+          title: cached?.title ?? null,
+          artist: cached?.artist ?? null,
+          album: cached?.album ?? null,
+          genre: cached?.genre ?? null,
+          artwork: cached?.artwork ?? null,
+          bitrate: song.bitrate,
+          sampleRate: song.sampleRate,
+          channels: song.channels,
+          codec: song.codec,
+        });
+        if (song.channels != null || song.codec != null) return song;
+      }
+      // Some devices return flat DetailedMetadata rather than nested audio
+      const flat = detail as unknown as Record<string, unknown> | null;
+      if (flat && (flat['codec'] || flat['channels'] || flat['bitrate'] || flat['sampleRate'])) {
+        if (song.bitrate == null && typeof flat['bitrate'] === 'number') song.bitrate = flat['bitrate'] as number;
+        if (song.sampleRate == null && typeof flat['sampleRate'] === 'number') song.sampleRate = flat['sampleRate'] as number;
+        if (song.channels == null && typeof flat['channels'] === 'number') song.channels = flat['channels'] as number;
+        if (song.codec == null && typeof flat['codec'] === 'string') song.codec = flat['codec'] as string;
+        if (song.channels != null || song.codec != null) {
+          setCachedMetadata(song.uri, {
+            title: cached?.title ?? null,
+            artist: cached?.artist ?? null,
+            album: cached?.album ?? null,
+            genre: cached?.genre ?? null,
+            artwork: cached?.artwork ?? null,
+            bitrate: song.bitrate,
+            sampleRate: song.sampleRate,
+            channels: song.channels,
+            codec: song.codec,
+          });
+          return song;
+        }
+      }
+    } catch (error) {
+      logger.warn('[Scanner] getDetailedMetadataByUri failed:', song.uri, error);
     }
-  } catch (error) {
-    logger.warn('[Scanner] getDetailedMetadataByUri failed:', song.uri, error);
+  }
+
+  // Fallback: unified getMetadata(level:"full") — 3.4.0 MediaStore path that also
+  // uses MediaExtractor / AVAsset and returns MetadataResult {metadata,status}
+  if (canUseUnified) {
+    try {
+      const result: unknown = await (MediaStore as unknown as { getMetadata: (uri: string, opts?: unknown) => Promise<unknown> }).getMetadata(song.uri, { level: 'full' } as unknown as object);
+      const meta = (result as { metadata?: Record<string, unknown> })?.metadata ?? (result as Record<string, unknown>);
+      if (meta) {
+        const bitrate = meta['bitrate'] as number | undefined;
+        const sampleRate = (meta['sampleRate'] ?? meta['sample_rate']) as number | undefined;
+        const channels = (meta['channels'] ?? meta['channelCount'] ?? meta['channel_count']) as number | undefined;
+        const codec = (meta['codec'] ?? meta['codecMime'] ?? meta['encoding']) as string | undefined;
+        let updated = false;
+        if (song.bitrate == null && typeof bitrate === 'number' && bitrate > 0) { song.bitrate = bitrate; updated = true; }
+        if (song.sampleRate == null && typeof sampleRate === 'number' && sampleRate > 0) { song.sampleRate = sampleRate; updated = true; }
+        if (song.channels == null && typeof channels === 'number') { song.channels = channels; updated = true; }
+        if (song.codec == null && typeof codec === 'string' && codec.length > 0) { song.codec = codec; updated = true; }
+        if (updated) {
+          setCachedMetadata(song.uri, {
+            title: cached?.title ?? null,
+            artist: cached?.artist ?? null,
+            album: cached?.album ?? null,
+            genre: cached?.genre ?? null,
+            artwork: cached?.artwork ?? null,
+            bitrate: song.bitrate,
+            sampleRate: song.sampleRate,
+            channels: song.channels,
+            codec: song.codec,
+          });
+        }
+      }
+    } catch (error) {
+      logger.warn('[Scanner] MediaStore.getMetadata(full) fallback failed:', song.uri, error);
+    }
   }
   return song;
 }
@@ -576,6 +642,78 @@ async function parseAudioMetadata(uri: string): Promise<{
   const cached = getCachedMetadata(uri);
   if (cached) return cached;
 
+  // 1) Latest MediaStore unified extractor (3.4.0+): works on Android (MediaExtractor)
+  // and iOS (AVAsset). Prefer this over the legacy metadata-retriever.
+  if (MediaStore?.getMetadata) {
+    try {
+      const res: unknown = await (MediaStore as unknown as { getMetadata: (u: string, o?: unknown) => Promise<unknown> }).getMetadata(uri, { level: 'full' });
+      const payload = res as { metadata?: Record<string, unknown>; status?: string; warnings?: string[] } | Record<string, unknown> | null;
+      const meta: Record<string, unknown> = (payload && typeof payload === 'object' && 'metadata' in (payload as Record<string, unknown>) && (payload as { metadata?: Record<string, unknown> }).metadata)
+        ? (payload as { metadata: Record<string, unknown> }).metadata!
+        : (payload as Record<string, unknown>) ?? {};
+      if (meta && Object.keys(meta).length > 0) {
+        // Check if extraction actually produced tags; otherwise fall through to retriever
+        const hasAny = !!(meta['title'] ?? meta['artist'] ?? meta['albumTitle'] ?? meta['album'] ?? meta['genre'] ?? meta['bitrate'] ?? meta['sampleRate'] ?? meta['artwork'] ?? (meta['audio'] as Record<string, unknown>)?.['bitrate']);
+        if (hasAny) {
+          const audio = (meta['audio'] as Record<string, unknown> | undefined);
+          const artworkFromMeta = (meta['artwork'] as string | undefined) ?? (audio?.['artwork'] as string | undefined) ?? (meta['artworkUri'] as string | undefined) ?? null;
+          // Artwork may be in separate artwork field of DetailedMetadata; try dedicated artwork fetch
+          let artwork: string | null = artworkFromMeta ?? null;
+          if (!artwork) {
+            try { artwork = await saveSongArtworkFile(uri); } catch { /* ignore */ }
+          }
+          const result = {
+            title: String(meta['title'] ?? meta['titleName'] ?? ''),
+            artist: String(meta['artist'] ?? ''),
+            album: String(meta['albumTitle'] ?? meta['album'] ?? ''),
+            genre: String(meta['genre'] ?? ''),
+            artwork,
+            bitrate: Number((audio?.['bitrate'] ?? meta['bitrate'] ?? 0) as number),
+            sampleRate: Number((audio?.['sampleRate'] ?? meta['sampleRate'] ?? 0) as number),
+          };
+          // Only cache if we got something meaningful; status === 'failed' means fallback
+          setCachedMetadata(uri, result);
+          return result;
+        }
+      }
+    } catch (e) {
+      logger.warn('[Scanner] MediaStore.getMetadata(level:full) failed for', uri, e);
+    }
+    // Try detailed extractor as secondary MediaStore path
+    if (MediaStore?.getDetailedMetadataByUri) {
+      try {
+        const detail = await MediaStore.getDetailedMetadataByUri(uri);
+        if (detail) {
+          const d = detail as unknown as Record<string, unknown>;
+          const audio = (d['audio'] as Record<string, unknown> | undefined);
+          const title = (audio?.['title'] ?? d['title']) as string | undefined;
+          const artist = (audio?.['artist'] ?? d['artist']) as string | undefined;
+          const album = (audio?.['album'] ?? d['album']) as string | undefined;
+          const genre = (audio?.['genre'] ?? d['genre']) as string | undefined;
+          let artwork: string | null = null;
+          const art = d['artwork'] as { uri?: string; available?: boolean } | undefined;
+          if (art?.uri) artwork = art.uri;
+          if (!artwork) { try { artwork = await saveSongArtworkFile(uri); } catch { /* ignore */ } }
+          const result = {
+            title: String(title ?? ''),
+            artist: String(artist ?? ''),
+            album: String(album ?? ''),
+            genre: String(genre ?? ''),
+            artwork,
+            bitrate: Number((audio?.['bitrate'] ?? d['bitrate'] ?? 0) as number),
+            sampleRate: Number((audio?.['sampleRate'] ?? d['sampleRate'] ?? 0) as number),
+          };
+          if (result.title || result.artist || result.bitrate) {
+            setCachedMetadata(uri, result);
+            return result;
+          }
+        }
+      } catch (e) {
+        logger.warn('[Scanner] MediaStore.getDetailedMetadataByUri fallback failed for', uri, e);
+      }
+    }
+  }
+
   if (!MetadataRetriever) {
     return { title: null, artist: null, album: null, genre: null, artwork: null, bitrate: null, sampleRate: null };
   }
@@ -803,9 +941,10 @@ async function fetchSongsAndroid(
         await MediaStore.refresh();
       }
 
-      // Page the query so very large libraries don't materialize as a single
-      // giant native array / JS allocation. Limit/offset pagination is provided
-      // by the 3.3 API; we stop once a page returns fewer items than the limit.
+      // Latest 3.4.0 file fetching: paginated MediaStore query.
+      // Uses SortOptions + FilterOptions + PaginationOptions — the canonical
+      // MediaStore primitives. Limit/offset pagination avoids materializing
+      // giant native arrays for large libraries.
       const GET_AUDIO_PAGE_SIZE = 2000;
       const songs: import('@obsidian_north/react-native-mediastore').AudioItem[] = [];
       let offset = 0;
@@ -816,8 +955,8 @@ async function fetchSongsAndroid(
             () =>
               MediaStore.getAudio(
                 { field: MediaStore.SortField.DateAdded, order: MediaStore.SortOrder.Descending },
-                { mimeTypes: ['audio/*'] },
-                { limit: GET_AUDIO_PAGE_SIZE, offset },
+                { mimeTypes: ['audio/*'] } as unknown as import('@obsidian_north/react-native-mediastore').FilterOptions,
+                { limit: GET_AUDIO_PAGE_SIZE, offset } as unknown as import('@obsidian_north/react-native-mediastore').PaginationOptions,
               ),
             'getAudio',
           ),
@@ -884,11 +1023,59 @@ async function fetchSongs(
 }
 
 /**
+ * Resolves album artwork via the latest MediaStore APIs.
+ * 3.4.0 prefers `getArtworkUri(albumId) -> {uri}` and `getArtworkBytes` for
+ * embedded art; `getAlbumArtwork` is kept as a legacy fallback.
+ * Returns a content:// or file:// URI string or null.
+ */
+async function resolveAlbumArtworkUri(albumId: string): Promise<string | null> {
+  if (!MediaStore) return null;
+  // Preferred: getArtworkUri (3.4.0+)
+  if (typeof (MediaStore as unknown as { getArtworkUri?: (id: string) => Promise<unknown> }).getArtworkUri === 'function') {
+    try {
+      const res = await (MediaStore as unknown as { getArtworkUri: (id: string) => Promise<unknown> }).getArtworkUri(albumId);
+      if (typeof res === 'string' && res.length > 0) return res;
+      const obj = res as { uri?: string | null } | null;
+      if (obj && typeof obj.uri === 'string' && obj.uri.length > 0) return obj.uri;
+    } catch (e) {
+      logger.warn('[Scanner] getArtworkUri failed for album:', albumId, e);
+    }
+  }
+  // Secondary: getArtworkBytes -> persisted via thumbnail cache handled elsewhere, but try uri field
+  if (typeof (MediaStore as unknown as { getArtworkBytes?: (id: string) => Promise<unknown> }).getArtworkBytes === 'function') {
+    try {
+      const res = await (MediaStore as unknown as { getArtworkBytes: (id: string) => Promise<unknown> }).getArtworkBytes(albumId);
+      const obj = res as { uri?: string | null } | string | null;
+      if (typeof obj === 'string' && obj.length > 0) return obj;
+      if (obj && typeof (obj as { uri?: string | null }).uri === 'string' && (obj as { uri: string }).uri.length > 0) return (obj as { uri: string }).uri;
+    } catch {
+      // silent — not all albums have bytes
+    }
+  }
+  // Legacy fallback: getAlbumArtwork (deprecated but still present in 3.4.0 build)
+  if (typeof (MediaStore as unknown as { getAlbumArtwork?: (id: string) => Promise<unknown> }).getAlbumArtwork === 'function') {
+    try {
+      const legacy = await (MediaStore as unknown as { getAlbumArtwork: (id: string) => Promise<unknown> }).getAlbumArtwork(albumId);
+      if (typeof legacy === 'string' && legacy.length > 0) return legacy;
+    } catch (e) {
+      logger.warn('[Scanner] getAlbumArtwork legacy failed for album:', albumId, e);
+    }
+  }
+  return null;
+}
+
+/**
  * Assigns MediaStore album artwork (content URIs) to songs that lack artwork.
  * Results are cached by album id so the MediaStore is not re-queried on every scan.
+ * Uses the latest `getArtworkUri` API (3.4.0) with legacy fallback.
  */
 async function enrichAlbumArtwork(songs: Song[]): Promise<void> {
-  if (!MediaStore || typeof MediaStore.getAlbumArtwork !== 'function') return;
+  const hasAnyArtworkApi =
+    !!MediaStore &&
+    (typeof (MediaStore as unknown as { getArtworkUri?: unknown }).getArtworkUri === 'function' ||
+      typeof (MediaStore as unknown as { getAlbumArtwork?: unknown }).getAlbumArtwork === 'function' ||
+      typeof (MediaStore as unknown as { getArtworkBytes?: unknown }).getArtworkBytes === 'function');
+  if (!hasAnyArtworkApi) return;
 
   const albumIds = [...new Set(songs.map((s) => s.albumId).filter(Boolean))];
   await Promise.all(
@@ -896,8 +1083,8 @@ async function enrichAlbumArtwork(songs: Song[]): Promise<void> {
       try {
         let artwork = getCachedAlbumArtwork(albumId);
         if (!artwork) {
-          const fetched = await MediaStore.getAlbumArtwork(albumId);
-          if (fetched && typeof fetched === 'string' && fetched.length > 0) {
+          const fetched = await resolveAlbumArtworkUri(albumId);
+          if (fetched) {
             artwork = fetched;
             setCachedAlbumArtwork(albumId, fetched);
           }
@@ -909,7 +1096,7 @@ async function enrichAlbumArtwork(songs: Song[]): Promise<void> {
           }
         }
       } catch (error) {
-        logger.warn('[Scanner] getAlbumArtwork failed for album:', albumId, error);
+        logger.warn('[Scanner] enrichAlbumArtwork failed for album:', albumId, error);
       }
     }),
   );
@@ -956,6 +1143,113 @@ export async function syncIncrementalIfChanged(): Promise<boolean> {
     logger.warn('[Scanner] refreshIncremental failed:', e);
   }
   return false;
+}
+
+// ---------------------------------------------------------------------------
+// Latest MediaStore 3.4.0 — additional file fetching & metadata helpers
+// Exposed for library-tools, diagnostics, and anywhere else that needs the
+// newest primitives without re-importing the native module.
+// ---------------------------------------------------------------------------
+
+/** Latest file-fetching: unified library query (audio/video/image/document) with statistics. */
+export async function fetchLibraryOverview(options?: {
+  types?: Array<'audio' | 'video' | 'image' | 'document'>;
+  includeStatistics?: boolean;
+}): Promise<import('@obsidian_north/react-native-mediastore').LibraryQueryResult | null> {
+  if (!MediaStore?.getLibraryQuery) return null;
+  try {
+    return await (MediaStore as unknown as { getLibraryQuery: (o?: unknown) => Promise<import('@obsidian_north/react-native-mediastore').LibraryQueryResult> }).getLibraryQuery({
+      types: options?.types ?? ['audio'],
+      includeStatistics: options?.includeStatistics ?? true,
+    });
+  } catch (e) {
+    logger.warn('[Scanner] getLibraryQuery failed:', e);
+    return null;
+  }
+}
+
+/** Latest metadata extraction: deep file inspection (sources, field provenance, warnings). */
+export async function inspectFileMetadata(uri: string): Promise<import('@obsidian_north/react-native-mediastore').MetadataInspectionResult | null> {
+  if (!MediaStore?.inspectMetadata) return null;
+  try {
+    return await MediaStore.inspectMetadata(uri);
+  } catch (e) {
+    logger.warn('[Scanner] inspectMetadata failed:', uri, e);
+    return null;
+  }
+}
+
+/** Latest metadata extraction: unified getMetadata with level control. */
+export async function fetchMetadataWithLevel(uri: string, level: 'basic' | 'standard' | 'full' | 'raw' = 'full'): Promise<import('@obsidian_north/react-native-mediastore').MetadataResult | null> {
+  if (!MediaStore?.getMetadata) return null;
+  try {
+    return await (MediaStore as unknown as { getMetadata: (u: string, o?: unknown) => Promise<import('@obsidian_north/react-native-mediastore').MetadataResult> }).getMetadata(uri, { level });
+  } catch (e) {
+    logger.warn('[Scanner] getMetadata failed:', uri, e);
+    return null;
+  }
+}
+
+/** Latest artwork APIs: thin wrappers around getArtworkUri / getArtworkBytes (3.4.0). */
+export async function fetchArtworkUri(albumId: string): Promise<string | null> {
+  return resolveAlbumArtworkUri(albumId);
+}
+
+/** Latest file-fetching: single item lookup by content URI (Android) or PHAsset URI (iOS). */
+export async function fetchMediaByUri(uri: string): Promise<import('@obsidian_north/react-native-mediastore').AudioItem | null> {
+  if (!MediaStore?.getByUri) return null;
+  try {
+    const item = await MediaStore.getByUri(uri);
+    return item as unknown as import('@obsidian_north/react-native-mediastore').AudioItem | null;
+  } catch (e) {
+    logger.warn('[Scanner] getByUri failed:', uri, e);
+    return null;
+  }
+}
+
+/** Latest diagnostics: folder statistics for storage breakdown screens. */
+export async function fetchFolderStatistics(folderPath?: string): Promise<import('@obsidian_north/react-native-mediastore').FolderStatistics[] | null> {
+  if (!MediaStore?.getFolderStatistics) return null;
+  try {
+    return await MediaStore.getFolderStatistics(folderPath);
+  } catch (e) {
+    logger.warn('[Scanner] getFolderStatistics failed:', e);
+    return null;
+  }
+}
+
+/** Latest library insight: duplicate audio detection (hash-based). */
+export async function fetchDuplicateAudio(): Promise<import('@obsidian_north/react-native-mediastore').DuplicateItem[] | null> {
+  if (!MediaStore?.getDuplicates) return null;
+  try {
+    return await MediaStore.getDuplicates('audio');
+  } catch (e) {
+    logger.warn('[Scanner] getDuplicates failed:', e);
+    return null;
+  }
+}
+
+/** Latest search: cross-type search with sort/filter/pagination. */
+export async function searchMediaLibrary(
+  query: string,
+  options?: {
+    types?: Array<'audio' | 'video' | 'image' | 'document'>;
+    filter?: import('@obsidian_north/react-native-mediastore').FilterOptions;
+    pagination?: import('@obsidian_north/react-native-mediastore').PaginationOptions;
+  },
+): Promise<import('@obsidian_north/react-native-mediastore').SearchResult | null> {
+  if (!MediaStore?.search) return null;
+  try {
+    return await MediaStore.search({
+      query,
+      types: options?.types ?? ['audio'],
+      filter: options?.filter,
+      pagination: options?.pagination,
+    });
+  } catch (e) {
+    logger.warn('[Scanner] search failed:', query, e);
+    return null;
+  }
 }
 
 export async function scanMediaLibrary(

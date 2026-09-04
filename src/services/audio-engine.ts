@@ -1,10 +1,9 @@
 /**
- * Compatibility shim — legacy audio-engine API now backed by react-native-track-player.
+ * Compatibility shim — backed by obsidian-media-player via track-player adapter.
  * Keeps equalizer/balance/replay-gain stores from crashing while we run on the
- * native Media3/AVFoundation player. DSP features are stubbed with warning (TP
+ * native Media3/AVFoundation player. DSP features are stubbed with warning (obsidian
  * does not expose parametric EQ; add native equalizer later if needed).
  */
-import TrackPlayer, { Event, State } from "react-native-track-player";
 import { getPlayer } from "@/services/track-player";
 import { reportWarning } from "@/utils/error-handler";
 import { logger } from "@/utils/logger";
@@ -25,16 +24,16 @@ class AudioEngineCompat {
   private _currentUri: string | null = null;
 
   async init(): Promise<void> {
-    // track-player's setupPlayer already called by PlayerProvider
     try {
       const { setupPlayer } = await import("@/services/track-player");
       await setupPlayer();
     } catch {}
   }
+
   async ensureAlive(): Promise<boolean> {
     try {
-      const s = await TrackPlayer.getPlaybackState();
-      return s.state !== State.None;
+      const s = await getPlayer();
+      return !!(s && s.playing);
     } catch {
       return false;
     }
@@ -64,41 +63,16 @@ class AudioEngineCompat {
     return () => {};
   }
   onStateChange(cb: StateChangeCallback): () => void {
-    const sub1 = TrackPlayer.addEventListener(Event.PlaybackState, ({ state }) => {
-      cb({
-        playing: state === State.Playing,
-        currentTime: getPlayer().currentTime,
-        duration: getPlayer().duration,
-        isBuffering: state === State.Buffering,
-        isLoaded: state !== State.None,
-        currentTrackUri: getPlayer().currentTrackUri,
-      });
-    });
-    const sub2 = TrackPlayer.addEventListener(Event.PlaybackProgressUpdated, ({ position, duration }) => {
-      cb({
-        playing: getPlayer().playing,
-        currentTime: position,
-        duration,
-        isBuffering: false,
-        isLoaded: true,
-        currentTrackUri: getPlayer().currentTrackUri,
-      });
-    });
-    return () => { try{ sub1.remove(); }catch{} try{ sub2.remove(); }catch{} };
+    const sub = getPlayer().currentTime; // placeholder - use use-track-player-sync instead
+    return () => {};
   }
   onTrackEnded(cb: () => void): () => void {
-    const sub = TrackPlayer.addEventListener(Event.PlaybackQueueEnded, () => cb());
-    const sub2 = TrackPlayer.addEventListener(Event.PlaybackActiveTrackChanged, () => {
-      // when last track ends, TP emits queue ended — also cover single-track end
-    });
-    return () => { try{ sub.remove(); }catch{} try{ sub2.remove(); }catch{} };
+    // stub - use use-track-player-sync for track end handling
+    return () => {};
   }
   onDecodeError(cb: (uri: string) => void): () => void {
-    const sub = TrackPlayer.addEventListener(Event.PlaybackError, (e: unknown) => {
-      const uri = (e as { track?: { url?: string } })?.track?.url ?? "";
-      cb(uri);
-    });
-    return () => { try{ sub.remove(); }catch{} };
+    // stub - use use-track-player-sync for decode error handling
+    return () => {};
   }
 
   // ---- legacy graph controls (no-ops, keep store alive) ----
@@ -109,17 +83,17 @@ class AudioEngineCompat {
     logger.warn(`[AudioEngineCompat] ${msg}`);
   }
   buildProcessingChain() {}
-  setVolume(v: number) { this._volume = v; TrackPlayer.setVolume(v).catch(()=>{}); }
-  setSpeed(s: number) { this._speed = s; TrackPlayer.setRate(s).catch((e)=>reportWarning("AudioEngine", e)); }
-  setPitchCorrection(_v: boolean) { this.warnOnce("pitch","Pitch correction not supported on TrackPlayer — stores rate only"); }
-  setEqEnabled(_v: boolean) { this.warnOnce("eq","EQ stubbed — TrackPlayer has no parametric EQ yet"); }
+  setVolume(v: number) { this._volume = v; getPlayer().volume = v; }
+  setSpeed(s: number) { this._speed = s; getPlayer().playbackRate = s; }
+  setPitchCorrection(_v: boolean) { this.warnOnce("pitch","Pitch correction not supported on obsidian — stores rate only"); }
+  setEqEnabled(_v: boolean) { this.warnOnce("eq","EQ stubbed — obsidian has no parametric EQ yet"); }
   setBandGain(_i: number, _g: number) {}
   setBandGains(_b: unknown[]) {}
   setBassBoost(_v: number) {}
   setBalance(_v: number) {}
   setLoudnessEnabled(_v: boolean) {}
   setLoudnessLevel(_v: number) {}
-  applyReplayGainSettings(_o: unknown) { this.warnOnce("rg","ReplayGain stubbed on TrackPlayer"); }
+  applyReplayGainSettings(_o: unknown) { this.warnOnce("rg","ReplayGain stubbed on obsidian"); }
   setCurrentTrackReplayGain(_t: unknown) {}
   setGaplessEnabled(_v: boolean) {}
   isGaplessEnabled() { return false; }
@@ -127,10 +101,10 @@ class AudioEngineCompat {
   preloadTrack(_u: string, _d?: number) {}
   getBufferPoolStats() { return { size: 0, maxCount: 0, hitRate: 0, avgDecodeMs: 0, totalBytes: 0 }; }
   async loadTrack(uri: string) { this._currentUri = uri; const { loadTrack } = await import("@/services/track-player"); await loadTrack({ id: uri, uri, title: uri.split("/").pop()||uri, artist: "", album: "", albumId: "", duration: 0, fileSize: 0, dateAdded: 0, artwork: null, genre: null, bitrate: null, sampleRate: null, channels: null, codec: null } as never); }
-  play() { TrackPlayer.play().catch(()=>{}); }
-  pause() { TrackPlayer.pause().catch(()=>{}); }
-  stop() { TrackPlayer.stop().catch(()=>{}); }
-  seekTo(p: number) { TrackPlayer.seekTo(p).catch(()=>{}); }
+  play() { getPlayer().play().catch(()=>{}); }
+  pause() { getPlayer().pause().catch(()=>{}); }
+  stop() { getPlayer().clearLockScreenControls().catch(()=>{}); }
+  seekTo(p: number) { getPlayer().seekTo(p).catch(()=>{}); }
   isCrossfading() { return false; }
   async startCrossfade(_u: string, _d: number) { this.warnOnce("xfade","Crossfade stubbed — will be re-implemented with queue"); }
   isDucked() { return false; }

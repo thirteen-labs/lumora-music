@@ -1,9 +1,11 @@
-import { View, Text, Pressable } from 'react-native';
+import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Search, Settings, ChevronLeft } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { s } from '@/styles';
 import { useTheme } from '@/hooks/use-theme';
+import { BlurView } from 'expo-blur';
+import { useSettingsStore } from '@/store/settings-store';
 
 interface TopBarProps {
   showSearch?: boolean;
@@ -16,15 +18,24 @@ interface TopBarProps {
 export function TopBar({ showSearch = true, showSettings = true, title, showBack = false, rightElement }: TopBarProps) {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
+  const hasImage = !!useSettingsStore((s) => s.backgroundImage);
 
   return (
     <View
       style={[s.wFull, s.overflowHidden, {
         paddingTop: insets.top,
-        backgroundColor: colors.pageBackground,
+        backgroundColor: hasImage ? 'transparent' : colors.pageBackground,
+        borderBottomWidth: hasImage ? StyleSheet.hairlineWidth : 0,
+        borderBottomColor: hasImage ? colors.glassBorder : 'transparent',
       }]}
     >
+      {hasImage && (
+        <BlurView intensity={26} tint={isDark ? 'dark' : 'light'} style={StyleSheet.absoluteFill} />
+      )}
+      {hasImage && (
+        <View style={[StyleSheet.absoluteFill, { backgroundColor: colors.surfaceGlass, opacity: 0.92 }]} />
+      )}
       <View style={[s.flexRow, s.itemsCenter, s.justifyBetween, s.px5, s.py3]}>
         <View style={[s.flexRow, s.itemsCenter]}>
           {showBack && (
@@ -65,12 +76,14 @@ export function TopBar({ showSearch = true, showSettings = true, title, showBack
                 <Pressable
                   onPress={() => router.push('/search')}
                   style={[s.w11, s.h11, s.roundedFull, s.itemsCenter, s.justifyCenter, {
-                    backgroundColor: colors.surface,
-                    elevation: 3,
+                    backgroundColor: hasImage ? colors.glass : colors.surface,
+                    borderWidth: hasImage ? StyleSheet.hairlineWidth : 0,
+                    borderColor: hasImage ? colors.glassBorder : 'transparent',
+                    elevation: hasImage ? 0 : 3,
                     shadowColor: '#000',
-                    shadowOpacity: 0.15,
-                    shadowRadius: 4,
-                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: hasImage ? 0.08 : 0.15,
+                    shadowRadius: 8,
+                    shadowOffset: { width: 0, height: 4 },
                   }]}
                 >
                   <Search size={20} color={colors.text} />
@@ -80,12 +93,14 @@ export function TopBar({ showSearch = true, showSettings = true, title, showBack
                 <Pressable
                   onPress={() => router.push('/(tabs)/settings')}
                   style={[s.w11, s.h11, s.roundedFull, s.itemsCenter, s.justifyCenter, {
-                    backgroundColor: colors.surface,
-                    elevation: 3,
+                    backgroundColor: hasImage ? colors.glass : colors.surface,
+                    borderWidth: hasImage ? StyleSheet.hairlineWidth : 0,
+                    borderColor: hasImage ? colors.glassBorder : 'transparent',
+                    elevation: hasImage ? 0 : 3,
                     shadowColor: '#000',
-                    shadowOpacity: 0.15,
-                    shadowRadius: 4,
-                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: hasImage ? 0.08 : 0.15,
+                    shadowRadius: 8,
+                    shadowOffset: { width: 0, height: 4 },
                   }]}
                 >
                   <Settings size={20} color={colors.text} />

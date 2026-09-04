@@ -1,5 +1,5 @@
 import React, { useRef } from 'react';
-import { View, Text, Pressable } from 'react-native';
+import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { usePlayerStore } from '@/store/player-store';
 import { playerActions } from '@/player/actions';
@@ -12,6 +12,8 @@ import { useRouter } from 'expo-router';
 import { Artwork } from '@/components/artwork';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { SongContextMenu, useSongContextMenu } from '@/components/song-context-menu';
+import { BlurView } from 'expo-blur';
+import { useSettingsStore } from '@/store/settings-store';
 
 const CIRCUMFERENCE = 2 * Math.PI * 17;
 
@@ -21,11 +23,12 @@ export const MiniPlayer = React.memo(function MiniPlayer() {
   const isPlaying = usePlayerStore((s) => s.isPlaying);
   const position = usePlayerStore((s) => s.position);
   const duration = usePlayerStore((s) => s.duration);
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { bottomSheetRef, present, song } = useSongContextMenu();
   const navigatingRef = useRef(false);
+  const hasImage = !!useSettingsStore((s) => s.backgroundImage);
 
   if (!isMiniPlayerVisible || !currentTrack) return null;
 
@@ -78,10 +81,12 @@ export const MiniPlayer = React.memo(function MiniPlayer() {
   const composed = Gesture.Exclusive(pan, tap, longPress);
 
   return (
-    <View style={s.wFull}>
-      <View style={{ backgroundColor: colors.pageBackground, paddingBottom: insets.bottom }}>
-        <View style={[s.wFull, s.h2px, { backgroundColor: colors.border }]}>
-          <View style={[s.hFull, { width: `${progress * 100}%`, backgroundColor: colors.accent }]} />
+    <View style={[s.wFull, { overflow: 'hidden', borderTopWidth: hasImage ? StyleSheet.hairlineWidth : 0, borderTopColor: hasImage ? colors.glassBorder : 'transparent' }]}>
+      <View style={{ backgroundColor: hasImage ? colors.surfaceGlass : colors.pageBackground, paddingBottom: insets.bottom, overflow: 'hidden' }}>
+        {hasImage && <BlurView intensity={26} tint={isDark ? 'dark' : 'light'} style={StyleSheet.absoluteFill} />}
+        {hasImage && <View style={[StyleSheet.absoluteFill, { backgroundColor: colors.surface, opacity: 0.52 }]} />}
+        <View style={[s.wFull, s.h2px, { backgroundColor: hasImage ? colors.glassBorder : colors.border }]}>
+          <View style={[s.hFull, { width: `${progress * 100}%`, backgroundColor: colors.accent, shadowColor: colors.accent, shadowOpacity: 0.5, shadowRadius: 4 }]} />
         </View>
         <View style={[s.flexRow, s.itemsCenter, s.px4, s.py3, s.gap3]}>
           <GestureDetector gesture={composed}>
@@ -110,12 +115,12 @@ export const MiniPlayer = React.memo(function MiniPlayer() {
               </Text>
             </View>
           </GestureDetector>
-          <Pressable onPress={playerActions.togglePlay} hitSlop={8} style={[s.w10, s.h10, s.roundedFull, s.itemsCenter, s.justifyCenter, { backgroundColor: colors.card }]}
+          <Pressable onPress={playerActions.togglePlay} hitSlop={8} style={[s.w10, s.h10, s.roundedFull, s.itemsCenter, s.justifyCenter, { backgroundColor: hasImage ? colors.glass : colors.card, borderWidth: hasImage ? StyleSheet.hairlineWidth : 0, borderColor: colors.glassBorder }]}
             accessibilityLabel={isPlaying ? 'Pause' : 'Play'}
             accessibilityRole={'button' as const}
           >
             <Svg width={40} height={40} style={{ position: 'absolute' }}>
-              <Circle cx={20} cy={20} r={17} stroke={colors.border} strokeWidth={3} fill="none" />
+              <Circle cx={20} cy={20} r={17} stroke={hasImage ? colors.glassBorder : colors.border} strokeWidth={3} fill="none" />
               <G transform={`rotate(-90, 20, 20)`}>
                 <Circle
                   cx={20} cy={20} r={17}
@@ -132,7 +137,7 @@ export const MiniPlayer = React.memo(function MiniPlayer() {
               <Play size={18} color={colors.accent} fill={colors.accent} />
             )}
           </Pressable>
-          <Pressable onPress={playerActions.next} hitSlop={8} style={[s.w10, s.h10, s.roundedFull, s.itemsCenter, s.justifyCenter, { backgroundColor: colors.card }]}
+          <Pressable onPress={playerActions.next} hitSlop={8} style={[s.w10, s.h10, s.roundedFull, s.itemsCenter, s.justifyCenter, { backgroundColor: hasImage ? colors.glass : colors.card, borderWidth: hasImage ? StyleSheet.hairlineWidth : 0, borderColor: colors.glassBorder }]}
             accessibilityLabel="Skip forward"
             accessibilityRole={'button' as const}
           >

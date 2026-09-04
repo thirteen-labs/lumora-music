@@ -1,5 +1,7 @@
 import { useEffect, useState, useRef, useCallback, ReactNode } from 'react';
 import { View, Text, Pressable, ActivityIndicator, Platform, AppState } from 'react-native';
+import { watchForAudioIntents } from '@/services/intent-handler';
+import { useTheme } from '@/hooks/use-theme';
 import { setupPlayer, setCrossfadeEnabled, setCrossfadeDuration, loadTrack, pausePlayback, seekTo as serviceSeekTo, ensurePlayerAlive, destroyPlayer, setGaplessEnabled, setPlayTogetherEnabled } from '@/services/track-player';
 import { useTrackPlayerSync } from '@/hooks/use-track-player-sync';
 import { useSettingsStore } from '@/store/settings-store';
@@ -15,8 +17,6 @@ import { syncIncrementalIfChanged } from '@/services/scanner';
 import { useLoudnessEnhancerStore } from '@/store/loudness-enhancer-store';
 import { usePlaybackSpeedStore, subscribePlaybackSpeed } from '@/store/playback-speed-store';
 import { audioEngine } from '@/services/audio-engine';
-import { watchForAudioIntents } from '@/services/intent-handler';
-import { useTheme } from '@/hooks/use-theme';
 import { reportWarning, persistCrashLog } from '@/utils/error-handler';
 import { checkStorageIntegrity } from '@/services/mmkv';
 import { initDatabase } from '@/db/database';
@@ -277,7 +277,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
                   try {
                     const { AudioManager } = await import('react-native-audio-api');
                   AudioManager.setAudioSessionActivity(true);
-                } catch { /* set audio session failed */ }
+                  } catch { /* set audio session failed */ }
                 }
               }
               return;
@@ -307,7 +307,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
           const { AudioManager } = await import('react-native-audio-api');
           AudioManager.setAudioSessionActivity(true);
         } catch {
-          /* keep audio session active failed */
+          /* keep audio session activity failed */
         }
         saveStateBeforeExit();
       }
@@ -332,37 +332,6 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     if (!ready) return;
     return watchForAudioIntents();
   }, [ready]);
-
-  useEffect(() => {
-    if (!ready) return;
-    let healthCheckFails = 0;
-    const interval = setInterval(async () => {
-      try {
-        const alive = await ensurePlayerAlive();
-        if (alive) {
-          healthCheckFails = 0;
-        } else {
-          healthCheckFails++;
-        }
-      } catch (e) {
-        healthCheckFails++;
-        if (healthCheckFails > 3) {
-          reportWarning('PlayerProvider', e, 'Audio engine unreachable after multiple checks');
-          healthCheckFails = 0;
-        }
-      }
-    }, 30000);
-    return () => clearInterval(interval);
-  }, [ready]);
-
-  useEffect(() => {
-    const unsub = useMusicStore.subscribe((state, prev) => {
-      if (!restoreAttemptedRef.current && state.songs.length > 0 && prev.songs.length === 0) {
-        restoreQueue();
-      }
-    });
-    return unsub;
-  }, [restoreQueue]);
 
   useEffect(() => {
     try {

@@ -14,6 +14,7 @@ html, body, #root, main {
 html {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 
 :root {
@@ -22,18 +23,40 @@ html {
   --font-rounded: "SF Pro Rounded", ui-rounded, system-ui, sans-serif;
   --font-serif: Georgia, "Times New Roman", serif;
 
-  --color-background: #000000;
-  --color-surface: #121212;
-  --color-text: #FFFFFF;
-  --color-accent: #00E5FF;
-  --color-primary: #00E5FF;
-  --color-secondary: #66EFFF;
-  --color-border: #2A2A2A;
-  --color-card: #1E1E1E;
+  --color-background: #070A12;
+  --color-surface: #0F111A;
+  --color-surfaceHigh: #1A1E30;
+  --color-surfaceMuted: #13151F;
+  --color-text: #F0F2FA;
+  --color-accent: #7C82F8;
+  --color-accentMuted: rgba(124,130,248,0.22);
+  --color-accentSoft: rgba(124,130,248,0.14);
+  --color-primary: #7C82F8;
+  --color-secondary: #9AA0FF;
+  --color-border: rgba(255,255,255,0.08);
+  --color-borderLight: rgba(255,255,255,0.12);
+  --color-card: #181B2A;
+  --color-cardElevated: #1E2236;
   --color-notification: #EF4444;
   --color-success: #22C55E;
   --color-warning: #F59E0B;
   --color-info: #3B82F6;
-  --color-text-secondary: rgba(255, 255, 255, 0.7);
-  --color-text-muted: rgba(255, 255, 255, 0.5);
+  --color-text-secondary: rgba(240,242,250,0.68);
+  --color-text-muted: rgba(240,242,250,0.45);
+  --color-text-faint: rgba(240,242,250,0.32);
+  --color-pageBackground: #070A12;
+  --color-overlay: rgba(0,0,0,0.45);
+  --color-scrim: rgba(0,0,0,0.62);
+  --color-glass: rgba(24,27,42,0.72);
+  --color-glassBorder: rgba(255,255,255,0.10);
+  --color-surfaceGlass: rgba(24,27,42,0.58);
+}
+
+/* Premium scrollbar & selection */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border) transparent;
+}
+::selection {
+  background: var(--color-accentSoft);
 }

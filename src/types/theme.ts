@@ -1,12 +1,18 @@
 export interface ThemeColors {
   background: string;
   surface: string;
+  surfaceHigh: string;
+  surfaceMuted: string;
   text: string;
   accent: string;
+  accentMuted: string;
+  accentSoft: string;
   primary: string;
   secondary: string;
   border: string;
+  borderLight: string;
   card: string;
+  cardElevated: string;
   notification: string;
   success: string;
   warning: string;
@@ -14,7 +20,13 @@ export interface ThemeColors {
   error: string;
   textSecondary: string;
   textMuted: string;
+  textFaint: string;
   pageBackground: string;
+  overlay: string;
+  scrim: string;
+  glass: string;
+  glassBorder: string;
+  surfaceGlass: string;
 }
 
 export interface ThemeSpacing {
@@ -43,10 +55,17 @@ export interface ThemeShadows {
   lg: { boxShadow: string };
 }
 
+export interface ThemeGradients {
+  background: string[];
+  card: string[];
+  accent: string[];
+}
+
 export interface Theme {
   id: string;
   name: string;
   colors: ThemeColors;
+  gradients: ThemeGradients;
   isDark: boolean;
   spacing: ThemeSpacing;
   borderRadius: ThemeBorderRadius;

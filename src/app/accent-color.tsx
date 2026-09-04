@@ -1,9 +1,9 @@
-import { View, Text, ScrollView, Pressable } from 'react-native';
+import { View, Text, ScrollView, Pressable, StyleSheet } from 'react-native';
 import { s } from '@/styles';
 import { useTheme } from '@/hooks/use-theme';
 import { useRouter } from 'expo-router';
 import { useSettingsStore } from '@/store/settings-store';
-import { ChevronLeft, Check, Palette, X } from 'lucide-react-native';
+import { ChevronLeft, Check, Palette, X, Sparkles } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const ACCENT_COLORS = [
@@ -28,37 +28,56 @@ export default function AccentColorScreen() {
   return (
     <View style={[s.flex1, { backgroundColor: colors.pageBackground }]}>
       <View style={[s.flexRow, s.itemsCenter, s.gap3, s.px5, { paddingTop: insets.top + 12 }, s.pb4]}>
-        <Pressable onPress={() => router.back()} style={[s.w11, s.h11, s.roundedFull, s.itemsCenter, s.justifyCenter, { backgroundColor: colors.surface }]}>
+        <Pressable onPress={() => router.back()} style={[s.w11, s.h11, s.roundedFull, s.itemsCenter, s.justifyCenter, { backgroundColor: colors.surface, borderWidth: StyleSheet.hairlineWidth, borderColor: colors.glassBorder }]}>
           <ChevronLeft size={22} color={colors.text} />
         </Pressable>
-        <View style={[s.w10, s.h10, s.roundedXl, s.itemsCenter, s.justifyCenter, { backgroundColor: colors.accent + '20' }]}>
+        <View style={[s.w10, s.h10, s.roundedXl, s.itemsCenter, s.justifyCenter, { backgroundColor: colors.accentSoft, borderWidth: StyleSheet.hairlineWidth, borderColor: colors.accent + '14' }]}>
           <Palette size={20} color={colors.accent} />
         </View>
-        <Text style={[s.textLg, s.fontBold, { color: colors.text }]}>Accent Color</Text>
+        <View style={s.flex1}>
+          <Text style={[s.textLg, s.fontBold, { color: colors.text }]}>Accent Color</Text>
+          <Text style={[s.textXs, { color: colors.textMuted }]}>Tint glass & highlights</Text>
+        </View>
       </View>
       <ScrollView contentContainerStyle={{ paddingBottom: 120 + insets.bottom, paddingTop: 8 }} showsVerticalScrollIndicator={false}>
         <View style={s.px5}>
+          <View style={[s.flexRow, s.itemsCenter, s.gap2, s.mb4, s.px4, s.py3, { backgroundColor: colors.accentSoft, borderRadius: 14, borderWidth: StyleSheet.hairlineWidth, borderColor: colors.accent + '18' }]}>
+            <Sparkles size={14} color={colors.accent} />
+            <Text style={[s.textXs, s.fontMedium, { color: colors.textSecondary }]}>Overrides theme accent — affects glass border & player</Text>
+          </View>
           {accentOverride && (
             <Pressable
               onPress={() => setAccentOverride(null)}
-              style={[s.flexRow, s.itemsCenter, s.gap3, s.mb4, s.py3, s.px4, s.roundedXl, { backgroundColor: colors.surface }]}
+              style={[s.flexRow, s.itemsCenter, s.gap3, s.mb4, s.py3, s.px4, s.roundedXl, { backgroundColor: colors.surface, borderWidth: StyleSheet.hairlineWidth, borderColor: colors.glassBorder }]}
             >
-              <X size={16} color={colors.textMuted} />
-              <Text style={[s.textSm, s.fontMedium, { color: colors.textMuted }]}>Reset to theme default</Text>
+              <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: colors.card, alignItems: 'center', justifyContent: 'center', borderWidth: StyleSheet.hairlineWidth, borderColor: colors.border }}>
+                <X size={14} color={colors.textMuted} />
+              </View>
+              <Text style={[s.textSm, s.fontSemibold, { color: colors.text }]}>Reset to theme default</Text>
             </Pressable>
           )}
-          <View style={{ backgroundColor: colors.surface, borderRadius: 16, overflow: 'hidden' }}>
-            {ACCENT_COLORS.map((c, i) => (
-              <Pressable
-                key={c.id}
-                onPress={() => setAccentOverride(c.color)}
-                style={[s.flexRow, s.itemsCenter, s.gap4, s.p4]}
-              >
-                <View style={[s.w10, s.h10, s.roundedFull, { backgroundColor: c.color }]} />
-                <Text style={[s.flex1, s.textSm, s.fontMedium, { color: colors.text }]}>{c.label}</Text>
-                {accentOverride === c.color && <Check size={18} color={colors.accent} />}
-              </Pressable>
-            ))}
+          <View style={{ backgroundColor: colors.surface, borderRadius: 20, overflow: 'hidden', borderWidth: StyleSheet.hairlineWidth, borderColor: colors.glassBorder }}>
+            {ACCENT_COLORS.map((c) => {
+              const isActive = accentOverride === c.color;
+              return (
+                <Pressable
+                  key={c.id}
+                  onPress={() => setAccentOverride(c.color)}
+                  style={[s.flexRow, s.itemsCenter, s.gap4, s.p4, { backgroundColor: isActive ? colors.accentSoft : 'transparent', borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border }]}
+                >
+                  <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: c.color, borderWidth: 2, borderColor: isActive ? '#fff' : 'rgba(255,255,255,0.12)', shadowColor: c.color, shadowOpacity: isActive ? 0.32 : 0.12, shadowRadius: 8, shadowOffset: { width: 0, height: 4 } }} />
+                  <View style={s.flex1}>
+                    <Text style={[s.textSm, s.fontSemibold, { color: colors.text }]}>{c.label}</Text>
+                    <Text style={[s.textXs, { color: colors.textMuted }]}>{c.color}</Text>
+                  </View>
+                  {isActive && (
+                    <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: colors.accent, alignItems: 'center', justifyContent: 'center' }}>
+                      <Check size={14} color="#fff" strokeWidth={3} />
+                    </View>
+                  )}
+                </Pressable>
+              );
+            })}
           </View>
         </View>
       </ScrollView>
