@@ -64,7 +64,7 @@ const GRADIENT_STEPS = [0, 0.18, 0.36, 0.54, 0.72, 0.88, 1];
 function FauxGradient({ height }: { height: number }) {
   return (
     <View
-      style={[StyleSheet.absoluteFillObject, { height, justifyContent: 'flex-end' }]}
+      style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height }}
       pointerEvents="none"
     >
       {GRADIENT_STEPS.map((t) => (
@@ -77,16 +77,18 @@ function FauxGradient({ height }: { height: number }) {
   );
 }
 
-function AnimatedBlock({ children, key }: { children: ReactNode; key?: string | number }) {
+function AnimatedBlock({ children, pageIndex }: { children: ReactNode; pageIndex: number }) {
   const fade = useMemo(() => new Animated.Value(0), []);
   const slide = useMemo(() => new Animated.Value(26), []);
 
   useEffect(() => {
+    fade.setValue(0);
+    slide.setValue(26);
     Animated.parallel([
       Animated.timing(fade, { toValue: 1, duration: 480, useNativeDriver: true }),
       Animated.timing(slide, { toValue: 0, duration: 480, useNativeDriver: true }),
     ]).start();
-  }, [fade, slide]);
+  }, [fade, slide, pageIndex]);
 
   return (
     <Animated.View style={{ opacity: fade, transform: [{ translateY: slide }] }}>
@@ -186,8 +188,12 @@ export default function OnboardingScreen() {
         pagingEnabled
         bounces={false}
         showsHorizontalScrollIndicator={false}
+        removeClippedSubviews={false}
+        initialNumToRender={PAGES.length}
+        windowSize={PAGES.length}
+        getItemLayout={(_, i) => ({ length: SCREEN_W, offset: SCREEN_W * i, index: i })}
         onMomentumScrollEnd={onMomentumEnd as any}
-        style={StyleSheet.absoluteFillObject}
+        style={styles.list}
         renderItem={({ item }) => (
           <View style={[styles.page, { width: SCREEN_W, height: SCREEN_H }]}>
             <Image
@@ -197,12 +203,13 @@ export default function OnboardingScreen() {
               transition={350}
               cachePolicy="memory-disk"
               priority="high"
+              onError={(e) => console.warn('[Onboarding] image failed', e.error)}
             />
           </View>
         )}
       />
 
-      <View style={StyleSheet.absoluteFillObject} pointerEvents="none">
+      <View style={styles.overlay} pointerEvents="none">
         <View style={styles.scrim} />
         <FauxGradient height={SCREEN_H * 0.52} />
       </View>
@@ -218,7 +225,7 @@ export default function OnboardingScreen() {
       </View>
 
       <View style={[styles.bottom, { paddingBottom: insets.bottom + 30 }]}>
-        <AnimatedBlock key={index}>
+        <AnimatedBlock pageIndex={index}>
           <Text style={[styles.eyebrow, { color: colors.accent }]}>{t(page.eyebrow)}</Text>
           <Text style={styles.title}>{t(page.title)}</Text>
           <Text style={styles.subtitle}>{t(page.subtitle)}</Text>
@@ -247,7 +254,9 @@ export default function OnboardingScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  page: { flex: 1 },
+  list: { flex: 1 },
+  page: { flex: 1, backgroundColor: '#151a30' },
+  overlay: { ...StyleSheet.absoluteFillObject },
   scrim: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(8,10,22,0.30)' },
   topBar: {
     position: 'absolute',
