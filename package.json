@@ -6,7 +6,7 @@
     "@gorhom/bottom-sheet": "^5.2.14",
     "@hookform/resolvers": "^5.5.7",
     "@missingcore/react-native-metadata-retriever": "^3.2.1",
-    "@obsidian_north/react-native-mediastore": "^3.5.3",
+    "@obsidian_north/react-native-mediastore": "^3.5.4",
     "@react-native-community/slider": "5.2.0",
     "@shopify/flash-list": "2.0.2",
     "babel-preset-expo": "~57.0.0",
