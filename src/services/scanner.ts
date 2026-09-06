@@ -593,24 +593,37 @@ function estimateFileSizeFromBitrate(bitrate: number | null, sampleRate: number 
 }
 
 /**
- * Best-effort ReplayGain extraction. Previously read the R128 track gain via
- * @missingcore/react-native-metadata-retriever (removed: it pulled a forked
- * Media3 via JitPack that duplicated androidx.media3 classes and broke
- * release builds). No equivalent API exists on the MediaStore module, so this
- * is currently a stub returning nulls — the engine falls back to preamp-only
- * and skips peak clipping. Gated on the RG setting to keep the call cheap.
+ * Best-effort ReplayGain extraction via the MediaStore vNext audio engine
+ * (`getAudioMetadata().replayGain`). The native layer owns tag reading and
+ * R128 Q8.8 → dB normalization on both Android and iOS, preferring R128
+ * over ReplayGain 1.0 when both exist. Untagged files yield nulls (the engine
+ * then falls back to preamp-only and skips peak clipping). Gated on the RG
+ * setting so we don't pay an extra native call per file for users who don't
+ * use ReplayGain.
  */
-async function parseReplayGain(_uri: string): Promise<{
+async function parseReplayGain(uri: string): Promise<{
   trackGain: number | null;
   albumGain: number | null;
   trackPeak: number | null;
   albumPeak: number | null;
 }> {
-  void _uri;
+  const empty = { trackGain: null, albumGain: null, trackPeak: null, albumPeak: null };
   if (!useReplayGainStore.getState().enabled) {
-    return { trackGain: null, albumGain: null, trackPeak: null, albumPeak: null };
+    return empty;
   }
-  return { trackGain: null, albumGain: null, trackPeak: null, albumPeak: null };
+  try {
+    const ms = await import('@obsidian_north/react-native-mediastore');
+    const rg = (await ms.getAudioMetadata(uri))?.replayGain;
+    if (!rg) return empty;
+    return {
+      trackGain: rg.trackGain,
+      albumGain: rg.albumGain,
+      trackPeak: rg.trackPeak,
+      albumPeak: rg.albumPeak,
+    };
+  } catch {
+    return empty;
+  }
 }
 
 async function parseAudioMetadata(uri: string): Promise<{

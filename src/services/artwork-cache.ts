@@ -74,8 +74,8 @@ function loadMediaStore(): Promise<MediaStoreModule | null> {
  *
  * Uses the MediaStore deep extractor (`getDetailedMetadataByUri` /
  * `getMetadata(level:full)`) which surfaces embedded artwork via the
- * artwork field. Returns null when MediaStore yields nothing — callers fall
- * back to album art or `persistThumbnail` for durability.
+ * artwork field, then falls back to the dedicated artwork engine
+ * (`saveArtwork`) which persists embedded art to a cache file.
  */
 export async function saveSongArtworkFile(songUri: string): Promise<string | null> {
   if (Platform.OS !== 'android') return null;
@@ -122,10 +122,22 @@ export async function saveSongArtworkFile(songUri: string): Promise<string | nul
       }
     }
   } catch {
-    // MediaStore attempt failed
-    return null;
+    // MediaStore metadata attempt failed — fall through to artwork engine
   }
 
+  // Fallback: dedicated artwork engine — extracts embedded art to a cache
+  // file with format preservation (no lossy recompression by default).
+  try {
+    const ms = await loadMediaStore();
+    const saved = await ms?.saveArtwork(songUri);
+    const uri = saved?.uri;
+    if (uri && typeof uri === 'string' && uri.length > 0) {
+      setCachedSongArtwork(songUri, uri);
+      return uri;
+    }
+  } catch (e) {
+    reportWarning('ArtworkCache', e, `Failed to save artwork for ${songUri}`);
+  }
   return null;
 }
 
