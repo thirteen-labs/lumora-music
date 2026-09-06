@@ -214,7 +214,7 @@ export async function persistThumbnail(sourceUri: string): Promise<string | null
 export async function resolveArtworkForPlayer(sourceUri: string | null | undefined): Promise<string | undefined> {
   if (!sourceUri) return undefined;
   if (sourceUri.startsWith('http://') || sourceUri.startsWith('https://')) return sourceUri;
-  // file:// from metadata-retriever is already durable, but still index it
+  // file:// artwork URIs are already durable, but still index them
   if (sourceUri.startsWith('file://')) {
     await putEntry(sourceUri, sourceUri).catch(() => {});
     return sourceUri;

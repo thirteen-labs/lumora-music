@@ -53,24 +53,9 @@ export function setCachedAlbumArtwork(albumId: string, artwork: string): void {
   writeMap(ALBUM_ARTWORK_KEY, map);
 }
 
-type MetadataRetrieverModule = typeof import('@missingcore/react-native-metadata-retriever');
 type MediaStoreModule = typeof import('@obsidian_north/react-native-mediastore');
 
-let retrieverPromise: Promise<MetadataRetrieverModule | null> | null = null;
 let mediaStorePromise: Promise<MediaStoreModule | null> | null = null;
-
-function loadMetadataRetriever(): Promise<MetadataRetrieverModule | null> {
-  if (Platform.OS !== 'android') return Promise.resolve(null);
-  if (!retrieverPromise) {
-    retrieverPromise = import('@missingcore/react-native-metadata-retriever')
-      .then((mod) => mod)
-      .catch((e) => {
-        reportWarning('ArtworkCache', e, 'Metadata retriever unavailable');
-        return null;
-      });
-  }
-  return retrieverPromise;
-}
 
 function loadMediaStore(): Promise<MediaStoreModule | null> {
   if (Platform.OS !== 'android') return Promise.resolve(null);
@@ -87,9 +72,10 @@ function loadMediaStore(): Promise<MediaStoreModule | null> {
  * Returns a `file://` URI, or null when there is no artwork or saving fails.
  * Paths are cached in MMKV so repeated calls resolve instantly.
  *
- * Prefers the latest MediaStore extraction (`getDetailedMetadataByUri` /
+ * Uses the MediaStore deep extractor (`getDetailedMetadataByUri` /
  * `getMetadata(level:full)`) which surfaces embedded artwork via the
- * artwork field, then falls back to the legacy metadata-retriever saveArtwork.
+ * artwork field. Returns null when MediaStore yields nothing — callers fall
+ * back to album art or `persistThumbnail` for durability.
  */
 export async function saveSongArtworkFile(songUri: string): Promise<string | null> {
   if (Platform.OS !== 'android') return null;
@@ -136,24 +122,10 @@ export async function saveSongArtworkFile(songUri: string): Promise<string | nul
       }
     }
   } catch {
-    // MediaStore attempt failed — fall through to retriever
+    // MediaStore attempt failed
+    return null;
   }
 
-  const mr = await loadMetadataRetriever();
-  if (!mr?.saveArtwork) return null;
-
-  try {
-    const saved = await mr.saveArtwork(songUri, {
-      compress: 0.85,
-      format: mr.SaveFormat.JPEG,
-    });
-    if (saved && typeof saved === 'string' && saved.startsWith('file:')) {
-      setCachedSongArtwork(songUri, saved);
-      return saved;
-    }
-  } catch (e) {
-    reportWarning('ArtworkCache', e, `Failed to save artwork for ${songUri}`);
-  }
   return null;
 }
 
@@ -168,9 +140,6 @@ export async function enrichMissingArtwork(
   onProgress?: (updated: number) => void,
 ): Promise<Record<string, string>> {
   if (Platform.OS !== 'android') return {};
-
-  const mr = await loadMetadataRetriever();
-  if (!mr?.saveArtwork) return {};
 
   const missing = songs.filter((s) => !s.artwork);
   if (missing.length === 0) return {};

@@ -80,7 +80,6 @@
       "bundler": "metro"
     },
     "plugins": [
-      "./plugins/with-media3-exclude",
       "./plugins/with-music-player-intents",
       "expo-router",
       [

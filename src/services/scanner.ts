@@ -43,7 +43,6 @@ export interface ScanDiagnostics {
   android: boolean;
   mediaStore: boolean;
   mediaLibrary: boolean;
-  metadataRetriever: boolean;
   fileSystem: boolean;
 }
 
@@ -120,10 +119,6 @@ let MediaLibrary: {
   getAssetInfoAsync?: (assetId: string) => Promise<{ fileSize?: number; size?: number; localUri?: string }>;
   MediaType?: { audio: string };
 } | null = null;
-let MetadataRetriever: {
-  MetadataPresets: Record<string, string[]>;
-  getMetadata: (uri: string, fields: string[]) => Promise<Record<string, unknown>>;
-} | null = null;
 let FileSystemLegacy: {
   getInfoAsync: (uri: string) => Promise<{ exists: boolean; size?: number }>;
 } | null = null;
@@ -184,12 +179,6 @@ async function loadModules(): Promise<boolean> {
     } catch (e2) {
       reportWarning('Scanner', e2, 'Failed to load expo-media-library');
     }
-  }
-  try {
-    const mr = await import('@missingcore/react-native-metadata-retriever');
-    MetadataRetriever = mr as unknown as typeof MetadataRetriever;
-  } catch (e) {
-    reportWarning('Scanner', e, 'Metadata parsing disabled');
   }
   try {
     const fs = await import('expo-file-system/legacy');
@@ -475,7 +464,6 @@ function getDiagnostics(): ScanDiagnostics {
     android: isAndroid,
     mediaStore: !!MediaStore,
     mediaLibrary: !!MediaLibrary,
-    metadataRetriever: !!MetadataRetriever,
     fileSystem: !!FileSystemLegacy,
   };
 }
@@ -605,29 +593,24 @@ function estimateFileSizeFromBitrate(bitrate: number | null, sampleRate: number 
 }
 
 /**
- * Best-effort ReplayGain extraction. The metadata library only exposes a single
- * R128 track gain (Android), so that is used as the track gain; album gain and
- * peaks are not surfaced by the public API and stay null (the engine then falls
- * back to preamp-only and skips peak clipping). Gated on the RG setting so we
- * don't pay an extra native call per file for users who don't use ReplayGain.
+ * Best-effort ReplayGain extraction. Previously read the R128 track gain via
+ * @missingcore/react-native-metadata-retriever (removed: it pulled a forked
+ * Media3 via JitPack that duplicated androidx.media3 classes and broke
+ * release builds). No equivalent API exists on the MediaStore module, so this
+ * is currently a stub returning nulls — the engine falls back to preamp-only
+ * and skips peak clipping. Gated on the RG setting to keep the call cheap.
  */
-async function parseReplayGain(uri: string): Promise<{
+async function parseReplayGain(_uri: string): Promise<{
   trackGain: number | null;
   albumGain: number | null;
   trackPeak: number | null;
   albumPeak: number | null;
 }> {
+  void _uri;
   if (!useReplayGainStore.getState().enabled) {
     return { trackGain: null, albumGain: null, trackPeak: null, albumPeak: null };
   }
-  try {
-    const mod: any = await import('@missingcore/react-native-metadata-retriever');
-    const gain = await mod.getR128Gain?.(uri);
-    const trackGain = typeof gain === 'number' && isFinite(gain) ? gain : null;
-    return { trackGain, albumGain: null, trackPeak: null, albumPeak: null };
-  } catch {
-    return { trackGain: null, albumGain: null, trackPeak: null, albumPeak: null };
-  }
+  return { trackGain: null, albumGain: null, trackPeak: null, albumPeak: null };
 }
 
 async function parseAudioMetadata(uri: string): Promise<{
@@ -642,8 +625,8 @@ async function parseAudioMetadata(uri: string): Promise<{
   const cached = getCachedMetadata(uri);
   if (cached) return cached;
 
-  // 1) Latest MediaStore unified extractor (3.4.0+): works on Android (MediaExtractor)
-  // and iOS (AVAsset). Prefer this over the legacy metadata-retriever.
+  // Latest MediaStore unified extractor (3.4.0+): works on Android (MediaExtractor)
+  // and iOS (AVAsset).
   if (MediaStore?.getMetadata) {
     try {
       const res: unknown = await (MediaStore as unknown as { getMetadata: (u: string, o?: unknown) => Promise<unknown> }).getMetadata(uri, { level: 'full' });
@@ -714,34 +697,11 @@ async function parseAudioMetadata(uri: string): Promise<{
     }
   }
 
-  if (!MetadataRetriever) {
-    return { title: null, artist: null, album: null, genre: null, artwork: null, bitrate: null, sampleRate: null };
-  }
-  try {
-    const fields = [
-      ...MetadataRetriever.MetadataPresets.standard,
-      'genre',
-      'bitrate',
-      'sampleRate',
-    ];
-    const meta = await MetadataRetriever.getMetadata(uri, fields);
-    const artwork = await saveSongArtworkFile(uri);
-
-    const result = {
-      title: String(meta.title ?? ''),
-      artist: String(meta.artist ?? ''),
-      album: String(meta.albumTitle ?? ''),
-      genre: String(meta.genre ?? ''),
-      artwork,
-      bitrate: Number(meta.bitrate ?? 0),
-      sampleRate: Number(meta.sampleRate ?? 0),
-    };
-    setCachedMetadata(uri, result);
-    return result;
-  } catch (error) {
-    logger.warn('[Scanner] parseAudioMetadata failed for:', uri, error);
-    return { title: null, artist: null, album: null, genre: null, artwork: null, bitrate: null, sampleRate: null };
-  }
+  // No further fallback: the legacy @missingcore metadata-retriever was removed
+  // (forked Media3 via JitPack duplicated androidx.media3 classes and broke
+  // release builds). MediaStore deep extraction above + filename parsing at
+  // the call site cover tagging.
+  return { title: null, artist: null, album: null, genre: null, artwork: null, bitrate: null, sampleRate: null };
 }
 
 async function processMediaStoreItem(

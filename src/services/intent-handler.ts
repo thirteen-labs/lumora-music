@@ -51,8 +51,8 @@ async function buildSongFromUri(uri: string): Promise<Song> {
   } = {};
 
   // Prefer latest MediaStore extraction (Android: MediaExtractor, iOS: AVAsset).
-  // Falls back to legacy metadata-retriever for older devices.
-  let usedMediaStore = false;
+  // When it yields nothing, filename parsing below provides the fallback.
+  let found = false;
   try {
     const ms = await import('@obsidian_north/react-native-mediastore');
     if (ms.getMetadata) {
@@ -75,10 +75,10 @@ async function buildSongFromUri(uri: string): Promise<Song> {
         };
         // Consider success if any tag or technical field was populated or status != failed
         const status = (payload as { status?: string })?.status;
-        if (status !== 'failed' && (meta.title || meta.artist || meta.bitrate || meta.duration)) usedMediaStore = true;
+        if (status !== 'failed' && (meta.title || meta.artist || meta.bitrate || meta.duration)) found = true;
       }
     }
-    if (!usedMediaStore && ms.getDetailedMetadataByUri) {
+    if (!found && ms.getDetailedMetadataByUri) {
       const detail = await ms.getDetailedMetadataByUri(uri) as unknown as Record<string, unknown> | null;
       if (detail) {
         const audio = detail['audio'] as Record<string, unknown> | undefined;
@@ -93,12 +93,12 @@ async function buildSongFromUri(uri: string): Promise<Song> {
             sampleRate: (audio?.['sampleRate']) as number | null | undefined,
             channelCount: (audio?.['channels']) as number | null | undefined,
           };
-          if (meta.title || meta.bitrate || meta.duration) usedMediaStore = true;
+          if (meta.title || meta.bitrate || meta.duration) found = true;
         }
       }
     }
     // Try URI catalog lookup as last MediaStore resort (provides title/album/artist without opening file)
-    if (!usedMediaStore && ms.getByUri) {
+    if (!found && ms.getByUri) {
       try {
         const item = await ms.getByUri(uri) as unknown as Record<string, unknown> | null;
         if (item && (item['title'] || item['artist'])) {
@@ -112,20 +112,12 @@ async function buildSongFromUri(uri: string): Promise<Song> {
             sampleRate: item['sampleRate'] as number | null | undefined,
             channelCount: item['channels'] as number | null | undefined,
           };
-          usedMediaStore = true;
+          found = true;
         }
       } catch { /* getByUri optional */ }
     }
   } catch (e) {
     logger.warn('[IntentHandler] MediaStore metadata extraction failed:', e);
-  }
-  if (!usedMediaStore) {
-    try {
-      const mr = await import('@missingcore/react-native-metadata-retriever');
-      meta = await mr.getMetadata(uri, [...mr.MetadataPresets.standard, 'genre']);
-    } catch (e) {
-      logger.warn('[IntentHandler] metadata extraction failed:', e);
-    }
   }
 
   let artwork: string | null = null;
