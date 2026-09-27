@@ -29,11 +29,27 @@ jobs:
           distribution: temurin
           java-version: 17
 
+      # NOTE: the `packages` input is split on SPACES ONLY (not newlines) by the
+      # action, so it must stay a single space-separated line.
+      #
+      # The action's built-in default is 'tools platform-tools'. The legacy
+      # `tools` package no longer exists in the Android SDK repository, so the
+      # default makes this step fail with:
+      #   Warning: Failed to find package 'tools'
+      #   sdkmanager failed with exit code 1
+      # Overriding `packages` drops `tools` and pins the exact SDK components
+      # this project compiles against (see react-native/gradle/libs.versions.toml).
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          packages: 'platform-tools platforms;android-36 build-tools;36.0.0 ndk;27.1.12297006'
+          accept-android-sdk-licenses: true
 
-      - name: Accept Android SDK licenses
-        run: yes | sdkmanager --licenses || true
+      - name: Verify Android SDK
+        run: |
+          sdkmanager --version
+          adb --version
+          sdkmanager --list_installed
 
       - name: Install dependencies
         run: npm ci
