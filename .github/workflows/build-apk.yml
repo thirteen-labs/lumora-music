@@ -108,13 +108,41 @@ jobs:
         run: chmod +x android/gradlew
 
       - name: Build APK
-        run: cd android && ./gradlew assembleRelease --no-daemon --stacktrace
+        # pipefail is required: GitHub runs `bash -e`, which takes the exit status
+        # of the LAST command in a pipeline, so `tee` alone would mask a Gradle
+        # failure and report this step as green.
+        run: |
+          set -o pipefail
+          cd android
+          ./gradlew assembleRelease --no-daemon --stacktrace 2>&1 | tee ../gradle-build.log
         env:
           NODE_OPTIONS: --max_old_space_size=8192
           # expo-constants warns "The NODE_ENV environment variable is required
           # but was not specified" during createExpoConfig. Release bundling
           # wants production semantics, so set it explicitly.
           NODE_ENV: production
+
+      # GitHub gates job-log downloads behind auth, and a Gradle failure is
+      # buried thousands of lines into the log. Keep the log as an artifact and
+      # surface the root cause on the run page.
+      - name: Upload build log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gradle-build-log-${{ github.sha }}
+          path: gradle-build.log
+          retention-days: 14
+
+      - name: Summarize build failure
+        if: failure()
+        run: |
+          {
+            echo "### Gradle failure summary"
+            echo
+            echo '```'
+            grep -nE "What went wrong:|Execution failed for task|CXX[0-9]+|NoMatchingLibraryException|Caused by:|CMake Error|FAILURE: Build failed|error: |^e: " gradle-build.log | head -60 || echo "(no matching lines)"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
