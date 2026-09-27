@@ -84,30 +84,16 @@ jobs:
             -keypass "${{ secrets.ANDROID_KEY_PASSWORD }}" \
             -dname "CN=Lumora, OU=Dev, O=CadmusLabs, L=Earth, ST=Earth, C=US"
 
+      # Declares a `release` signingConfig AND repoints buildTypes.release at it.
+      # The Expo template hardcodes `signingConfig signingConfigs.debug` in the
+      # release build type, so adding a signing config alone yields a
+      # debug-signed "release" APK. Secrets are passed via env, not interpolated
+      # into a shell string.
       - name: Patch build.gradle for release signing
-        run: |
-          node -e "
-          const fs = require('fs');
-          const gradlePath = 'android/app/build.gradle';
-          let content = fs.readFileSync(gradlePath, 'utf8');
-
-          const releaseSigning = \`
-              release {
-                  storeFile file('release.keystore')
-                  storePassword '${{ secrets.ANDROID_KEYSTORE_PASSWORD }}'
-                  keyAlias 'lumora'
-                  keyPassword '${{ secrets.ANDROID_KEY_PASSWORD }}'
-              }
-          \`;
-
-          content = content.replace(
-            /signingConfigs\s*\{/,
-            'signingConfigs {' + releaseSigning
-          );
-
-          fs.writeFileSync(gradlePath, content);
-          console.log('Patched build.gradle with release signing config');
-          "
+        env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: node scripts/patch-release-signing.js
 
       - name: Cache Gradle dependencies
         uses: actions/cache@v4
