@@ -111,6 +111,10 @@ jobs:
         run: cd android && ./gradlew assembleRelease --no-daemon --stacktrace
         env:
           NODE_OPTIONS: --max_old_space_size=8192
+          # expo-constants warns "The NODE_ENV environment variable is required
+          # but was not specified" during createExpoConfig. Release bundling
+          # wants production semantics, so set it explicitly.
+          NODE_ENV: production
 
       - name: Upload APK
         uses: actions/upload-artifact@v4

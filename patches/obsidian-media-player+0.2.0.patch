@@ -1,0 +1,21 @@
+diff --git a/node_modules/obsidian-media-player/android/build.gradle b/node_modules/obsidian-media-player/android/build.gradle
+index 57f5499..076095f 100644
+--- a/node_modules/obsidian-media-player/android/build.gradle
++++ b/node_modules/obsidian-media-player/android/build.gradle
+@@ -75,6 +75,16 @@ android {
+                 // them here forces them onto every translation unit twice and
+                 // makes `-Werror` impossible to relax per-file.
+                 cppFlags "-O2", "-frtti", "-fexceptions", "-std=c++17"
++                // Must match the STL React Native's own prefab libraries are built
++                // against. Without this the NDK default (c++_static) applies and
++                // resolving the ReactAndroid prefabs fails at configure time with:
++                //   [CXX1212] User is using a static STL but library requires a
++                //   shared STL [//ReactAndroid/hermestooling]
++                // i.e. :obsidian-media-player:configureCMakeRelWithDebInfo FAILED.
++                // Every other native module in this app that links ReactAndroid
++                // prefabs (react-native-nitro-modules, etc.) already passes
++                // c++_shared explicitly; this module was simply missing it.
++                arguments "-DANDROID_STL=c++_shared"
+                 abiFilters(*resolveAbiFilters())
+             }
+         }

@@ -73,7 +73,7 @@
     "web": "expo start --web",
     "lint": "expo lint",
     "typecheck": "tsc --noEmit",
-    "postinstall": "echo skipping patch-package"
+    "postinstall": "patch-package"
   },
   "private": true
 }
